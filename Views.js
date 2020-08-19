@@ -525,7 +525,7 @@ let feedItemContainer = (entity, view) => d([
 ]) 
 
 let headerBarView = () => d([
-  '<header><h1>Holdingservice Beta</h1></header>',
+  '<header><h1>Holdingservice Beta2</h1></header>',
   d( divs(["Logg ut", "Innstillinger"], {class: "textButton"}), {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
