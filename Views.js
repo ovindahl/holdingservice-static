@@ -145,7 +145,8 @@ let pageView = (S, A) => {
   let pageController = {
     "overview": timeline,
     "bankImport": bankImportPage,
-    "shareholders": shareholdersPage
+    "shareholders": shareholdersPage,
+    "admin": adminView
   } 
 
   return divs([
@@ -155,6 +156,8 @@ let pageView = (S, A) => {
   ])
 
 }
+
+let adminView = (S, A) => d("AdminView TBD")
 
 
 
@@ -537,8 +540,8 @@ let menuBarView = (S, A) => {
 
   let orgnumbers = S.Companies.map( C => C["company/orgnumber"] )
   let years = S.selectedCompany["h/Events"].map( e => e.date.substr(0, 4) ).filter( filterUniqueValues ).sort().reverse()
-  let pageLabels = ["Hendelser", "Bank", "Aksjonærer"]
-  let pageNames = ["overview", "bankImport", "shareholders"]
+  let pageLabels = ["Hendelser", "Bank", "Aksjonærer", "Admin"]
+  let pageNames = ["overview", "bankImport", "shareholders", "admin"]
 
   return d([
     menuRow(

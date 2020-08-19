@@ -2,7 +2,7 @@
 
 var adminActionMappings = [] //Temporary global container for actionsmappings, to be made functional
 
-let addActionMapping = (actionMappings) => adminActionMappings = adminActionMappings.concat( actionMappings )
+let addAdminActionMapping = (actionMappings) => adminActionMappings = adminActionMappings.concat( actionMappings )
 
 const renderAdminUI = (S, A) => { 
     adminActionMappings = [];
