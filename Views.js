@@ -104,9 +104,7 @@ let inputWithLabelField_disabled = (label, value) => d(label + input({disabled: 
 let inputWithLabel_string = (A, transaction, label, attribute) => d(label + input({value: (typeof transaction[attribute] == "undefined") ? "" : transaction[attribute], style: "text-align: right;" }, "change", e => A.submitDatoms( [newDatom(transaction["entity"], attribute, e.srcElement.value)] ) ), {class: "inputWithLabel"}  )
 let inputWithLabel_number = (A, transaction, label, attribute) => d(label + input({value: (typeof transaction[attribute] == "undefined") ? "" : transaction[attribute], style: "text-align: right;" }, "change", e => A.submitDatoms( [newDatom(transaction["entity"], attribute, validate.number(e.srcElement.value))] ) ), {class: "inputWithLabel"}  )
 
-var currentActionMappings = [] //Temporary global container for actionsmappings, to be made functional
 
-let addActionMapping = (actionMappings) => currentActionMappings = currentActionMappings.concat( actionMappings )
 
 const templateDatoms = {
   complexTransaction: (S) => [
@@ -131,6 +129,10 @@ const templateDatoms = {
     newDatom("record", "transaction/amount", 0),
   ]
 }
+
+var currentActionMappings = [] //Temporary global container for actionsmappings, to be made functional
+
+let addActionMapping = (actionMappings) => currentActionMappings = currentActionMappings.concat( actionMappings )
 
 const renderUI = (S, A) => { 
     currentActionMappings = [];
