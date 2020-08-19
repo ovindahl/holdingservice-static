@@ -1,0 +1,113 @@
+body {background-color: #F2F3F5;}
+
+.textButton {
+    padding: 1em;
+}
+
+.textButton_selected {
+    color: blue;
+    font-weight: bold;
+}
+
+.textButton:hover {
+    background-color: lightgray;
+}
+
+
+.borderAndPadding {
+    padding: 1em;
+    border: 1px solid #979797;
+}
+
+.searchResult:hover {
+    background-color: lightgray;
+}
+
+.selectedAccountContainer {
+    display:flex;
+    justify-content: space-between;
+    padding: 1em;
+    border: 1px solid #979797;
+}
+
+.selectedAccountContainer:hover {
+    background-color: lightgray;
+}
+
+.selectedAccount {
+    padding: 10px;
+}
+
+.selectedObject {
+    padding: 10px;
+    background-color: lightblue;
+}
+
+.trialBalanceRow {
+  display:grid;
+  grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr;
+}
+
+.openingBalanceRow {
+    display:grid;
+    grid-template-columns: 1fr 2fr 2fr 1fr;
+  }
+
+.foundersTableRow {
+    display:grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+}
+
+.paddingAndBorder {
+    padding: 1em;
+    border: 1px solid #979797;
+}
+
+
+
+.pageContainer {
+    display: grid; 
+    justify-content: center;
+    padding-top: 3em;
+}
+
+.WIP {
+    padding: 1em; 
+    border: 1 px solid black;
+    background-color: lightsalmon;
+}
+
+
+.inputWithLabel {
+    display: grid;
+    grid-template-columns: 250px 250px;
+}
+
+.numberCell {
+    text-align: right;
+}
+
+input {
+    padding: 1em; 
+    border: 1px solid lightgray;
+}
+
+.noteHeading {
+    font-weight: bold;
+}
+
+
+.emphasizedText {
+    background-color: #c4f1ff;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.emphasizedText:hover {
+    background-color: red;
+}
+
+.equityNoteRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+}
