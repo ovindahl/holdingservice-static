@@ -128,7 +128,7 @@ const templateDatoms = {
   ],
   newRecord: (S, eventEntity) => [
     newDatom("record", "type", "records"),
-    newDatom("record", "parent", eventEntity["entity"]),
+    newDatom("record", "parent", eventEntity.Documents[0]["entity"]),
     newDatom("record", "transaction/generic/account", "1920"),
     newDatom("record", "transaction/amount", 0),
   ]
@@ -511,7 +511,7 @@ let notesText = (S, A, eventEntity) => {
 
   let shareCount = S.selectedCompany["shareCount"]
 
-  let shareholders = Object.entries(S.selectedCompany["shareholders"]) 
+  let shareholders = S.selectedCompany["shareholders"] ? Object.entries(S.selectedCompany["shareholders"]) : []
 
   
 

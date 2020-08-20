@@ -111,10 +111,7 @@ let update = async (receivedS) => {
 let submitTransaction = async (datoms, receivedS) => {
     let userContent = await APIRequest("POST", "transactor", JSON.stringify( datoms ))
 
-    let S = userContent
-    S.currentPage = receivedS.currentPage
-    S.selectedCompany = S.Companies.filter( C => C["company/orgnumber"] === receivedS.selectedCompany["company/orgnumber"] )[0]
-    S.selectedYear = receivedS.selectedYear
+    let S = await getLocalState( mergerino(receivedS, userContent)  )
 
     update( S )
 }
