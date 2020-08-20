@@ -85,12 +85,15 @@ let getLocalState = async (receivedS) => {
         if(userContent !== null){
 
             S.currentPage = "overview"
-            S.selectedCompany = userContent.Companies[0]
-            S.selectedYear = S.selectedCompany["h/Events"][0]["date"].slice(0,4)
+            S.selectedOrgnumber = userContent.Companies[0]["company/orgnumber"]
+            S.selectedYear = S.Companies.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]["h/Events"][0]["date"].slice(0,4)
 
         }
 
     }
+
+    S.selectedCompany = S.Companies.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]
+    
 
     return S
 }

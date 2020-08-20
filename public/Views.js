@@ -650,9 +650,9 @@ let menuBarView = (S, A) => {
       S.Companies.map( C => C["company/name"] ), 
       orgnumbers.indexOf( S.selectedCompany["company/orgnumber"] ),
       orgnumbers.map( orgnumber => e => {
-        let selectedCompany = S.Companies.filter( C => C["company/orgnumber"] === orgnumber)[0]
-        let selectedYear = selectedCompany["h/Events"][0]["date"].slice(0,4)
-        let patch = mergerino({selectedCompany, selectedYear})
+        let selectedOrgnumber = orgnumber
+        let selectedYear = S.Companies.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]["h/Events"][0]["date"].slice(0,4)
+        let patch = mergerino({selectedOrgnumber, selectedYear})
         A.patch(  patch )
       }  )
     ),
