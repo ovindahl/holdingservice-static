@@ -154,7 +154,7 @@ let pageView = (S, A) => {
   } 
 
   return divs([
-    headerBarView(),
+    headerBarView(S),
     menuBarView(S, A),
     pageContainer( pageController[S.currentPage](S, A) )
   ])
@@ -631,8 +631,11 @@ let feedItemContainer = (entity, view) => d([
   d( entity["process/identifier"], {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"}),
 ]) 
 
-let headerBarView = () => d([
+let headerBarView = (S) => d([
   '<header><h1>Holdingservice Beta</h1></header>',
+  `<div>Server version: ${S.tx}</div>`,
+  `<div>Client app version: ${S.tx}</div>`,
+  `<div>DB version: ${S.tx}</div>`,
   d( divs(["Logg ut", "Innstillinger"], {class: "textButton"}), {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
