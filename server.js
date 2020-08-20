@@ -22,7 +22,7 @@ app.get("/", (req,res)=>{res.send(`
       <title>Holdingservice Beta</title>
       <meta name="description" content="Regnskapssystemet for holdingselskaper">
       <meta name="author" content="Holdingservice AS">
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ovindahl/holdingservice-static@latest/styles.css">
+      <link rel="stylesheet" href="/static/styles.css">
     </head>
     <body>
         <div id="appContainer"></div>

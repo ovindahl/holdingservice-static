@@ -53,6 +53,11 @@ body {background-color: #F2F3F5;}
     grid-template-columns: 1fr 2fr 2fr 1fr;
   }
 
+.financialStatementsRow{
+    display:grid;
+    grid-template-columns: 8fr 1fr 2fr 2fr;
+}
+
 .foundersTableRow {
     display:grid;
     grid-template-columns: 2fr 1fr 1fr 1fr;
