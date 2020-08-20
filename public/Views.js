@@ -101,18 +101,22 @@ let input = (attributesObject, eventType, action) => elWithAction("input", attri
 let dropdown = (value, optionObjects, updateFunction) => elWithAction("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", updateFunction  )
 let inputWithLabelField = (label, value, onChange) => d(label + input({value: value, style: "text-align: right;" }, "change", onChange ), {class: "inputWithLabel"}  )
 let inputWithLabelField_disabled = (label, value) => d(label + input({disabled: "disabled", value: value, style: "text-align: right;" }), {class: "inputWithLabel"}  )
-let inputWithLabel_string = (A, transaction, label, attribute) => d(label + input({value: (typeof transaction[attribute] == "undefined") ? "" : transaction[attribute], style: "text-align: right;" }, "change", e => A.submitDatoms( [newDatom(transaction["entity"], attribute, e.srcElement.value)] ) ), {class: "inputWithLabel"}  )
-let inputWithLabel_number = (A, transaction, label, attribute) => d(label + input({value: (typeof transaction[attribute] == "undefined") ? "" : transaction[attribute], style: "text-align: right;" }, "change", e => A.submitDatoms( [newDatom(transaction["entity"], attribute, validate.number(e.srcElement.value))] ) ), {class: "inputWithLabel"}  )
+let inputWithLabel_string = (A, entity, label, attribute) => d(label + input({value: (typeof entity[attribute] == "undefined") ? "" : entity[attribute], style: "text-align: right;" }, "change", e => A.submitDatoms( [newDatom(entity["entity"], attribute, e.srcElement.value)] ) ), {class: "inputWithLabel"}  )
+let inputWithLabel_number = (A, entity, label, attribute) => d(label + input({value: (typeof entity[attribute] == "undefined") ? "" : entity[attribute], style: "text-align: right;" }, "change", e => A.submitDatoms( [newDatom(entity["entity"], attribute, validate.number(e.srcElement.value))] ) ), {class: "inputWithLabel"}  )
 
 
 
 const templateDatoms = {
   complexTransaction: (S) => [
+    newDatom("process", "type", "process"),
+    newDatom("process", "date", S.selectedCompany["h/Events"][1]["date"]),
+    newDatom("process", "process/identifier", "complexTransaction"),
+    newDatom("process", "company/orgnumber", S.selectedCompany["company/orgnumber"]),
     newDatom("complexTransaction", "type", "transactions"),
+    newDatom("complexTransaction", "parent", "process"),
     newDatom("complexTransaction", "date", S.selectedCompany["h/Events"][1]["date"]),
     newDatom("complexTransaction", "company/orgnumber", S.selectedCompany["company/orgnumber"]),
     newDatom("complexTransaction", "transaction/description", "Fri postering"),
-    newDatom("complexTransaction", "transaction/type", "complex"),
     newDatom("record", "type", "records"),
     newDatom("record", "parent", "complexTransaction"),
     newDatom("record", "transaction/generic/account", "1920"),
@@ -165,8 +169,8 @@ let adminView = (S, A) => d("AdminView TBD")
 
 let metadataViews = {
   "1920": (S, A, record) => d([
-      inputWithLabelField_disabled( "Bankkonto", record[`transaction/bankAccount`]),
-      inputWithLabelField_disabled( "Transaksjonsreferanse", record[`transaction/bankTransactionReference`])
+    inputWithLabel_number(A, record, "Bankkonto (kun tall)", `transaction/bankAccount`),
+    inputWithLabel_string(A, record, "Transaksjonsreferanse", `transaction/bankTransactionReference`),
   ]),
   "1810": (S, A, record) => metadataViews["1820"](S, A, record),
   "1820": (S, A, record) => d([
@@ -264,15 +268,13 @@ let Accounts = {
   '8300': {label: 'Betalbar skatt'}, 
   '8320': {label: 'Endring utsatt skatt'}
 }
-  
-let feedItem_transactions = (S, A, eventEntity ) => eventEntity["transaction/type"] === "complex" ? feedItem_fullTransactions(S, A, eventEntity ) : feedItem_simpleTransactions(S, A, eventEntity )
 
 
-let feedItem_simpleTransactions = (S, A, eventEntity ) => {
+let feedItem_simpleTransaction = (S, A, eventEntity ) => {
 
-  let transaction = eventEntity
+  let transaction = eventEntity.Documents[0]
 
-  let records = eventEntity.records
+  let records = transaction.records
   
 
   if(records.length === 2 && records.filter( r => r["transaction/generic/account"] === "1920" && r["transaction/bankAccount"] ).length >= 1 ){
@@ -296,13 +298,15 @@ let feedItem_simpleTransactions = (S, A, eventEntity ) => {
 
 } 
 
-let feedItem_fullTransactions = (S, A, eventEntity ) => {
+let feedItem_complexTransaction = (S, A, eventEntity ) => {
 
-  let transaction = eventEntity
-  let records = eventEntity.records
+  let transaction = eventEntity.Documents[0]
+
+  let records = transaction.records
 
   return d([
     d(h3(transaction["transaction/description"]), {class: "paddingAndBorder"}),
+    inputWithLabel_string(A, eventEntity, "Dato", `date`),
     d([
       h3("Bokføringslinjer"),
       records.map( (record, i) => basicRecordView(S, A, record, i) ).join(''),
@@ -347,25 +351,26 @@ let basicRecordView = (S, A, record, i) => {
 
 let accountSelectionDropdown = (A, record) => d([
   d("Konto"),
-  (record["transaction/generic/account"] === "1920" && record["transaction/bankTransactionReference"])
-    ? el("select", {style:"padding: 1em; border: 1px solid lightgray", disabled: "disabled"}, `<option value=0 selected="selected">1920 - Importert banktransaksjon</option>` )
-    : dropdown( record["transaction/generic/account"], Object.entries( Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.submitDatoms([newDatom(record.entity, "transaction/generic/account", e.srcElement.value )]) )
+  dropdown( record["transaction/generic/account"], Object.entries( Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.submitDatoms([newDatom(record.entity, "transaction/generic/account", e.srcElement.value )]) )
 ], {class: "inputWithLabel"}  )
 
 let accountMetaDataView = (S, A, record) => metadataViews[ record["transaction/generic/account"] ] ? metadataViews[ record["transaction/generic/account"] ](S, A, record) :  d("na.")
 
 
-let feedItem_AoA = (S, A, eventEntity) => d( [
-    d("Type: AoA", {style: `text-align: end;`}),
-    h3("Vedtektsendring"),
+let feedItem_incorporation = (S, A, eventEntity) => {
+
+  let AoA = eventEntity.Documents[0]
+
+
+  return d( [
+    h3("Stiftelse"),
     d([d("Organisasjonsnummer:"), d(eventEntity["company/orgnumber"]) ], {class: "inputWithLabel"}),
-    d([d("Dato:"), d(eventEntity["date"]) ], {class: "inputWithLabel"}),
-    d([d("Selskapsnavn:"), d(eventEntity["company/name"]) ], {class: "inputWithLabel"}),
+    d([d("Selskapsnavn:"), d(AoA["company/name"]) ], {class: "inputWithLabel"}),
     d([d("Selskapet har kun ordinære aksjer"), el("input", {type: "checkbox", checked: "checked"})], {class: "inputWithLabel"}),
-    inputWithLabelField("Aksjenes pålydende: ", format.amount( eventEntity["company/AoA/nominalSharePrice"] ), e => A.submitDatoms( [newDatom(eventEntity["entity"], "company/AoA/nominalSharePrice", validate.number(e.srcElement.value) )])),
+    d([d("Selskapet har valgt å ikke ha revisor"), el("input", {type: "checkbox", checked: "checked"})], {class: "inputWithLabel"}),
+    inputWithLabelField("Aksjenes pålydende: ", format.amount( AoA["company/AoA/nominalSharePrice"] ), e => A.submitDatoms( [newDatom(AoA["entity"], "company/AoA/nominalSharePrice", validate.number(e.srcElement.value) )])),
 ])
-
-
+} 
 
 //Feed page
 
@@ -378,20 +383,44 @@ let sortEntitiesByDate = ( a, b ) => {
   return aDate - bDate
 } 
 
-let timeline = (S, A) => S.selectedCompany["h/Events"].filter( Event => Event.date.substr(0,4) === S.selectedYear ).map( Event => feedItemContainer( Event, feedItemController[ Event["type"] ](S, A, Event)  ) ).join('')
+let timeline = (S, A) => S.selectedCompany["h/Events"].filter( Event => Event.date.substr(0,4) === S.selectedYear ).map( Event => feedItemContainer( Event, eventTypeController[ Event["process/identifier"] ](S, A, Event)  ) ).join('')
 
 
-let feedItemController = {
-  "AoA": (S, A, eventEntity) => feedItem_AoA(S, A, eventEntity),
-  "transactions": (S, A, eventEntity) => feedItem_transactions(S, A, eventEntity),
-  "yearEndEvent": (S, A, eventEntity) => yearEndView(S, A, eventEntity),
+let eventTypeController = {
+  "incorporation": (S, A, eventEntity) => feedItem_incorporation(S, A, eventEntity),
+  "simpleTransaction": (S, A, eventEntity) => feedItem_simpleTransaction(S, A, eventEntity),
+  "complexTransaction": (S, A, eventEntity) => feedItem_complexTransaction(S, A, eventEntity),
+  "yearEnd_2020": (S, A, eventEntity) => feedItem_yearEnd(S, A, eventEntity),
 }
 
-let trialBalanceView = (S, A) => {
+let feedItem_yearEnd = (S, A, eventEntity) => {  
 
-  let accountBalance = S.selectedCompany["years"][S.selectedYear].accountBalance
+  return d([
+   h3(`Årsavslutning ${S.selectedYear}`),
+   "<br>",
+   trialBalanceView(S, A, eventEntity),
+   "<br>",
+   yearEndAccountsView(S, A),
+   "<br>",
+   annualReportView(S, A, eventEntity),
+   "<br>",
+   h3("Utfylling av Næringsoppgave 2 (RF-1167)"),
+   "<br>",
+   d("Fyll ut feltene under seksjonene Foretaksopplysninger og Revisor og regnskapsfører."),
+   "<br>",
+   d([d("Feltnummer"), d("Beløp", {class: "numberCell"} )], {class: "trialBalanceRow"})
+ ])
+ }
 
-  let openingBalance = S.selectedCompany["years"][S.selectedYear].openingBalance
+let trialBalanceView = (S, A, eventEntity) => {
+
+  let accountBalance = S.selectedCompany["acc/accounts"]
+
+  let olderSnapshots = S.selectedCompany["h/Snapshots"].filter( snapshot => Number(snapshot["company/latestEvent"].substr(0, 4)) < Number(eventEntity["date"].substr(0, 4)) )
+
+  let openingBalanceSnapshot = olderSnapshots[ olderSnapshots.length - 1 ]
+
+  let openingBalance = openingBalanceSnapshot ? openingBalanceSnapshot["acc/accounts"] : {}
 
   let allAccounts = Object.keys( mergerino(openingBalance, accountBalance) )
 
@@ -399,7 +428,6 @@ let trialBalanceView = (S, A) => {
     h3(`Foreløpig saldobalanse`),
     d([d("Kontonr."), d("Konto"), d("Åpningsbalanse", {class: "numberCell"} ), d("Endring", {class: "numberCell"} ), d("Utgående balanse", {class: "numberCell"} )], {class: "trialBalanceRow"}),
     allAccounts.map( account => {
-
       let opening = openingBalance[ account ] ? openingBalance[ account ] : 0
       let closing = accountBalance[ account ]
       let change = closing - opening
@@ -417,7 +445,9 @@ let trialBalanceView = (S, A) => {
 
 let yearEndAccountsView = (S, A) => {
 
-  let yearEndAccounts = S.selectedCompany["years"][S.selectedYear].yearEndAccounts
+  let yearEndAccounts = S.selectedCompany["acc/accounts"]
+
+  return d("Årsavslutning TBD")
 
   return d([
     h3("Årsavslutningsposter"),
@@ -429,6 +459,7 @@ let yearEndAccountsView = (S, A) => {
       let accountName = account
       let debitAmount = amount > 0 ? amount : ""
       let creditAmount = amount < 0 ? amount : ""
+
 
       return d([ 
         d( account ), 
@@ -442,150 +473,45 @@ let yearEndAccountsView = (S, A) => {
   ])
 } 
 
-let yearEndView = (S, A) => {
 
-  
-
- return d([
-  h3(`Årsavslutning ${S.selectedYear}`),
-  "<br>",
-  trialBalanceView(S, A),
-  "<br>",
-  yearEndAccountsView(S, A),
-  "<br>",
-  annualReportView(S, A),
-  "<br>",
-  h3("Utfylling av Næringsoppgave 2 (RF-1167)"),
-  "<br>",
-  d("Fyll ut feltene under seksjonene Foretaksopplysninger og Revisor og regnskapsfører."),
-  "<br>",
-  d([d("Feltnummer"), d("Beløp", {class: "numberCell"} )], {class: "trialBalanceRow"})
-])
-}
 
 //Annual report
 
-let annualReportView = (S, A) => {
+let annualReportView = (S, A, eventEntity) => {
 
 
   return d([
-    h3(`Årsregnskap ${S.selectedYear} for ${S.selectedCompany.name}`),
+    h3(`Årsregnskap ${S.selectedYear} for ${S.selectedCompany["company/name"]}`),
     "<br>",
     d([h3(`Resultatregnskap`),"[P&L]"], {class: "borderAndPadding"}),
     "<br>",
     d([h3(`Balanseregnskap`),"[BalanceSheet]"], {class: "borderAndPadding"}),
     "<br>",
-    d([h3(`Noter`), notesText(S, A)], {class: "borderAndPadding"}),
+    d([h3(`Noter`), notesText(S, A, eventEntity)], {class: "borderAndPadding"}),
     "<br>",
   ])
 }
 
 let em = (content) => String('<span class="emphasizedText">' + content + '</span>')
 
-//Bank import page
-  
-let bankImportPage = (S, A) => d([
-  S["bankImport/parsedFile"] ? reviewImportView(S, A) : selectFileView(S, A) 
-]) 
 
-let reviewImportView = (S, A) => d([
-  importedTransactionsTable(S, A, S["bankImport/parsedFile"]),
-  d([d("Bekreft", {class: "textButton"}, "click", e => A.importBankTransactions()), d("Avbryt", {class: "textButton"}, "click", e => A.patch( createObject("bankImport/parsedFile", false)))], {style: "display: flex;"})
-])
-
-let selectFileView = (S, A) => d([
-  el("input", {type: "file", id:"fileInput"} ),
-  d("Last opp", {class: "divButton"}, "click", e => A.parseFile( document.getElementById('fileInput').files[0] ))
-])
-
-let importedTransactionsTable = (S, A, importedRows) => d([
-  d(divs(["Dato", "Transaksjonstekst", "Beløp", "Bankens referanse"]), {style: "display:grid;grid-template-columns: 1fr 3fr 1fr 1fr; text-align: right;"}),
-  importedRows.map( row => importedTransactionsTableRow(S, A, row) ).join('')
-])
-
-let importedTransactionsTableRow = (S, A, row) => d([
-  d( row["date"], {style: "text-align: right;"}),
-  d( row["description"]),
-  d( format.amount( row["amount"] ), {style: "text-align: right;"}),
-  d( row["transactionReference"], {style: "text-align: right;"})
-], {style: "display:grid;grid-template-columns: 1fr 3fr 1fr 1fr;"})
+let notesText = (S, A, eventEntity) => {
 
 
+  let accountBalance = S.selectedCompany["acc/accounts"]
 
-//Shareholders page
+  let olderSnapshots = S.selectedCompany["h/Snapshots"].filter( snapshot => Number(snapshot["company/latestEvent"].substr(0, 4)) < Number(eventEntity["date"].substr(0, 4)) )
 
-let shareholdersPage = (S, A) => d( "TBD" )
+  let openingBalanceSnapshot = olderSnapshots[ olderSnapshots.length - 1 ]
 
+  let openingBalance = openingBalanceSnapshot ? openingBalanceSnapshot["acc/accounts"] : {}
 
-
-//Page frame and page controller
-
-//Containers
-let pageContainer = (page) => d( page, {class: "pageContainer"} )
-let feedItemContainer = (entity, view) => d([
-  d( view, {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-  d( entity["date"], {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"}),
-  d( "id: " + String( entity["entity"] ), {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"}),
-  d( entity["type"], {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"}),
-]) 
-
-let headerBarView = () => d([
-  '<header><h1>Holdingservice Beta2</h1></header>',
-  d( divs(["Logg ut", "Innstillinger"], {class: "textButton"}), {style: "display:flex;"} )
-], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
-
-let menuRow = (labels, selectedOptionIndex, buttonActions) => d( labels.map( (label, index) => d( label, {class: index === selectedOptionIndex ? "textButton textButton_selected" : "textButton"}, "click", buttonActions[index] ) ), {style: "display:flex;"} )
-
-let menuBarView = (S, A) => {
-
-  let orgnumbers = S.Companies.map( C => C["company/orgnumber"] )
-  let years = S.selectedCompany["h/Events"].map( e => e.date.substr(0, 4) ).filter( filterUniqueValues ).sort().reverse()
-  let pageLabels = ["Hendelser", "Bank", "Aksjonærer", "Admin"]
-  let pageNames = ["overview", "bankImport", "shareholders", "admin"]
-
-  return d([
-    menuRow(
-      S.Companies.map( C => C["company/name"] ), 
-      orgnumbers.indexOf( S.selectedCompany["company/orgnumber"] ),
-      orgnumbers.map( orgnumber => e => {
-        let selectedCompany = S.Companies.filter( C => C["company/orgnumber"] === orgnumber)[0]
-        let selectedYear = selectedCompany["h/Events"][0]["date"].slice(0,4)
-        let patch = mergerino({selectedCompany, selectedYear})
-        A.patch(  patch )
-      }  )
-    ),
-    menuRow(
-      years, 
-      years.indexOf( String(S.selectedYear) ),
-      years.map( year => e => A.patch({selectedYear: year}) )
-    ),
-    menuRow(
-      pageLabels, 
-      pageNames.indexOf( S.currentPage ),
-      pageNames.map( pageName => e => A.patch({currentPage: pageName}) )
-    ),
-    d( "Legg til fri postering", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.complexTransaction(S) ) )
-  ], {style: "padding-left:3em;"})
-} 
-
- 
-
-let notesText = (S, A) => {
-
-  let companySnapshot = S.selectedCompany["years"][S.selectedYear]
-
-  let accountBalance = S.selectedCompany["years"][S.selectedYear].accountBalance
-
-  let openingBalance = S.selectedCompany["years"][S.selectedYear].openingBalance
-
-  console.log("companySnapshot", companySnapshot)
-
-  let nominalSharePrice = companySnapshot.nominalSharePrice
+  let nominalSharePrice = S.selectedCompany["company/AoA/nominalSharePrice"]
   
 
-  let shareCount = S.selectedCompany["years"][S.selectedYear].shareCount
+  let shareCount = S.selectedCompany["shareCount"]
 
-  let shareholders = S.selectedCompany["years"][S.selectedYear].shareholders
+  let shareholders = Object.entries(S.selectedCompany["shareholders"]) 
 
   
 
@@ -632,7 +558,7 @@ Foretaket har ${em( format.amount(shareCount) ) } aksjer, pålydende kr ${em( fo
 <br><br>
 Aksjene eies av: 
 <br>
-${shareholders.map( shareholder => d(em(`${shareholder}<br>`))).join('')}
+${shareholders.map( shareholder => d(em(`${shareholder[0]}: ${shareholder[1].shareCount} <br>`))).join('')}
 
 <h4>Note 3: Egenkapital</h4>
 
@@ -688,6 +614,97 @@ Posten inneholder kun frie midler.
 <h4>Note 7: Gjeld til nærstående, ledelse og styre</h4>
 Selskapet har gjeld til følgende nærstående personer: <br>
 
-${shareholders.map( shareholder => d(em(`${shareholder}<br>`))).join('')}
+${shareholders.map( shareholder => d(em(`${shareholder[0]}: [TBD] <br>`))).join('')}
 
 `}
+
+
+
+//Page frame and page controller
+
+//Containers
+let pageContainer = (page) => d( page, {class: "pageContainer"} )
+let feedItemContainer = (entity, view) => d([
+  d( view, {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+  d( entity["date"], {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"}),
+  d( "id: " + String( entity["entity"] ), {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"}),
+  d( entity["process/identifier"], {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"}),
+]) 
+
+let headerBarView = () => d([
+  '<header><h1>Holdingservice Beta</h1></header>',
+  d( divs(["Logg ut", "Innstillinger"], {class: "textButton"}), {style: "display:flex;"} )
+], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
+
+let menuRow = (labels, selectedOptionIndex, buttonActions) => d( labels.map( (label, index) => d( label, {class: index === selectedOptionIndex ? "textButton textButton_selected" : "textButton"}, "click", buttonActions[index] ) ), {style: "display:flex;"} )
+
+let menuBarView = (S, A) => {
+
+  let orgnumbers = S.Companies.map( C => C["company/orgnumber"] )
+  let years = S.selectedCompany["h/Events"].map( e => e.date.substr(0, 4) ).filter( filterUniqueValues ).sort().reverse()
+  let pageLabels = ["Hendelser", "Bank", "Aksjonærer", "Admin"]
+  let pageNames = ["overview", "bankImport", "shareholders", "admin"]
+
+  return d([
+    menuRow(
+      S.Companies.map( C => C["company/name"] ), 
+      orgnumbers.indexOf( S.selectedCompany["company/orgnumber"] ),
+      orgnumbers.map( orgnumber => e => {
+        let selectedCompany = S.Companies.filter( C => C["company/orgnumber"] === orgnumber)[0]
+        let selectedYear = selectedCompany["h/Events"][0]["date"].slice(0,4)
+        let patch = mergerino({selectedCompany, selectedYear})
+        A.patch(  patch )
+      }  )
+    ),
+    menuRow(
+      years, 
+      years.indexOf( String(S.selectedYear) ),
+      years.map( year => e => A.patch({selectedYear: year}) )
+    ),
+    menuRow(
+      pageLabels, 
+      pageNames.indexOf( S.currentPage ),
+      pageNames.map( pageName => e => A.patch({currentPage: pageName}) )
+    ),
+    d( "Legg til fri postering", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.complexTransaction(S) ) )
+  ], {style: "padding-left:3em;"})
+} 
+
+
+
+
+
+//Bank import page
+  
+let bankImportPage = (S, A) => d([
+  S["bankImport/parsedFile"] ? reviewImportView(S, A) : selectFileView(S, A) 
+]) 
+
+let reviewImportView = (S, A) => d([
+  importedTransactionsTable(S, A, S["bankImport/parsedFile"]),
+  d([d("Bekreft", {class: "textButton"}, "click", e => A.importBankTransactions()), d("Avbryt", {class: "textButton"}, "click", e => A.patch( createObject("bankImport/parsedFile", false)))], {style: "display: flex;"})
+])
+
+let selectFileView = (S, A) => d([
+  el("input", {type: "file", id:"fileInput"} ),
+  d("Last opp", {class: "divButton"}, "click", e => A.parseFile( document.getElementById('fileInput').files[0] ))
+])
+
+let importedTransactionsTable = (S, A, importedRows) => d([
+  d(divs(["Dato", "Transaksjonstekst", "Beløp", "Bankens referanse"]), {style: "display:grid;grid-template-columns: 1fr 3fr 1fr 1fr; text-align: right;"}),
+  importedRows.map( row => importedTransactionsTableRow(S, A, row) ).join('')
+])
+
+let importedTransactionsTableRow = (S, A, row) => d([
+  d( row["date"], {style: "text-align: right;"}),
+  d( row["description"]),
+  d( format.amount( row["amount"] ), {style: "text-align: right;"}),
+  d( row["transactionReference"], {style: "text-align: right;"})
+], {style: "display:grid;grid-template-columns: 1fr 3fr 1fr 1fr;"})
+
+
+
+//Shareholders page
+
+let shareholdersPage = (S, A) => d( "TBD" )
+
