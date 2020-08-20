@@ -633,8 +633,9 @@ let feedItemContainer = (entity, view) => d([
 
 let headerBarView = (S) => d([
   '<header><h1>Holdingservice Beta</h1></header>',
-  `<div>Server version: ${S.tx}</div>`,
-  `<div>Client app version: ${S.tx}</div>`,
+  `<div>Server version: ${S.serverConfig.serverVersion}</div>`,
+  `<div>Server cache updated: ${moment(S.serverConfig.cacheUpdated).format()}</div>`,
+  `<div>Client app version: ${S.serverConfig.clientVersion}</div>`,
   `<div>DB version: ${S.tx}</div>`,
   d( divs(["Logg ut", "Innstillinger"], {class: "textButton"}), {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
