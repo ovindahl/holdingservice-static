@@ -413,34 +413,31 @@ let feedItem_yearEnd = (S, A, eventEntity) => {
 
 let trialBalanceView = (S, A, eventEntity) => {
 
-  
+  let accountBalance = getAccountBalance(S, eventEntity);
 
-  let accountBalance = S.selectedCompany["acc/accounts"]
-
-  let olderSnapshots = S.selectedCompany["h/Snapshots"].filter( snapshot => Number(snapshot["company/latestEvent"].substr(0, 4)) < Number(eventEntity["date"].substr(0, 4)) )
-
-  let openingBalanceSnapshot = olderSnapshots[ olderSnapshots.length - 1 ]
-
-  let openingBalance = openingBalanceSnapshot ? openingBalanceSnapshot["acc/accounts"] : {}
+  let openingBalance = getOpeningBalance(S, eventEntity);
 
   let allAccounts = Object.keys( mergerino(openingBalance, accountBalance) )
-
-  console.log(openingBalance, accountBalance, S.selectedCompany["h/Events"])
 
   return d([
     h3(`Foreløpig saldobalanse`),
     d([d("Kontonr."), d("Konto"), d("Åpningsbalanse", {class: "numberCell"} ), d("Endring", {class: "numberCell"} ), d("Utgående balanse", {class: "numberCell"} )], {class: "trialBalanceRow"}),
     allAccounts.map( account => {
-      let opening = openingBalance[ account ] ? openingBalance[ account ] : 0
+      let opening = openingBalance[ account ] ? openingBalance[ account ] : 0 
       let closing = accountBalance[ account ]
+        
       let change = closing - opening
+
+      let openingString = (Number(account) < 3000) ? format.amount( opening ) : ""
+      let closingString = (Number(account) < 3000) ? format.amount( closing ) : ""
+      let changeString = format.amount( change )
 
       return d([ 
         d( account ), 
         d( Accounts[ account ]["label"] ), 
-        d( format.amount( opening ), {class: "numberCell"}), 
-        d( format.amount( change ), {class: "numberCell"}), 
-        d( format.amount( closing ), {class: "numberCell"}), 
+        d( openingString, {class: "numberCell"}), 
+        d( changeString, {class: "numberCell"}), 
+        d( closingString, {class: "numberCell"}), 
       ], {class: "trialBalanceRow"})
     }).join('')
   ])
@@ -451,13 +448,9 @@ let trialBalanceView = (S, A, eventEntity) => {
 
 let getPnL = (S, eventEntity ) => {
 
-  let accountBalance = S.selectedCompany["acc/accounts"]
+  let accountBalance = getAccountBalance(S, eventEntity);
 
-  let olderSnapshots = S.selectedCompany["h/Snapshots"].filter( snapshot => Number(snapshot["company/latestEvent"].substr(0, 4)) < Number(eventEntity["date"].substr(0, 4)) )
-
-  let openingBalanceSnapshot = olderSnapshots[ olderSnapshots.length - 1 ]
-
-  let openingBalance = openingBalanceSnapshot ? openingBalanceSnapshot["acc/accounts"] : {}
+  let openingBalance = getOpeningBalance(S, eventEntity);
 
   let PnLItems = [
     {label: "DRIFTSRESULTAT", accounts: [], note: "" },
@@ -496,15 +489,26 @@ let getPnL = (S, eventEntity ) => {
 
 }
 
-let getBalanceSheet = (S, eventEntity ) => {
+let getAccountBalance = (S, eventEntity) => (S.selectedCompany["company/latestEvent"] === eventEntity["date"]) ? S.selectedCompany["acc/accounts"]
+:  S.selectedCompany["h/Snapshots"].filter( snapshot => snapshot["company/latestEvent"] === eventEntity["date"] && Object.keys(snapshot["acc/accounts"]).includes("8800")  )[0]["acc/accounts"]
 
-  let accountBalance = S.selectedCompany["acc/accounts"]
+let getOpeningBalance = (S, eventEntity) => {
 
   let olderSnapshots = S.selectedCompany["h/Snapshots"].filter( snapshot => Number(snapshot["company/latestEvent"].substr(0, 4)) < Number(eventEntity["date"].substr(0, 4)) )
 
   let openingBalanceSnapshot = olderSnapshots[ olderSnapshots.length - 1 ]
 
   let openingBalance = openingBalanceSnapshot ? openingBalanceSnapshot["acc/accounts"] : {}
+
+  return openingBalance
+  
+}
+
+let getBalanceSheet = (S, eventEntity ) => {
+
+  let accountBalance = getAccountBalance(S, eventEntity);
+
+  let openingBalance = getOpeningBalance(S, eventEntity);
 
   let lineItems = [
     {label: 'EIENDELER', accounts: [], note: ''}, 
@@ -532,7 +536,7 @@ let getBalanceSheet = (S, eventEntity ) => {
     {label: "<br>", accounts: [], note: "" },
     {label: 'Bankinnskudd, kontanter og lignende', accounts: ["1920"], note: ''}, 
     {label: 'Sum Bankinnskudd, kontanter og lignende', accounts: ["1920"], note: ''}, 
-    {label: 'SUM EIENDELER', accounts: [], note: ''}, 
+    {label: 'SUM EIENDELER', accounts: Object.keys(Accounts).filter( acc => Number(acc) < 2000 ).map( acc => String(acc) ), note: ''}, 
     {label: "<br>", accounts: [], note: "" },
     {label: 'EGENKAPITAL OG GJELD', accounts: [], note: ''}, 
     {label: 'Aksjekapital', accounts: ["2000"], note: ''}, 
@@ -543,7 +547,7 @@ let getBalanceSheet = (S, eventEntity ) => {
     {label: 'Annen egenkapital', accounts: ["2050"], note: ''}, 
     {label: 'Udekket tap', accounts: ["2080"], note: ''}, 
     {label: 'Sum opptjent egenkapital', accounts: ["2050", "2080"], note: ''}, 
-    {label: 'SUM EGENKAPITAL', accounts: [], note: ''}, 
+    {label: 'SUM EGENKAPITAL', accounts: Object.keys(Accounts).filter( acc => Number(acc) >= 2000 && Number(acc) < 2100 ).map( acc => String(acc) ), note: ''}, 
     {label: "<br>", accounts: [], note: "" },
     {label: 'Utsatt skatt', accounts: ["2120"], note: ''}, 
     {label: 'Sum avsetning for forpliktelser', accounts: ["2120"], note: ''}, 
@@ -556,17 +560,17 @@ let getBalanceSheet = (S, eventEntity ) => {
     {label: 'Betalbar skatt', accounts: ["2500", "2510"], note: ''}, 
     {label: 'Annen kortsiktig gjeld', accounts: ["2800" ,"2910" ,"2920","2990"], note: ''},
     {label: 'Sum kortsiktig gjeld', accounts: ["2400", "2500" , "2510" , "2800" ,"2910" ,"2920","2990"], note: ''}, 
-    {label: 'SUM GJELD', accounts: [], note: ''}, 
+    {label: 'SUM GJELD', accounts: Object.keys(Accounts).filter( acc => Number(acc) >= 2100 && Number(acc) < 3000 ).map( acc => String(acc) ), note: ''}, 
     {label: "<br>", accounts: [], note: "" },
-    {label: 'SUM EGENKAPITAL OG GJELD', accounts: [], note: ''}
+    {label: 'SUM EGENKAPITAL OG GJELD', accounts: Object.keys(Accounts).filter( acc => Number(acc) >= 2000 && Number(acc) < 3000 ).map( acc => String(acc) ), note: ''}
   ]
 
   let headerRow = d([ d(""), d(""), d( eventEntity["date"].substr(0, 4) , {class: "numberCell"} ), d( String( Number( eventEntity["date"].substr(0, 4) - 1) ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
 
   let balanceSheet = [headerRow].concat(lineItems.map( item => {
 
-    let thisYear = item.accounts.reduce( (sum, account) => sum + accountBalance[ account ] ? accountBalance[ account ] : 0, 0  )
-    let prevYear = item.accounts.reduce( (sum, account) => sum + openingBalance[ account ] ? openingBalance[ account ] : 0, 0  )
+    let thisYear = Object.entries( accountBalance ).reduce( (sum, entry) => sum + returnObject(item.accounts.includes( String(entry[0]) ) ? entry[1] : 0), 0  )
+    let prevYear = Object.entries( openingBalance ).reduce( (sum, entry) => sum + returnObject(item.accounts.includes( String(entry[0]) ) ? entry[1] : 0), 0  )
 
     return d([ d(item.label), d(item.note), d( (thisYear === 0) ? "" : format.amount( thisYear ), {class: "numberCell"} ), d( (prevYear === 0) ? "" : format.amount( prevYear ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
   })).join('')
