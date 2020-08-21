@@ -266,7 +266,8 @@ let Accounts = {
   '8170': {label: 'Annen finanskostnad'}, 
   '8178': {label: 'Tap ved realisasjon av aksjer'}, 
   '8300': {label: 'Betalbar skatt'}, 
-  '8320': {label: 'Endring utsatt skatt'}
+  '8320': {label: 'Endring utsatt skatt'},
+  '8800': {label: 'Årsresultat'}
 }
 
 
@@ -400,8 +401,6 @@ let feedItem_yearEnd = (S, A, eventEntity) => {
    "<br>",
    trialBalanceView(S, A, eventEntity),
    "<br>",
-   yearEndAccountsView(S, A),
-   "<br>",
    annualReportView(S, A, eventEntity),
    "<br>",
    h3("Utfylling av Næringsoppgave 2 (RF-1167)"),
@@ -414,6 +413,8 @@ let feedItem_yearEnd = (S, A, eventEntity) => {
 
 let trialBalanceView = (S, A, eventEntity) => {
 
+  
+
   let accountBalance = S.selectedCompany["acc/accounts"]
 
   let olderSnapshots = S.selectedCompany["h/Snapshots"].filter( snapshot => Number(snapshot["company/latestEvent"].substr(0, 4)) < Number(eventEntity["date"].substr(0, 4)) )
@@ -423,6 +424,8 @@ let trialBalanceView = (S, A, eventEntity) => {
   let openingBalance = openingBalanceSnapshot ? openingBalanceSnapshot["acc/accounts"] : {}
 
   let allAccounts = Object.keys( mergerino(openingBalance, accountBalance) )
+
+  console.log(openingBalance, accountBalance, S.selectedCompany["h/Events"])
 
   return d([
     h3(`Foreløpig saldobalanse`),
@@ -438,36 +441,6 @@ let trialBalanceView = (S, A, eventEntity) => {
         d( format.amount( opening ), {class: "numberCell"}), 
         d( format.amount( change ), {class: "numberCell"}), 
         d( format.amount( closing ), {class: "numberCell"}), 
-      ], {class: "trialBalanceRow"})
-    }).join('')
-  ])
-} 
-
-let yearEndAccountsView = (S, A) => {
-
-  let yearEndAccounts = S.selectedCompany["acc/accounts"]
-
-  return d("Årsavslutning TBD")
-
-  return d([
-    h3("Årsavslutningsposter"),
-    "<br>",
-    d([d("Kontonr."), d("Konto"), d("", {class: "numberCell"} ), d("Debit", {class: "numberCell"} ), d("Credit", {class: "numberCell"} ),  d("", {class: "numberCell"} )], {class: "trialBalanceRow"}),
-    Object.keys(yearEndAccounts).reverse().map( (account) => {
-
-      let amount = yearEndAccounts[account]
-      let accountName = account
-      let debitAmount = amount > 0 ? amount : ""
-      let creditAmount = amount < 0 ? amount : ""
-
-
-      return d([ 
-        d( account ), 
-        d( accountName ), 
-        d( "", {class: "numberCell"}), 
-        d( format.amount( debitAmount ), {class: "numberCell"}), 
-        d( format.amount( creditAmount ), {class: "numberCell"}), 
-        d( "", {class: "numberCell"}) 
       ], {class: "trialBalanceRow"})
     }).join('')
   ])
@@ -505,16 +478,15 @@ let getPnL = (S, eventEntity ) => {
     {label: "<br>", accounts: [], note: "" },
     {label: "Skattekostnad på ordinært resultat", accounts: ['8300', '8320'], note: "" },
     {label: "<br>", accounts: [], note: "" },
-    {label: "Årsresultat", accounts: Object.keys(Accounts).filter( acc => Number(acc) >= 3000), note: "" },
+    {label: "Årsresultat", accounts: ['8800'], note: "" },
   ]
 
   let headerRow = d([ d(""), d(""), d( eventEntity["date"].substr(0, 4) , {class: "numberCell"} ), d( String( Number( eventEntity["date"].substr(0, 4) - 1) ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
 
   let pnl = [headerRow].concat(PnLItems.map( item => {
 
-    let thisYear = Object.entries( accountBalance ).reduce( (sum, entry) => sum + item.accounts.includes( entry[0] ) ? entry[1] : 0, 0  )
-    let prevYear = Object.entries( openingBalance ).reduce( (sum, entry) => sum + item.accounts.includes( entry[0] ) ? entry[1] : 0, 0  )
-
+    let thisYear = Object.entries( accountBalance ).reduce( (sum, entry) => sum + returnObject(item.accounts.includes( String(entry[0]) ) ? entry[1] : 0), 0  )
+    let prevYear = Object.entries( openingBalance ).reduce( (sum, entry) => sum + returnObject(item.accounts.includes( String(entry[0]) ) ? entry[1] : 0), 0  )
 
     return d([ d(item.label), d(item.note), d( (thisYear === 0) ? "" : format.amount( thisYear ), {class: "numberCell"} ), d( (prevYear === 0) ? "" : format.amount( prevYear ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
   })).join('')
