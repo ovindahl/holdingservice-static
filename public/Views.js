@@ -700,18 +700,14 @@ ${shareholders.map( shareholder => d(em(`${shareholder[0]}: ${shareholder[1].sha
 </tbody>
 </table>
 
-
+${taxNote(S, A, eventEntity)}
 
 <h4>Note 4: Lønnskostnader, antall ansatte, godtgjørelser, revisjonskostnader mm.</h4>
 Selskapet har i ${em( S.selectedYear ) } ikke hatt noen ansatte og er således ikke pliktig til å ha tjenestepensjon for de ansatte etter Lov om obligatoriske tjenestepensjon. Det er ikke utdelt styrehonorar.
 <br><br>
 Kostnadsført revisjonshonorar for ${em( S.selectedYear ) } utgjør kr ${em( auditorCost_main ) }. Honorar for annen bistand fra revisor utgjør kr ${em( auditorCost_other ) }.
 
-<h4>Note 5: Skatt</h4>
-Beregning betalbar skatt: 
-<br><br>
-${em( "[TBD]" ) }
-<br><br>
+
 
 <h4>Note 6: Bankinnskudd</h4>
 Posten inneholder kun frie midler.
@@ -723,6 +719,49 @@ ${shareholders.map( shareholder => d(em(`${shareholder[0]}: [TBD] <br>`))).join(
 
 `}
 
+
+let taxNote = (S, A, eventEntity) => {
+
+  let accounts = S.selectedCompany["acc/accounts"]
+
+
+
+
+  return `
+<h4>Note 5: Skatt</h4>
+Beregning betalbar skatt: 
+<br>
+${d([
+  d([ d(""), d(""), d( eventEntity["date"].substr(0, 4) , {class: "numberCell"} ), d( String( Number( eventEntity["date"].substr(0, 4) - 1) ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Resultat før skatt"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Permanente forskjeller "), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Endring midlertidige forskjeller"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Benyttet fremførbart underskudd"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Årets skattegrunnlag"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Betalbar skatt (22%)"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+])}
+<br><br>
+Beregning utsatt skatt:
+<br>
+${d([
+  d([ d(""), d(""), d( eventEntity["date"].substr(0, 4) , {class: "numberCell"} ), d( String( Number( eventEntity["date"].substr(0, 4) - 1) ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Sum skatteøkende forskjeller"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Sum skattereduserende forskjeller"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Forskjeller som ikke inngår i beregningen"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
+])}
+<br><br>
+Skattekostnad: 
+<br>
+${d([
+  d([ d(""), d(""), d( eventEntity["date"].substr(0, 4) , {class: "numberCell"} ), d( String( Number( eventEntity["date"].substr(0, 4) - 1) ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Resultat før skatt"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Permanente forskjeller "), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Estimatavvik"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Grunnlag skattekostnad"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} ),
+  d([ d("Skattekostnad (22%)"), d(""), d( em( format.amount( 0 )  ), {class: "numberCell"} ), d( em( format.amount( 0 )  ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
+])}
+<br><br>
+`}
 
 
 //Page frame and page controller
