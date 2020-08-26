@@ -411,9 +411,8 @@ let feedItem_yearEnd = (S, A, eventEntity) => {
    "<br>",
    annualReportView(S, A, eventEntity),
    "<br>",
-   h3("Utfylling av Næringsoppgave 2 (RF-1167)"),
+   h3("6: Utfylling av offentlige skjemaer"),
    "<br>",
-   d("Fyll ut feltene under seksjonene Foretaksopplysninger og Revisor og regnskapsfører."),
    "<br>",
    d([d("Feltnummer"), d("Beløp", {class: "numberCell"} )], {class: "trialBalanceRow"})
  ])
