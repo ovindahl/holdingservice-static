@@ -405,6 +405,8 @@ let feedItem_yearEnd = (S, A, eventEntity) => {
    "<br>",
    trialBalanceView(financialYear),
    "<br>",
+   h3(`2: Beregning av årets skattekostnad og resultat etter skatt`),
+    "<br>",
     taxCostView(financialYear),
    "<br>",
    annualResultView(financialYear),
@@ -421,20 +423,21 @@ let feedItem_yearEnd = (S, A, eventEntity) => {
 let trialBalanceView = (financialYear) => d([
     h3(`1: Foreløpig saldobalanse`),
     d([d("Kontonr."), d("Konto"), d("Åpningsbalanse", {class: "numberCell"} ), d("Endring", {class: "numberCell"} ), d("Utgående balanse", {class: "numberCell"} )], {class: "trialBalanceRow"}),
-    financialYear["trialBalanceAccounts"].map( account =>  Number(account.account) < 3000 ? d([ 
-        d( account.account ), 
-        d( Accounts[ account.account ]["label"] ), 
-        d( format.amount( account.openingBalance ), {class: "numberCell"}), 
-        d( format.amount( account.change ), {class: "numberCell"}), 
-        d( format.amount( account.closingBalance ), {class: "numberCell"}), 
-      ], {class: "trialBalanceRow"}) : d([ 
-        d( account.account ), 
-        d( Accounts[ account.account ]["label"] ), 
-        d( "" , {class: "numberCell"}), 
-        d( format.amount( account.change ), {class: "numberCell"}), 
-        d( "" , {class: "numberCell"}), 
+    Object.keys( financialYear["trialBalanceBeforeTax"] ).map( account =>  {
+
+      let opening = financialYear.openingBalance[ account ] ? financialYear.openingBalance[ account ] : 0
+      let closing = financialYear.trialBalanceBeforeTax[ account ] ? financialYear.trialBalanceBeforeTax[ account ] : 0
+      let change = closing - opening
+
+
+      return d([ 
+        d( account ), 
+        d( Accounts[ account ]["label"] ), 
+        d( format.amount( opening ), {class: "numberCell"}), 
+        d( format.amount( change  ), {class: "numberCell"}), 
+        d( format.amount( closing ), {class: "numberCell"}), 
       ], {class: "trialBalanceRow"})
-    ).join('')
+    } ).join('')
 ])
 
 let finalBalanceView = (S, A, eventEntity) => {
@@ -476,12 +479,12 @@ let annualResultView = (financialYear) => {
   return d([
     h3(`3: Beregning av årsresultat, overføringer og disponeringer`),
     "<br>",
-    d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( financialYear.taxObject.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Årets skattekostnad" ), d( format.amount( financialYear.taxObject.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Årsresultat" ), d( format.amount( 0 ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( financialYear.annualReportAccounts["9100"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Årets skattekostnad" ), d( format.amount( financialYear.closingBalance["8300"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Årsresultat" ), d( format.amount( financialYear.closingBalance["8800"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
     "<br>",
-    d([ d( "Overføres til Annen innskutt egenkapital" ), d( format.amount( 0 ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Overføres til Udekket tap" ), d( format.amount( 0 ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Overføres til Annen innskutt egenkapital" ), d( format.amount( financialYear.closingBalance["2050"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Overføres til Udekket tap" ), d( format.amount( financialYear.closingBalance["2080"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
   ])
 } 
 
@@ -507,13 +510,35 @@ let getVirtualAccounts = () => returnObject({
 
 let getAnnualReport = ( S, financialYear ) => {
 
-  let headerRow = d([ d(""), d(""), d( "2020" , {class: "numberCell"} ), d( "2019", {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
+  let virtualAccounts = [
+    {virtualAccount: '9000', label: 'Sum driftsinntekter', firstAccount: "3000", lastAccount: "3999"},
+    {virtualAccount: '9010', label: 'Sum driftskostnader', firstAccount: "4000", lastAccount: "7999"},
+    {virtualAccount: '9050', label: 'Driftsresultat', firstAccount: "3000", lastAccount: "7999"},
+    {virtualAccount: '9060', label: 'Sum finansinntekter', firstAccount: "8000", lastAccount: "8099"},
+    {virtualAccount: '9070', label: 'Sum finanskostnader', firstAccount: "8100", lastAccount: "8199"},
+    {virtualAccount: '9100', label: 'Ordinært resultat før skattekostnad', firstAccount: "3000", lastAccount: "8199"},
+    {virtualAccount: '9150', label: 'Ordinært resultat', firstAccount: "3000", lastAccount: "8399"},
+    {virtualAccount: '9200', label: 'Årsresultat', firstAccount: "3000", lastAccount: "8699"},
+    {virtualAccount: '9300', label: 'Sum anleggsmidler', firstAccount: "1000", lastAccount: "1399"},
+    {virtualAccount: '9350', label: 'Sum omløpsmidler', firstAccount: "1400", lastAccount: "1999"},
+    {virtualAccount: '9400', label: 'Sum eiendeler', firstAccount: "1000", lastAccount: "1999"},
+    {virtualAccount: '9450', label: 'Sum egenkapital', firstAccount: "2000", lastAccount: "2099"},
+    {virtualAccount: '9500', label: 'Sum langsiktig gjeld', firstAccount: "2100", lastAccount: "2299"},
+    {virtualAccount: '9550', label: 'Sum kortsiktig gjeld', firstAccount: "2300", lastAccount: "2999"},
+    {virtualAccount: '9650', label: 'Sum egenkapital og gjeld', firstAccount: "2000", lastAccount: "2999"}
+]
 
-  let reportLines = [headerRow].concat(financialYear.virtualAccounts.map( virtualAccount => d([
-     d(`[${String(virtualAccount.virtualAccount)}] ${virtualAccount.label} `), 
-     d( "" ),
-     d( format.amount( Number(virtualAccount.virtualAccount) < 9200 ? virtualAccount.change : virtualAccount.closingBalance ), {class: "numberCell"} ), 
-     d( "", {class: "numberCell"} )  
+  let headerRow = d([ d(""), d("Kontoer"), d( String(financialYear.year) , {class: "numberCell"} ), d( String( Number(financialYear.year) - 1), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
+
+  let prevYear = S.selectedCompany["acc/financialYears"][Number(S.selectedYear) - 1] ? S.selectedCompany["acc/financialYears"][Number(S.selectedYear) - 1] : {}
+
+  let prevYearAccounts = prevYear.annualReportAccounts ? prevYear.annualReportAccounts : {}
+
+  let reportLines = [headerRow].concat( Object.keys(financialYear.annualReportAccounts).map( acc => d([
+     d(`[${String(acc)}] ${virtualAccounts.filter( vacc => vacc.virtualAccount === acc )[0].label} `), 
+     d(`${virtualAccounts.filter( vacc => vacc.virtualAccount === acc )[0].firstAccount} - ${virtualAccounts.filter( vacc => vacc.virtualAccount === acc )[0].lastAccount}`), 
+     d( format.amount( Number(financialYear.annualReportAccounts[ acc ])), {class: "numberCell"} ), 
+     d( format.amount( prevYearAccounts[acc] ? prevYearAccounts[acc] : "" ), {class: "numberCell"} ), 
     ], {class: "financialStatementsRow"} )
   ).join(''))
     
@@ -546,7 +571,7 @@ let annualReportView = (S, financialYear) => {
     "<br>",
     d(getAnnualReport( S, financialYear ), {class: "borderAndPadding"}),
     "<br>",
-    d([h3(`Noter`), notesText( S )], {class: "borderAndPadding"}),
+    d([h3(`Noter`), notesText( S, financialYear )], {class: "borderAndPadding"}),
     "<br>",
   ])
 }
@@ -554,34 +579,27 @@ let annualReportView = (S, financialYear) => {
 let em = (content) => String('<span class="emphasizedText">' + content + '</span>')
 
 
-let notesText = ( S ) => {
-
-  let financialYear = S.selectedCompany["acc/financialYears"][S.selectedYear]
-
-  let shareCapital = financialYear.trialBalanceAccounts.filter( acc => acc.account === "2000")[0]
-  let shareCapital_openingBalance = shareCapital ? shareCapital.openingBalance : 0
-  let shareCapital_closingBalance = shareCapital ? shareCapital.closingBalance : 0
-  let shareCapital_change = shareCapital ? shareCapital.change : 0
-
-  let sharePremium = financialYear.trialBalanceAccounts.filter( acc => acc.account === "2020")[0]
-  let sharePremium_openingBalance = sharePremium ? sharePremium.openingBalance : 0
-  let sharePremium_closingBalance = sharePremium ? sharePremium.closingBalance : 0
-  let sharePremium_change = sharePremium ? sharePremium.change : 0
-
-  let otherEquity = financialYear.trialBalanceAccounts.filter( acc => acc.account === "2030")[0]
-  let otherEquity_openingBalance = otherEquity ? otherEquity.openingBalance : 0
-  let otherEquity_closingBalance = otherEquity ? otherEquity.closingBalance : 0
-  let otherEquity_change = otherEquity ? otherEquity.change : 0
+let notesText = ( S, financialYear ) => {
 
 
+  let shareCapital_openingBalance = financialYear.openingBalance["2000"] ? financialYear.openingBalance["2000"] : 0
+  let shareCapital_closingBalance = financialYear.closingBalance["2000"] ? financialYear.closingBalance["2000"] : 0
+  let shareCapital_change = shareCapital_closingBalance - shareCapital_openingBalance
+
+  let sharePremium_openingBalance = financialYear.openingBalance["2020"] ? financialYear.openingBalance["2020"] : 0
+  let sharePremium_closingBalance = financialYear.openingBalance["2020"] ? financialYear.openingBalance["2020"] : 0
+  let sharePremium_change = sharePremium_closingBalance - sharePremium_openingBalance
+
+  let otherEquity_openingBalance = financialYear.openingBalance["2030"] ? financialYear.openingBalance["2030"] : 0
+  let otherEquity_closingBalance = financialYear.openingBalance["2030"] ? financialYear.openingBalance["2030"] : 0
+  let otherEquity_change = otherEquity_closingBalance - otherEquity_openingBalance
 
 
-  
-  
+  let taxRecord = financialYear.taxTransaction.records.filter( r => r["transaction/generic/account"] === "8300" )[0]
 
-  let taxObject = financialYear.taxObject
+  let taxRate = taxRecord.taxRate * 100 + "%"
 
-  let taxRate = taxObject.taxRate * 100 + "%"
+  let shareholders = Object.values(financialYear.shareholders)
 
 
   return `
@@ -604,7 +622,7 @@ Foretaket har ${em( format.amount(financialYear.shareCount) ) } aksjer, pålyden
 <br><br>
 Aksjene eies av: 
 <br>
-${financialYear.shareholders.map( shareholder => d(em(`${shareholder.shareholder}: ${shareholder.shareCount} <br>`))).join('')}
+${shareholders.map( shareholder => d(em(`${shareholder.shareholder}: ${shareholder.shareCount} <br>`))).join('')}
 
 <h4>Note 3: Egenkapital</h4>
 
@@ -640,8 +658,9 @@ ${financialYear.shareholders.map( shareholder => d(em(`${shareholder.shareholder
   </tr>
 </tbody>
 </table>
-
-${taxNote(financialYear)}
+<br>
+<h4>Note 5: Skatt</h4>
+${taxCostView(financialYear)}
 
 <h4>Note 4: Lønnskostnader, antall ansatte, godtgjørelser, revisjonskostnader mm.</h4>
 Selskapet har i ${em( S.selectedYear ) } ikke hatt noen ansatte og er således ikke pliktig til å ha tjenestepensjon for de ansatte etter Lov om obligatoriske tjenestepensjon. Det er ikke utdelt styrehonorar.
@@ -656,58 +675,32 @@ Posten inneholder kun frie midler.
 <h4>Note 7: Gjeld til nærstående, ledelse og styre</h4>
 Selskapet har gjeld til følgende nærstående personer: <br>
 
-${financialYear.shareholders.map( shareholder => d(em(`${shareholder.shareholder}: ${shareholder.creditOutstanding} <br>`))).join('')}
+${shareholders.map( shareholder => d(em(`${shareholder.shareholder}: ${shareholder.creditOutstanding} <br>`))).join('')}
 
 `}
 
 let taxCostView = (financialYear) => {
 
-  let taxObject = financialYear.taxObject
+  let taxCostRecord = financialYear.taxTransaction.records.filter( r => r["transaction/generic/account"] === "8300" )[0]
+
 
   return d([
-    h3(`2: Beregning av årets skattekostnad og resultat etter skatt`),
+    d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( taxCostRecord.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
     "<br>",
-    d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( taxObject.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Permanente forskjeller" ), d( format.amount( taxCostRecord.permanentDifferences ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Endring i midlertidige forskjeller" ), d( format.amount( taxCostRecord.temporaryDifferences ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Estimatavvik på feilberegnet skatt forrige år" ), d( format.amount( taxCostRecord.taxEstimateCorrection ), {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Skattegrunnlag før bruk av fremførbart underskudd" ), d( format.amount( taxCostRecord.taxResultBeforeUtilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
     "<br>",
-    d([ d( "Permanente forskjeller" ), d( format.amount( taxObject.periodPermDifference ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Endring i midlertidige forskjeller" ), d( format.amount( taxObject.periodTempDifference ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Estimatavvik på feilberegnet skatt forrige år" ), d( format.amount( taxObject.taxEstimateCorrection ), {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Skattegrunnlag før bruk av fremførbart underskudd" ), d( format.amount( taxObject.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Inngående fremførbart underskudd" ), d( format.amount( taxCostRecord.accumulatedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Benyttet fremførbart underskudd" ), d( format.amount( taxCostRecord.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Utgående fremførbart underskudd" ), d( format.amount( taxCostRecord.accumulatedLosses + taxCostRecord.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
     "<br>",
-    d([ d( "Inngående fremførbart underskudd" ), d( format.amount( taxObject.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Benyttet fremførbart underskudd" ), d( format.amount( taxObject.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Utgående fremførbart underskudd" ), d( format.amount( taxObject.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Skattegrunnlag etter bruk av fremførbart underskudd" ), d( format.amount( taxCostRecord.taxResultAfterUtilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
     "<br>",
-    d([ d( "Skattegrunnlag etter bruk av fremførbart underskudd" ), d( format.amount( taxObject.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    "<br>",
-    d([ d( "Årets skattekostnad" ), d( format.amount( taxObject.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"})
+    d([ d( "Årets skattekostnad" ), d( format.amount( taxCostRecord.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"})
   ])
 }
-
-let taxNote = (financialYear) => {
-
-  let taxObject = financialYear.taxObject
-
-  return `
-<h4>Note 5: Skatt</h4>
-${d([
-  "<br>",
-  d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( taxObject.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  "<br>",
-  d([ d( "Permanente forskjeller" ), d( format.amount( taxObject.periodPermDifference ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  d([ d( "Endring i midlertidige forskjeller" ), d( format.amount( taxObject.periodTempDifference ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  d([ d( "Estimatavvik på feilberegnet skatt forrige år" ), d( format.amount( taxObject.taxEstimateCorrection ), {class: "numberCell"})], {class: "financialStatementsRow"}),
-  d([ d( "Skattegrunnlag før bruk av fremførbart underskudd" ), d( format.amount( taxObject.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  "<br>",
-  d([ d( "Inngående fremførbart underskudd" ), d( format.amount( taxObject.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  d([ d( "Benyttet fremførbart underskudd" ), d( format.amount( taxObject.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  d([ d( "Utgående fremførbart underskudd" ), d( format.amount( taxObject.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  "<br>",
-  d([ d( "Skattegrunnlag etter bruk av fremførbart underskudd" ), d( format.amount( taxObject.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  "<br>",
-  d([ d( "Årets skattekostnad" ), d( format.amount( taxObject.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"})
-])}
-`}
 
 
 //Page frame and page controller
