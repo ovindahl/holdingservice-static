@@ -407,9 +407,9 @@ let feedItem_yearEnd = (S, A, eventEntity) => {
    "<br>",
    h3(`2: Beregning av årets skattekostnad og resultat etter skatt`),
     "<br>",
-    taxCostView(financialYear),
+   taxCostView(financialYear),
    "<br>",
-   annualResultView(financialYear),
+    annualResultView(financialYear),
    "<br>",
    annualReportView(S, financialYear),
    "<br>",
@@ -423,10 +423,12 @@ let feedItem_yearEnd = (S, A, eventEntity) => {
 let trialBalanceView = (financialYear) => d([
     h3(`1: Foreløpig saldobalanse`),
     d([d("Kontonr."), d("Konto"), d("Åpningsbalanse", {class: "numberCell"} ), d("Endring", {class: "numberCell"} ), d("Utgående balanse", {class: "numberCell"} )], {class: "trialBalanceRow"}),
-    Object.keys( financialYear["trialBalanceBeforeTax"] ).map( account =>  {
+    Object.keys( financialYear["accounts"] ).map( account =>  {
 
-      let opening = financialYear.openingBalance[ account ] ? financialYear.openingBalance[ account ] : 0
-      let closing = financialYear.trialBalanceBeforeTax[ account ] ? financialYear.trialBalanceBeforeTax[ account ] : 0
+      let thisAccount = financialYear["accounts"][account]
+
+      let opening = thisAccount.openingBalance
+      let closing = thisAccount.closingBalance
       let change = closing - opening
 
 
@@ -476,15 +478,17 @@ let finalBalanceView = (S, A, eventEntity) => {
 
 let annualResultView = (financialYear) => {
 
+  let taxCostRecord = financialYear.accounts["8300"].accountRecords[0]
+
   return d([
     h3(`3: Beregning av årsresultat, overføringer og disponeringer`),
     "<br>",
-    d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( financialYear.annualReportAccounts["9100"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Årets skattekostnad" ), d( format.amount( financialYear.closingBalance["8300"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Årsresultat" ), d( format.amount( financialYear.closingBalance["8800"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( taxCostRecord.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Årets skattekostnad" ), d( format.amount( taxCostRecord.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Årsresultat" ), d( format.amount( financialYear.accounts["8800"].closingBalance ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
     "<br>",
-    d([ d( "Overføres til Annen innskutt egenkapital" ), d( format.amount( financialYear.closingBalance["2050"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Overføres til Udekket tap" ), d( format.amount( financialYear.closingBalance["2080"] ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Overføres til Annen innskutt egenkapital" ), d( format.amount( financialYear.accounts["2050"].closingBalance ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Overføres til Udekket tap" ), d( format.amount( financialYear.accounts["2080"].closingBalance ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
   ])
 } 
 
@@ -547,22 +551,6 @@ let getAnnualReport = ( S, financialYear ) => {
 
 }
 
-let getAccountBalance = (S, eventEntity) => (S.selectedCompany["company/latestEvent"] === eventEntity["date"]) ? S.selectedCompany["acc/accounts"]
-:  S.selectedCompany["h/Snapshots"].filter( snapshot => snapshot["company/latestEvent"] === eventEntity["date"] && Object.keys(snapshot["acc/accounts"]).includes("8800")  )[0]["acc/accounts"]
-
-let getOpeningBalance = (S, eventEntity) => {
-
-  let olderSnapshots = S.selectedCompany["h/Snapshots"].filter( snapshot => Number(snapshot["company/latestEvent"].substr(0, 4)) < Number(eventEntity["date"].substr(0, 4)) )
-
-  let openingBalanceSnapshot = olderSnapshots[ olderSnapshots.length - 1 ]
-
-  let openingBalance = openingBalanceSnapshot ? openingBalanceSnapshot["acc/accounts"] : {}
-
-  return openingBalance
-  
-}
-
-
 
 let annualReportView = (S, financialYear) => {
 
@@ -582,24 +570,23 @@ let em = (content) => String('<span class="emphasizedText">' + content + '</span
 let notesText = ( S, financialYear ) => {
 
 
-  let shareCapital_openingBalance = financialYear.openingBalance["2000"] ? financialYear.openingBalance["2000"] : 0
-  let shareCapital_closingBalance = financialYear.closingBalance["2000"] ? financialYear.closingBalance["2000"] : 0
+  let shareCapital_openingBalance = financialYear.accounts["2000"] ? financialYear.accounts["2000"].openingBalance : 0
+  let shareCapital_closingBalance = financialYear.accounts["2000"] ? financialYear.accounts["2000"].closingBalance : 0
   let shareCapital_change = shareCapital_closingBalance - shareCapital_openingBalance
 
-  let sharePremium_openingBalance = financialYear.openingBalance["2020"] ? financialYear.openingBalance["2020"] : 0
-  let sharePremium_closingBalance = financialYear.openingBalance["2020"] ? financialYear.openingBalance["2020"] : 0
+  let sharePremium_openingBalance = financialYear.accounts["2020"] ? financialYear.accounts["2020"].openingBalance : 0
+  let sharePremium_closingBalance = financialYear.accounts["2020"] ? financialYear.accounts["2020"].closingBalance : 0
   let sharePremium_change = sharePremium_closingBalance - sharePremium_openingBalance
 
-  let otherEquity_openingBalance = financialYear.openingBalance["2030"] ? financialYear.openingBalance["2030"] : 0
-  let otherEquity_closingBalance = financialYear.openingBalance["2030"] ? financialYear.openingBalance["2030"] : 0
+  let otherEquity_openingBalance = financialYear.accounts["2030"] ? financialYear.accounts["2030"].openingBalance : 0
+  let otherEquity_closingBalance = financialYear.accounts["2030"] ? financialYear.accounts["2030"].closingBalance : 0
   let otherEquity_change = otherEquity_closingBalance - otherEquity_openingBalance
 
-
-  let taxRecord = financialYear.taxTransaction.records.filter( r => r["transaction/generic/account"] === "8300" )[0]
+  let taxRecord = financialYear.accounts["8300"].accountRecords[0]
 
   let taxRate = taxRecord.taxRate * 100 + "%"
 
-  let shareholders = Object.values(financialYear.shareholders)
+  let shareholders = Object.values(financialYear.accounts["2000"].shareholders)
 
 
   return `
@@ -622,7 +609,7 @@ Foretaket har ${em( format.amount(financialYear.shareCount) ) } aksjer, pålyden
 <br><br>
 Aksjene eies av: 
 <br>
-${shareholders.map( shareholder => d(em(`${shareholder.shareholder}: ${shareholder.shareCount} <br>`))).join('')}
+${shareholders.map( shareholder => d(em(`${shareholder.id}: ${shareholder.shareCount} <br>`))).join('')}
 
 <h4>Note 3: Egenkapital</h4>
 
@@ -681,7 +668,7 @@ ${shareholders.map( shareholder => d(em(`${shareholder.shareholder}: ${sharehold
 
 let taxCostView = (financialYear) => {
 
-  let taxCostRecord = financialYear.taxTransaction.records.filter( r => r["transaction/generic/account"] === "8300" )[0]
+  let taxCostRecord = financialYear.accounts["8300"].accountRecords[0]
 
 
   return d([
