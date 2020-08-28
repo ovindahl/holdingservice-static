@@ -427,8 +427,8 @@ let trialBalanceView = (financialYear) => d([
 
       let thisAccount = financialYear["accounts"][account]
 
-      let opening = thisAccount.openingBalance
-      let closing = thisAccount.closingBalance
+      let opening = thisAccount.openingBalance.amount
+      let closing = thisAccount.closingBalance.amount
       let change = closing - opening
 
 
@@ -442,40 +442,6 @@ let trialBalanceView = (financialYear) => d([
     } ).join('')
 ])
 
-let finalBalanceView = (S, A, eventEntity) => {
-
-  let accountBalance = getAccountBalance(S, eventEntity);
-
-  let openingBalance = getOpeningBalance(S, eventEntity);
-
-  let allAccounts = Object.keys( mergerino(openingBalance, accountBalance) )
-
-  return d([
-    h3(`4: Endelig saldobalanse`),
-    d([d("Kontonr."), d("Konto"), d("Åpningsbalanse", {class: "numberCell"} ), d("Endring", {class: "numberCell"} ), d("Utgående balanse", {class: "numberCell"} )], {class: "trialBalanceRow"}),
-    allAccounts.filter( acc => Number(acc) < 9000 ).map( account => {
-      let opening = openingBalance[ account ] ? openingBalance[ account ] : 0 
-      let closing = accountBalance[ account ]
-        
-      let change = closing - opening
-
-      let openingString = (Number(account) < 3000) ? format.amount( opening ) : ""
-      let closingString = (Number(account) < 3000) ? format.amount( closing ) : ""
-      let changeString = format.amount( change )
-
-      return d([ 
-        d( account ), 
-        d( Accounts[ account ]["label"] ), 
-        d( openingString, {class: "numberCell"}), 
-        d( changeString, {class: "numberCell"}), 
-        d( closingString, {class: "numberCell"}), 
-      ], {class: "trialBalanceRow"})
-    }).join('')
-  ])
-} 
-
-
-
 let annualResultView = (financialYear) => {
 
   let taxCostRecord = financialYear.accounts["8300"].accountRecords[0]
@@ -485,10 +451,10 @@ let annualResultView = (financialYear) => {
     "<br>",
     d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( taxCostRecord.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
     d([ d( "Årets skattekostnad" ), d( format.amount( taxCostRecord.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Årsresultat" ), d( format.amount( financialYear.accounts["8800"].closingBalance ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Årsresultat" ), d( format.amount( financialYear.accounts["8800"].closingBalance.amount ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
     "<br>",
-    d([ d( "Overføres til Annen innskutt egenkapital" ), d( format.amount( financialYear.accounts["2050"].closingBalance ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Overføres til Udekket tap" ), d( format.amount( financialYear.accounts["2080"].closingBalance ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Overføres til Annen innskutt egenkapital" ), d( format.amount( financialYear.accounts["2050"].closingBalance.amount ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+    d([ d( "Overføres til Udekket tap" ), d( format.amount( financialYear.accounts["2080"].closingBalance.amount ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
   ])
 } 
 
@@ -566,28 +532,29 @@ let annualReportView = (S, financialYear) => {
 
 let em = (content) => String('<span class="emphasizedText">' + content + '</span>')
 
-
 let notesText = ( S, financialYear ) => {
 
-
-  let shareCapital_openingBalance = financialYear.accounts["2000"] ? financialYear.accounts["2000"].openingBalance : 0
-  let shareCapital_closingBalance = financialYear.accounts["2000"] ? financialYear.accounts["2000"].closingBalance : 0
+  let shareCapital_openingBalance = financialYear.accounts["2000"] ? financialYear.accounts["2000"].openingBalance.amount : 0
+  let shareCapital_closingBalance = financialYear.accounts["2000"] ? financialYear.accounts["2000"].closingBalance.amount : 0
   let shareCapital_change = shareCapital_closingBalance - shareCapital_openingBalance
 
-  let sharePremium_openingBalance = financialYear.accounts["2020"] ? financialYear.accounts["2020"].openingBalance : 0
-  let sharePremium_closingBalance = financialYear.accounts["2020"] ? financialYear.accounts["2020"].closingBalance : 0
+  let sharePremium_openingBalance = financialYear.accounts["2020"] ? financialYear.accounts["2020"].openingBalance.amount : 0
+  let sharePremium_closingBalance = financialYear.accounts["2020"] ? financialYear.accounts["2020"].closingBalance.amount : 0
   let sharePremium_change = sharePremium_closingBalance - sharePremium_openingBalance
 
-  let otherEquity_openingBalance = financialYear.accounts["2030"] ? financialYear.accounts["2030"].openingBalance : 0
-  let otherEquity_closingBalance = financialYear.accounts["2030"] ? financialYear.accounts["2030"].closingBalance : 0
+  let otherEquity_openingBalance = financialYear.accounts["2030"] ? financialYear.accounts["2030"].openingBalance.amount : 0
+  let otherEquity_closingBalance = financialYear.accounts["2030"] ? financialYear.accounts["2030"].closingBalance.amount : 0
   let otherEquity_change = otherEquity_closingBalance - otherEquity_openingBalance
 
   let taxRecord = financialYear.accounts["8300"].accountRecords[0]
 
   let taxRate = taxRecord.taxRate * 100 + "%"
 
-  let shareholders = Object.values(financialYear.accounts["2000"].shareholders)
+  let shareCapitalAccount =  financialYear.accounts["2000"]
 
+  let shareholders = Object.values(shareCapitalAccount.closingBalance.shareholders)
+
+  let shareCount = shareCapitalAccount.closingBalance.shareCount
 
   return `
 <h4>Note 1: Regnskapsprinsipper</h4>
@@ -605,7 +572,7 @@ Markedsbaserte finansielle omløpsmidler som inngår i en handelsportefølje vur
 Skattekostnaden i resultatregnskapet omfatter både betalbar skatt for perioden og endring i utsatt skatt. Utsatt skatt er beregnet med ${em(taxRate)} på grunnlag av de midlertidige forskjeller som eksisterer mellom regnskapsmessige og skattemessige verdier, samt ligningsmessig underskudd til fremføring ved utgangen av regnskapsåret. Skatteøkende og skattereduserende midlertidige forskjeller som reverserer eller kan reversere i samme periode er utlignet og nettoført.
 <br>
 <h4>Note 2: Aksjekapital og aksjonærinformasjon</h4>
-Foretaket har ${em( format.amount(financialYear.shareCount) ) } aksjer, pålydende kr ${em( format.amount( S.selectedCompany["company/AoA/nominalSharePrice"] ) )}, noe som gir en samlet aksjekapital på kr ${em(format.amount( shareCapital_closingBalance ) )}. Selskapet har én aksjeklasse.
+Foretaket har ${em( format.amount(shareCount) ) } aksjer, pålydende kr ${em( format.amount( S.selectedCompany["company/AoA/nominalSharePrice"] ) )}, noe som gir en samlet aksjekapital på kr ${em(format.amount( shareCapital_closingBalance ) )}. Selskapet har én aksjeklasse.
 <br><br>
 Aksjene eies av: 
 <br>
@@ -688,7 +655,6 @@ let taxCostView = (financialYear) => {
     d([ d( "Årets skattekostnad" ), d( format.amount( taxCostRecord.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"})
   ])
 }
-
 
 //Page frame and page controller
 
