@@ -4,7 +4,6 @@ let getNewElementID = () => String( IDcounter.push( IDcounter.length  ) )
 //Datom creation functions
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
-
 //Mergerino
 const assign = Object.assign || ((a, b) => (b && Object.keys(b).forEach(k => (a[k] = b[k])), a))
 
@@ -30,8 +29,6 @@ const mergerino = (source, ...patches) => {
     const isArr = Array.isArray(source)
     return run(isArr, isArr ? source.slice() : assign({}, source), patches)
 }
-
-
 
 //Utils
 let createObject = (keyName, value) => Object.assign({}, {[keyName]: value} ) 
@@ -104,8 +101,6 @@ let inputWithLabelField_disabled = (label, value) => d(label + input({disabled: 
 let inputWithLabel_string = (A, entity, label, attribute) => d(label + input({value: (typeof entity[attribute] == "undefined") ? "" : entity[attribute], style: "text-align: right;" }, "change", e => A.submitDatoms( [newDatom(entity["entity"], attribute, e.srcElement.value)] ) ), {class: "inputWithLabel"}  )
 let inputWithLabel_number = (A, entity, label, attribute) => d(label + input({value: (typeof entity[attribute] == "undefined") ? "" : entity[attribute], style: "text-align: right;" }, "change", e => A.submitDatoms( [newDatom(entity["entity"], attribute, validate.number(e.srcElement.value))] ) ), {class: "inputWithLabel"}  )
 
-
-
 const templateDatoms = {
   complexTransaction: (S) => [
     newDatom("process", "type", "process"),
@@ -149,7 +144,7 @@ let pageView = (S, A) => {
   let pageController = {
     "overview": timeline,
     "bankImport": bankImportPage,
-    "shareholders": shareholdersPage,
+    "yearEnd": yearEndPage,
     "admin": adminView
   } 
 
@@ -162,8 +157,6 @@ let pageView = (S, A) => {
 }
 
 let adminView = (S, A) => d("AdminView TBD")
-
-
 
 //Transaction feed item
 
@@ -270,9 +263,6 @@ let Accounts = {
   '8800': {label: 'Årsresultat'}
 }
 
-
-
-
 let feedItem_simpleTransaction = (S, A, eventEntity ) => {
 
   let transaction = eventEntity.Documents[0]
@@ -359,7 +349,6 @@ let accountSelectionDropdown = (A, record) => d([
 
 let accountMetaDataView = (S, A, record) => metadataViews[ record["transaction/generic/account"] ] ? metadataViews[ record["transaction/generic/account"] ](S, A, record) :  d("na.")
 
-
 let feedItem_incorporation = (S, A, eventEntity) => {
 
   let AoA = eventEntity.Documents[0]
@@ -386,39 +375,13 @@ let sortEntitiesByDate = ( a, b ) => {
   return aDate - bDate
 } 
 
-let timeline = (S, A) => S.selectedCompany["h/Events"].filter( Event => Event.date.substr(0,4) === S.selectedYear ).map( Event => feedItemContainer( Event, eventTypeController[ Event["process/identifier"] ](S, A, Event)  ) ).join('')
-
+let timeline = (S, A) => S.selectedCompany["h/Events"].filter( Event => Event["process/identifier"] !== "yearEnd_2020" ).filter( Event => Event.date.substr(0,4) === S.selectedYear ).map( Event => feedItemContainer( Event, eventTypeController[ Event["process/identifier"] ](S, A, Event)  ) ).join('')
 
 let eventTypeController = {
   "incorporation": (S, A, eventEntity) => feedItem_incorporation(S, A, eventEntity),
   "simpleTransaction": (S, A, eventEntity) => feedItem_simpleTransaction(S, A, eventEntity),
-  "complexTransaction": (S, A, eventEntity) => feedItem_complexTransaction(S, A, eventEntity),
-  "yearEnd_2020": (S, A, eventEntity) => feedItem_yearEnd(S, A, eventEntity),
+  "complexTransaction": (S, A, eventEntity) => feedItem_complexTransaction(S, A, eventEntity)
 }
-
-let feedItem_yearEnd = (S, A, eventEntity) => {  
-
-  let financialYear = S.selectedCompany["acc/financialYears"][S.selectedYear]
-
-  return d([
-   h3(`Årsavslutning ${S.selectedYear}`),
-   "<br>",
-   trialBalanceView(financialYear),
-   "<br>",
-   h3(`2: Beregning av årets skattekostnad og resultat etter skatt`),
-    "<br>",
-   taxCostView(financialYear),
-   "<br>",
-    annualResultView(financialYear),
-   "<br>",
-   annualReportView(S, financialYear),
-   "<br>",
-   h3("6: Utfylling av offentlige skjemaer"),
-   "<br>",
-   "<br>",
-   d([d("Feltnummer"), d("Beløp", {class: "numberCell"} )], {class: "trialBalanceRow"})
- ])
- }
 
 let trialBalanceView = (financialYear) => d([
     h3(`1: Foreløpig saldobalanse`),
@@ -459,24 +422,6 @@ let annualResultView = (financialYear) => {
 } 
 
 //Annual report
-
-let getVirtualAccounts = () => returnObject({
-  '9000': {label: 'Sum driftsinntekter', firstAccount: "3000", lastAccount: "3999"},
-  '9010': {label: 'Sum driftskostnader', firstAccount: "4000", lastAccount: "7999"},
-  '9050': {label: 'Driftsresultat', firstAccount: "3000", lastAccount: "7999"},
-  '9060': {label: 'Sum finansinntekter', firstAccount: "8000", lastAccount: "8099"},
-  '9070': {label: 'Sum finanskostnader', firstAccount: "8100", lastAccount: "8199"},
-  '9100': {label: 'Ordinært resultat før skattekostnad', firstAccount: "3000", lastAccount: "8199"},
-  '9150': {label: 'Ordinært resultat', firstAccount: "3000", lastAccount: "8399"},
-  '9200': {label: 'Årsresultat', firstAccount: "3000", lastAccount: "8699"},
-  '9300': {label: 'Sum anleggsmidler', firstAccount: "1000", lastAccount: "1399"},
-  '9350': {label: 'Sum omløpsmidler', firstAccount: "1400", lastAccount: "1999"},
-  '9400': {label: 'Sum eiendeler', firstAccount: "1000", lastAccount: "1999"},
-  '9450': {label: 'Sum egenkapital', firstAccount: "2000", lastAccount: "2099"},
-  '9500': {label: 'Sum langsiktig gjeld', firstAccount: "2100", lastAccount: "2299"},
-  '9550': {label: 'Sum kortsiktig gjeld', firstAccount: "2300", lastAccount: "2999"},
-  '9650': {label: 'Sum egenkapital og gjeld', firstAccount: "2000", lastAccount: "2999"}
-})
 
 let getAnnualReport = ( S, financialYear ) => {
 
@@ -682,8 +627,8 @@ let menuBarView = (S, A) => {
 
   let orgnumbers = S.Companies.map( C => C["company/orgnumber"] )
   let years = Object.keys( S.selectedCompany["acc/financialYears"] )
-  let pageLabels = ["Hendelser", "Bank", "Aksjonærer", "Admin"]
-  let pageNames = ["overview", "bankImport", "shareholders", "admin"]
+  let pageLabels = ["Hendelser", "Årsavslutning", "Bank",  "Admin"]
+  let pageNames = ["overview", "yearEnd", "bankImport", "admin"]
 
   return d([
     menuRow(
@@ -697,7 +642,7 @@ let menuBarView = (S, A) => {
       }  )
     ),
     menuRow(
-      years, 
+      years,
       years.indexOf( String(S.selectedYear) ),
       years.map( year => e => A.patch({selectedYear: year}) )
     ),
@@ -706,13 +651,9 @@ let menuBarView = (S, A) => {
       pageNames.indexOf( S.currentPage ),
       pageNames.map( pageName => e => A.patch({currentPage: pageName}) )
     ),
-    d( "Legg til fri postering", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.complexTransaction(S) ) )
+    (S.currentPage === "overview") ? d( "Legg til fri postering", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.complexTransaction(S) ) ) : ""
   ], {style: "padding-left:3em;"})
-} 
-
-
-
-
+}
 
 //Bank import page
   
@@ -742,113 +683,32 @@ let importedTransactionsTableRow = (S, A, row) => d([
   d( row["transactionReference"], {style: "text-align: right;"})
 ], {style: "display:grid;grid-template-columns: 1fr 3fr 1fr 1fr;"})
 
-
-
 //Shareholders page
 
-let shareholdersPage = (S, A) => d( "TBD" )
+let yearEndPage = (S, A) => {  
 
+    let financialYear = S.selectedCompany["acc/financialYears"][S.selectedYear]
 
-
-
-
-
-//Archive
-
-let getBalanceSheet = (S, eventEntity ) => {
-
-  let accountBalance = getAccountBalance(S, eventEntity);
-
-  let openingBalance = getOpeningBalance(S, eventEntity);
-
-  let lineItems = [
-    {label: 'EIENDELER', accounts: [], note: ''}, 
-    {label: 'Utsatt skattefordel', accounts: ["1070"], note: ''}, 
-    {label: 'Sum immatrielle eiendeler', accounts: ["1070"], note: ''}, 
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'Investeringer i datterselskap', accounts: ["1300"], note: ''}, 
-    {label: 'Lån til foretak i samme konsern', accounts: ["1320"], note: ''}, 
-    {label: 'Investeringer i tilknyttet selskap', accounts: ["1330"], note: ''}, 
-    {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet', accounts: ["1340"], note: ''}, 
-    {label: 'Investeringer i aksjer og andeler', accounts: ["1350"], note: ''}, 
-    {label: 'Obligasjoner', accounts: ["1360"], note: ''}, 
-    {label: 'Andre fordringer (anleggsmidler)', accounts: ["1370", "1375", "1380", "1399"], note: ''},
-    {label: 'Sum finansielle anleggsmidler', accounts: ['1300' ,' 1320' ,' 1330' ,' 1340' ,' 1350' ,' 1360' ,' 1370' ,' 1375' ,' 1380' ,' 1399'], note: ''},  
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'Andre fordringer (omløpsmidler)', accounts: ["1576", "1579", "1749"], note: ''},
-    {label: 'Sum fordringer', accounts: ["1576", "1579", "1749"], note: ''}, 
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'Aksjer og andeler i foretak i samme konsern', accounts: ["1800"], note: ''}, 
-    {label: 'Markedsbaserte aksjer', accounts: ["1810"], note: ''}, 
-    {label: 'Andre finansielle instrumenter', accounts: ["1820"], note: ''}, 
-    {label: 'Andre markedsbaserte finansielle instrumenter', accounts: ["1880"], note: ''}, 
-    {label: 'Andre finansielle instrumenter', accounts: ["1830", "1870"], note: ''}, 
-    {label: 'Sum investeringer', accounts: ["1810", "1820", "1830", "1870", "1880"], note: ''}, 
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'Bankinnskudd, kontanter og lignende', accounts: ["1920"], note: ''}, 
-    {label: 'Sum Bankinnskudd, kontanter og lignende', accounts: ["1920"], note: ''}, 
-    {label: 'SUM EIENDELER', accounts: Object.keys(Accounts).filter( acc => Number(acc) < 2000 ).map( acc => String(acc) ), note: ''}, 
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'EGENKAPITAL OG GJELD', accounts: [], note: ''}, 
-    {label: 'Aksjekapital', accounts: ["2000"], note: ''}, 
-    {label: 'Overkurs', accounts: ["2020"], note: ''}, 
-    {label: 'Annen innskutt egenkapital', accounts: ["2030"], note: ''}, 
-    {label: 'Sum innskutt egenkapital', accounts: ["2000", "2020", "2030"], note: ''}, 
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'Annen egenkapital', accounts: ["2050"], note: ''}, 
-    {label: 'Udekket tap', accounts: ["2080"], note: ''}, 
-    {label: 'Sum opptjent egenkapital', accounts: ["2050", "2080"], note: ''}, 
-    {label: 'SUM EGENKAPITAL', accounts: Object.keys(Accounts).filter( acc => Number(acc) >= 2000 && Number(acc) < 2100 ).map( acc => String(acc) ), note: ''}, 
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'Utsatt skatt', accounts: ["2120"], note: ''}, 
-    {label: 'Sum avsetning for forpliktelser', accounts: ["2120"], note: ''}, 
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'Gjeld til kredittinstitusjoner', accounts: ["2220"], note: ''}, 
-    {label: 'Øvrig langsiktig gjeld', accounts: ["2250" , "2260" , "2290"], note: ''}, 
-    {label: 'Sum annen langsiktig gjeld', accounts: ["2220", "2250" , "2260" , "2290"], note: ''}, 
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'Leverandørgjeld', accounts: ["2400"], note: ''}, 
-    {label: 'Betalbar skatt', accounts: ["2500", "2510"], note: ''}, 
-    {label: 'Annen kortsiktig gjeld', accounts: ["2800" ,"2910" ,"2920","2990"], note: ''},
-    {label: 'Sum kortsiktig gjeld', accounts: ["2400", "2500" , "2510" , "2800" ,"2910" ,"2920","2990"], note: ''}, 
-    {label: 'SUM GJELD', accounts: Object.keys(Accounts).filter( acc => Number(acc) >= 2100 && Number(acc) < 3000 ).map( acc => String(acc) ), note: ''}, 
-    {label: "<br>", accounts: [], note: "" },
-    {label: 'SUM EGENKAPITAL OG GJELD', accounts: Object.keys(Accounts).filter( acc => Number(acc) >= 2000 && Number(acc) < 3000 ).map( acc => String(acc) ), note: ''}
-  ]
-
-  let PnLItems = [
-    {label: "DRIFTSRESULTAT", accounts: [], note: "" },
-    {label: "Annen driftskostnad", accounts: ['6540', '6551', '6552', '6580', '6701', '6702', '6705', '6720', '6725', '6726', '6790', '6890', '6900', '7770', '7790', '7791'], note: "" },
-    {label: "Driftsresultat", accounts: ['6540', '6551', '6552', '6580', '6701', '6702', '6705', '6720', '6725', '6726', '6790', '6890', '6900', '7770', '7790', '7791'], note: "" },
-    {label: "<br>", accounts: [], note: "" },
-    {label: "FINANSINNTEKTER OG FINANSKOSTNADER", accounts: [], note: "" },
-    {label: "Inntekt på investering i datterselskap og tilknyttet selskap", accounts: ['8000', '8020'], note: "1" },
-    {label: "Renteinntekt fra foretak i samme konsern", accounts: ['8030', '8130'], note: "2" },
-    {label: "Annen finansinntekt", accounts: ['8050', '8055', '8060', '8070'], note: "3" },
-    {label: "Inntekt på andre investeringer", accounts: ['8071', '8078', '8090'], note: "" },
-    {label: "Verdiendring av finansielle instrumenter vurdert til virkelig verdi", accounts: ['8080', '8100'], note: "" },
-    {label: "Sum finansinntekter", accounts: ['8000', '8020', '8030', '8130', '8050', '8055', '8060', '8070', '8071', '8078', '8090', '8080', '8100'], note: "" },
-    {label: "<br>", accounts: [], note: "" },
-    {label: "Nedskrivning av finansielle eiendeler", accounts: ['8110', '8120'], note: "" },
-    {label: "Annen finanskostnad", accounts: ['8140', '8150', '8155', '8160', '8170', '8178'], note: "" },
-    {label: "Sum finanskostnader", accounts: ['8110', '8120', '8140', '8150', '8155', '8160', '8170', '8178'], note: "" },
-    {label: "<br>", accounts: [], note: "" },
-    {label: "Skattekostnad på ordinært resultat", accounts: ['8300', '8320'], note: "" },
-    {label: "<br>", accounts: [], note: "" },
-    {label: "Årsresultat", accounts: ['8800'], note: "" },
-  ]
-
-  let headerRow = d([ d(""), d(""), d( eventEntity["date"].substr(0, 4) , {class: "numberCell"} ), d( String( Number( eventEntity["date"].substr(0, 4) - 1) ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
-
-  let balanceSheet = [headerRow].concat(lineItems.map( item => {
-
-    let thisYear = Object.entries( accountBalance ).reduce( (sum, entry) => sum + returnObject(item.accounts.includes( String(entry[0]) ) ? entry[1] : 0), 0  )
-    let prevYear = Object.entries( openingBalance ).reduce( (sum, entry) => sum + returnObject(item.accounts.includes( String(entry[0]) ) ? entry[1] : 0), 0  )
-
-    return d([ d(item.label), d(item.note), d( (thisYear === 0) ? "" : format.amount( thisYear ), {class: "numberCell"} ), d( (prevYear === 0) ? "" : format.amount( prevYear ), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
-  })).join('')
-
-
-  return balanceSheet
-
-}
+    return d([
+    h3(`Årsavslutning ${S.selectedYear}`),
+    "[Fin visualisering med overordnet status på prosessen]",
+    "<br>",
+    trialBalanceView(financialYear),
+    "<br>",
+    h3(`2: Beregning av årets skattekostnad og resultat etter skatt`),
+      "<br>",
+    taxCostView(financialYear),
+    "<br>",
+      annualResultView(financialYear),
+    "<br>",
+    annualReportView(S, financialYear),
+    "<br>",
+    h3("6: Utfylling av offentlige skjemaer"),
+    d("RF-1028"),
+    Object.entries(financialYear["reports"]["rf_1028"]).map( entry => `[${entry[0]}]: ${format.amount(entry[1])}`).join("<br>"),
+    "<br><br>",
+    d("RF-1167"),
+    Object.entries(financialYear["reports"]["rf_1167"]).map( entry => `[${entry[0]}]: ${format.amount(entry[1])}`).join("<br>"),
+    "<br>",
+  ])
+ }
