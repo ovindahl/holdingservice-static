@@ -79,6 +79,7 @@ let getLocalState = async (receivedS) => {
     if(S === null){
 
         let userContent = await APIRequest("GET", "userContent", null)
+        let userEvents = await APIRequest("GET", "userEvents", null)
 
         S = userContent
 
@@ -90,9 +91,13 @@ let getLocalState = async (receivedS) => {
 
         }
 
+        S.userEvents = userEvents
+
     }
 
     S.selectedCompany = S.Companies.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]
+
+    
     
 
     return S
@@ -110,8 +115,11 @@ let update = async (receivedS) => {
 
 let submitTransaction = async (datoms, receivedS) => {
     let userContent = await APIRequest("POST", "transactor", JSON.stringify( datoms ))
+    let userEvents = await APIRequest("GET", "userEvents", null)
 
-    let S = await getLocalState( mergerino(receivedS, userContent)  )
+    let updatedS = mergerino(receivedS, userContent, userEvents)
+
+    let S = await getLocalState( updatedS  )
 
     update( S )
 }

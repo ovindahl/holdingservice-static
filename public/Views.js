@@ -156,213 +156,9 @@ let pageView = (S, A) => {
 
 }
 
+
+
 let adminView = (S, A) => d("AdminView TBD")
-
-//Transaction feed item
-
-let metadataViews = {
-  "1920": (S, A, record) => d([
-    inputWithLabel_number(A, record, "Bankkonto (kun tall)", `transaction/bankAccount`),
-    inputWithLabel_string(A, record, "Transaksjonsreferanse", `transaction/bankTransactionReference`),
-  ]),
-  "1810": (S, A, record) => metadataViews["1820"](S, A, record),
-  "1820": (S, A, record) => d([
-        inputWithLabel_string(A, record, "Selskap (orgnr)", `company/orgnumber`),
-        inputWithLabel_number(A, record, "Antall", `transaction/investment/quantity`),
-        inputWithLabelField_disabled( "Enhetspris: ", format.amount( Math.abs( record["transaction/amount"] / record["transaction/investment/quantity"] )  ) )
-    ]),
-  "2000": (S, A, record) => d([
-      inputWithLabel_string(A, record, "Orgnr/personnummer", `company/orgnumber`),
-      inputWithLabel_number(A, record, "Antall", `transaction/investment/quantity`),
-      inputWithLabelField_disabled( "Enhetspris: ", format.amount( Math.abs( record["transaction/amount"] / record["transaction/investment/quantity"] )  ) )
-    ]),
-  "2915": (S, A, record) => d([
-      inputWithLabel_string(A, record, "Orgnr/personnummer", `company/orgnumber`)
-    ])
-}
-
-let Accounts = {
-  '1070': {label: 'Utsatt skattefordel'}, 
-  '1300': {label: 'Investeringer i datterselskap'}, 
-  '1320': {label: 'Lån til foretak i samme konsern'}, 
-  '1330': {label: 'Investeringer i tilknyttet selskap'}, 
-  '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
-  '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
-  '1360': {label: 'Obligasjoner'}, 
-  '1370': {label: 'Fordringer på eiere'}, 
-  '1375': {label: 'Fordringer på styremedlemmer'}, 
-  '1380': {label: 'Fordringer på ansatte'}, 
-  '1399': {label: 'Andre fordringer'}, 
-  '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
-  '1579': {label: 'Andre kortsiktige fordringer'}, 
-  '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
-  '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
-  '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
-  '1820': {label: 'Andre aksjer'}, 
-  '1830': {label: 'Markedsbaserte obligasjoner'}, 
-  '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
-  '1880': {label: 'Andre finansielle instrumenter'}, 
-  '1920': {label: 'Bankinnskudd'}, 
-  '2000': {label: 'Aksjekapital'}, 
-  '2020': {label: 'Overkurs'}, 
-  '2030': {label: 'Annen innskutt egenkapital'}, 
-  '2050': {label: 'Annen egenkapital'}, 
-  '2080': {label: 'Udekket tap'}, 
-  '2120': {label: 'Utsatt skatt'}, 
-  '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
-  '2250': {label: 'Gjeld til ansatte og eiere'}, 
-  '2260': {label: 'Gjeld til selskap i samme konsern'}, 
-  '2290': {label: 'Annen langsiktig gjeld'}, 
-  '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
-  '2400': {label: 'Leverandørgjeld'}, 
-  '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
-  '2510': {label: 'Betalbar skatt, fastsatt'}, 
-  '2800': {label: 'Avsatt utbytte'}, 
-  '2910': {label: 'Gjeld til ansatte og eiere'}, 
-  '2920': {label: 'Gjeld til selskap i samme konsern'}, 
-  '2990': {label: 'Annen kortsiktig gjeld'}, 
-  '6540': {label: 'Inventar'}, 
-  '6551': {label: 'Datautstyr (hardware)'}, 
-  '6552': {label: 'Programvare (software)'}, 
-  '6580': {label: 'Andre driftsmidler'}, 
-  '6701': {label: 'Honorar revisjon'}, 
-  '6702': {label: 'Honorar rådgivning revisjon'}, 
-  '6705': {label: 'Honorar regnskap'}, 
-  '6720': {label: 'Honorar for økonomisk rådgivning'}, 
-  '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
-  '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
-  '6790': {label: 'Annen fremmed tjeneste'}, 
-  '6890': {label: 'Annen kontorkostnad'}, 
-  '6900': {label: 'Elektronisk kommunikasjon'}, 
-  '7770': {label: 'Bank og kortgebyrer'}, 
-  '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
-  '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
-  '8000': {label: 'Inntekt på investering i datterselskap'}, 
-  '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
-  '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
-  '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
-  '8055': {label: 'Andre renteinntekter'}, 
-  '8060': {label: 'Valutagevinst (agio)'}, 
-  '8070': {label: 'Annen finansinntekt'}, 
-  '8071': {label: 'Aksjeutbytte'}, 
-  '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
-  '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
-  '8090': {label: 'Inntekt på andre investeringer'}, 
-  '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
-  '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
-  '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
-  '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
-  '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
-  '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
-  '8155': {label: 'Andre rentekostnader'}, 
-  '8160': {label: 'Valutatap (disagio)'}, 
-  '8170': {label: 'Annen finanskostnad'}, 
-  '8178': {label: 'Tap ved realisasjon av aksjer'}, 
-  '8300': {label: 'Betalbar skatt'}, 
-  '8320': {label: 'Endring utsatt skatt'},
-  '8800': {label: 'Årsresultat'}
-}
-
-let feedItem_simpleTransaction = (S, A, eventEntity ) => {
-
-  let transaction = eventEntity.Documents[0]
-
-  let records = transaction.records
-  
-
-  if(records.length === 2 && records.filter( r => r["transaction/generic/account"] === "1920" && r["transaction/bankAccount"] ).length >= 1 ){
-
-    let cashRecord = records.filter( r => r["transaction/generic/account"] === "1920")[0]
-    let otherRecord = records.filter( r => r["entity"] !== cashRecord["entity"] )[0]
-
-    let bankAccount = "DNB" //TBD
-
-    return d([
-      d([ d( bankAccount , {style: "background-color: #007272;color: white;align-self: center;padding: 3px; margin-right: 1em;"}), h3(transaction["transaction/description"])], {style: "display:flex;"}),
-      d( format.amount( cashRecord["transaction/amount"]), {style: `text-align: end; font-size: 24px; color: ${cashRecord["transaction/amount"] < 0 ? "red" : "black"} `} ),
-      accountSelectionDropdown(A, otherRecord),
-      accountMetaDataView(S, A, otherRecord)
-    ])
-
-  }else{
-    console.log("ERROR: Records not valid:", records)
-    return d( JSON.stringify(transaction) )
-  }
-
-} 
-
-let feedItem_complexTransaction = (S, A, eventEntity ) => {
-
-  let transaction = eventEntity.Documents[0]
-
-  let records = transaction.records
-
-  return d([
-    d(h3(transaction["transaction/description"]), {class: "paddingAndBorder"}),
-    inputWithLabel_string(A, eventEntity, "Dato", `date`),
-    d([
-      h3("Bokføringslinjer"),
-      records.map( (record, i) => basicRecordView(S, A, record, i) ).join(''),
-      d("Legg til linje", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.newRecord(S, eventEntity) ) )
-    ], {class: "paddingAndBorder"}),
-    d([
-      h3(`Aggreggert for transaksjon`),
-      d([d("Kontonr."), d("Konto"), d("Debit", {class: "numberCell"} ), d("Credit", {class: "numberCell"} ), d("Netto endring", {class: "numberCell"} )], {class: "trialBalanceRow"}),
-      records.map( record => d([ 
-        d( record["transaction/generic/account"] ), 
-        d( Accounts[ record["transaction/generic/account"] ]["label"] ), 
-        d( record["transaction/amount"] >= 0 ? format.amount( record["transaction/amount"] ) : "", {class: "numberCell"}), 
-        d( record["transaction/amount"] < 0 ? format.amount( record["transaction/amount"] ) : "", {class: "numberCell"}), 
-        d( format.amount( record["transaction/amount"] ), {class: "numberCell"}), 
-      ], {class: "trialBalanceRow"})).join(''),
-      d([ 
-        d( "" ), 
-        d( "Sum" ),  
-        d( format.amount( records.reduce( (sum, record) => record["transaction/amount"] >= 0 ? sum + record["transaction/amount"] : sum, 0 ) ), {class: "numberCell"}), 
-        d( format.amount( records.reduce( (sum, record) => record["transaction/amount"] < 0 ? sum + record["transaction/amount"] : sum, 0 ) ), {class: "numberCell"}), 
-        d( format.amount( records.reduce( (sum, record) => sum + record["transaction/amount"], 0 ) ), {class: "numberCell"}), 
-      ], {class: "trialBalanceRow"}),
-      "<br>",
-      records.reduce( (sum, record) => sum + record["transaction/amount"], 0 ) !== 0 ? d("IKKE I BALANSE", {style: "color:red;"}) : ""
-    ], {class: "paddingAndBorder"}),
-    d("Slett", {class: "textButton"}, "click", e => A.retractEntity( eventEntity["entity"] ) )
-  ])
-}
-
-let basicRecordView = (S, A, record, i) => {
-
-  let amount = record["transaction/amount"]
-
-  return d([
-    h3(`Bokføringslinje nr. ${i+1}`),
-    accountSelectionDropdown(A, record),
-    accountMetaDataView(S, A, record),
-    (record["transaction/generic/account"] === "1920" && record["transaction/bankTransactionReference"]) ? inputWithLabelField_disabled( "Beløp", amount ) : inputWithLabel_number(A, record, "Beløp", "transaction/amount"),
-    d("Slett linje", {class: "textButton"}, "click", e => A.retractEntity( record["entity"] ) )
-  ], {class: "paddingAndBorder"})
-} 
-
-let accountSelectionDropdown = (A, record) => d([
-  d("Konto"),
-  dropdown( record["transaction/generic/account"], Object.entries( Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.submitDatoms([newDatom(record.entity, "transaction/generic/account", e.srcElement.value )]) )
-], {class: "inputWithLabel"}  )
-
-let accountMetaDataView = (S, A, record) => metadataViews[ record["transaction/generic/account"] ] ? metadataViews[ record["transaction/generic/account"] ](S, A, record) :  d("na.")
-
-let feedItem_incorporation = (S, A, eventEntity) => {
-
-  let AoA = eventEntity.Documents[0]
-
-
-  return d( [
-    h3("Stiftelse"),
-    d([d("Organisasjonsnummer:"), d(eventEntity["company/orgnumber"]) ], {class: "inputWithLabel"}),
-    d([d("Selskapsnavn:"), d(AoA["company/name"]) ], {class: "inputWithLabel"}),
-    d([d("Selskapet har kun ordinære aksjer"), el("input", {type: "checkbox", checked: "checked"})], {class: "inputWithLabel"}),
-    d([d("Selskapet har valgt å ikke ha revisor"), el("input", {type: "checkbox", checked: "checked"})], {class: "inputWithLabel"}),
-    inputWithLabelField("Aksjenes pålydende: ", format.amount( AoA["company/AoA/nominalSharePrice"] ), e => A.submitDatoms( [newDatom(AoA["entity"], "company/AoA/nominalSharePrice", validate.number(e.srcElement.value) )])),
-])
-} 
 
 //Feed page
 
@@ -375,13 +171,418 @@ let sortEntitiesByDate = ( a, b ) => {
   return aDate - bDate
 } 
 
-let timeline = (S, A) => S.selectedCompany["h/Events"].filter( Event => Event["process/identifier"] !== "yearEnd_2020" ).filter( Event => Event.date.substr(0,4) === S.selectedYear ).map( Event => feedItemContainer( Event, eventTypeController[ Event["process/identifier"] ](S, A, Event)  ) ).join('')
 
-let eventTypeController = {
-  "incorporation": (S, A, eventEntity) => feedItem_incorporation(S, A, eventEntity),
-  "simpleTransaction": (S, A, eventEntity) => feedItem_simpleTransaction(S, A, eventEntity),
-  "complexTransaction": (S, A, eventEntity) => feedItem_complexTransaction(S, A, eventEntity)
+//New event timeline
+
+let H = {
+  Accounts: {
+    '1070': {label: 'Utsatt skattefordel'}, 
+    '1300': {label: 'Investeringer i datterselskap'}, 
+    '1320': {label: 'Lån til foretak i samme konsern'}, 
+    '1330': {label: 'Investeringer i tilknyttet selskap'}, 
+    '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
+    '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
+    '1360': {label: 'Obligasjoner'}, 
+    '1370': {label: 'Fordringer på eiere'}, 
+    '1375': {label: 'Fordringer på styremedlemmer'}, 
+    '1380': {label: 'Fordringer på ansatte'}, 
+    '1399': {label: 'Andre fordringer'}, 
+    '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
+    '1579': {label: 'Andre kortsiktige fordringer'}, 
+    '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
+    '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
+    '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
+    '1820': {label: 'Andre aksjer'}, 
+    '1830': {label: 'Markedsbaserte obligasjoner'}, 
+    '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
+    '1880': {label: 'Andre finansielle instrumenter'}, 
+    '1920': {label: 'Bankinnskudd'}, 
+    '2000': {label: 'Aksjekapital'}, 
+    '2020': {label: 'Overkurs'}, 
+    '2030': {label: 'Annen innskutt egenkapital'}, 
+    '2050': {label: 'Annen egenkapital'}, 
+    '2080': {label: 'Udekket tap'}, 
+    '2120': {label: 'Utsatt skatt'}, 
+    '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
+    '2250': {label: 'Gjeld til ansatte og eiere'}, 
+    '2260': {label: 'Gjeld til selskap i samme konsern'}, 
+    '2290': {label: 'Annen langsiktig gjeld'}, 
+    '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
+    '2400': {label: 'Leverandørgjeld'}, 
+    '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
+    '2510': {label: 'Betalbar skatt, fastsatt'}, 
+    '2800': {label: 'Avsatt utbytte'}, 
+    '2910': {label: 'Gjeld til ansatte og eiere'}, 
+    '2920': {label: 'Gjeld til selskap i samme konsern'}, 
+    '2990': {label: 'Annen kortsiktig gjeld'}, 
+    '6540': {label: 'Inventar'}, 
+    '6551': {label: 'Datautstyr (hardware)'}, 
+    '6552': {label: 'Programvare (software)'}, 
+    '6580': {label: 'Andre driftsmidler'}, 
+    '6701': {label: 'Honorar revisjon'}, 
+    '6702': {label: 'Honorar rådgivning revisjon'}, 
+    '6705': {label: 'Honorar regnskap'}, 
+    '6720': {label: 'Honorar for økonomisk rådgivning'}, 
+    '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
+    '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
+    '6790': {label: 'Annen fremmed tjeneste'}, 
+    '6890': {label: 'Annen kontorkostnad'}, 
+    '6900': {label: 'Elektronisk kommunikasjon'}, 
+    '7770': {label: 'Bank og kortgebyrer'}, 
+    '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
+    '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
+    '8000': {label: 'Inntekt på investering i datterselskap'}, 
+    '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
+    '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
+    '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
+    '8055': {label: 'Andre renteinntekter'}, 
+    '8060': {label: 'Valutagevinst (agio)'}, 
+    '8070': {label: 'Annen finansinntekt'}, 
+    '8071': {label: 'Aksjeutbytte'}, 
+    '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
+    '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
+    '8090': {label: 'Inntekt på andre investeringer'}, 
+    '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
+    '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
+    '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
+    '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
+    '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
+    '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
+    '8155': {label: 'Andre rentekostnader'}, 
+    '8160': {label: 'Valutatap (disagio)'}, 
+    '8170': {label: 'Annen finanskostnad'}, 
+    '8178': {label: 'Tap ved realisasjon av aksjer'}, 
+    '8300': {label: 'Betalbar skatt'}, 
+    '8320': {label: 'Endring utsatt skatt'},
+    '8800': {label: 'Årsresultat'}
+  },
+  attributes: {
+    "entity": { 
+      validator: (value) => (typeof value === "number") ? true : false,
+      view: (Event, A) => ``
+    },
+    "type": { 
+      validator: (value) => value === "process" ? true : false,
+      view: (Event, A) => ``
+    },
+    "process/identifier": { 
+      validator: (value) => Object.keys(H.eventTypes).includes(value) ? true : false,
+      view: (Event, A) => d([
+        Event["process/identifier"] === "incorporation" ? inputWithLabelField_disabled("Hendelsestype", "Stiftelse") : d([
+          d("Hendelsestype: "), 
+          dropdown( 
+            Object.keys(H.eventTypes).includes(Event["process/identifier"]) ? Event["process/identifier"] : "" , 
+            Object.entries( H.eventTypes ).map( entry => returnObject({label: `${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), 
+            e => A.submitDatoms([newDatom(Event.entity, "process/identifier", e.srcElement.value )]) 
+          ),
+          "<br>"
+        ], {class: "inputWithLabel"}  ),
+      ])
+    },
+    "transaction/records": { 
+      validator: (value) => (typeof value === "object") ? true : false,
+      view: (Event, A) => d([
+        "<br>",
+        d("Stiftere:"),
+        Event["transaction/records"].map( shareholderTransaction => d(`[${shareholderTransaction["company/orgnumber"]}: ${shareholderTransaction["transaction/investment/quantity"]} aksjer med overkurs på NOK ${shareholderTransaction["transaction/investment/unitPrice"]} ]`) ).join(''),
+        "<br>",
+      ]) 
+    },
+    "transaction/generic/account": {
+      validator: (value) => true,
+      view: (Event, A) => d([
+        d("Konto"),
+        dropdown( Event["transaction/generic/account"], Object.entries( H.Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.submitDatoms([newDatom(Event.entity, "transaction/generic/account", e.srcElement.value )]) )
+      ], {class: "inputWithLabel"}  )
+    },
+    "transaction/amount": {
+      validator: (value) => (typeof value === "number") ? true : false,
+      view: (Event, A) => inputWithLabel_number(A, Event, "Beløp", "transaction/amount")
+    },
+    "company/orgnumber": {
+      validator: (value) => (typeof value === "string") ? true : false,
+      view: (Event, A) => inputWithLabelField_disabled("Orgnr.", Event["company/orgnumber"])
+    },
+    "date": {
+      validator: (value) => (typeof value === "string") ? true : false,
+      view: (Event, A) => Event["process/identifier"] === "incorporation" ? inputWithLabelField_disabled("Dato", Event["date"]) : inputWithLabel_string(A, Event, "Dato", "date")
+    },
+    "company/AoA/nominalSharePrice": { 
+      validator: (value) => (typeof value === "number") ? true : false,
+      view: (Event, A) => inputWithLabel_number(A, Event, "Aksjenes pålydende", "company/AoA/nominalSharePrice")
+    },
+  },
+  eventInputValidator: (eventInputs, eventTypes) => {
+    let eventType = eventInputs["process/identifier"] ? eventInputs["process/identifier"] : false
+    let eventTypeObject = eventTypes[ eventType ] ? eventTypes[ eventType ] : false
+    let requiredInputs = eventTypeObject["inputVariables"] ? eventTypeObject["inputVariables"] : false
+    let hasAllInputs = requiredInputs ? requiredInputs.map( variableName => Object.keys(eventInputs).includes(variableName) ).every( test => test === true) : false
+    let allInputsAreValid = requiredInputs ? requiredInputs.map( variableName => H.attributes[ variableName ].validator( eventInputs[ variableName ] )  ).every( test => test === true) : false
+  
+  
+    return (hasAllInputs && allInputsAreValid) ? eventInputs : false 
+  },
+  eventTypes: {
+    "incorporation": {
+      label: "Stiftelse",
+      inputVariables: ["entity", "type", "process/identifier", "transaction/records", "company/orgnumber", "date", "company/AoA/nominalSharePrice"],
+      validateCombinedEventInputs: (eventInputs) => true,
+      eventConstructor: (eventInput) => {
+  
+        let shareholderTransactions = [ {"company/orgnumber": "010390", "transaction/investment/quantity": 30000, "transaction/investment/unitPrice": 0} ]
+  
+        return {
+          entity: eventInput.entity,
+          type: "Event",
+          "process/identifier": "incorporation",
+          "company/orgnumber": eventInput["company/orgnumber"],
+          date: eventInput["date"],
+          "company/AoA/nominalSharePrice": eventInput["company/AoA/nominalSharePrice"],
+          "transaction/records": shareholderTransactions,
+          "output/shareCount": shareholderTransactions.reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 ),
+          "output/shareCapital": shareholderTransactions.reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"] * (eventInput["company/AoA/nominalSharePrice"] + shareholderTransaction["transaction/investment/unitPrice"]), 0 ),
+          "output/accountBalance": {
+            "2000": -shareholderTransactions.reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 ),
+            "1370": shareholderTransactions.reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 )
+          }
+        }
+  
+  
+      },
+      applyEventToCompany: (prevCompany, Event) => {
+  
+        let Company = mergerino({}, prevCompany)
+        
+        Company["company/orgnumber"] = Event["company/orgnumber"],
+        Company["company/AoA/nominalSharePrice"] = Event["company/AoA/nominalSharePrice"],
+        Company["company/shareCount"] = Event["output/shareCount"],
+        Company["company/shareholders"] = Event["transaction/records"].map( shareholderTransaction => shareholderTransaction["company/orgnumber"] ).filter( filterUniqueValues ),
+        Company["company/shareCapital"] = Event["output/accountBalance"]["2000"],
+        Company["company/accountBalance"] = addAccountBalances({}, Event["output/accountBalance"])
+        Company["company/appliedEvents"] = [Event]
+  
+        return Company
+  
+      },
+      view: (Event, A) => d("Stiftelseskostnader (Konto 2030)"),
+      addFounderDatoms: (Event) => [
+        newDatom("shareholderTransaction", "type", "shareholderTransactions"),
+        newDatom("shareholderTransaction", "parent", Event.entity),
+        newDatom("shareholderTransaction", "company/orgnumber", ""),
+        newDatom("shareholderTransaction", "transaction/investment/quantity", 0),
+        newDatom("shareholderTransaction", "transaction/investment/unitPrice", 0)
+      ],
+      retractFounderDatoms: (shareholderTransaction) => [
+        newDatom(shareholderTransaction.entity, "type", "shareholderTransactions", false),
+        newDatom(shareholderTransaction.entity, "parent", shareholderTransaction.parent, false),
+        newDatom(shareholderTransaction.entity, "company/orgnumber", shareholderTransaction["company/orgnumber"], false),
+        newDatom(shareholderTransaction.entity, "transaction/investment/quantity", shareholderTransaction["transaction/investment/quantity"], false),
+        newDatom(shareholderTransaction.entity, "transaction/investment/unitPrice", shareholderTransaction["transaction/investment/unitPrice"], false)
+      ],
+      updateShareholderIDDatoms: (shareholderTransaction, newShareholderID) => [
+        newDatom(shareholderTransaction, "company/orgnumber", validate.string(newShareholderID) ),
+      ],
+      updateShareCountDatoms: (shareholderTransaction, shareCount) => [
+        newDatom(shareholderTransaction, "transaction/investment/quantity", validate.number(shareCount) ),
+      ],
+      updateSharePremiumDatoms: (shareholderTransaction, sharePremium) => [
+        newDatom(shareholderTransaction, "transaction/investment/unitPrice", validate.number(sharePremium) ),
+      ]
+      
+    },
+    "incorporationCost": {
+      label: "Stiftelseskostnader",
+      inputVariables: ["entity", "type", "process/identifier", "company/orgnumber", "date", "transaction/amount"],
+      validateCombinedEventInputs: (eventInputs) => true,
+      eventConstructor: (eventInput) => {
+  
+        let Event = mergerino({}, eventInput)
+  
+        Event["output/accountBalance"] = {
+          "1920": Event["transaction/amount"],
+          "2030": -Event["transaction/amount"],
+        }
+  
+  
+        return Event
+      },
+      applyEventToCompany: (prevCompany, Event) => {
+  
+        let Company = mergerino({}, prevCompany)
+  
+        Company["company/accountBalance"] = addAccountBalances(prevCompany["company/accountBalance"], Event["output/accountBalance"])
+        Company["company/appliedEvents"] = prevCompany["company/appliedEvents"].concat(Event)
+  
+        return Company
+  
+      },
+      view: (Event, A) => d("Stiftelseskostnader (Konto 2030)"),
+    },
+    "operatingCost": {
+      label: "Driftskostnader",
+      inputVariables: ["entity", "type", "process/identifier", "company/orgnumber", "date", "transaction/generic/account", "transaction/amount"],
+      validateCombinedEventInputs: (eventInputs) => true,
+      eventConstructor: (eventInput) => {
+  
+        let Event = mergerino({}, eventInput)
+  
+        Event["output/accountBalance"] = {
+          "1920": Event["transaction/amount"],
+          [Event["transaction/generic/account"]]: -Event["transaction/amount"],
+        }
+  
+  
+        return Event
+      },
+      applyEventToCompany: (prevCompany, Event) => {
+  
+        let Company = mergerino({}, prevCompany)
+  
+        Company["company/accountBalance"] = addAccountBalances(prevCompany["company/accountBalance"], Event["output/accountBalance"])
+        Company["company/appliedEvents"] = prevCompany["company/appliedEvents"].concat(Event)
+  
+        return Company
+  
+      },
+      view: (Event, A) => accountSelector(Event, A, Object.keys( H.Accounts ).filter( account => Number(account) >= 4000 && Number(account) < 8000  ) )
+    },
+    "shareholderLoan_increase": {
+      label: "Opptak av gjeld til eier",
+      inputVariables: ["entity", "type", "process/identifier", "company/orgnumber", "date"],
+      validateCombinedEventInputs: (eventInputs) => false,
+      eventConstructor: (eventInput) => eventInput,
+      applyEventToCompany: (prevCompany, Event) => mergerino(prevCompany, {"company/appliedEvents": prevCompany["company/appliedEvents"].concat(Event)}),
+      view: (Event, A) => d([
+        d("Eier"),
+        dropdown( "", [{value: 0, label: "Eier 1"}, {value: 1, label: "Eier 2"}], e => console.log([newDatom(Event.entity, "transaction/generic/account", e.srcElement.value )]) )
+      ], {class: "inputWithLabel"}  )
+    },
+    "investment_new": {
+      label: "Ny investering",
+      inputVariables: ["entity", "type", "process/identifier", "company/orgnumber", "date", "transaction/generic/account", "transaction/amount"],
+      validateCombinedEventInputs: (eventInputs) => true,
+      eventConstructor: (eventInput) => eventInput,
+      applyEventToCompany: (prevCompany, Event) => mergerino(prevCompany, {"company/appliedEvents": prevCompany["company/appliedEvents"].concat(Event)}),
+      view: (Event, A) => d([
+        inputWithLabelField("Organisasjonsnummer: ", "", e => A.submitDatoms( [newDatom("", "company/AoA/nominalSharePrice", validate.number(e.srcElement.value) )])),
+      ]),
+    }
+  }
 }
+
+let timeline = (S, A) => constructCompanySnapshots(S.userEvents.filter( Event => Event["company/orgnumber"] === S.selectedOrgnumber ).filter( Event => Event.date.substr(0,4) === S.selectedYear ), H.eventTypes).map( (CompanySnapshot, index) => genericEventView(CompanySnapshot, index, H.eventTypes, A)  ).join('')
+
+
+let companyInspector = (CompanySnapshot) => d([
+  h3("All informasjon om selskapet etter hendelsen:"),
+  Object.entries(CompanySnapshot).map( entry => d(`${entry[0]}: ${Array.isArray(entry[1]) ? `[${entry[1].length} oppføringer]` : JSON.stringify(entry[1])}`) ).join(""),
+], {style: "background-color: #8080803b; padding: 1em;"})
+
+let genericEventView = (CompanySnapshot, index, eventTypes, A) => {
+
+
+    let Event = CompanySnapshot["company/isValid"] ? CompanySnapshot["company/appliedEvents"][ CompanySnapshot["company/appliedEvents"].length - 1] : CompanySnapshot["company/eventsToProcess"][0 + index - CompanySnapshot["company/appliedEvents"].length ]
+
+    let eventType = Event["process/identifier"]
+    let eventTypeObject = eventTypes[ eventType ] ? eventTypes[ eventType ] : false
+    let allAttributes = eventTypeObject ? eventTypeObject["inputVariables"] : []
+
+    let visibleAttributes = allAttributes.filter( attribute => allAttributes.includes(attribute) )
+
+    let attributeViews = visibleAttributes.map( inputVariable => H.attributes[ inputVariable ].view( Event, A ) ).join("")
+
+
+    return d([
+      d([
+        h3("Event view:"),
+        attributeViews,
+        "<br>",
+        eventInspector(Event),
+        "<br>",
+        companyInspector(CompanySnapshot)
+      ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+      d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
+    ])
+
+
+
+}
+
+
+let eventInspector = (Event) => d([
+    h3("Hendelsens input:"),
+    Object.entries(Event).map( entry => d(`${entry[0]}: ${JSON.stringify(entry[1])}`) ).join(""),
+], {style: "background-color: #8080803b; padding: 1em;"})
+
+
+let constructCompanySnapshots = (eventInputs, eventTypes) => {
+
+  let sortedEvents = eventInputs.sort( sortEntitiesByDate )
+
+  let constructedCompanySnapshots =  sortedEvents.map( (Event, index) => sortedEvents.slice(0, index + 1).reduce( (prevCompany, Event) => prevCompany["company/isValid"] ? applyNextEvent(prevCompany, Event, eventTypes) : prevCompany, {"company/eventsToProcess": sortedEvents, "company/isValid": true} ) )
+
+  return constructedCompanySnapshots
+}
+
+let applyNextEvent = (prevCompany, EventInputs, eventTypes) => {
+
+
+  let eventTypeObject = eventTypes[ EventInputs["process/identifier"] ]
+
+  let validatedEventInputVariables = H.eventInputValidator(EventInputs, eventTypes)
+
+  let validatedCombinedEventInputs = (validatedEventInputVariables === false) ? false : eventTypeObject.validateCombinedEventInputs(validatedEventInputVariables)
+  
+  let Company = (validatedCombinedEventInputs === false) ? mergerino( prevCompany, {"company/isValid": false} ) : applyEventToCompany(prevCompany, EventInputs, eventTypeObject)
+
+  return Company
+
+}
+
+let applyEventToCompany = (prevCompany, EventInputs, eventTypeObject) => {
+
+  let constructedEvent = eventTypeObject.eventConstructor(EventInputs)
+  let Company = eventTypeObject.applyEventToCompany( prevCompany, constructedEvent )
+  Company["company/eventsToProcess"] = Company["company/eventsToProcess"].slice(1, Company["company/eventsToProcess"].length )
+  Company["company/isValid"] = true;
+
+  return Company
+
+}
+
+let addAccountBalances = (prevAccountBalance, accountBalance) => {
+
+  let prevAccounts = Object.keys(prevAccountBalance).length > 0 ? Object.keys(prevAccountBalance) : []
+
+  let newAccounts = Object.keys(accountBalance).length > 0 ? Object.keys(accountBalance) : []
+
+  let allAccounts = prevAccounts.concat(newAccounts).filter( filterUniqueValues )
+
+  let newAccountBalance = mergerino({}, allAccounts.map( acc => createObject(acc, ifNot(prevAccountBalance[acc], 0) +  ifNot(accountBalance[acc], 0)) ))
+
+  return newAccountBalance
+}
+
+let accountSelector = (Event, A, allowedAccounts) => {
+
+  let transaction = Event.Documents[0]
+
+  let records = transaction.records
+  
+  let cashRecord = records.filter( r => r["transaction/generic/account"] === "1920")[0]
+  let otherRecord = records.filter( r => r["entity"] !== cashRecord["entity"] )[0]
+
+  let dropdownOptions = Object.entries(H.Accounts ).filter( entry => allowedAccounts.includes(entry[0]) ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}])
+
+  return d([
+    d("Konto"),
+    dropdown( otherRecord["transaction/generic/account"], dropdownOptions , e => A.submitDatoms([newDatom(otherRecord.entity, "transaction/generic/account", e.srcElement.value )]) )
+  ], {class: "inputWithLabel"}  )
+} 
+
+
+
+//New event timeline END
 
 let trialBalanceView = (financialYear) => d([
     h3(`1: Foreløpig saldobalanse`),
@@ -397,7 +598,7 @@ let trialBalanceView = (financialYear) => d([
 
       return d([ 
         d( account ), 
-        d( Accounts[ account ]["label"] ), 
+        d(H.Accounts[ account ]["label"] ), 
         d( format.amount( opening ), {class: "numberCell"}), 
         d( format.amount( change  ), {class: "numberCell"}), 
         d( format.amount( closing ), {class: "numberCell"}), 
@@ -712,3 +913,208 @@ let yearEndPage = (S, A) => {
     "<br>",
   ])
  }
+
+
+
+
+
+
+
+
+
+
+
+ //Archive
+
+/* 
+
+let accountSelectionDropdown = (A, record) => d([
+  d("Konto"),
+  dropdown( record["transaction/generic/account"], Object.entries( Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.submitDatoms([newDatom(record.entity, "transaction/generic/account", e.srcElement.value )]) )
+], {class: "inputWithLabel"}  )
+ 
+let metadataViews = {
+  "1920": (A, record) => d([
+    inputWithLabel_number(A, record, "Bankkonto (kun tall)", `transaction/bankAccount`),
+    inputWithLabel_string(A, record, "Transaksjonsreferanse", `transaction/bankTransactionReference`),
+  ]),
+  "1810": (A, record) => metadataViews["1820"](A, record),
+  "1820": (A, record) => d([
+        inputWithLabel_string(A, record, "Selskap (orgnr)", `company/orgnumber`),
+        inputWithLabel_number(A, record, "Antall", `transaction/investment/quantity`),
+        inputWithLabelField_disabled( "Enhetspris: ", format.amount( Math.abs( record["transaction/amount"] / record["transaction/investment/quantity"] )  ) )
+    ]),
+  "2000": (A, record) => d([
+      inputWithLabel_string(A, record, "Orgnr/personnummer", `company/orgnumber`),
+      inputWithLabel_number(A, record, "Antall", `transaction/investment/quantity`),
+      inputWithLabelField_disabled( "Enhetspris: ", format.amount( Math.abs( record["transaction/amount"] / record["transaction/investment/quantity"] )  ) )
+    ]),
+  "2915": (A, record) => d([
+      inputWithLabel_string(A, record, "Orgnr/personnummer", `company/orgnumber`)
+    ])
+}
+
+
+let feedItem_simpleTransaction = (S, A, eventEntity ) => {
+
+  let transaction = eventEntity.Documents[0]
+
+  let records = transaction.records
+  
+
+  if(records.length === 2 && records.filter( r => r["transaction/generic/account"] === "1920" && r["transaction/bankAccount"] ).length >= 1 ){
+
+    let cashRecord = records.filter( r => r["transaction/generic/account"] === "1920")[0]
+    let otherRecord = records.filter( r => r["entity"] !== cashRecord["entity"] )[0]
+
+    let bankAccount = "DNB" //TBD
+
+    return d([
+      d([ d( bankAccount , {style: "background-color: #007272;color: white;align-self: center;padding: 3px; margin-right: 1em;"}), h3(transaction["transaction/description"])], {style: "display:flex;"}),
+      d( format.amount( cashRecord["transaction/amount"]), {style: `text-align: end; font-size: 24px; color: ${cashRecord["transaction/amount"] < 0 ? "red" : "black"} `} ),
+      accountSelectionDropdown(A, otherRecord),
+      accountMetaDataView(A, otherRecord)
+    ])
+
+  }else{
+    console.log("ERROR: Records not valid:", records)
+    return d( JSON.stringify(transaction) )
+  }
+
+} 
+
+let feedItem_complexTransaction = (S, A, eventEntity ) => {
+
+  let transaction = eventEntity.Documents[0]
+
+  let records = transaction.records
+
+  return d([
+    d(h3(transaction["transaction/description"]), {class: "paddingAndBorder"}),
+    inputWithLabel_string(A, eventEntity, "Dato", `date`),
+    d([
+      h3("Bokføringslinjer"),
+      records.map( (record, i) => basicRecordView(S, A, record, i) ).join(''),
+      d("Legg til linje", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.newRecord(S, eventEntity) ) )
+    ], {class: "paddingAndBorder"}),
+    d([
+      h3(`Aggreggert for transaksjon`),
+      d([d("Kontonr."), d("Konto"), d("Debit", {class: "numberCell"} ), d("Credit", {class: "numberCell"} ), d("Netto endring", {class: "numberCell"} )], {class: "trialBalanceRow"}),
+      records.map( record => d([ 
+        d( record["transaction/generic/account"] ), 
+        d( Accounts[ record["transaction/generic/account"] ]["label"] ), 
+        d( record["transaction/amount"] >= 0 ? format.amount( record["transaction/amount"] ) : "", {class: "numberCell"}), 
+        d( record["transaction/amount"] < 0 ? format.amount( record["transaction/amount"] ) : "", {class: "numberCell"}), 
+        d( format.amount( record["transaction/amount"] ), {class: "numberCell"}), 
+      ], {class: "trialBalanceRow"})).join(''),
+      d([ 
+        d( "" ), 
+        d( "Sum" ),  
+        d( format.amount( records.reduce( (sum, record) => record["transaction/amount"] >= 0 ? sum + record["transaction/amount"] : sum, 0 ) ), {class: "numberCell"}), 
+        d( format.amount( records.reduce( (sum, record) => record["transaction/amount"] < 0 ? sum + record["transaction/amount"] : sum, 0 ) ), {class: "numberCell"}), 
+        d( format.amount( records.reduce( (sum, record) => sum + record["transaction/amount"], 0 ) ), {class: "numberCell"}), 
+      ], {class: "trialBalanceRow"}),
+      "<br>",
+      records.reduce( (sum, record) => sum + record["transaction/amount"], 0 ) !== 0 ? d("IKKE I BALANSE", {style: "color:red;"}) : ""
+    ], {class: "paddingAndBorder"}),
+    d("Slett", {class: "textButton"}, "click", e => A.retractEntity( eventEntity["entity"] ) )
+  ])
+}
+
+let basicRecordView = (S, A, record, i) => {
+
+  let amount = record["transaction/amount"]
+
+  return d([
+    h3(`Bokføringslinje nr. ${i+1}`),
+    accountSelectionDropdown(A, record),
+    accountMetaDataView(A, record),
+    (record["transaction/generic/account"] === "1920" && record["transaction/bankTransactionReference"]) ? inputWithLabelField_disabled( "Beløp", amount ) : inputWithLabel_number(A, record, "Beløp", "transaction/amount"),
+    d("Slett linje", {class: "textButton"}, "click", e => A.retractEntity( record["entity"] ) )
+  ], {class: "paddingAndBorder"})
+} 
+
+let accountMetaDataView = (A, record) => metadataViews[ record["transaction/generic/account"] ] ? metadataViews[ record["transaction/generic/account"] ](A, record) :  d("na.")
+
+let feedItem_incorporation = (S, A, eventEntity) => {
+
+  let AoA = eventEntity.Documents[0]
+
+
+  return d( [
+    h3("Stiftelse"),
+    d([d("Organisasjonsnummer:"), d(eventEntity["company/orgnumber"]) ], {class: "inputWithLabel"}),
+    d([d("Selskapsnavn:"), d(AoA["company/name"]) ], {class: "inputWithLabel"}),
+    d([d("Selskapet har kun ordinære aksjer"), el("input", {type: "checkbox", checked: "checked"})], {class: "inputWithLabel"}),
+    d([d("Selskapet har valgt å ikke ha revisor"), el("input", {type: "checkbox", checked: "checked"})], {class: "inputWithLabel"}),
+    inputWithLabelField("Aksjenes pålydende: ", format.amount( AoA["company/AoA/nominalSharePrice"] ), e => A.submitDatoms( [newDatom(AoA["entity"], "company/AoA/nominalSharePrice", validate.number(e.srcElement.value) )])),
+])
+} 
+
+
+
+
+
+
+let eventTypeController = {
+  "incorporation": (S, A, eventEntity) => feedItem_incorporation(S, A, eventEntity),
+  "simpleTransaction": (S, A, eventEntity) => feedItem_simpleTransaction(S, A, eventEntity),
+  "complexTransaction": (S, A, eventEntity) => feedItem_complexTransaction(S, A, eventEntity)
+}
+
+
+let eventView = (CompanySnapshot, A) => {
+  
+  let Event = CompanySnapshot["appliedEvents"][ CompanySnapshot["appliedEvents"].length - 1]
+  return CompanySnapshot["company/isValid"] ? d([
+    d([
+      eventTypeSelector(CompanySnapshot, A), 
+      eventTypes[ Event["process/identifier"] ]["view"](CompanySnapshot, A),
+    ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
+  ]) : d([
+    d([
+      d("Event not valid:"),
+      "<br>",
+      d(JSON.stringify(CompanySnapshot["company/eventsToProcess"][ 0 ])),
+    ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d( `${CompanySnapshot["company/eventsToProcess"][ 0 ]["date"]} (id: ${CompanySnapshot["company/eventsToProcess"][ 0 ]["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
+  ]) 
+} 
+
+
+let newFounderDatoms = (parent, shareholder, shareCount, sharePremium) => [
+  newDatom("shareholderTransaction", "type", "shareholderTransaction"),
+  newDatom("shareholderTransaction", "parent", parent),
+  newDatom("shareholderTransaction", "shareholder/id", shareholder),
+  newDatom("shareholderTransaction", "transaction/investment/quantity", shareCount),
+  newDatom("shareholderTransaction", "transaction/investment/unitPrice", sharePremium)
+]
+
+let eventView_incorporation = (CompanySnapshot, A) => {
+
+    let incorporationEvent = CompanySnapshot["appliedEvents"][ CompanySnapshot["appliedEvents"].length - 1]
+
+  return d([
+    d([d("Organisasjonsnummer:"), d(incorporationEvent["company/orgnumber"]) ], {class: "inputWithLabel"}),
+    d([d("Selskapet har kun ordinære aksjer"), el("input", {type: "checkbox", checked: "checked"})], {class: "inputWithLabel"}),
+    d([d("Selskapet har valgt å ikke ha revisor"), el("input", {type: "checkbox", checked: "checked"})], {class: "inputWithLabel"}),
+    inputWithLabelField("Aksjenes pålydende: ", format.amount( incorporationEvent["company/AoA/nominalSharePrice"] ), e => A.submitDatoms( [newDatom(incorporationEvent["entity"], "company/AoA/nominalSharePrice", validate.number(e.srcElement.value) )])),
+    "<br>",
+    d([
+      incorporationEvent.shareholderTransactions.map( (shareholderTransaction, index) => d( [
+        d(`Stifter nr: ${index + 1}:`),
+        inputWithLabelField("Personnummer/orgnr: ", shareholderTransaction["company/orgnumber"], e => A.submitDatoms( eventTypes["incorporation"].updateShareholderIDDatoms(shareholderTransaction.entity, validate.string(e.srcElement.value)) )),
+        inputWithLabelField("Antall aksjer: ", shareholderTransaction["transaction/investment/quantity"], e => A.submitDatoms( eventTypes["incorporation"].updateShareCountDatoms(shareholderTransaction.entity, validate.string(e.srcElement.value)) )),
+        inputWithLabelField("Overkurs per aksje: ", shareholderTransaction["transaction/investment/unitPrice"], e => A.submitDatoms( eventTypes["incorporation"].updateSharePremiumDatoms(shareholderTransaction.entity, validate.string(e.srcElement.value)) )),
+        d("Slett", {class: "textButton"}, "click", e => A.submitDatoms( eventTypes["incorporation"].retractFounderDatoms(shareholderTransaction) ) ),
+        "<br>",
+      ] ) ).join(""),
+      "<br>",
+    ]),
+    d("Legg til stifter", {class: "textButton"}, "click", e => A.submitDatoms( eventTypes["incorporation"].addFounderDatoms(Event) ) ),
+    "<br>",
+    
+    //Stiftere, stiftelseskostnader TBD. Innbetaling bokføres separat.
+  ]) 
+} */
