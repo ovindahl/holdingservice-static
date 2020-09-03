@@ -126,6 +126,15 @@ const templateDatoms = {
     newDatom("record", "parent", eventEntity.Documents[0]["entity"]),
     newDatom("record", "transaction/generic/account", "1920"),
     newDatom("record", "transaction/amount", 0),
+  ],
+  newCompany: (S, orgnumber) => [
+    newDatom("process", "type", "process"),
+    newDatom("process", "date", "2020-01-01"),
+    newDatom("process", "process/identifier", "incorporation"),
+    newDatom("process", "company/orgnumber", String( orgnumber) ),
+  ],
+  addFounder: (incorporationEvent) => [
+    newDatom(incorporationEvent.entity, "transaction/records", Array.isArray(incorporationEvent["transaction/records"]) ? incorporationEvent["transaction/records"].concat({"company/orgnumber":"010120123456","transaction/investment/quantity":0,"transaction/investment/unitPrice":0}) : [{"company/orgnumber":"010120123456","transaction/investment/quantity":0,"transaction/investment/unitPrice":0}] )
   ]
 }
 
@@ -173,6 +182,89 @@ let sortEntitiesByDate = ( a, b ) => {
 
 
 //New event timeline
+
+let attributeView_eventType = (Event, A) => d([
+  Event["process/identifier"] === "incorporation" ? inputWithLabelField_disabled("Hendelsestype", "Stiftelse") : d([
+    d("Hendelsestype: "), 
+    dropdown( 
+      Object.keys(H.eventTypes).includes(Event["process/identifier"]) ? Event["process/identifier"] : "" , 
+      Object.entries( H.eventTypes ).map( entry => returnObject({label: `${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), 
+      e => A.submitDatoms([newDatom(Event.entity, "process/identifier", e.srcElement.value )]) 
+    ),
+    "<br>"
+  ], {class: "inputWithLabel"}  ),
+])
+
+let attributeView_stringifyEvent = (Event, A) => d( JSON.stringify(Event) )
+
+
+let Attributes = { //NB: What is the entity id of the attribute entity itself?
+  "entity/id": {
+    "attr/name": "entity/id",
+    "attr/valueType": "number",
+    "attr/doc": "Arbritrary id number assigned from DB when creating new entities.",
+    "attr/validatorFunction": (value) => (typeof value === "number"),
+    "attr/viewFunction": attributeView_stringifyEvent
+  },
+  "entity/type": {
+    "attr/name": "entity/type",
+    "attr/valueType": "string",
+    "attr/doc": "String name used to distinguish between a set of defined object types, eg. 'User' or 'Event'.",
+    "attr/validatorFunction": (value) => (typeof value === "string"),
+    "attr/viewFunction": attributeView_stringifyEvent
+  },
+  "event/eventType": {
+    "attr/name": "event/eventType",
+    "attr/valueType": "string",
+    "attr/doc": "String name used to distinguish between a set of defined event types, eg. 'incorporation' or 'operatingCost'.",
+    "attr/validatorFunction": (value) => ["incorporation", "incorporationCost", "operatingCost", "shareholderLoan_increase", "investment_new"].includes(value),
+    "attr/viewFunction": attributeView_eventType
+  },
+  "event/index": {
+    "attr/name": "event/index",
+    "attr/valueType": "number",
+    "attr/doc": "The index of a given event in the timeline of a given company.",
+    "attr/validatorFunction": (value) => (typeof value === "number" && value >= 1),
+    "attr/viewFunction": attributeView_stringifyEvent
+  },
+  "event/date": {
+    "attr/name": "event/date",
+    "attr/valueType": "string",
+    "attr/doc": "YYYY-MM-DD date to show on the company's timeline.",
+    "attr/validatorFunction": (value) => (typeof value === "string" && value.length === 10 ),
+    "attr/viewFunction": attributeView_stringifyEvent
+  },
+  "event/incorporation/founders": {
+    "attr/name": "event/incorporation/founders",
+    "attr/valueType": "object",
+    "attr/doc": "Array of objects containng shareholderID, shareCount and sharePremium for each founder of the company.",
+    "attr/validatorFunction": (value) => Array.isArray(value) 
+    ? value.map( founder => (
+        typeof founder["shareholderID"] === "string" && 
+        typeof founder["shareCount"] === "number" && 
+        typeof founder["sharePremium"] === "number"  
+       ) ).every( founderValidation => founderValidation === true )
+    : false,
+    "attr/viewFunction": attributeView_stringifyEvent
+  },
+  "event/incorporation/nominalSharePrice": {
+    "attr/name": "event/incorporation/nominalSharePrice",
+    "attr/valueType": "number",
+    "attr/doc": "Nominal price per share as according to the company's articles of assembly.",
+    "attr/validatorFunction": (value) => typeof value === "number",
+    "attr/viewFunction": attributeView_stringifyEvent
+  },
+  "event/incorporation/orgnumber": {
+    "attr/name": "event/incorporation/orgnumber",
+    "attr/valueType": "string",
+    "attr/doc": "Norwegian organizational number as according to the company's articles of assembly.",
+    "attr/validatorFunction": (value) => (typeof value === "string" && value.length === 9 && Number(value) >= 800000000 ),
+    "attr/viewFunction": attributeView_stringifyEvent
+  },
+  
+}
+
+
 
 let H = {
   Accounts: {
@@ -284,7 +376,17 @@ let H = {
       view: (Event, A) => d([
         "<br>",
         d("Stiftere:"),
-        Event["transaction/records"].map( shareholderTransaction => d(`[${shareholderTransaction["company/orgnumber"]}: ${shareholderTransaction["transaction/investment/quantity"]} aksjer med overkurs på NOK ${shareholderTransaction["transaction/investment/unitPrice"]} ]`) ).join(''),
+        Array.isArray(Event["transaction/records"]) ? 
+        d([
+          d("Orgnr/personnr, antall aksjer, overkurs per aksje"),
+          Event["transaction/records"].map( (shareholderTransaction, index) => d([
+            input({value: shareholderTransaction["company/orgnumber"]}, "change", e => A.submitDatoms( [newDatom(Event.entity, "transaction/records", Event["transaction/records"].map( (existingRow, innerIndex) => (innerIndex === index) ? mergerino(existingRow, {"company/orgnumber": e.srcElement.value} ) : existingRow ) )] )),
+            input({value: shareholderTransaction["transaction/investment/quantity"]}, "change", e => A.submitDatoms( [newDatom(Event.entity, "transaction/records", Event["transaction/records"].map( (existingRow, innerIndex) => (innerIndex === index) ? mergerino(existingRow, {"transaction/investment/quantity": validate.number( e.srcElement.value ) } ) : existingRow ) )] )),
+            input({value: shareholderTransaction["transaction/investment/unitPrice"]}, "change", e => A.submitDatoms( [newDatom(Event.entity, "transaction/records", Event["transaction/records"].map( (existingRow, innerIndex) => (innerIndex === index) ? mergerino(existingRow, {"transaction/investment/unitPrice": validate.number( e.srcElement.value )} ) : existingRow ) )] )),
+          ]) ).join('')
+        ])
+          : d("Ingen stiftere."),
+        d( "Legg til stifter", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.addFounder( Event ) ) ),
         "<br>",
       ]) 
     },
@@ -326,68 +428,48 @@ let H = {
     "incorporation": {
       label: "Stiftelse",
       inputVariables: ["entity", "type", "process/identifier", "transaction/records", "company/orgnumber", "date", "company/AoA/nominalSharePrice"],
+      companyDependencies: ["company/orgnumber", "company/AoA/nominalSharePrice", "company/shareCount", "company/shareholders", "company/shareCapital", "company/accountBalance", "company/Events"],
       validateCombinedEventInputs: (eventInputs) => true,
+      calculatedOutputs: {
+        "output/shareCount": (eventInput) => Array.isArray(eventInput["transaction/records"]) ? eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 ) : null,
+        "output/shareCapital": (eventInput) => Array.isArray(eventInput["transaction/records"]) ? eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"] * (eventInput["company/AoA/nominalSharePrice"] + shareholderTransaction["transaction/investment/unitPrice"]), 0 ) : null,
+        "output/accountBalance": (eventInput) => Array.isArray(eventInput["transaction/records"]) ? {
+          "2000": -eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"] * (eventInput["company/AoA/nominalSharePrice"] + shareholderTransaction["transaction/investment/unitPrice"]), 0 ),
+          "1370": eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"] * (eventInput["company/AoA/nominalSharePrice"] + shareholderTransaction["transaction/investment/unitPrice"]), 0 )
+        } : null
+      },
       eventConstructor: (eventInput) => {
-  
-        let shareholderTransactions = [ {"company/orgnumber": "010390", "transaction/investment/quantity": 30000, "transaction/investment/unitPrice": 0} ]
-  
-        return {
-          entity: eventInput.entity,
-          type: "Event",
-          "process/identifier": "incorporation",
-          "company/orgnumber": eventInput["company/orgnumber"],
-          date: eventInput["date"],
-          "company/AoA/nominalSharePrice": eventInput["company/AoA/nominalSharePrice"],
-          "transaction/records": shareholderTransactions,
-          "output/shareCount": shareholderTransactions.reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 ),
-          "output/shareCapital": shareholderTransactions.reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"] * (eventInput["company/AoA/nominalSharePrice"] + shareholderTransaction["transaction/investment/unitPrice"]), 0 ),
-          "output/accountBalance": {
-            "2000": -shareholderTransactions.reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 ),
-            "1370": shareholderTransactions.reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 )
-          }
-        }
-  
-  
+
+        let eventType = eventInput["process/identifier"]
+        let eventTypeObject = H.eventTypes[ eventType ]
+
+        let outputVariables = Object.keys(eventTypeObject.calculatedOutputs)
+
+        let calculatedOutputs = outputVariables.map( outputVariable => createObject( outputVariable, eventTypeObject["calculatedOutputs"][ outputVariable ](eventInput) )  )
+
+        let Event = mergerino(eventInput, calculatedOutputs )
+
+        return Event
       },
       applyEventToCompany: (prevCompany, Event) => {
   
         let Company = mergerino({}, prevCompany)
+
+        let shareholders = Array.isArray(Event["transaction/records"]) ? Event["transaction/records"].map( shareholderTransaction => shareholderTransaction["company/orgnumber"] ).filter( filterUniqueValues ) : []
+        let shareCapital = Array.isArray(Event["transaction/records"]) ? Event["output/accountBalance"]["2000"] : null
+        let accountBalance = Array.isArray(Event["transaction/records"]) ? addAccountBalances({}, Event["output/accountBalance"]) : null
         
         Company["company/orgnumber"] = Event["company/orgnumber"],
         Company["company/AoA/nominalSharePrice"] = Event["company/AoA/nominalSharePrice"],
         Company["company/shareCount"] = Event["output/shareCount"],
-        Company["company/shareholders"] = Event["transaction/records"].map( shareholderTransaction => shareholderTransaction["company/orgnumber"] ).filter( filterUniqueValues ),
-        Company["company/shareCapital"] = Event["output/accountBalance"]["2000"],
-        Company["company/accountBalance"] = addAccountBalances({}, Event["output/accountBalance"])
-        Company["company/appliedEvents"] = [Event]
+        Company["company/shareholders"] = shareholders,
+        Company["company/shareCapital"] = shareCapital,
+        Company["company/accountBalance"] = accountBalance
+        Company["company/Events"] = [Event]
   
         return Company
   
-      },
-      view: (Event, A) => d("Stiftelseskostnader (Konto 2030)"),
-      addFounderDatoms: (Event) => [
-        newDatom("shareholderTransaction", "type", "shareholderTransactions"),
-        newDatom("shareholderTransaction", "parent", Event.entity),
-        newDatom("shareholderTransaction", "company/orgnumber", ""),
-        newDatom("shareholderTransaction", "transaction/investment/quantity", 0),
-        newDatom("shareholderTransaction", "transaction/investment/unitPrice", 0)
-      ],
-      retractFounderDatoms: (shareholderTransaction) => [
-        newDatom(shareholderTransaction.entity, "type", "shareholderTransactions", false),
-        newDatom(shareholderTransaction.entity, "parent", shareholderTransaction.parent, false),
-        newDatom(shareholderTransaction.entity, "company/orgnumber", shareholderTransaction["company/orgnumber"], false),
-        newDatom(shareholderTransaction.entity, "transaction/investment/quantity", shareholderTransaction["transaction/investment/quantity"], false),
-        newDatom(shareholderTransaction.entity, "transaction/investment/unitPrice", shareholderTransaction["transaction/investment/unitPrice"], false)
-      ],
-      updateShareholderIDDatoms: (shareholderTransaction, newShareholderID) => [
-        newDatom(shareholderTransaction, "company/orgnumber", validate.string(newShareholderID) ),
-      ],
-      updateShareCountDatoms: (shareholderTransaction, shareCount) => [
-        newDatom(shareholderTransaction, "transaction/investment/quantity", validate.number(shareCount) ),
-      ],
-      updateSharePremiumDatoms: (shareholderTransaction, sharePremium) => [
-        newDatom(shareholderTransaction, "transaction/investment/unitPrice", validate.number(sharePremium) ),
-      ]
+      }
       
     },
     "incorporationCost": {
@@ -411,7 +493,6 @@ let H = {
         let Company = mergerino({}, prevCompany)
   
         Company["company/accountBalance"] = addAccountBalances(prevCompany["company/accountBalance"], Event["output/accountBalance"])
-        Company["company/appliedEvents"] = prevCompany["company/appliedEvents"].concat(Event)
   
         return Company
   
@@ -421,6 +502,7 @@ let H = {
     "operatingCost": {
       label: "Driftskostnader",
       inputVariables: ["entity", "type", "process/identifier", "company/orgnumber", "date", "transaction/generic/account", "transaction/amount"],
+      companyDependencies: ["company/accountBalance", "company/Events"],
       validateCombinedEventInputs: (eventInputs) => true,
       eventConstructor: (eventInput) => {
   
@@ -439,7 +521,6 @@ let H = {
         let Company = mergerino({}, prevCompany)
   
         Company["company/accountBalance"] = addAccountBalances(prevCompany["company/accountBalance"], Event["output/accountBalance"])
-        Company["company/appliedEvents"] = prevCompany["company/appliedEvents"].concat(Event)
   
         return Company
   
@@ -451,7 +532,7 @@ let H = {
       inputVariables: ["entity", "type", "process/identifier", "company/orgnumber", "date"],
       validateCombinedEventInputs: (eventInputs) => false,
       eventConstructor: (eventInput) => eventInput,
-      applyEventToCompany: (prevCompany, Event) => mergerino(prevCompany, {"company/appliedEvents": prevCompany["company/appliedEvents"].concat(Event)}),
+      applyEventToCompany: (prevCompany, Event) => prevCompany,
       view: (Event, A) => d([
         d("Eier"),
         dropdown( "", [{value: 0, label: "Eier 1"}, {value: 1, label: "Eier 2"}], e => console.log([newDatom(Event.entity, "transaction/generic/account", e.srcElement.value )]) )
@@ -462,93 +543,198 @@ let H = {
       inputVariables: ["entity", "type", "process/identifier", "company/orgnumber", "date", "transaction/generic/account", "transaction/amount"],
       validateCombinedEventInputs: (eventInputs) => true,
       eventConstructor: (eventInput) => eventInput,
-      applyEventToCompany: (prevCompany, Event) => mergerino(prevCompany, {"company/appliedEvents": prevCompany["company/appliedEvents"].concat(Event)}),
+      applyEventToCompany: (prevCompany, Event) => prevCompany,
       view: (Event, A) => d([
         inputWithLabelField("Organisasjonsnummer: ", "", e => A.submitDatoms( [newDatom("", "company/AoA/nominalSharePrice", validate.number(e.srcElement.value) )])),
       ]),
     }
+  },
+  companyCalculatedOutputs: {
+    "company/orgnumber": (prevCompany, Event) => prevCompany["company/orgnumber"] ? prevCompany["company/orgnumber"] : Event["company/orgnumber"],
+    "company/Events": (prevCompany, Event) => prevCompany["company/Events"] ? prevCompany["company/Events"].concat(Event) : [Event],
+    "company/AoA/nominalSharePrice": (prevCompany, Event) => Event["company/AoA/nominalSharePrice"],
+    "company/shareCount": (prevCompany, Event) => prevCompany["company/shareCount"] ? prevCompany["company/shareCount"] + Event["output/shareCount"] : Event["output/shareCount"],
+    "company/shareholders": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? Event["transaction/records"].map( shareholderTransaction => shareholderTransaction["company/orgnumber"] ).filter( filterUniqueValues ) : [],
+    "company/shareCapital": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? Event["output/accountBalance"]["2000"] : null,
+    "company/accountBalance": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? addAccountBalances({}, Event["output/accountBalance"]) : null,
   }
 }
 
-let timeline = (S, A) => constructCompanySnapshots(S.userEvents.filter( Event => Event["company/orgnumber"] === S.selectedOrgnumber ).filter( Event => Event.date.substr(0,4) === S.selectedYear ), H.eventTypes).map( (CompanySnapshot, index) => genericEventView(CompanySnapshot, index, H.eventTypes, A)  ).join('')
+let timeline = (S, A) => {
 
+  let CompanySnapshots = constructCompanySnapshots(S.selectedEvents, H.eventTypes)
 
-let companyInspector = (CompanySnapshot) => d([
-  h3("All informasjon om selskapet etter hendelsen:"),
-  Object.entries(CompanySnapshot).map( entry => d(`${entry[0]}: ${Array.isArray(entry[1]) ? `[${entry[1].length} oppføringer]` : JSON.stringify(entry[1])}`) ).join(""),
-], {style: "background-color: #8080803b; padding: 1em;"})
+  let eventViews = CompanySnapshots.map( (CompanySnapshot, index) => genericEventView(CompanySnapshot, index, H.eventTypes, A)  ).join('')
+
+  
+
+  return d([
+    eventViews,
+    createEventView()
+  ])
+} 
+
 
 let genericEventView = (CompanySnapshot, index, eventTypes, A) => {
+  let Event = CompanySnapshot["company/Events"][ CompanySnapshot["company/Events"].length - 1 ]
 
+  let eventType = Event["process/identifier"]
+  let eventTypeObject = eventTypes[ eventType ] ? eventTypes[ eventType ] : false
+  let allAttributes = eventTypeObject ? eventTypeObject["inputVariables"] : []
 
-    let Event = CompanySnapshot["company/isValid"] ? CompanySnapshot["company/appliedEvents"][ CompanySnapshot["company/appliedEvents"].length - 1] : CompanySnapshot["company/eventsToProcess"][0 + index - CompanySnapshot["company/appliedEvents"].length ]
+  let visibleAttributes = allAttributes.filter( attribute => allAttributes.includes(attribute) )
 
-    let eventType = Event["process/identifier"]
-    let eventTypeObject = eventTypes[ eventType ] ? eventTypes[ eventType ] : false
-    let allAttributes = eventTypeObject ? eventTypeObject["inputVariables"] : []
-
-    let visibleAttributes = allAttributes.filter( attribute => allAttributes.includes(attribute) )
-
-    let attributeViews = visibleAttributes.map( inputVariable => H.attributes[ inputVariable ].view( Event, A ) ).join("")
-
-
-    return d([
-      d([
-        h3("Event view:"),
-        attributeViews,
-        "<br>",
-        eventInspector(Event),
-        "<br>",
-        companyInspector(CompanySnapshot)
-      ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-      d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
-    ])
+  let attributeViews = visibleAttributes.map( inputVariable => H.attributes[ inputVariable ].view( Event, A ) ).join("")
+  return d([
+    d([
+      h3("Event view:"),
+      attributeViews,
+      "<br>",
+      eventInspector(Event),
+      "<br>",
+      companyInspector(CompanySnapshot)
+    ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
+  ])
 
 
 
 }
 
+let createEventView = () => {
 
-let eventInspector = (Event) => d([
-    h3("Hendelsens input:"),
-    Object.entries(Event).map( entry => d(`${entry[0]}: ${JSON.stringify(entry[1])}`) ).join(""),
+  let validEventTypes = ["operatingCost"] // Bør følge av siste selskapssnapshot
+
+
+  return d([
+    d([
+      h3("Legg til ny hendelse"),
+      d([
+        d("Hendelsestype: "), 
+        dropdown( 
+          "" , 
+          validEventTypes.map( entry => returnObject({label: `${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), 
+          e => console.log([newDatom(Event.entity, "process/identifier", e.srcElement.value )]) 
+        ),
+        "<br>"
+      ], {class: "inputWithLabel"}  ),
+    ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
+  ])
+
+} 
+
+
+let eventInspector = (Event) => {
+  let eventType = Event["process/identifier"] ? Event["process/identifier"] : false
+  let eventTypeObject = H.eventTypes[ eventType ] ? H.eventTypes[ eventType ] : false
+  let requiredInputs = eventTypeObject["inputVariables"] ? eventTypeObject["inputVariables"] : false
+  let outputVariables = eventTypeObject.calculatedOutputs ? Object.keys(eventTypeObject.calculatedOutputs) : []
+
+  return d([
+    h3("Event inspector"),
+    requiredInputs ? requiredInputs.map( inputVariable => d([
+      d(inputVariable),
+      d("input"),
+      d(typeof Event[inputVariable]),
+      d([
+        Array.isArray(Event[inputVariable]) 
+        ? Event[inputVariable].map( entry => d( JSON.stringify(entry) ) ).join("")
+        : (typeof Event[inputVariable] === "object" )
+          ? Object.entries(Event[inputVariable]).map( entry => d( entry[0] + ": " + JSON.stringify(entry[1]) ) ).join("")
+          : d(JSON.stringify( Event[inputVariable]))
+      ], {style: "max-width: 200px;"})
+    ], {class: "eventInspectorRow"}) ).join("") : d("Error"),
+    "<br>",
+    outputVariables ? outputVariables.map( outputVariable => d([
+      d(outputVariable),
+      d("calculated"),
+      d(typeof Event[outputVariable]),
+      d([
+        Array.isArray(Event[outputVariable]) 
+        ? Event[outputVariable].map( entry => d( JSON.stringify(entry) ) ).join("")
+        : (typeof Event[outputVariable] === "object" )
+          ? Object.entries(Event[outputVariable]).map( entry => d( entry[0] + ": " + JSON.stringify(entry[1]) ) ).join("")
+          : d(JSON.stringify( Event[outputVariable]))
+      ], {style: "max-width: 200px;"})
+    ], {class: "eventInspectorRow"}) ).join("") : d("Error"),
+    d("[Error messages TBD]")
 ], {style: "background-color: #8080803b; padding: 1em;"})
+} 
+
+
+let companyInspector = (CompanySnapshot) => {
+
+  let representedEventTypes = CompanySnapshot["company/Events"].map( E => E["process/identifier"]).filter( filterUniqueValues)
+  let availableCompanyVariables = representedEventTypes.map( eventType => H.eventTypes[ eventType ].companyDependencies ).flat().filter( filterUniqueValues).filter( v => v !== "company/Events")
+
+  return d([
+    h3("Company inspector"),
+    availableCompanyVariables.map( variable => d([
+      d(variable),
+      d("calculated"),
+      d(typeof CompanySnapshot[ variable ]),
+      d( JSON.stringify( CompanySnapshot[ variable ] ) )
+    ], {class: "eventInspectorRow"}) ).join(""),
+    "<br>",
+    d("[Error messages TBD]")
+  ], {style: `background-color: ${ CompanySnapshot["company/isValid"] ? "#8080803b" : "darksalmon"}; padding: 1em;`})
+} 
 
 
 let constructCompanySnapshots = (eventInputs, eventTypes) => {
 
   let sortedEvents = eventInputs.sort( sortEntitiesByDate )
 
-  let constructedCompanySnapshots =  sortedEvents.map( (Event, index) => sortedEvents.slice(0, index + 1).reduce( (prevCompany, Event) => prevCompany["company/isValid"] ? applyNextEvent(prevCompany, Event, eventTypes) : prevCompany, {"company/eventsToProcess": sortedEvents, "company/isValid": true} ) )
+  let constructedCompanySnapshots =  sortedEvents.map( (Event, index) => sortedEvents.slice(0, index + 1).reduce( (prevCompany, Event) => prevCompany["company/isValid"] ? applyNextEvent(prevCompany, Event, eventTypes) : prevCompany, {"company/isValid": true} ) )
 
   return constructedCompanySnapshots
 }
 
 let applyNextEvent = (prevCompany, EventInputs, eventTypes) => {
 
-
   let eventTypeObject = eventTypes[ EventInputs["process/identifier"] ]
 
   let validatedEventInputVariables = H.eventInputValidator(EventInputs, eventTypes)
 
   let validatedCombinedEventInputs = (validatedEventInputVariables === false) ? false : eventTypeObject.validateCombinedEventInputs(validatedEventInputVariables)
+
   
-  let Company = (validatedCombinedEventInputs === false) ? mergerino( prevCompany, {"company/isValid": false} ) : applyEventToCompany(prevCompany, EventInputs, eventTypeObject)
 
-  return Company
+  if(validatedCombinedEventInputs === false){
+
+    let Company = mergerino( {}, prevCompany )
+    Company["company/Events"] = Company["company/Events"].concat(EventInputs)
+    Company["company/isValid"] = false;
+    return Company
+
+  }else{
+
+    let constructedEvent = eventTypeObject.eventConstructor(EventInputs)
+
+    let Company = eventTypeObject.companyDependencies.reduce( (prevCompany, variableName) => {
+
+      let companyDependencyFunction = H.companyCalculatedOutputs[ variableName ]
+
+      let updatedVariableValue = companyDependencyFunction(prevCompany, constructedEvent)
+
+      let updatedCompany = mergerino(prevCompany, createObject(variableName, updatedVariableValue) )
+
+      console.log(prevCompany, constructedEvent, variableName, updatedCompany)
+
+      return updatedCompany
+
+    }, prevCompany )
+  
+    Company["company/isValid"] = true;
+    return Company
+
+  }  
+
+  
 
 }
 
-let applyEventToCompany = (prevCompany, EventInputs, eventTypeObject) => {
-
-  let constructedEvent = eventTypeObject.eventConstructor(EventInputs)
-  let Company = eventTypeObject.applyEventToCompany( prevCompany, constructedEvent )
-  Company["company/eventsToProcess"] = Company["company/eventsToProcess"].slice(1, Company["company/eventsToProcess"].length )
-  Company["company/isValid"] = true;
-
-  return Company
-
-}
 
 let addAccountBalances = (prevAccountBalance, accountBalance) => {
 
@@ -826,22 +1012,23 @@ let menuRow = (labels, selectedOptionIndex, buttonActions) => d( labels.map( (la
 
 let menuBarView = (S, A) => {
 
-  let orgnumbers = S.Companies.map( C => C["company/orgnumber"] )
-  let years = Object.keys( S.selectedCompany["acc/financialYears"] )
+  let orgnumbers = S.Events.map( E => E["company/orgnumber"] ).filter( filterUniqueValues )
+  let years = S.Events.filter( E => E["company/orgnumber"] === S.selectedOrgnumber ).map( E => E["date"].slice(0,4) ).filter( filterUniqueValues )
   let pageLabels = ["Hendelser", "Årsavslutning", "Bank",  "Admin"]
   let pageNames = ["overview", "yearEnd", "bankImport", "admin"]
 
   return d([
     menuRow(
-      S.Companies.map( C => C["company/name"] ), 
-      orgnumbers.indexOf( S.selectedCompany["company/orgnumber"] ),
+      orgnumbers, 
+      orgnumbers.indexOf( S.selectedOrgnumber ),
       orgnumbers.map( orgnumber => e => {
         let selectedOrgnumber = orgnumber
-        let selectedYear = Object.keys( S.Companies.filter( C => C["company/orgnumber"] === selectedOrgnumber)[0]["acc/financialYears"])[0]
+        let selectedYear = S.Events.filter( C => C["company/orgnumber"] === orgnumber)[0]["date"].slice(0,4)
         let patch = mergerino({selectedOrgnumber, selectedYear})
         A.patch(  patch )
       }  )
     ),
+    d( "Legg til nytt selskap", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.newCompany(S, randBetween(8000000, 999999999) ) ) ),
     menuRow(
       years,
       years.indexOf( String(S.selectedYear) ),
@@ -851,8 +1038,7 @@ let menuBarView = (S, A) => {
       pageLabels, 
       pageNames.indexOf( S.currentPage ),
       pageNames.map( pageName => e => A.patch({currentPage: pageName}) )
-    ),
-    (S.currentPage === "overview") ? d( "Legg til fri postering", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.complexTransaction(S) ) ) : ""
+    )
   ], {style: "padding-left:3em;"})
 }
 

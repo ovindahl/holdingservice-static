@@ -79,25 +79,24 @@ let getLocalState = async (receivedS) => {
     if(S === null){
 
         let userContent = await APIRequest("GET", "userContent", null)
-        let userEvents = await APIRequest("GET", "userEvents", null)
 
         S = userContent
 
         if(userContent !== null){
 
             S.currentPage = "overview"
-            S.selectedOrgnumber = userContent.Companies[0]["company/orgnumber"]
-            S.selectedYear = S.Companies.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]["h/Events"][0]["date"].slice(0,4)
+            S.Events = userContent.Events
+            S.selectedOrgnumber = "999999999" //S.Events[0]["company/orgnumber"]
+            S.selectedYear = S.Events.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]["date"].slice(0,4)
 
         }
 
-        S.userEvents = userEvents
 
     }
 
-    S.selectedCompany = S.Companies.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]
+    //S.selectedCompany = S.Companies.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]
 
-    
+    S.selectedEvents = S.Events.filter( Event => Event["company/orgnumber"] === S.selectedOrgnumber ).filter( Event => Event.date.substr(0,4) === S.selectedYear )
     
 
     return S
@@ -115,9 +114,8 @@ let update = async (receivedS) => {
 
 let submitTransaction = async (datoms, receivedS) => {
     let userContent = await APIRequest("POST", "transactor", JSON.stringify( datoms ))
-    let userEvents = await APIRequest("GET", "userEvents", null)
 
-    let updatedS = mergerino(receivedS, userContent, userEvents)
+    let updatedS = mergerino(receivedS, userContent)
 
     let S = await getLocalState( updatedS  )
 

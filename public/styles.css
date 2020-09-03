@@ -116,3 +116,16 @@ input {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
 }
+
+
+
+
+.eventInspectorRow{
+    display:grid;
+    grid-template-columns: 3fr 1fr 1fr 4fr;
+    padding: 3px; 
+}
+
+.eventInspectorRow:hover {
+    background-color: lightgray;
+}
