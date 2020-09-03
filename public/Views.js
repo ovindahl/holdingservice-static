@@ -198,6 +198,16 @@ let attributeView_eventType = (Event, A) => d([
 let attributeView_stringifyEvent = (Event, A) => d( JSON.stringify(Event) )
 
 
+var func = new Function("prevCompany, Event", "return prevCompany['company/shareholders'];" )
+var func2 = new Function("prevCompany, Event", "console.log(prevCompany['company/shareholders']) ;" )
+
+let valueTypes = {
+  "number": {},
+  "string": {},
+  "object": {},
+  "select": {}, // ???
+}
+
 let Attributes = { //NB: What is the entity id of the attribute entity itself?
   "entity/id": {
     "attr/name": "entity/id",
@@ -260,9 +270,29 @@ let Attributes = { //NB: What is the entity id of the attribute entity itself?
     "attr/doc": "Norwegian organizational number as according to the company's articles of assembly.",
     "attr/validatorFunction": (value) => (typeof value === "string" && value.length === 9 && Number(value) >= 800000000 ),
     "attr/viewFunction": attributeView_stringifyEvent
-  },
-  
+  }
 }
+
+let outputFunctions = {
+  "event/accountBalance": (prevCompany, Event) => mergerino( {}, Event["recordObjects"].map( record => record.account ).filter( filterUniqueValues ).map( account => createObject(account, Event["recordObjects"].filter( record => record.account === account ).reduce( (sum, record) => sum + record.amount, 0) )) ),
+  "event/incorporation/shareCount": (prevCompany, Event) => Event["event/incorporation/founders"].reduce( (sum, founderObject) => sum + founderObject.shareCount, 0),
+  "event/incorporation/shareCapital": (prevCompany, Event) => Event["event/incorporation/founders"].reduce( (sum, founderObject) => sum + (nominalSharePrice + founderObject.sharePremium) *  founderObject.shareCount, 0),
+  "event/incorporation/shareholders": (prevCompany, Event) => Event["event/incorporation/founders"].map( shareholder => shareholder["id"] ).filter( filterUniqueValues ),
+  "company/orgnumber": (prevCompany, Event) => Event["event/incorporation/orgnumber"] ? Event["event/incorporation/orgnumber"] : prevCompany["company/orgnumber"],
+  "company/Events": (prevCompany, Event) => prevCompany["company/Events"] ? prevCompany["company/Events"].concat(Event) : [Event],
+  "company/nominalSharePrice": (prevCompany, Event) => ifNot(Event["event/incorporation/nominalSharePrice"], prevCompany["company/nominalSharePrice"]),
+  "company/shareCount": (prevCompany, Event) => Event["event/incorporation/shareCount"] ? prevCompany["company/shareCount"] + Event["event/incorporation/shareCount"] : Event["company/shareCount"],
+  "company/shareholders": (prevCompany, Event) => ifNot( Event["event/incorporation/shareholders"], prevCompany["company/shareholders"] ),
+  "company/shareCapital": (prevCompany, Event) => Event["event/eventType"] === "incorporation" ? Event["event/incorporation/shareCapital"] : prevCompany["company/shareCapital"],
+  "company/accountBalance": (prevCompany, Event) => Event["event/eventType"] === "incorporation" ? Event["event/accountBalance"] : addAccountBalances(prevCompany["company/accountBalance"], Event["event/accountBalance"]),
+  "company/validEventTypes": (prevCompany, Event) => ["incorporation", "incorporationCost", "operatingCost", "shareholderLoan_increase", "investment_new"],
+}
+
+
+
+
+
+
 
 
 
@@ -468,7 +498,6 @@ let H = {
         Company["company/Events"] = [Event]
   
         return Company
-  
       }
       
     },
@@ -502,6 +531,7 @@ let H = {
     "operatingCost": {
       label: "Driftskostnader",
       inputVariables: ["entity", "type", "process/identifier", "company/orgnumber", "date", "transaction/generic/account", "transaction/amount"],
+      allowedAccounts: ["entity", "type", "process/identifier", "company/orgnumber", "date", "transaction/generic/account", "transaction/amount"],
       companyDependencies: ["company/accountBalance", "company/Events"],
       validateCombinedEventInputs: (eventInputs) => true,
       eventConstructor: (eventInput) => {
@@ -564,19 +594,22 @@ let timeline = (S, A) => {
 
   let CompanySnapshots = constructCompanySnapshots(S.selectedEvents, H.eventTypes)
 
-  let eventViews = CompanySnapshots.map( (CompanySnapshot, index) => genericEventView(CompanySnapshot, index, H.eventTypes, A)  ).join('')
+  let eventViews = CompanySnapshots.map( (CompanySnapshot, index) => genericEventView(S, CompanySnapshot, index, H.eventTypes, A)  ).join('')
 
   
 
   return d([
     eventViews,
-    createEventView()
+    createEventView(S, A)
   ])
 } 
 
 
-let genericEventView = (CompanySnapshot, index, eventTypes, A) => {
+let genericEventView = (S, CompanySnapshot, index, eventTypes, A) => {
+
   let Event = CompanySnapshot["company/Events"][ CompanySnapshot["company/Events"].length - 1 ]
+
+  let inputEvent = S.selectedEvents.filter( E => E["entity"] === Event["entity"] )[0]
 
   let eventType = Event["process/identifier"]
   let eventTypeObject = eventTypes[ eventType ] ? eventTypes[ eventType ] : false
@@ -590,6 +623,8 @@ let genericEventView = (CompanySnapshot, index, eventTypes, A) => {
       h3("Event view:"),
       attributeViews,
       "<br>",
+      (eventType !== "incorporation") ? d("Slett hendelse", {class: "textButton"}, "click", e => A.submitDatoms( getRetractionDatomsWithoutChildren([inputEvent]) ) ) : "",
+      "<br>",
       eventInspector(Event),
       "<br>",
       companyInspector(CompanySnapshot)
@@ -601,26 +636,22 @@ let genericEventView = (CompanySnapshot, index, eventTypes, A) => {
 
 }
 
-let createEventView = () => {
+let createEventView = (S, A) => {
 
   let validEventTypes = ["operatingCost"] // Bør følge av siste selskapssnapshot
 
+  let newEventFunction = e => A.submitDatoms([
+    newDatom("process", "type", "process"),
+    newDatom("process", "date", "2020-09-03"),
+    newDatom("process", "process/identifier", "operatingCost"),
+    newDatom("process", "company/orgnumber", S.selectedOrgnumber ),
+  ])
+
 
   return d([
-    d([
       h3("Legg til ny hendelse"),
-      d([
-        d("Hendelsestype: "), 
-        dropdown( 
-          "" , 
-          validEventTypes.map( entry => returnObject({label: `${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), 
-          e => console.log([newDatom(Event.entity, "process/identifier", e.srcElement.value )]) 
-        ),
-        "<br>"
-      ], {class: "inputWithLabel"}  ),
-    ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-    d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
-  ])
+      d("Legg til", {class: "textButton"}, "click", newEventFunction )
+  ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 } 
 

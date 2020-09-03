@@ -45,6 +45,20 @@ let getUserActions = (S) => returnObject({
 
         let retractionDatoms = getRetractionDatoms(serverEntities, [Entity] )
 
+        console.log("Retracting: ", retractionDatoms)
+
+        if(retractionDatoms.length < 100){
+            submitTransaction( retractionDatoms, S )
+        }else{
+            console.log("ERRROR: Over 100 retraction datoms submitted:", retractionDatoms)
+        }
+    },
+    retractSingleEntity: async Entity => {
+
+        let retractionDatoms = getRetractionDatomsWithoutChildren([Entity])
+
+        console.log("Retracting: ", retractionDatoms)
+
         if(retractionDatoms.length < 100){
             submitTransaction( retractionDatoms, S )
         }else{
