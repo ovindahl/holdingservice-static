@@ -327,13 +327,7 @@ const companyConstructur = {
     if(!hasValidEventLevelInputs){return mergerino(Event, {"event/error": `Error 4: The combination of inputs do not pass eventType level validation.`})}
 
     let calculatedAttributesObject = companyConstructur.getCalculatedAttributesObject()
-
-    
-
     let attributesToCalculate = eventTypeObject["calculatedOutputs"]
-
-    console.log(Event, attributesToCalculate)
-
     let calculatedOutputs = attributesToCalculate.map( attribute => createObject( attribute, calculatedAttributesObject[ attribute ](Event) )  )
 
     let constructedEvent = mergerino(Event, calculatedOutputs )
@@ -599,7 +593,7 @@ let genericEventView = ( S, A, Event, companySnapshot ) => {
       h3("Event view:"),
       attributeViews,
       "<br>",
-      eventInspector(Event),
+      eventInspector(A, Event),
       "<br>",
       companyInspector(companySnapshot)
     ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
@@ -630,7 +624,7 @@ let createEventView = (S, A) => {
 } 
 
 
-let eventInspector = (Event) => {
+let eventInspector = (A, Event) => {
   let eventType = Event["process/identifier"]
   let eventTypeObject = H.eventTypes[ eventType ]
   
@@ -639,20 +633,14 @@ let eventInspector = (Event) => {
   let calculatedAttributes_event = eventTypeObject["calculatedOutputs"]
 
   return d([
-    h3("Event inspector"),
+    h3("Adminpanel for hendelse"),
     systemAttributes.map( attribute => d([d(attribute), d("system"), d(typeof Event[ attribute ]), d(JSON.stringify(Event[ attribute ]), {style: "max-width: 200px;"}) ], {class: "eventInspectorRow"}) ).join(''),
     "<br>",
     inputAttributes.map( attribute => d([
       d(attribute),
       d("input"),
       d(typeof Event[ attribute ] ),
-      d([
-        Array.isArray(Event[attribute]) 
-        ? Event[attribute].map( entry => d( JSON.stringify(entry) ) ).join("")
-        : (typeof Event[attribute] === "object" )
-          ? Object.entries(Event[attribute]).map( entry => d( entry[0] + ": " + JSON.stringify(entry[1]) ) ).join("")
-          : d(JSON.stringify( Event[attribute]))
-      ], {style: "max-width: 200px;"})
+      input({value: Event[attribute] }, "change", e => A.submitDatoms( [newDatom(Event["entity"], attribute, validate[typeof Event[ attribute ]](e.srcElement.value))] )),
     ], {class: "eventInspectorRow"}) ).join(""),
     "<br>",
     calculatedAttributes_event.map( attribute => d([d(attribute), d("calculated"), d(typeof Event[ attribute ]), d(JSON.stringify(Event[ attribute ]), {style: "max-width: 200px;"}) ], {class: "eventInspectorRow"}) ).join(''),
@@ -664,7 +652,7 @@ let eventInspector = (Event) => {
 let companyInspector = (companySnapshot) => {
 
   return d([
-    h3("Company inspector"),
+    h3("Adminpanel for selskap"),
     Object.keys(companySnapshot).map( attribute => d([d(attribute), d(JSON.stringify(companySnapshot[attribute]))], {class: "eventInspectorRow"} )  ).join('')
   ], {style: "background-color: #8080803b; padding: 1em;"})
 } 
