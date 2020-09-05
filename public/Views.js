@@ -306,62 +306,44 @@ const companyConstructur = {
     return Company
   },
   validateAndPrepareEventsObject: (Events) => [Array.isArray(Events) ? Events.sort( (E1, E2) => E1["event/index"] - E2["event/index"] ) : [], Array.isArray(Events) ? [] : Events ],
-  constructEvent: (Event) => {
+  constructEvent: (inputEvent) => {
+    let Event = mergerino(inputEvent, {"event/errors": []} )
     let eventTypes = companyConstructur.getEventTypes()
     let eventType = Event["process/identifier"]
     let hasValidEventType = Object.keys(eventTypes).includes( eventType )
-    if(!hasValidEventType){return mergerino(Event, {"event/error": `Error 1: Invalid eventType:: ${eventType}.`})}
+    if(!hasValidEventType){return mergerino(Event, {"event/errors": Event["event/errors"].concat({error: `Error 1: Invalid eventType:: ${eventType}.`})})} //Continue construction despite error? To aggregate multiple errors if applicable.
     let eventTypeObject = eventTypes[ eventType ]
     let requiredAttributes_allEvents = ["entity", "type", "process/identifier", "company/orgnumber", "date"] // update
-    let requiredAttributes_eventType = eventTypeObject["inputVariables"]
-    let requiredAttributes = requiredAttributes_allEvents.concat(requiredAttributes_eventType)
+    let inputAttributes = eventTypeObject["inputAttributes"]
+    let requiredAttributes = requiredAttributes_allEvents.concat(inputAttributes)
     let hasRequiredAttributes = requiredAttributes.every( attr => Object.keys(Event).includes(attr) ) // Store missing attribute names?
-    if(!hasRequiredAttributes){return mergerino(Event, {"event/error": `Error 2: Missing the following required attributes: ${requiredAttributes.filter( attr => !Object.keys(Event).includes(attr) )} `})}
+    if(!hasRequiredAttributes){return mergerino(Event, {"event/errors": Event["event/errors"].concat( requiredAttributes.filter( attr => !Object.keys(Event).includes(attr) ).map( attribute => returnObject({error: `Error 2: Missing required inputAttribute: ${attribute} `})))})}
     let attributesObject = companyConstructur.getAttributesObject() //NB: Now only inputAttributes
-    let resultObjects = Object.keys(Event).filter( attribute => Object.keys(attributesObject).includes(attribute) ).map( eventAttribute => companyConstructur.validateAttributeValues( attributesObject[eventAttribute], eventAttribute, Event[ eventAttribute ] ) )
-    let hasValidAttributeValues = resultObjects.every( resultObject => resultObject.error === false )
+    let hasValidAttributeValues = inputAttributes.every( attribute => attributesObject[ attribute ].validators.every( validatorFunction => validatorFunction( Event[ attribute ] ) ) === true  )
     //let constructedEventWithErrors = mergerino({}, resultObjects.map( resultObject => createObject(resultObject.attribute, resultObject.value) ), {"event/error": resultObjects.filter( resultObject => resultObject.error ) } )
-    if(!hasValidAttributeValues){return mergerino(Event, {"event/error": `Error 3: Invalid attribute values.`})}
-    let eventTypeLevelValidator = eventTypeObject["validateCombinedEventInputs"]
-    let hasValidEventLevelInputs = eventTypeLevelValidator(Event)
-    if(!hasValidEventLevelInputs){return mergerino(Event, {"event/error": `Error 4: The combination of inputs do not pass eventType level validation.`})}
-
-    let calculatedAttributesObject = companyConstructur.getCalculatedAttributesObject()
+    if(!hasValidAttributeValues){return mergerino(Event, {"event/errors": Event["event/errors"].concat({error: `Error 3: Invalid attribute values.`})})}
+    let eventTypeInputCriteria = eventTypeObject["eventInputCriteria"]
+    let hasValidInputs = eventTypeInputCriteria.every( criteriumFunction => criteriumFunction(Event) === true ) //Criteria should return error object if not passed.
+    if(!hasValidInputs){return mergerino(Event, {"event/errors": Event["event/errors"].concat({error: `Error 4: The combination of inputs do not pass eventType level validation.`})})}
+    let calculatedAttributesObject = companyConstructur.getAttributeUpdateFunctions()
     let attributesToCalculate = eventTypeObject["calculatedOutputs"]
     let calculatedOutputs = attributesToCalculate.map( attribute => createObject( attribute, calculatedAttributesObject[ attribute ](Event) )  )
-
     let constructedEvent = mergerino(Event, calculatedOutputs )
     return constructedEvent
   },
-  validateAttributeValues: ( attributeObject, attribute, value ) => {
-    let error = attributeObject.validator(value) === true ? false : {Error: `3: attribute [${attribute}] did not pass validation.`}
-    let resultObject = {attribute, value, error}
-    return resultObject
-  },
-  getEventTypes: () => {
-    return H.eventTypes
-  },
-  getAttributesObject: () => {
-    return H.inputAttributes
-  },
-  getCalculatedAttributesObject: () => {
-    return H.calculatedAttributes
-  },
-  getCompanyTemplate: () => returnObject({type: "Company", "company/isIncorporated": false}),
   applyConstructedEventToCompany: (prevCompany, constructedEvent) => {
+    if(constructedEvent["event/errors"].length > 0){return mergerino(prevCompany, {"company/errors": prevCompany["company/errors"].concat({error: `Error: Error in submitted event(s). Cannot construct company.`})})} //Move to event pipeline?
     let isIncorporated = (prevCompany["company/isIncorporated"] || constructedEvent["process/identifier"] === "incorporation")
-    if(!isIncorporated){return mergerino(constructedEvent, {"event/error": "Error 5: No incorporation event."})}
-
-    let defaultDependencies = [] //generic attributes, eg. latest event index etc
+    if(!isIncorporated){return  mergerino(prevCompany, {"company/errors": prevCompany["company/errors"].concat({error: `Error 5: No incorporation event.`})})} //Move to event pipeline?
+    let defaultDependencies = ["company/appliedEventsCount"] //generic attributes, eg. latest event index etc
     let eventType = constructedEvent["process/identifier"]
     let eventTypes = companyConstructur.getEventTypes()
     let eventTypeObject = eventTypes[ eventType ]
-    let eventTypeDependencies = eventTypeObject["companyOutputVariableDependencies"]
+    let eventTypeDependencies = eventTypeObject["dependencies"]
     let attributesToUpdate = defaultDependencies.concat(eventTypeDependencies)
 
     let prevCompanyAttributes = Object.keys(prevCompany)
     let unAffectedAttributes = prevCompanyAttributes.filter( attribute => !attributesToUpdate.includes(attribute) )
-
     let attributeUpdateFunctions = companyConstructur.getAttributeUpdateFunctions()
 
     let Company = mergerino(
@@ -370,9 +352,14 @@ const companyConstructur = {
       attributesToUpdate.map( attribute => createObject(attribute, attributeUpdateFunctions[ attribute ]( prevCompany, constructedEvent ) ) ) //Should handle non-applicable events generically instead of in each attributeTypeUpdatefunction??
     )
 
+    Company["company/applicableEventTypes"] = attributeUpdateFunctions["company/applicableEventTypes"](Company, null) //Getting list of allowed next events
+
     return Company
   },
-  getAttributeUpdateFunctions: () => H.calculatedAttributes
+  getEventTypes: () => H.eventTypes,
+  getAttributesObject: () => H.inputAttributes,
+  getAttributeUpdateFunctions: () => H.calculatedAttributes,
+  getCompanyTemplate: () => returnObject({"company/isIncorporated": false, "company/errors": []}),
 }
 
 let H = {
@@ -460,30 +447,19 @@ let H = {
   systemAttributes: {
     "entity": { 
       validator: (value) => (typeof value === "number") ? true : false,
-      view: (Event, A) => ``
     },
-    "type": { 
+    "type": { //Should be inputAttribute
       validator: (value) => value === "process" ? true : false,
-      view: (Event, A) => ``
     },
-    "process/identifier": { 
+    "process/identifier": { //Should be inputAttribute
       validator: (value) => Object.keys(H.eventTypes).includes(value) ? true : false,
-      view: (Event, A) => d([
-        Event["process/identifier"] === "incorporation" ? inputWithLabelField_disabled("Hendelsestype", "Stiftelse") : d([
-          d("Hendelsestype: "), 
-          dropdown( 
-            Object.keys(H.eventTypes).includes(Event["process/identifier"]) ? Event["process/identifier"] : "" , 
-            Object.entries( H.eventTypes ).map( entry => returnObject({label: `${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), 
-            e => A.submitDatoms([newDatom(Event.entity, "process/identifier", e.srcElement.value )]) 
-          ),
-          "<br>"
-        ], {class: "inputWithLabel"}  ),
-      ])
     }
   },
   inputAttributes: {
     "transaction/records": { 
-      validator: (value) => (typeof value === "object") ? true : false,
+      validators: [
+        (value) => typeof value === "object"
+      ],
       view: (Event, A) => d([
         "<br>",
         d("Stiftere:"),
@@ -502,27 +478,43 @@ let H = {
       ]) 
     },
     "transaction/generic/account": {
-      validator: (value) => true,
+      validators: [
+        (value) => typeof value === "string",
+        (value) => value.length === 4,
+        (value) => Number(value) >= 1000,
+        (value) => Number(value) < 10000
+      ],
       view: (Event, A) => d([
         d("Konto"),
         dropdown( Event["transaction/generic/account"] ? Event["transaction/generic/account"] : 0, Object.entries( H.Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.submitDatoms([newDatom(Event.entity, "transaction/generic/account", e.srcElement.value )]) )
       ], {class: "inputWithLabel"}  )
     },
     "transaction/amount": {
-      validator: (value) => (typeof value === "number") ? true : false,
+      validators: [
+        (value) => typeof value === "number",
+      ],
       view: (Event, A) => inputWithLabel_number(A, Event, "Beløp", "transaction/amount")
     },
     "company/orgnumber": {
-      validator: (value) => (typeof value === "string") ? true : false,
-      errorMessage: "9-sifret norsk organisasjonsnummer.",
+      validators: [
+        (value) => typeof value === "string",
+        (value) => value.length === 9,
+        (value) => Number(value) >= 800000000,
+        (value) => Number(value) < 1000000000
+      ],
       view: (Event, A) => inputWithLabelField_disabled("Orgnr.", Event["company/orgnumber"])
     },
     "date": {
-      validator: (value) => (typeof value === "string") ? true : false,
+      validators: [
+        (value) => true
+      ],
       view: (Event, A) => Event["process/identifier"] === "incorporation" ? inputWithLabelField_disabled("Dato", Event["date"]) : inputWithLabel_string(A, Event, "Dato", "date")
     },
     "company/AoA/nominalSharePrice": { 
-      validator: (value) => (typeof value === "number") ? true : false,
+      validators: [
+        (value) => typeof value === "number",
+        (value) => value >= 0.01
+      ],
       view: (Event, A) => inputWithLabel_number(A, Event, "Aksjenes pålydende", "company/AoA/nominalSharePrice")
     },
   },
@@ -534,6 +526,8 @@ let H = {
     "company/shareholders": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? Event["transaction/records"].map( shareholderTransaction => shareholderTransaction["company/orgnumber"] ).filter( filterUniqueValues ) : [],
     "company/shareCapital": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? Event["event/accountBalance"]["2000"] : null,
     "company/accountBalance": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? addAccountBalances({}, Event["event/accountBalance"]) : null,
+    "company/appliedEventsCount": (prevCompany, Event) => Event["event/isIncorporated"] ? 1 : prevCompany["company/appliedEventsCount"] + 1,
+    "company/applicableEventTypes": (prevCompany, Event) => Object.keys(H.eventTypes).filter( eventType => H.eventTypes[ eventType ]["applicabilityCriteria"].every( criteriumFunction => criteriumFunction(prevCompany) === true )   ) ,
     "event/isIncorporated": (eventInput) => eventInput["process/identifier"] === "incorporation" ? true : false,
     "event/shareCountIncrease": (eventInput) => Array.isArray(eventInput["transaction/records"]) ? eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 ) : null,
     "event/shareCapitalIncrease": (eventInput) => Array.isArray(eventInput["transaction/records"]) ? eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"] * (eventInput["company/AoA/nominalSharePrice"] + shareholderTransaction["transaction/investment/unitPrice"]), 0 ) : null,
@@ -545,21 +539,35 @@ let H = {
   eventTypes: {
     "incorporation": {
       label: "Stiftelse",
-      inputVariables: ["transaction/records", "date", "company/AoA/nominalSharePrice"],
-      companyOutputVariableDependencies: ["company/isIncorporated", "company/orgnumber", "company/AoA/nominalSharePrice", "company/shareCount", "company/shareholders", "company/shareCapital", "company/accountBalance"],
-      validateCombinedEventInputs: (eventInputs) => true,
-      calculatedOutputs: ["event/isIncorporated", "event/shareCountIncrease", "event/shareCapitalIncrease", "event/accountBalance"]
-      },
-      "operatingCost": {
-        label: "Driftskostnader",
-        inputVariables: ["date", "transaction/generic/account", "transaction/amount"],
-        allowedAccounts: ["entity", "type", "process/identifier", "company/orgnumber", "date", "transaction/generic/account", "transaction/amount"],
-        companyOutputVariableDependencies: ["company/accountBalance"],
-        validateCombinedEventInputs: (eventInputs) => true,
-        calculatedOutputs: ["event/accountBalance"]
-      }
+      inputAttributes: ["transaction/records", "date", "company/AoA/nominalSharePrice"],
+      eventInputCriteria: [ //Is the combination of inputs valid? Not taking into account anything but the provided event input.
+        (Event) => Event["type"] === "process",
+        (Event) => Event["process/identifier"] === "incorporation",
+      ],
+      applicabilityCriteria: [ //Is the eventType applicable to the current state of the company?
+        (Company) => Company["company/appliedEventsCount"] === 0,
+      ],
+      calculatedOutputs: ["event/isIncorporated", "event/shareCountIncrease", "event/shareCapitalIncrease", "event/accountBalance"],
+      dependencies: ["company/isIncorporated", "company/orgnumber", "company/AoA/nominalSharePrice", "company/shareCount", "company/shareholders", "company/shareCapital", "company/accountBalance"] //Which calculatedAttributes need to be recalculated as a consequence of applying the event?
+    },
+    "operatingCost": {
+      label: "Driftskostnader",
+      inputAttributes: ["date", "transaction/generic/account", "transaction/amount"],
+      eventInputCriteria: [
+        (Event) => Event["type"] === "process",
+        (Event) => Event["process/identifier"] === "operatingCost",
+        (Event) => Number(Event["transaction/generic/account"]) >= 3000 && Number(Event["transaction/generic/account"]) < 8000,
+      ],
+      applicabilityCriteria: [
+        (Company) => Company["company/isIncorporated"] === true,
+      ],
+      calculatedOutputs: ["event/accountBalance"],
+      dependencies: ["company/accountBalance"]
+    }
   }
 }
+
+let createError = (errorMessage) => returnObject({type: "error", errorMessage})
 
 let timeline = (S, A) => {
 
@@ -581,11 +589,9 @@ let timeline = (S, A) => {
 let genericEventView = ( S, A, Event, companySnapshot ) => {
 
   let eventType = Event["process/identifier"]
-
-  let eventTypeAttributes = H.eventTypes[eventType]["inputVariables"]
+  let eventTypeAttributes = H.eventTypes[eventType]["inputAttributes"]
   let systemAttributes = Object.keys(H.systemAttributes)
   let visibleAttributes = eventTypeAttributes.filter( attribute => !systemAttributes.includes(attribute) )
-
   let attributeViews = visibleAttributes.map( attribute => H.inputAttributes[ attribute ].view( Event, A )  ).join("")
 
   return d([
@@ -623,17 +629,22 @@ let createEventView = (S, A) => {
 
 } 
 
-
 let eventInspector = (A, Event) => {
   let eventType = Event["process/identifier"]
   let eventTypeObject = H.eventTypes[ eventType ]
   
   let systemAttributes = Object.keys(H.systemAttributes)
-  let inputAttributes = eventTypeObject["inputVariables"]
+  let inputAttributes = eventTypeObject["inputAttributes"]
   let calculatedAttributes_event = eventTypeObject["calculatedOutputs"]
 
   return d([
     h3("Adminpanel for hendelse"),
+    Event["event/errors"].length === 0 
+      ? d("No event errors.") 
+      : d([ 
+        Event["event/errors"].map( error => d(error["error"]) ).join("") 
+    ]),
+    "<br><br>",
     systemAttributes.map( attribute => d([d(attribute), d("system"), d(typeof Event[ attribute ]), d(JSON.stringify(Event[ attribute ]), {style: "max-width: 200px;"}) ], {class: "eventInspectorRow"}) ).join(''),
     "<br>",
     inputAttributes.map( attribute => d([
@@ -644,21 +655,22 @@ let eventInspector = (A, Event) => {
     ], {class: "eventInspectorRow"}) ).join(""),
     "<br>",
     calculatedAttributes_event.map( attribute => d([d(attribute), d("calculated"), d(typeof Event[ attribute ]), d(JSON.stringify(Event[ attribute ]), {style: "max-width: 200px;"}) ], {class: "eventInspectorRow"}) ).join(''),
-    "<br>",
-    d(Event["event/error"] ? Event["event/error"] : "No event errors.")
-  ], {style: "background-color: #8080803b; padding: 1em;"})
+  ], {style: `background-color: ${Event["event/errors"].length === 0 ? "#8080803b" : "darksalmon"}; padding: 1em; `})
 }
 
 let companyInspector = (companySnapshot) => {
 
   return d([
     h3("Adminpanel for selskap"),
+    companySnapshot["company/errors"].length === 0 
+      ? d("No event errors.") 
+      : d([ 
+        companySnapshot["company/errors"].map( error => d(error["error"]) ).join("") 
+    ]),
+    "<br><br>",
     Object.keys(companySnapshot).map( attribute => d([d(attribute), d(JSON.stringify(companySnapshot[attribute]))], {class: "eventInspectorRow"} )  ).join('')
-  ], {style: "background-color: #8080803b; padding: 1em;"})
+  ], {style: `background-color: ${companySnapshot["company/errors"].length === 0 ? "#8080803b" : "darksalmon"}; padding: 1em; `})
 } 
-
-
-
 
 let addAccountBalances = (prevAccountBalance, accountBalance) => {
 

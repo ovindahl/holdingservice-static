@@ -127,6 +127,18 @@ let update = async (receivedS) => {
 }
 
 let submitTransaction = async (datoms, receivedS) => {
+
+
+    /* let validatedDatoms = datoms.map( datom => {
+        let validator = H.inputAttributes[ datom.attribute ].validator
+        let validationResult = validator(datom.value)
+        console.log(datom, validationResult)
+        return validationResult === true ? datom : validationResult
+    }  ) 
+
+    console.log(validatedDatoms) */
+
+
     let userContent = await APIRequest("POST", "transactor", JSON.stringify( datoms ))
 
     let updatedS = mergerino(receivedS, userContent)
