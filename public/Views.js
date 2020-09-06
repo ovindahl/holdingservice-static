@@ -138,14 +138,32 @@ const templateDatoms = {
   ]
 }
 
+
+
 var currentActionMappings = [] //Temporary global container for actionsmappings, to be made functional
 
 let addActionMapping = (actionMappings) => currentActionMappings = currentActionMappings.concat( actionMappings )
 
 const renderUI = (S, A) => { 
     currentActionMappings = [];
-    document.getElementById("appContainer").innerHTML = (S === null) ? "Server is re-booting, refresh in 10 sec.." :  pageView(S, A)
-    currentActionMappings.forEach( actionMapping => document.getElementById(actionMapping.triggerId).addEventListener(actionMapping.type, actionMapping.action) )
+
+    let pageSections = [
+      (S, A) => newD("text", "click", e => console.log("CLICK")),
+      (S, A) => newD("body"),
+      (S, A) => newD("footer"),
+    ]
+
+    let topLevelElements = pageSections.reduce( (elementArray, pageSection) => elementArray.concat( pageSection(S, A) ), [] )
+    console.log(topLevelElements)
+    let flattenedElements = flatDeep(topLevelElements, Infinity)
+    console.log(flattenedElements)
+    let html = flattenedElements.map( element => element.html ).join('')
+    let eventListeners = flattenedElements.map( element => element.eventListeners ).flat()
+    document.getElementById("appContainer").innerHTML = html
+    eventListeners.forEach( eventListener => document.getElementById( eventListener.elementId ).addEventListener(eventListener.eventType, eventListener.action) )
+
+    //document.getElementById("appContainer").innerHTML = (S === null) ? "Server is re-booting, refresh in 10 sec.." :  pageView(S, A)
+    //currentActionMappings.forEach( actionMapping => document.getElementById(actionMapping.triggerId).addEventListener(actionMapping.type, actionMapping.action) )
 }
 
 let pageView = (S, A) => {
@@ -164,6 +182,103 @@ let pageView = (S, A) => {
   ])
 
 }
+
+function flatDeep(arr, d = 1) {
+  return d > 0 ? arr.reduce((acc, val) => acc.concat(Array.isArray(val) ? flatDeep(val, d - 1) : val), [])
+               : arr.slice();
+};
+
+let newDiv = (content) => el2("div", {}, content)
+
+let newD = (textContent, eventType, action) => htmlElementObject("div", {}, textContent, [], (eventType && action) ? [ {eventType: eventType, action:action} ] : [] )
+
+let simpleDiv = (textContent) => htmlElementObject("div", {id: getNewElementID()}, textContent, [], [] )
+
+let divWithChildren = (textContent) => htmlElementObject("div", {id: getNewElementID()}, textContent, [
+  simpleDiv("ABC"),
+  simpleDiv("DEF")
+], [] )
+
+
+
+
+
+let htmlElementObject = (tagName, attributesObject, innerHTML, children, eventListenersInput) => {
+
+  let id = getNewElementID()
+  //let attributesList = attributesObject => (typeof attributesObject == "object") ? Object.entries(attributesObject).map((keyValuePair)=>{return ` ${keyValuePair[0]}="${keyValuePair[1]}" `}) : {} 
+  let openingTag = `<${tagName} ${Object.entries(mergerino(attributesObject, {id: id} )).map( (keyValuePair) => ` ${keyValuePair[0]}="${keyValuePair[1]}" `).join('')}>` 
+  let closingTag = `</${tagName}>`
+  let childrenHTML = children.length > 0 ? children.map( child => child.html ).join('') : '' 
+  let html = isVoid(tagName) ? openingTag : openingTag + innerHTML + childrenHTML + closingTag
+
+  let eventListeners = eventListenersInput.map( eventListener => mergerino(eventListener, {elementId: id}) )
+
+  return {tagName, attributesObject, innerHTML, children, eventListeners, html}  
+
+}
+
+let el2 = (tagName, attributesObject, content, eventType, action) => {
+
+  /* let voidElement = (tagName, attributesObject) => 
+  let fullElement = (tagName, attributesObject, content) => 
+  let el = (tagName, attributesObject, content) => (isVoid(tagName)) ? voidElement(tagName, attributesObject) : fullElement(tagName, attributesObject, content) */
+
+    let id = getNewElementID()
+    let elementContent = (typeof content === "string") ? el(tagName, mergerino(attributesObject, {id: id} ), content) : content
+    let actionMappingObject = (eventType && action) ?  {type: "actionMapping", "triggerId": id, eventType: eventType, action:action} : []
+    let elements = [elementContent].concat(actionMappingObject)
+
+    if(id === "8"){
+      console.log(content, elementContent, actionMappingObject)
+    }
+
+    return elements
+
+}
+
+let menuRow = (labels, selectedOptionIndex, buttonActions) => d( labels.map( (label, index) => d( label, {class: index === selectedOptionIndex ? "textButton textButton_selected" : "textButton"}, "click", buttonActions[index] ) ), {style: "display:flex;"} )
+
+let menuBarView = (S, A) => {
+
+  let orgnumbers = S.Events.map( E => E["company/orgnumber"] ).filter( filterUniqueValues )
+  let years = S.Events.filter( E => E["company/orgnumber"] === S.selectedOrgnumber ).map( E => E["date"].slice(0,4) ).filter( filterUniqueValues )
+  let pageLabels = ["Hendelser", "Årsavslutning", "Bank",  "Admin"]
+  let pageNames = ["overview", "yearEnd", "bankImport", "admin"]
+
+  return d([
+    menuRow(
+      orgnumbers, 
+      orgnumbers.indexOf( S.selectedOrgnumber ),
+      orgnumbers.map( orgnumber => e => {
+        let selectedOrgnumber = orgnumber
+        let selectedYear = S.Events.filter( C => C["company/orgnumber"] === orgnumber)[0]["date"].slice(0,4)
+        let patch = mergerino({selectedOrgnumber, selectedYear})
+        A.patch(  patch )
+      }  )
+    ),
+    /* d( "Legg til nytt selskap", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.newCompany(S, randBetween(8000000, 999999999) ) ) ),
+    menuRow(
+      years,
+      years.indexOf( String(S.selectedYear) ),
+      years.map( year => e => A.patch({selectedYear: year}) )
+    ),
+    menuRow(
+      pageLabels, 
+      pageNames.indexOf( S.currentPage ),
+      pageNames.map( pageName => e => A.patch({currentPage: pageName}) )
+    ) */
+  ], {style: "padding-left:3em;"})
+}
+
+let headerBarView = (S) => newD([
+  newD('<header><h1>Holdingservice Beta</h1></header>', {class: "textButton"}),
+  newD(`<div>Server version: ${S.serverConfig.serverVersion}</div>`),
+  newD(`<div>Client app version: ${S.serverConfig.clientVersion}</div>`),
+  newD(`<div>DB version: ${S.tx}</div>`),
+  newD(`<div>Server cache updated: ${moment(S.serverConfig.cacheUpdated).format()}</div>`),
+  newD( newD(["Logg ut", "Innstillinger"], {class: "textButton"}), {style: "display:flex;"} )
+], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
 
 
@@ -935,48 +1050,11 @@ let feedItemContainer = (entity, view) => d([
   d( entity["process/identifier"], {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"}),
 ]) 
 
-let headerBarView = (S) => d([
-  '<header><h1>Holdingservice Beta</h1></header>',
-  `<div>Server version: ${S.serverConfig.serverVersion}</div>`,
-  `<div>Client app version: ${S.serverConfig.clientVersion}</div>`,
-  `<div>DB version: ${S.tx}</div>`,
-  `<div>Server cache updated: ${moment(S.serverConfig.cacheUpdated).format()}</div>`,
-  d( divs(["Logg ut", "Innstillinger"], {class: "textButton"}), {style: "display:flex;"} )
-], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
-let menuRow = (labels, selectedOptionIndex, buttonActions) => d( labels.map( (label, index) => d( label, {class: index === selectedOptionIndex ? "textButton textButton_selected" : "textButton"}, "click", buttonActions[index] ) ), {style: "display:flex;"} )
 
-let menuBarView = (S, A) => {
 
-  let orgnumbers = S.Events.map( E => E["company/orgnumber"] ).filter( filterUniqueValues )
-  let years = S.Events.filter( E => E["company/orgnumber"] === S.selectedOrgnumber ).map( E => E["date"].slice(0,4) ).filter( filterUniqueValues )
-  let pageLabels = ["Hendelser", "Årsavslutning", "Bank",  "Admin"]
-  let pageNames = ["overview", "yearEnd", "bankImport", "admin"]
 
-  return d([
-    menuRow(
-      orgnumbers, 
-      orgnumbers.indexOf( S.selectedOrgnumber ),
-      orgnumbers.map( orgnumber => e => {
-        let selectedOrgnumber = orgnumber
-        let selectedYear = S.Events.filter( C => C["company/orgnumber"] === orgnumber)[0]["date"].slice(0,4)
-        let patch = mergerino({selectedOrgnumber, selectedYear})
-        A.patch(  patch )
-      }  )
-    ),
-    d( "Legg til nytt selskap", {class: "textButton"}, "click", e => A.submitDatoms( templateDatoms.newCompany(S, randBetween(8000000, 999999999) ) ) ),
-    menuRow(
-      years,
-      years.indexOf( String(S.selectedYear) ),
-      years.map( year => e => A.patch({selectedYear: year}) )
-    ),
-    menuRow(
-      pageLabels, 
-      pageNames.indexOf( S.currentPage ),
-      pageNames.map( pageName => e => A.patch({currentPage: pageName}) )
-    )
-  ], {style: "padding-left:3em;"})
-}
+
 
 //Bank import page
   
