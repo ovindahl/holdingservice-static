@@ -32,6 +32,45 @@ let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  
 
 let getRetractionDatoms = (serverEntities, Entities) => getRetractionDatomsWithoutChildren(Entities).concat( Entities.map( Parent => getRetractionDatoms(serverEntities, serverEntities.filter( e => e["parent"] == Parent["entity"] )   ) ).flat() )
 
+
+const templateDatoms = {
+    complexTransaction: (S) => [
+      newDatom("process", "type", "process"),
+      newDatom("process", "date", S.selectedCompany["h/Events"][1]["date"]),
+      newDatom("process", "process/identifier", "complexTransaction"),
+      newDatom("process", "company/orgnumber", S.selectedCompany["company/orgnumber"]),
+      newDatom("complexTransaction", "type", "transactions"),
+      newDatom("complexTransaction", "parent", "process"),
+      newDatom("complexTransaction", "date", S.selectedCompany["h/Events"][1]["date"]),
+      newDatom("complexTransaction", "company/orgnumber", S.selectedCompany["company/orgnumber"]),
+      newDatom("complexTransaction", "transaction/description", "Fri postering"),
+      newDatom("record", "type", "records"),
+      newDatom("record", "parent", "complexTransaction"),
+      newDatom("record", "transaction/generic/account", "1920"),
+      newDatom("record", "transaction/amount", -10000),
+      newDatom("record2", "type", "records"),
+      newDatom("record2", "parent", "complexTransaction"),
+      newDatom("record2", "transaction/generic/account", "1920"),
+      newDatom("record2", "transaction/amount", 10000),
+    ],
+    newRecord: (S, eventEntity) => [
+      newDatom("record", "type", "records"),
+      newDatom("record", "parent", eventEntity.Documents[0]["entity"]),
+      newDatom("record", "transaction/generic/account", "1920"),
+      newDatom("record", "transaction/amount", 0),
+    ],
+    newCompany: (S, orgnumber) => [
+      newDatom("process", "type", "process"),
+      newDatom("process", "date", "2020-01-01"),
+      newDatom("process", "process/identifier", "incorporation"),
+      newDatom("process", "company/orgnumber", String( orgnumber) ),
+    ],
+    addFounder: (incorporationEvent) => [
+      newDatom(incorporationEvent.entity, "transaction/records", Array.isArray(incorporationEvent["transaction/records"]) ? incorporationEvent["transaction/records"].concat({"company/orgnumber":"010120123456","transaction/investment/quantity":0,"transaction/investment/unitPrice":0}) : [{"company/orgnumber":"010120123456","transaction/investment/quantity":0,"transaction/investment/unitPrice":0}] )
+    ]
+  }
+
+
 let getUserActions = (S) => returnObject({
     patch: (patch) => update( mergerino(S, patch) ),
     submitDatoms: (datoms) => submitTransaction(datoms, S ),
@@ -64,6 +103,19 @@ let getUserActions = (S) => returnObject({
         }else{
             console.log("ERRROR: Over 100 retraction datoms submitted:", retractionDatoms)
         }
+    },
+    updateEventAttribute: async (Event, attribute, value) => {
+
+
+        let validators = H.inputAttributes[ attribute ].validators
+
+        let validationResult = validators.map( validator => validator(value)  )
+
+        
+
+
+        let datom = [newDatom(Event["entity"], attribute, e.srcElement.value)]
+
     }
 })
 
@@ -128,18 +180,37 @@ let update = async (receivedS) => {
 
 let submitTransaction = async (datoms, receivedS) => {
 
+    let validatedDatoms = []
 
-    /* let validatedDatoms = datoms.map( datom => {
-        let validator = H.inputAttributes[ datom.attribute ].validator
-        let validationResult = validator(datom.value)
-        console.log(datom, validationResult)
-        return validationResult === true ? datom : validationResult
-    }  ) 
+    let isRetractionDatoms = datoms.every( datom => datom.isAddition === false  )
 
-    console.log(validatedDatoms) */
+    //Validation to be improved....
+
+    if(isRetractionDatoms){
+        validatedDatoms = datoms.filter( datom => Object.keys(H.inputAttributes).includes(datom.attribute)  ).map( datom => {
+            let validators = H.inputAttributes[ datom.attribute ].validators
+            let validationResult = validators.every( validator => validator(datom.value) )
+            console.log(datom, validationResult)
+            return validationResult === true ? datom : validationResult
+        }  )
+
+    }else{
+        validatedDatoms = datoms.filter( datom => Object.keys(H.inputAttributes).includes(datom.attribute)  ).map( datom => {
+            let validators = H.inputAttributes[ datom.attribute ].validators
+            let validationResult = validators.every( validator => validator(datom.value) )
+            console.log(datom, validationResult)
+            return validationResult === true ? datom : validationResult
+        }  )
+
+    }
 
 
-    let userContent = await APIRequest("POST", "transactor", JSON.stringify( datoms ))
+    
+
+    console.log("Datoms sent to Transactor: ", validatedDatoms)
+
+
+    let userContent = await APIRequest("POST", "transactor", JSON.stringify( validatedDatoms ))
 
     let updatedS = mergerino(receivedS, userContent)
 
