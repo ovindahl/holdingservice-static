@@ -30,71 +30,30 @@ const configureClient = async () => {
 
 let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
 
-let getRetractionDatoms = (serverEntities, Entities) => getRetractionDatomsWithoutChildren(Entities).concat( Entities.map( Parent => getRetractionDatoms(serverEntities, serverEntities.filter( e => e["parent"] == Parent["entity"] )   ) ).flat() )
-
-
-const templateDatoms = {
-    complexTransaction: (S) => [
-      newDatom("process", "type", "process"),
-      newDatom("process", "date", S.selectedCompany["h/Events"][1]["date"]),
-      newDatom("process", "process/identifier", "complexTransaction"),
-      newDatom("process", "company/orgnumber", S.selectedCompany["company/orgnumber"]),
-      newDatom("complexTransaction", "type", "transactions"),
-      newDatom("complexTransaction", "parent", "process"),
-      newDatom("complexTransaction", "date", S.selectedCompany["h/Events"][1]["date"]),
-      newDatom("complexTransaction", "company/orgnumber", S.selectedCompany["company/orgnumber"]),
-      newDatom("complexTransaction", "transaction/description", "Fri postering"),
-      newDatom("record", "type", "records"),
-      newDatom("record", "parent", "complexTransaction"),
-      newDatom("record", "transaction/generic/account", "1920"),
-      newDatom("record", "transaction/amount", -10000),
-      newDatom("record2", "type", "records"),
-      newDatom("record2", "parent", "complexTransaction"),
-      newDatom("record2", "transaction/generic/account", "1920"),
-      newDatom("record2", "transaction/amount", 10000),
-    ],
-    newRecord: (S, eventEntity) => [
-      newDatom("record", "type", "records"),
-      newDatom("record", "parent", eventEntity.Documents[0]["entity"]),
-      newDatom("record", "transaction/generic/account", "1920"),
-      newDatom("record", "transaction/amount", 0),
-    ],
-    newCompany: (S, orgnumber) => [
-      newDatom("process", "type", "process"),
-      newDatom("process", "date", "2020-01-01"),
-      newDatom("process", "process/identifier", "incorporation"),
-      newDatom("process", "company/orgnumber", String( orgnumber) ),
-    ],
-    addFounder: (incorporationEvent) => [
-      newDatom(incorporationEvent.entity, "transaction/records", Array.isArray(incorporationEvent["transaction/records"]) ? incorporationEvent["transaction/records"].concat({"company/orgnumber":"010120123456","transaction/investment/quantity":0,"transaction/investment/unitPrice":0}) : [{"company/orgnumber":"010120123456","transaction/investment/quantity":0,"transaction/investment/unitPrice":0}] )
-    ]
-  }
-
-
 let getUserActions = (S) => returnObject({
-    patch: (patch) => update( mergerino(S, patch) ),
-    submitDatoms: (datoms) => submitTransaction(datoms, S ),
-    retractEntity: async entityID => {
+    updateLocalState: (patch) => update( mergerino(S, patch) ),
+    updateEventAttribute: async (Event, attribute, value) => {
+        let attributeValidators = sharedConfig.inputAttributes[ attribute ].validators //Attribute level validation
+        let eventValidators = sharedConfig.eventTypes[ Event["process/identifier"] ] //Event level validation TBD
 
-        let EntitiesObject = await APIRequest("GET", "Entities", null)
-
-        let serverEntities = EntitiesObject.Entities
-
-        let Entity = serverEntities.filter( e => e["entity"] === entityID )[0]
-
-        let retractionDatoms = getRetractionDatoms(serverEntities, [Entity] )
-
-        console.log("Retracting: ", retractionDatoms)
-
-        if(retractionDatoms.length < 100){
-            submitTransaction( retractionDatoms, S )
+        if( attributeValidators.every( validator => validator(value) ) ){
+            let datoms = [newDatom(Event["entity"], attribute, value)]
+            submitTransaction( datoms, S )
         }else{
-            console.log("ERRROR: Over 100 retraction datoms submitted:", retractionDatoms)
+            console.log("Datom validation error: ", Event, attribute, value)
+            update(S)
         }
+    },
+    createEvent: async ( CompanyDoc, eventType ) => {
+        let eventDatoms = sharedConfig.eventTypes[ eventType ]["newEventDatoms"](CompanyDoc)
+        console.log("eventDatoms", eventDatoms)
+        submitTransaction( eventDatoms, S )
     },
     retractSingleEntity: async Entity => {
 
-        let retractionDatoms = getRetractionDatomsWithoutChildren([Entity])
+        // To be updated
+
+        /* let retractionDatoms = getRetractionDatomsWithoutChildren([Entity])
 
         console.log("Retracting: ", retractionDatoms)
 
@@ -102,20 +61,7 @@ let getUserActions = (S) => returnObject({
             submitTransaction( retractionDatoms, S )
         }else{
             console.log("ERRROR: Over 100 retraction datoms submitted:", retractionDatoms)
-        }
-    },
-    updateEventAttribute: async (Event, attribute, value) => {
-
-
-        let validators = H.inputAttributes[ attribute ].validators
-
-        let validationResult = validators.map( validator => validator(value)  )
-
-        
-
-
-        let datom = [newDatom(Event["entity"], attribute, e.srcElement.value)]
-
+        } */
     }
 })
 
@@ -168,15 +114,32 @@ let getLocalState = async (receivedS) => {
     return S
 }
 
+let updateDOM = (containerID, htmlBody) => {
+
+    document.getElementById(containerID).innerHTML = htmlBody.map( element => element.html ).join('')
+    htmlBody.map( element => Array.isArray(element.eventListeners) ? element.eventListeners : [] ).flat().forEach( eventListener => document.getElementById( eventListener.id ).addEventListener(eventListener.eventType, eventListener.action) )
+  
+}
+
 let update = async (receivedS) => {
     
-        
     let S = await getLocalState(receivedS)
-    console.log("State: ", S)
+    
     let A = getUserActions(S)
 
-    renderUI( S, A )    
+    
+
+    S.companySnapshots = S.selectedEvents.map( (Event, index) => generateCompanyDocument( getInitialCompany() , S.selectedEvents.slice(0, index + 1))  ).filter( companyDoc => companyDoc["company/rejectedEvents"].length === 0)
+
+    S.CompanyDoc = S.companySnapshots[ S.companySnapshots.length - 1 ]
+
+    console.log("State: ", S)
+    
+    let htmlBody = generateHTMLBody(S, A)
+    updateDOM("appContainer", htmlBody)
 }
+
+
 
 let submitTransaction = async (datoms, receivedS) => {
 
@@ -230,31 +193,3 @@ let updateClientRelease = (newVersion) => {
 let resetServer = async () => {
     await APIRequest("GET", "resetServer", null)
 }
-
-
-//Archive
-
-/* let parseFile = (file) => Papa.parse(file, {complete: results => update(mergerino(S, createObject(`bankImport/parsedFile`, results.data.slice(1, results.data.length ).map( row => returnObject({ date: moment( row[0], "DD.MM.YYYY").format("YYYY-MM-DD"), description: row[1], amount: Number(row[2]), transactionReference: row[3] })  ) )))})
-
-let importBankTransactions = () => Transactor.submit(
-    S["bankImport/parsedFile"].map( (row, i) => [
-        newDatom( `P${i}`, "type", "process"),
-        newDatom( `P${i}`, "parent", S.selectedCompany ),
-        newDatom( `P${i}`, "process/identifier", "simpleTransaction"),
-        newDatom( `P${i}`, "date", row["date"] ), 
-        newDatom( `T${i}`, "type", "transactions"),
-        newDatom( `T${i}`, "parent", `P${i}` ),
-        newDatom( `T${i}`, "date", row["date"] ), //Redundant?
-        newDatom( `T${i}`, "transaction/description", row["description"] ),
-        newDatom( `R1${i}`, "type", "records" ),
-        newDatom( `R1${i}`, "parent", `T${i}` ),
-        newDatom( `R1${i}`, "transaction/generic/account", "1920"),
-        newDatom( `R1${i}`, "transaction/bankAccount", S["bankImport/selectedBank"] ),
-        newDatom( `R1${i}`, "transaction/bankTransactionReference", row["transactionReference"] ),
-        newDatom( `R1${i}`, "transaction/amount", row["amount"] ),
-        newDatom( `R2${i}`, "type", "records" ),
-        newDatom( `R2${i}`, "parent", `T${i}` ),
-        newDatom( `R2${i}`, "transaction/amount", -row["amount"] )
-    ]).flat(),
-    S
-) */
