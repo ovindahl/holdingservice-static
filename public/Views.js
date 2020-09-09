@@ -99,37 +99,73 @@ let headerBarView = (S) => d([
 const generateHTMLBody = (S, A) => [
   headerBarView(S),
   d( S.Events.map( E => E["company/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ), {style: "display:flex;"}),
-  d( S.CompanyDoc["company/appliedEvents"].map( appliedEvent => genericEventView(appliedEvent, A)   ), {class: "pageContainer"} ),
-  d( S.CompanyDoc["company/rejectedEvents"].map( appliedEvent => genericEventView(appliedEvent, A)   ), {class: "pageContainer"} ),
+  d( S.CompanyDoc["company/appliedEvents"].map( appliedEvent => appliedEventView(appliedEvent, A)   ), {class: "pageContainer"} ),
   d( [companyInspectorView( S.CompanyDoc, A )]  , {class: "pageContainer"} ),
+  d( S.CompanyDoc["company/rejectedEvents"].map( rejectedEvent => rejectedEventView(rejectedEvent, A)   ), {class: "pageContainer"} ),
   d( [addEventView(S.CompanyDoc, A)]  , {class: "pageContainer"} ),
 ]
 
 
 
-let genericEventView = ( Event, A ) => {
+let appliedEventView = ( Event, A ) => {
 
   let inputAttributeObject = sharedConfig.inputAttributes
-
   let eventTypeObject = sharedConfig.eventTypes[ Event["process/identifier"] ]
-
-  let genericEventAttributeViews = ["process/identifier"].map( attribute => inputAttributeObject[ attribute ].view( Event, A )  )
-  let inputAttributeViews = eventTypeObject["inputAttributes"].map( attribute => inputAttributeObject[ attribute ].view( Event, A )  )
+  let eventTypeSelector = inputAttributeObject["process/identifier"].view( Event, A )
   let calculatedAttributeViews = eventTypeObject["calculatedAttributes"].map( attribute => d( attribute + ": " + JSON.stringify(Event[ attribute ]) )  )
+
+  let adminInputAttributeViews = eventTypeObject["inputAttributes"].map( attribute => d([
+    d(attribute),
+    input({value: Event[ attribute ], style: "text-align: right;"}, "change", e => A.updateEventAttribute(Event, attribute , (inputAttributeObject[ attribute ].valueType === "number") ? Number(e.srcElement.value) : e.srcElement.value ) ),
+    d( String( inputAttributeObject[  attribute ].validators.every( validator => validator(Event[ attribute])  ) ) ),
+  ], {class: "eventInspectorRow"}) )
 
   let attributeViews = [
     h3("Hendelse:"),
-    genericEventAttributeViews,
-    h3("Hendelsens input:"),
-    inputAttributeViews,
+    eventTypeSelector,
+    h3("Nødvendig og oppgitt input for valgt hendelsestype:"),
+    adminInputAttributeViews,
     h3("Kalkulert output på hendelsesnivå:"),
-    calculatedAttributeViews
+    calculatedAttributeViews,
+    h3("Oppdaterte output på selskapssnivå:"),
+    d("TBD"),
+    h3("Alle tilgjengelige output på selskapssnivå:"),
+    d("TBD")
   ].flat()
 
   return d([
     d(
       attributeViews
     , {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} ),
+    d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
+  ])
+
+
+
+}
+
+let rejectedEventView = ( Event, A ) => {
+
+  let inputAttributeObject = sharedConfig.inputAttributes
+  let eventTypeObject = sharedConfig.eventTypes[ Event["process/identifier"] ]
+
+  let genericEventAttributeViews = ["process/identifier"].map( attribute => inputAttributeObject[ attribute ].view( Event, A )  )
+  let inputAttributeViews = eventTypeObject["inputAttributes"].map( attribute => inputAttributeObject[ attribute ].view( Event, A )  )
+  let errorViews = d( [Event["event/errors"]].map( error => d( error.error )  ))
+
+  let attributeViews = [
+    h3("Ugyldig hendelse:"),
+    genericEventAttributeViews,
+    h3("Hendelsens input:"),
+    inputAttributeViews,
+    h3("Feilmeldinger:"),
+    errorViews
+  ].flat()
+
+  return d([
+    d(
+      attributeViews
+    , {style: "width: 800px;padding:1em; margin-left:1em; background-color: #ff000024;border: solid 1px lightgray;"} ),
     d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
   ])
 
@@ -179,7 +215,7 @@ let generateCompanyDocument = (prevCompany, Events) => Events.reduce( (Company, 
   ? eventIsApplicable(Company, Event )
     ? applyNextEvent(Company, Event) 
     : rejectEvent(Company, Event)
-  : rejectCompany(Company)
+  : rejectEvent(Company, Event)
   , prevCompany )
 
 
@@ -187,7 +223,7 @@ let generateCompanyDocument = (prevCompany, Events) => Events.reduce( (Company, 
 
 let companyIsValid = (Company) => [
   (Company) => ["company/isIncorporated", "company/errors", "company/applicableEventTypes", "company/inputEvents"].every( attribute => Object.keys(Company).includes( attribute  ) ) , //Company has all required attributes
-  (Company) => Company["company/errors"].length === 0 //Company has no errors
+  (Company) => Company["company/rejectedEvents"].length === 0 //Company has no errors
 ].every( criteriumFunction => criteriumFunction(Company) )
 
 let eventIsApplicable = (Company, Event) => [
@@ -227,8 +263,9 @@ let updateCalculatedAttribute_Company = (Company, constructedEvent, calculatedAt
 )
 
 //Rejection functions
-let rejectCompany = (prevCompany) => mergerino(prevCompany, {"company/errors": prevCompany["company/errors"].concat({error: `Inputcompany not valid.`})})
-let rejectEvent = (prevCompany, Event) => mergerino(prevCompany, {"company/rejectedEvents": prevCompany["company/rejectedEvents"].concat(   mergerino(Event, {"event/errors": [{error: `Event is invalid`}] }) )})
+let rejectEvent = (prevCompany, Event) =>  mergerino(prevCompany, 
+  {"company/rejectedEvents": prevCompany["company/rejectedEvents"].concat( mergerino(Event, {"event/errors": {error: `Event is invalid`} })) }
+  )
 
 
 // COMPANY DOCUMENT CREATION PIPELINE - END
@@ -337,13 +374,13 @@ let H = {
         dropdown( ifNot( Event["process/identifier"], 0), Object.entries(sharedConfig.eventTypes).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.updateEventAttribute(Event, "process/identifier", String(e.srcElement.value) ) )
       ], {class: "inputWithLabel"}  )
     },
-    /* "transaction/records": { 
+    "transaction/records": { 
       validators: [
         (value) => typeof value === "object"
       ],
       valueType: "object",
       view: (Event, A) => d(JSON.stringify(Event))
-    }, */
+    },
     "transaction/generic/account": {
       validators: [
         (value) => typeof value === "string",
@@ -371,7 +408,7 @@ let H = {
       validators: [
         (value) => typeof value === "string",
         (value) => value.length === 9,
-        (value) => Number(value) >= 800000000,
+        (value) => Number(value) >= 700000000,
         (value) => Number(value) < 1000000000
       ],
       valueType: "string",
@@ -481,12 +518,6 @@ let sharedConfig = {
   defaultCalculatedAttributes: ["company/appliedEvents", "company/appliedEventsCount"],
   calculatedAttributes: H.calculatedAttributes,
 }
-
-
-
-
-
-
 
 let addAccountBalances = (prevAccountBalance, accountBalance) => {
 

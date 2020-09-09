@@ -127,11 +127,8 @@ let update = async (receivedS) => {
     
     let A = getUserActions(S)
 
-    
 
-    S.companySnapshots = S.selectedEvents.map( (Event, index) => generateCompanyDocument( getInitialCompany() , S.selectedEvents.slice(0, index + 1))  ).filter( companyDoc => companyDoc["company/rejectedEvents"].length === 0)
-
-    S.CompanyDoc = S.companySnapshots[ S.companySnapshots.length - 1 ]
+    S.CompanyDoc = generateCompanyDocument( getInitialCompany(), S.selectedEvents )
 
     console.log("State: ", S)
     
