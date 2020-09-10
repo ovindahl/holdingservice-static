@@ -46,7 +46,7 @@ function split(array, isValid) {
   }, [[], []]);
 }
 
-let ifNot = (value, fallback) => value ? value : fallback
+let ifError = (value, fallback) => value ? value : fallback
 
 //HTML element generation
 let isVoid = tagName => ["area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"].includes(tagName)
@@ -99,7 +99,7 @@ let headerBarView = (S) => d([
 const generateHTMLBody = (S, A) => [
   headerBarView(S),
   d( S.Events.map( E => E["company/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ), {style: "display:flex;"}),
-  d( S.CompanyDoc["company/appliedEvents"].map( appliedEvent => appliedEventView(appliedEvent, A)   ), {class: "pageContainer"} ),
+  d( S.CompanySnapshots.map( CompanySnapshot => CompanySnapshot["company/appliedEvents"].length > 0 ? appliedEventView(CompanySnapshot, A) : d("")   ), {class: "pageContainer"} ) ,
   d( [companyInspectorView( S.CompanyDoc, A )]  , {class: "pageContainer"} ),
   d( S.CompanyDoc["company/rejectedEvents"].map( rejectedEvent => rejectedEventView(rejectedEvent, A)   ), {class: "pageContainer"} ),
   d( [addEventView(S.CompanyDoc, A)]  , {class: "pageContainer"} ),
@@ -107,7 +107,10 @@ const generateHTMLBody = (S, A) => [
 
 
 
-let appliedEventView = ( Event, A ) => {
+let appliedEventView = ( CompanySnapshot, A ) => {
+
+  let appliedEvents = CompanySnapshot["company/appliedEvents"]
+  let Event = appliedEvents[ appliedEvents.length - 1 ]
 
   let inputAttributeObject = sharedConfig.inputAttributes
   let eventTypeObject = sharedConfig.eventTypes[ Event["process/identifier"] ]
@@ -120,6 +123,10 @@ let appliedEventView = ( Event, A ) => {
     d( String( inputAttributeObject[  attribute ].validators.every( validator => validator(Event[ attribute])  ) ) ),
   ], {class: "eventInspectorRow"}) )
 
+  let calculatedCompanyAttributeViews = eventTypeObject["dependencies"].map( attribute => d( attribute + ": " + JSON.stringify(CompanySnapshot[ attribute ]) )  )
+
+  let allCompanyAttributeViews = Object.keys(CompanySnapshot).map( attribute => d( attribute + ": " + JSON.stringify(CompanySnapshot[ attribute ]) )  )
+
   let attributeViews = [
     h3("Hendelse:"),
     eventTypeSelector,
@@ -128,9 +135,10 @@ let appliedEventView = ( Event, A ) => {
     h3("Kalkulert output på hendelsesnivå:"),
     calculatedAttributeViews,
     h3("Oppdaterte output på selskapssnivå:"),
-    d("TBD"),
+    calculatedCompanyAttributeViews,
     h3("Alle tilgjengelige output på selskapssnivå:"),
-    d("TBD")
+    allCompanyAttributeViews,
+    retractEventButton(Event, A)
   ].flat()
 
   return d([
@@ -143,6 +151,8 @@ let appliedEventView = ( Event, A ) => {
 
 
 }
+
+let retractEventButton = (Event, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(Event) )
 
 let rejectedEventView = ( Event, A ) => {
 
@@ -159,7 +169,8 @@ let rejectedEventView = ( Event, A ) => {
     h3("Hendelsens input:"),
     inputAttributeViews,
     h3("Feilmeldinger:"),
-    errorViews
+    errorViews,
+    retractEventButton(Event, A)
   ].flat()
 
   return d([
@@ -176,9 +187,6 @@ let rejectedEventView = ( Event, A ) => {
 let companyInspectorView = ( companySnapshot, A ) => d([
     d([
     h3("Selskapsdokumentet"),
-    companySnapshot["company/errors"].length === 0 
-      ? d("No company errors.")
-      : d( companySnapshot["company/errors"].map( error => d(error["error"]) ) ),
     d("<br><br>"),
     d( Object.keys(companySnapshot).map( attribute => d([
       d(attribute), 
@@ -203,34 +211,44 @@ let addEventView = (CompanyDoc, A) => d([
 
 let getInitialCompany = () => returnObject({
   "company/isIncorporated": false, 
-  "company/errors": [], 
   "company/applicableEventTypes": ["incorporation"], 
-  "company/inputEvents": [], 
   "company/rejectedEvents": [], 
   "company/appliedEvents": [],
   "company/accountBalance": {}
 })
 
-let generateCompanyDocument = (prevCompany, Events) => Events.reduce( (Company, Event) => companyIsValid(Company)
-  ? eventIsApplicable(Company, Event )
-    ? applyNextEvent(Company, Event) 
-    : rejectEvent(Company, Event)
-  : rejectEvent(Company, Event)
-  , prevCompany )
+let ifNot = (test, ifNot, then) => test ? then : ifNot
 
+
+let generateCompanyDocument = (prevCompany, Events) => Events.reduce( accumulateEvents, prevCompany )
+
+let accumulateEvents = (Company, Event) => ifNot( 
+  companyIsValid(Company), 
+  rejectEvent(Company, Event, "Cannot apply event to company unless all previous events are successfully applied."),   
+    ifNot( 
+      isApplicableEvent(Company, Event), 
+      rejectEvent(Company, Event, "The selected eventType is not applicable to the company."),
+        ifNot( 
+          isValidEvent( Event ) , 
+          rejectEvent(Company, Event, "The supplied event inputs are not valid."), 
+          applyNextEvent(Company, Event)
+    )
+  )
+)
+
+//Rejection function
+let rejectEvent = (prevCompany, Event, errorMessage) =>  mergerino(prevCompany, 
+  {"company/rejectedEvents": prevCompany["company/rejectedEvents"].concat( mergerino(Event, {"event/errors": {error: errorMessage} })) }
+)
 
 //Validators
 
 let companyIsValid = (Company) => [
-  (Company) => ["company/isIncorporated", "company/errors", "company/applicableEventTypes", "company/inputEvents"].every( attribute => Object.keys(Company).includes( attribute  ) ) , //Company has all required attributes
+  (Company) => ["company/isIncorporated", "company/applicableEventTypes"].every( attribute => Object.keys(Company).includes( attribute  ) ) , //Company has all required attributes
   (Company) => Company["company/rejectedEvents"].length === 0 //Company has no errors
 ].every( criteriumFunction => criteriumFunction(Company) )
 
-let eventIsApplicable = (Company, Event) => [
-  (Company, Event) => isValidEvent(Event),
-  (Company, Event) => isApplicableEvent(Company, Event),
-  (Company, Event) => companyFullfillsEventCriteria(Company, Event),
-].every( criteriumFunction => criteriumFunction(Company, Event) )
+let isApplicableEvent = (Company, Event) => Company["company/applicableEventTypes"].includes( Event["process/identifier"] )
 
 let isValidEvent = (Event) => [
   (Event) => Object.keys(sharedConfig.eventTypes).includes( Event["process/identifier"]  ), //Event has a valid event type
@@ -239,7 +257,7 @@ let isValidEvent = (Event) => [
   (Event) => sharedConfig.eventTypes[ Event["process/identifier"] ]["eventInputCriteria"].every( criterumFunction =>  criterumFunction(Event) ), //All event level input criteria are fulfilled
 ].every( criteriumFunction => criteriumFunction(Event)  )
 
-let isApplicableEvent = (Company, Event) => Company["company/applicableEventTypes"].includes( Event["process/identifier"] )
+
 
 let companyFullfillsEventCriteria = (Company, Event) => sharedConfig.eventTypes[ Event["process/identifier"] ]["applicabilityCriteria"].every( criterumFunction =>  criterumFunction(Company) ) //All event requirements to company are fulfilled
 
@@ -261,12 +279,6 @@ let updateCalculatedAttribute_Event = (Company, Event, calculatedAttributeName) 
 let updateCalculatedAttribute_Company = (Company, constructedEvent, calculatedAttributeName) => mergerino( Company, //(Company, constructedEvent, calculatedAttributeName) -> updatedCompany
   createObject(calculatedAttributeName, sharedConfig.calculatedAttributes[ calculatedAttributeName ](Company, constructedEvent))
 )
-
-//Rejection functions
-let rejectEvent = (prevCompany, Event) =>  mergerino(prevCompany, 
-  {"company/rejectedEvents": prevCompany["company/rejectedEvents"].concat( mergerino(Event, {"event/errors": {error: `Event is invalid`} })) }
-  )
-
 
 // COMPANY DOCUMENT CREATION PIPELINE - END
 
@@ -371,7 +383,7 @@ let H = {
       valueType: "string",
       view: (Event, A) => d([
         d("Hendelsestype"),
-        dropdown( ifNot( Event["process/identifier"], 0), Object.entries(sharedConfig.eventTypes).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.updateEventAttribute(Event, "process/identifier", String(e.srcElement.value) ) )
+        dropdown( ifError( Event["process/identifier"], 0), Object.entries(sharedConfig.eventTypes).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.updateEventAttribute(Event, "process/identifier", String(e.srcElement.value) ) )
       ], {class: "inputWithLabel"}  )
     },
     "transaction/records": { 
@@ -391,7 +403,7 @@ let H = {
       valueType: "string",
       view: (Event, A) => d([
         d("Konto"),
-        dropdown( ifNot( Event["transaction/generic/account"], 0), Object.entries( H.Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.updateEventAttribute(Event, "transaction/generic/account", String(e.srcElement.value) ) )
+        dropdown( ifError( Event["transaction/generic/account"], 0), Object.entries( H.Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.updateEventAttribute(Event, "transaction/generic/account", String(e.srcElement.value) ) )
       ], {class: "inputWithLabel"}  )
     },
     "transaction/amount": {
@@ -442,7 +454,7 @@ let H = {
   calculatedAttributes: {
     "company/isIncorporated": (prevCompany, Event) => ( prevCompany["company/isIncorporated"] || Event["event/isIncorporated"]) ? true : false,
     "company/orgnumber": (prevCompany, Event) => prevCompany["company/orgnumber"] ? prevCompany["company/orgnumber"] : Event["company/orgnumber"],
-    "company/AoA/nominalSharePrice": (prevCompany, Event) => Event["company/AoA/nominalSharePrice"],
+    "company/AoA/nominalSharePrice": (prevCompany, Event) => Event["event/nominalSharePrice"],
     "company/shareCount": (prevCompany, Event) => prevCompany["company/shareCount"] ? prevCompany["company/shareCount"] + Event["event/shareCountIncrease"] : Event["event/shareCountIncrease"],
     "company/shareholders": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? Event["transaction/records"].map( shareholderTransaction => shareholderTransaction["company/orgnumber"] ).filter( filterUniqueValues ) : [],
     "company/shareCapital": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? Event["event/accountBalance"]["2000"] : null,
@@ -451,6 +463,7 @@ let H = {
     "company/appliedEventsCount": (prevCompany, Event) => Event["event/isIncorporated"] ? 1 : prevCompany["company/appliedEventsCount"] + 1,
     "company/applicableEventTypes": (prevCompany, Event) => Object.keys(sharedConfig["eventTypes"]).filter( eventType => sharedConfig["eventTypes"][ eventType ]["applicabilityCriteria"].every( criteriumFunction => criteriumFunction(prevCompany) === true )   ) ,
     "event/isIncorporated": (prevCompany, eventInput) => eventInput["process/identifier"] === "incorporation" ? true : false,
+    "event/nominalSharePrice": (prevCompany, Event) => Event["company/AoA/nominalSharePrice"],
     "event/shareCountIncrease": (prevCompany, eventInput) => Array.isArray(eventInput["transaction/records"]) ? eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 ) : null,
     "event/shareCapitalIncrease": (prevCompany, eventInput) => Array.isArray(eventInput["transaction/records"]) ? eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"] * (eventInput["company/AoA/nominalSharePrice"] + shareholderTransaction["transaction/investment/unitPrice"]), 0 ) : null,
     "event/accountBalance": (prevCompany, Event) => sharedConfig["eventTypes"][ Event["process/identifier"] ].getAccountBalance(Event)
@@ -458,7 +471,7 @@ let H = {
   eventTypes: {
     "incorporation": {
       label: "Stiftelse",
-      inputAttributes: ["company/AoA/nominalSharePrice"],
+      inputAttributes: ["date", "company/AoA/nominalSharePrice"],
       eventInputCriteria: [
         (Event) => Event["type"] === "process",
         (Event) => Event["process/identifier"] === "incorporation",
@@ -466,7 +479,7 @@ let H = {
       applicabilityCriteria: [
         (Company) => Company["company/appliedEvents"].length === 0,
       ],
-      calculatedAttributes: ["event/isIncorporated", "company/AoA/nominalSharePrice"],
+      calculatedAttributes: ["event/isIncorporated", "event/nominalSharePrice"],
       getAccountBalance: (Event) => returnObject({}),
       dependencies: ["company/isIncorporated", "company/orgnumber", "company/AoA/nominalSharePrice"] 
     },
@@ -527,7 +540,7 @@ let addAccountBalances = (prevAccountBalance, accountBalance) => {
 
   let allAccounts = prevAccounts.concat(newAccounts).filter( filterUniqueValues )
 
-  let newAccountBalance = mergerino({}, allAccounts.map( acc => createObject(acc, ifNot(prevAccountBalance[acc], 0) +  ifNot(accountBalance[acc], 0)) ))
+  let newAccountBalance = mergerino({}, allAccounts.map( acc => createObject(acc, ifError(prevAccountBalance[acc], 0) +  ifError(accountBalance[acc], 0)) ))
 
   return newAccountBalance
 }

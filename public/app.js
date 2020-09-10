@@ -13,7 +13,8 @@ const configureClient = async () => {
 
     if(isAuthenticated){
         console.log("Authenticated");
-        update(null)
+        let S = await getInitialS()
+        update(S)
     }else{
         try{
             await auth0.handleRedirectCallback();
@@ -38,30 +39,30 @@ let getUserActions = (S) => returnObject({
 
         if( attributeValidators.every( validator => validator(value) ) ){
             let datoms = [newDatom(Event["entity"], attribute, value)]
-            submitTransaction( datoms, S )
+
+            let apiResponse = await APIRequest("POST", "transactor", JSON.stringify( datoms ))
+
+            let newS = mergerino(S, apiResponse)
+
+            update( newS )
+
         }else{
             console.log("Datom validation error: ", Event, attribute, value)
             update(S)
         }
     },
     createEvent: async ( CompanyDoc, eventType ) => {
-        let eventDatoms = sharedConfig.eventTypes[ eventType ]["newEventDatoms"](CompanyDoc)
-        console.log("eventDatoms", eventDatoms)
-        submitTransaction( eventDatoms, S )
+        let datoms = sharedConfig.eventTypes[ eventType ]["newEventDatoms"](CompanyDoc)
+        let apiResponse = await APIRequest("POST", "transactor", JSON.stringify( datoms ))
+        let newS = mergerino(S, apiResponse)
+        update( newS )
     },
-    retractSingleEntity: async Entity => {
-
-        // To be updated
-
-        /* let retractionDatoms = getRetractionDatomsWithoutChildren([Entity])
-
-        console.log("Retracting: ", retractionDatoms)
-
-        if(retractionDatoms.length < 100){
-            submitTransaction( retractionDatoms, S )
-        }else{
-            console.log("ERRROR: Over 100 retraction datoms submitted:", retractionDatoms)
-        } */
+    retractEvent: async Event => {
+        let storedEntity = S.Events.filter( e => e.entity === Event.entity  )[0]
+        let retractionDatoms = getRetractionDatomsWithoutChildren([storedEntity])
+        let apiResponse = retractionDatoms.length < 20 ? await APIRequest("POST", "transactor", JSON.stringify( retractionDatoms )) : console.log("ERROR: >20 retraction datoms submitted: ", retractionDatoms)
+        let newS = mergerino(S, apiResponse)
+        update( newS )
     }
 })
 
@@ -84,35 +85,15 @@ let APIRequest = async (type, endPoint, stringBody) => {
     return parsedResponse;
 }
 
-let getLocalState = async (receivedS) => {
+let getInitialS = async () => {
 
-    let S = receivedS
-
-    if(S === null){
-
-        let userContent = await APIRequest("GET", "userContent", null)
-
-        S = userContent
-
-        if(userContent !== null){
-
-            S.currentPage = "overview"
-            S.Events = userContent.Events
-            S.selectedOrgnumber = "999999999" //S.Events[0]["company/orgnumber"]
-            S.selectedYear = S.Events.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]["date"].slice(0,4)
-
-        }
-
-
-    }
-
-    //S.selectedCompany = S.Companies.filter( C => C["company/orgnumber"] === S.selectedOrgnumber)[0]
-
-    S.selectedEvents = S.Events.filter( Event => Event["company/orgnumber"] === S.selectedOrgnumber ).filter( Event => Event.date.substr(0,4) === S.selectedYear )
-    
-
+    S = await APIRequest("GET", "userContent", null)
+    S.currentPage = "overview"
+    S.selectedOrgnumber = "999999999"
     return S
+
 }
+
 
 let updateDOM = (containerID, htmlBody) => {
 
@@ -121,14 +102,15 @@ let updateDOM = (containerID, htmlBody) => {
   
 }
 
-let update = async (receivedS) => {
-    
-    let S = await getLocalState(receivedS)
+let update = async (S) => {
     
     let A = getUserActions(S)
 
+    let selectedEvents = S.Events.filter( Event => Event["company/orgnumber"] === S.selectedOrgnumber )
 
-    S.CompanyDoc = generateCompanyDocument( getInitialCompany(), S.selectedEvents )
+    S.CompanyDoc = generateCompanyDocument( getInitialCompany(), selectedEvents )
+
+    S.CompanySnapshots = selectedEvents.map( (event, index) => generateCompanyDocument( getInitialCompany(), selectedEvents.slice(0, index + 1) ) ).filter( CompanySnapshot => CompanySnapshot["company/rejectedEvents"].length === 0 )
 
     console.log("State: ", S)
     
