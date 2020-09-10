@@ -537,6 +537,83 @@ let H = {
   }
 }
 
+let attributeValidators = { //Input attributes, ie. actual registered DB attributes
+  "entity/type": v => [
+      v => typeof v === "string", //validator + description of correct format should be sufficient [?]
+      v => ["process", "event"].includes(v)
+    ].every( f => f(v) ),
+  "event/eventType": v => [
+      v => typeof v === "string", 
+      v => Object.keys(sharedConfig.eventTypes).includes(v)
+    ].every( f => f(v) ),
+  "event/index": v => [
+        v => typeof v === "number",
+        v => v >= 1
+    ].every( f => f(v) ),
+  "event/date": v => [
+    v => typeof v === "string", 
+    v => v.length === 8
+  ].every( f => f(v) ),
+  "event/incorporation/nominalSharePrice": v => [
+    v => typeof v === "number", 
+    v => v > 0
+  ].every( f => f(v) )
+}
+
+let attributeDatoms = [
+  newDatom("entity/type", "attr/name", "entity/type"),
+  newDatom("entity/type", "attr/valueType", "string"),
+  newDatom("entity/type", "attr/doc", "Selection between a defined set of entity types, such as 'User', 'Event' etc. "),
+  newDatom("event/eventType", "attr/name", "event/eventType"),
+  newDatom("event/eventType", "attr/valueType", "string"),
+  newDatom("event/eventType", "attr/doc", "Sub-categorization of eventTypes of Event entities."),
+  newDatom("event/index", "attr/name", "event/index"),
+  newDatom("event/index", "attr/valueType", "number"),
+  newDatom("event/index", "attr/doc", "The index of a given event in the timeline of a given company."),
+  newDatom("event/date", "attr/name", "event/date"),
+  newDatom("event/date", "attr/valueType", "string"),
+  newDatom("event/date", "attr/doc", "YYYY-MM-DD date to show on the company's timeline."),
+  newDatom("event/incorporation/nominalSharePrice", "attr/name", "event/incorporation/nominalSharePrice"),
+  newDatom("event/incorporation/nominalSharePrice", "attr/valueType", "number"),
+  newDatom("event/incorporation/nominalSharePrice", "attr/doc", "The nominal share price (in 1.00 NOK) of a company at incorporation, as per the articles of assembly."),
+]
+
+let eventTypes = {
+  "eventType/incorporation": {
+    requiredAttributes: ["event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
+    eventInputCriteria: [
+      Event => Event["event/eventType"] === "eventType/incorporation",
+    ],
+    applicabilityCriteria: [
+      Company => Company["company/appliedEvents"].length === 0,
+    ],
+    dependencies: ["event/isIncorporated", "company/isIncorporated", "company/orgnumber", "company/nominalSharePrice"],
+    //getAccountBalance: (Event) => returnObject({}),
+  }
+}
+
+let calculatedOutputs = { //Should only provide correct output when used in correct context, ie. no validation/error handling.
+  "event": {
+    "event/isIncorporated": (prevCompany, Event) => Event["event/eventType"] === "incorporation",
+  },
+  "company": {
+    "company/isIncorporated": (prevCompany, Event) => Event["event/isIncorporated"],
+    "company/orgnumber": (prevCompany, Event) => Event["event/incorporation/orgnumber"],
+    "company/nominalSharePrice": (prevCompany, Event) => Event["event/incorporation/nominalSharePrice"],
+    "company/appliedEvents": (prevCompany, Event) => prevCompany["company/appliedEvents"].concat(Event),
+    "company/appliedEventsCount": (prevCompany, Event) => Event["event/isIncorporated"] ? 1 : prevCompany["company/appliedEventsCount"] + 1,
+    "company/applicableEventTypes": (prevCompany, Event) => Object.keys(sharedConfig["eventTypes"]).filter( eventType => sharedConfig["eventTypes"][ eventType ]["applicabilityCriteria"].every( criteriumFunction => criteriumFunction(prevCompany) )   ) ,
+    
+  }
+}
+
+let newSharedConfig = {
+  Accounts: H.Accounts,
+  eventTypes: eventTypes,
+  attributeValidators: attributeValidators,
+  calculatedOutputs: calculatedOutputs,
+}
+
 let sharedConfig = {
   Accounts: H.Accounts,
   eventTypes: H.eventTypes,
@@ -545,3 +622,15 @@ let sharedConfig = {
   calculatedAttributes: H.calculatedAttributes,
 }
 
+let decisionTree = {
+  conditions: [
+    input => input === "test1" ? 1 : 0,
+    input => input === "test2" ? 1 : 0
+  ],
+  outcomes: {
+    "00": (input) => input,
+    "01": (input) => input,
+    "10": (input) => input,
+    "11": (input) => input
+  }
+}

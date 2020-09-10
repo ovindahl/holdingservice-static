@@ -40,7 +40,7 @@ let getUserActions = (S) => returnObject({
         if( attributeValidators.every( validator => validator(value) ) ){
             let datoms = [newDatom(Event["entity"], attribute, value)]
 
-            let apiResponse = await APIRequest("POST", "transactor", JSON.stringify( datoms ))
+            let apiResponse = await APIRequest("POST", "transactor", JSON.stringify( datoms ) )
 
             let newS = mergerino(S, apiResponse)
 
@@ -120,55 +120,15 @@ let update = async (S) => {
 
 
 
-let submitTransaction = async (datoms, receivedS) => {
 
-    let validatedDatoms = []
-
-    let isRetractionDatoms = datoms.every( datom => datom.isAddition === false  )
-
-    //Validation to be improved....
-
-    if(isRetractionDatoms){
-        validatedDatoms = datoms.filter( datom => Object.keys(H.inputAttributes).includes(datom.attribute)  ).map( datom => {
-            let validators = H.inputAttributes[ datom.attribute ].validators
-            let validationResult = validators.every( validator => validator(datom.value) )
-            console.log(datom, validationResult)
-            return validationResult === true ? datom : validationResult
-        }  )
-
-    }else{
-        validatedDatoms = datoms.filter( datom => Object.keys(H.inputAttributes).includes(datom.attribute)  ).map( datom => {
-            let validators = H.inputAttributes[ datom.attribute ].validators
-            let validationResult = validators.every( validator => validator(datom.value) )
-            console.log(datom, validationResult)
-            return validationResult === true ? datom : validationResult
-        }  )
-
-    }
-
-
-    
-
-    console.log("Datoms sent to Transactor: ", validatedDatoms)
-
-
-    let userContent = await APIRequest("POST", "transactor", JSON.stringify( validatedDatoms ))
-
-    let updatedS = mergerino(receivedS, userContent)
-
-    let S = await getLocalState( updatedS  )
-
-    update( S )
-}
 
 configureClient();
 
 
-let updateClientRelease = (newVersion) => {
-
-    submitTransaction([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null)
-}
-
-let resetServer = async () => {
-    await APIRequest("GET", "resetServer", null)
+let Admin = {
+    updateClientRelease: (newVersion) => submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
+    resetServer: () => APIRequest("GET", "resetServer", null),
+    submitDatoms: async (datoms) => datoms.length < 20 
+    ? await APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
+    : console.log("ERROR: Too many datoms: ", datoms)
 }
