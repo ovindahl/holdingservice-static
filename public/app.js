@@ -106,7 +106,7 @@ let update = async (S) => {
     
     let A = getUserActions(S)
 
-    let selectedEvents = S.Events.filter( Event => Event["company/orgnumber"] === S.selectedOrgnumber )
+    let selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber )
 
     S.CompanyDoc = generateCompanyDocument( selectedEvents )
 
