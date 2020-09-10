@@ -108,9 +108,9 @@ let update = async (S) => {
 
     let selectedEvents = S.Events.filter( Event => Event["company/orgnumber"] === S.selectedOrgnumber )
 
-    S.CompanyDoc = generateCompanyDocument( getInitialCompany(), selectedEvents )
+    S.CompanyDoc = generateCompanyDocument( selectedEvents )
 
-    S.CompanySnapshots = selectedEvents.map( (event, index) => generateCompanyDocument( getInitialCompany(), selectedEvents.slice(0, index + 1) ) ).filter( CompanySnapshot => CompanySnapshot["company/rejectedEvents"].length === 0 )
+    S.CompanySnapshots = selectedEvents.map( (event, index) => generateCompanyDocument( selectedEvents.slice(0, index + 1) ) ).filter( CompanySnapshot => CompanySnapshot["company/rejectedEvents"].length === 0 )
 
     console.log("State: ", S)
     

@@ -47,6 +47,7 @@ function split(array, isValid) {
 }
 
 let ifError = (value, fallback) => value ? value : fallback
+let ifNot = (test, ifNot, then) => test ? then : ifNot
 
 //HTML element generation
 let isVoid = tagName => ["area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"].includes(tagName)
@@ -82,6 +83,8 @@ let input = (attributesObject, eventType, action) => htmlElementObject("input", 
 
 let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", updateFunction  )
 
+let retractEventButton = (Event, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(Event) )
+
 let headerBarView = (S) => d([
   d('<header><h1>Holdingservice Beta</h1></header>', {class: "textButton"}),
   d(`Server version: ${S.serverConfig.serverVersion}`),
@@ -99,7 +102,7 @@ let headerBarView = (S) => d([
 const generateHTMLBody = (S, A) => [
   headerBarView(S),
   d( S.Events.map( E => E["company/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ), {style: "display:flex;"}),
-  d( S.CompanySnapshots.map( CompanySnapshot => CompanySnapshot["company/appliedEvents"].length > 0 ? appliedEventView(CompanySnapshot, A) : d("")   ), {class: "pageContainer"} ) ,
+  d( S.CompanySnapshots.map( CompanySnapshot => CompanySnapshot["company/appliedEvents"].length > 0 ? appliedEventView(S, CompanySnapshot, A) : d("")   ), {class: "pageContainer"} ) ,
   d( [companyInspectorView( S.CompanyDoc, A )]  , {class: "pageContainer"} ),
   d( S.CompanyDoc["company/rejectedEvents"].map( rejectedEvent => rejectedEventView(rejectedEvent, A)   ), {class: "pageContainer"} ),
   d( [addEventView(S.CompanyDoc, A)]  , {class: "pageContainer"} ),
@@ -107,25 +110,35 @@ const generateHTMLBody = (S, A) => [
 
 
 
-let appliedEventView = ( CompanySnapshot, A ) => {
+let appliedEventView = ( S, CompanySnapshot, A ) => {
+
+  
 
   let appliedEvents = CompanySnapshot["company/appliedEvents"]
+  
   let Event = appliedEvents[ appliedEvents.length - 1 ]
+
 
   let inputAttributeObject = sharedConfig.inputAttributes
   let eventTypeObject = sharedConfig.eventTypes[ Event["process/identifier"] ]
+
+  let dependencies = eventTypeObject["dependencies"]
+
+
+
   let eventTypeSelector = inputAttributeObject["process/identifier"].view( Event, A )
   let calculatedAttributeViews = eventTypeObject["calculatedAttributes"].map( attribute => d( attribute + ": " + JSON.stringify(Event[ attribute ]) )  )
 
   let adminInputAttributeViews = eventTypeObject["inputAttributes"].map( attribute => d([
+    d("brukerinput"),
     d(attribute),
     input({value: Event[ attribute ], style: "text-align: right;"}, "change", e => A.updateEventAttribute(Event, attribute , (inputAttributeObject[ attribute ].valueType === "number") ? Number(e.srcElement.value) : e.srcElement.value ) ),
     d( String( inputAttributeObject[  attribute ].validators.every( validator => validator(Event[ attribute])  ) ) ),
   ], {class: "eventInspectorRow"}) )
 
-  let calculatedCompanyAttributeViews = eventTypeObject["dependencies"].map( attribute => d( attribute + ": " + JSON.stringify(CompanySnapshot[ attribute ]) )  )
+  let calculatedCompanyAttributeViews = dependencies.map( attribute => d( attribute + ": " + JSON.stringify(CompanySnapshot[ attribute ]) )  )
 
-  let allCompanyAttributeViews = Object.keys(CompanySnapshot).map( attribute => d( attribute + ": " + JSON.stringify(CompanySnapshot[ attribute ]) )  )
+  let allCompanyAttributeViews = Object.keys(CompanySnapshot).map( attribute => dependencies.includes(attribute) ? d( `${attribute}: ${JSON.stringify(CompanySnapshot[ attribute ])} [ previousValue - TBD ] `, {style: `color:red;`} ) : d( `${attribute}: ${JSON.stringify(CompanySnapshot[ attribute ])}`)  )
 
   let attributeViews = [
     h3("Hendelse:"),
@@ -151,8 +164,6 @@ let appliedEventView = ( CompanySnapshot, A ) => {
 
 
 }
-
-let retractEventButton = (Event, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(Event) )
 
 let rejectedEventView = ( Event, A ) => {
 
@@ -205,22 +216,15 @@ let addEventView = (CompanyDoc, A) => d([
 ])
 
 
-
-
 // COMPANY DOCUMENT CREATION PIPELINE
 
-let getInitialCompany = () => returnObject({
+let generateCompanyDocument = (Events) => Events.reduce( accumulateEvents, {
   "company/isIncorporated": false, 
   "company/applicableEventTypes": ["incorporation"], 
   "company/rejectedEvents": [], 
   "company/appliedEvents": [],
   "company/accountBalance": {}
-})
-
-let ifNot = (test, ifNot, then) => test ? then : ifNot
-
-
-let generateCompanyDocument = (prevCompany, Events) => Events.reduce( accumulateEvents, prevCompany )
+} ) //generate initialCompany dynamically based on default values per outputVariable on company level?
 
 let accumulateEvents = (Company, Event) => ifNot( 
   companyIsValid(Company), 
@@ -257,10 +261,6 @@ let isValidEvent = (Event) => [
   (Event) => sharedConfig.eventTypes[ Event["process/identifier"] ]["eventInputCriteria"].every( criterumFunction =>  criterumFunction(Event) ), //All event level input criteria are fulfilled
 ].every( criteriumFunction => criteriumFunction(Event)  )
 
-
-
-let companyFullfillsEventCriteria = (Company, Event) => sharedConfig.eventTypes[ Event["process/identifier"] ]["applicabilityCriteria"].every( criterumFunction =>  criterumFunction(Company) ) //All event requirements to company are fulfilled
-
 //Construct event and apply to company
 
 let applyNextEvent = (Company, Event) => updateCompanyAttributes( Company, constructEvent(Company, Event)  ) // (Company, Event) -> updatedCompany
@@ -280,8 +280,20 @@ let updateCalculatedAttribute_Company = (Company, constructedEvent, calculatedAt
   createObject(calculatedAttributeName, sharedConfig.calculatedAttributes[ calculatedAttributeName ](Company, constructedEvent))
 )
 
-// COMPANY DOCUMENT CREATION PIPELINE - END
+let addAccountBalances = (prevAccountBalance, accountBalance) => {
 
+  let prevAccounts = Object.keys(prevAccountBalance).length > 0 ? Object.keys(prevAccountBalance) : []
+
+  let newAccounts = Object.keys(accountBalance).length > 0 ? Object.keys(accountBalance) : []
+
+  let allAccounts = prevAccounts.concat(newAccounts).filter( filterUniqueValues )
+
+  let newAccountBalance = mergerino({}, allAccounts.map( acc => createObject(acc, ifError(prevAccountBalance[acc], 0) +  ifError(accountBalance[acc], 0)) ))
+
+  return newAccountBalance
+}
+
+// COMPANY DOCUMENT CREATION PIPELINE - END
 
 let H = {
   Accounts: {
@@ -403,7 +415,7 @@ let H = {
       valueType: "string",
       view: (Event, A) => d([
         d("Konto"),
-        dropdown( ifError( Event["transaction/generic/account"], 0), Object.entries( H.Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.updateEventAttribute(Event, "transaction/generic/account", String(e.srcElement.value) ) )
+        dropdown( ifError( Event["transaction/generic/account"], 0), Object.entries( sharedConfig.Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.updateEventAttribute(Event, "transaction/generic/account", String(e.srcElement.value) ) )
       ], {class: "inputWithLabel"}  )
     },
     "transaction/amount": {
@@ -526,21 +538,10 @@ let H = {
 }
 
 let sharedConfig = {
+  Accounts: H.Accounts,
   eventTypes: H.eventTypes,
   inputAttributes: H.inputAttributes,
   defaultCalculatedAttributes: ["company/appliedEvents", "company/appliedEventsCount"],
   calculatedAttributes: H.calculatedAttributes,
 }
 
-let addAccountBalances = (prevAccountBalance, accountBalance) => {
-
-  let prevAccounts = Object.keys(prevAccountBalance).length > 0 ? Object.keys(prevAccountBalance) : []
-
-  let newAccounts = Object.keys(accountBalance).length > 0 ? Object.keys(accountBalance) : []
-
-  let allAccounts = prevAccounts.concat(newAccounts).filter( filterUniqueValues )
-
-  let newAccountBalance = mergerino({}, allAccounts.map( acc => createObject(acc, ifError(prevAccountBalance[acc], 0) +  ifError(accountBalance[acc], 0)) ))
-
-  return newAccountBalance
-}
