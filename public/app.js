@@ -13,7 +13,9 @@ const configureClient = async () => {
 
     if(isAuthenticated){
         console.log("Authenticated");
-        let S = await getInitialS()
+        let S = await APIRequest("GET", "userContent", null)
+        S.currentPage = "overview"
+        S.selectedOrgnumber = "999999999"
         update(S)
     }else{
         try{
@@ -85,47 +87,28 @@ let APIRequest = async (type, endPoint, stringBody) => {
     return parsedResponse;
 }
 
-let getInitialS = async () => {
 
-    S = await APIRequest("GET", "userContent", null)
-    S.currentPage = "overview"
-    S.selectedOrgnumber = "999999999"
-    return S
-
+const sideEffects = {
+    appContainer: "appContainer",
+    updateDOM: elementTree => [
+        sideEffects.applyHTML,
+        sideEffects.applyEventListeners
+    ].forEach( stepFunction => stepFunction(elementTree) ),
+    applyHTML: elementTree => document.getElementById(sideEffects.appContainer).innerHTML = elementTree.map( element => element.html ).join(''),
+    applyEventListeners: elementTree => elementTree.map( element => Array.isArray(element.eventListeners) ? element.eventListeners : [] ).flat().forEach( eventListener => document.getElementById( eventListener.id ).addEventListener(eventListener.eventType, eventListener.action) )
 }
 
 
-let updateDOM = (containerID, htmlBody) => {
-
-    document.getElementById(containerID).innerHTML = htmlBody.map( element => element.html ).join('')
-    htmlBody.map( element => Array.isArray(element.eventListeners) ? element.eventListeners : [] ).flat().forEach( eventListener => document.getElementById( eventListener.id ).addEventListener(eventListener.eventType, eventListener.action) )
-  
-}
-
-let update = async (S) => {
-    
-    let A = getUserActions(S)
-
-    let selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber )
-
-    /* S.CompanyDoc = generateCompanyDocument( selectedEvents )
-
-    S.CompanySnapshots = selectedEvents.map( (event, index) => generateCompanyDocument( selectedEvents.slice(0, index + 1) ) ).filter( CompanySnapshot => CompanySnapshot["company/rejectedEvents"].length === 0 ) */
-
-    S.Company = companyDoc( selectedEvents )
+let update = (S) => {
+    S.Company = companyDoc( S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ) )
+    S.elementTree = generateHTMLBody(S, getUserActions(S) )
 
     console.log("State: ", S)
     
-    let htmlBody = generateHTMLBody(S, A)
-    updateDOM("appContainer", htmlBody)
+    sideEffects.updateDOM( S.elementTree )
 }
 
-
-
-
-
 configureClient();
-
 
 let Admin = {
     updateClientRelease: (newVersion) => submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),

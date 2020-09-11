@@ -97,206 +97,172 @@ let headerBarView = (S) => d([
   ], {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
+let feedContainer = (content, date, entityID) => d([
+  d(content, {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} ),
+  d( `${date} (id: ${entityID} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
+])
 
-
-const generateHTMLBody = (S, A) => [
+let generateHTMLBody = (S, A) => [
   headerBarView(S),
   d( S.Events.map( E => E["company/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ), {style: "display:flex;"}),
-  d( S.Company["company/eventCycles"].map( eventCycle => eventCycleView(eventCycle, A)  ), {class: "pageContainer"} )
+  d( S.Company["company/eventCycles"].map( eventCycle => fullEventCycleView(eventCycle, A)  ), {class: "pageContainer"} )
 ]
 
-let companyDocView = (Company) => d( [
-    d(`CompanyDoc after eventCycle ${Company["company/eventCycle"]}:`),
+//Event Cycle Views
+
+let prevCompanyDocView = (eventCycle, index) => d( [
+    d(`Step ${index}:`),
     d("<br>"),
-    d(Object.keys(Company).map( attribute =>  d(`${attribute} ${JSON.stringify(Company[attribute])}`)) ),
-    d("<br>"),
-    d("Should indicate which variables are used in this cycle."),
+    d(Object.keys(eventCycle["prevCompany"]).map( attribute =>  d([
+      d(`${attribute}`),
+      d(`${JSON.stringify(eventCycle["prevCompany"][attribute])}`)
+    ] , {class: "eventInspectorRow"}) ) ),
     d("<br>")
 ], {style: "border: 1px solid lightgray;"} )
 
-let userInputView = (eventCycle) => d( [
-  d(`User input for event ${eventCycle["eventCycle"]}:`),
+let eventTypeView = (eventCycle, index) => d( [
+  d(`Step ${index}:`),
   d("<br>"),
-  d(Object.keys(eventCycle["inputEvent"]).map( attribute =>  d(`${attribute} ${JSON.stringify(eventCycle["inputEvent"][attribute])}`)) ),
+  d([
+    d("eventType: "),
+    dropdown(eventCycle["inputEvent"]["event/eventType"], eventCycle["prevCompany"]["company/applicableEventTypes"].map( eventType => returnObject({label: eventType, value: eventType}) ), e => getAttributeValidatorsObject()[attribute](getCorrectValueType(attribute, e.srcElement.value)) ? console.log("VALID: ",  getCorrectValueType(attribute, e.srcElement.value) ) : console.log("INVALID: ", getCorrectValueType(attribute, e.srcElement.value) )  )
+  ], {class: "eventInspectorRow"}),
   d("<br>"),
-  d("Should label system variables."),
-  d("Should show whether event is valid (attribute and event level)."),
-  d("Should show whether event is applicable (should have separate view for this!)"),
+  d("Assigned system variables"),
+  d(Object.keys(eventCycle["inputEvent"]).filter( attribute => getSystemAttributes().includes(attribute)  ).map( attribute => d([
+    d(`${attribute}`),
+    d(`${JSON.stringify(eventCycle["inputEvent"][attribute])}`)
+  ] , {class: "eventInspectorRow"}) )),
+  d("<br>"),
+  d("Required company variables: " + JSON.stringify( getRequiredCompanyInputs(eventCycle["inputEvent"]) ) ),
+  d("<br>"),
+  d("Required user inputs: " + JSON.stringify( getRequiredUserInputs(eventCycle["inputEvent"]) )),
+  d("<br>"),
+  d("Outputs to be generated (event level): " + JSON.stringify( getAllOutputFunctionNames_eventLevel(eventCycle["inputEvent"]) )),
+  d("<br>"),
+  d("Outputs to be generated (company level): " + JSON.stringify( getAllOutputFunctionNames_companyLevel(eventCycle["inputEvent"]) )),
   d("<br>")
 ], {style: "border: 1px solid lightgray;"} )
 
-let calculatedEventAttributesView = (eventCycle) => d( [
-  d(`Calculated event attributes for event ${eventCycle["eventCycle"]}:`),
+let attributeValidationView = (eventCycle, index) => d( [
+  d(`Step ${index}:`),
   d("<br>"),
-  d(Object.keys(eventCycle["updatedEventAttributes"]).map( attribute =>  d(`${attribute} ${JSON.stringify(eventCycle["updatedEventAttributes"][attribute])}`)) ),
-  d("<br>"),
-], {style: "border: 1px solid lightgray;"} )
-
-let calculatedCompanyAttributesView = (eventCycle) => d( [
-  d(`Calculated event attributes for event ${eventCycle["eventCycle"]}:`),
-  d("<br>"),
-  d(Object.keys(eventCycle["updatedCompanyAttributes"]).map( attribute =>  d(`${attribute} ${JSON.stringify(eventCycle["updatedCompanyAttributes"][attribute])}`)) ),
-  d("<br>"),
-], {style: "border: 1px solid lightgray;"} )
-
-let eventCycleView = ( eventCycle, A ) => {
-
-  console.log(eventCycle)
-
-  let constructedEvent = eventCycle["constructedEvent"]
-
-  let viewComponents = [
-    h3("Event cycle " + eventCycle["eventCycle"] ),
-    companyDocView(eventCycle["prevCompany"]),
-    userInputView(eventCycle),
-    calculatedEventAttributesView(eventCycle),
-    calculatedCompanyAttributesView(eventCycle),
-    companyDocView(eventCycle["Company"]),
-  ].flat()
-
-  return d([
-    d(
-      viewComponents
-    , {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} ),
-    d( `${constructedEvent["event/date"]} (id: ${constructedEvent["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
-  ])
-
-
-
-}
-
-
-let appliedEventView = ( S, CompanySnapshot, A ) => {
-
-  
-
-  let appliedEvents = CompanySnapshot["company/appliedEvents"]
-  
-  let Event = appliedEvents[ appliedEvents.length - 1 ]
-
-  let dependencies = getDependencies(Event)
-
-
-
-  let eventTypeSelector = d(JSON.stringify(Event["event/eventType"]))
-
-  let historicalInputAttributeViews = getRequiredCompanyInputs(Event).map( attribute => d([
-    d("historisk"),
-    d(attribute),
-    d( String( Event[ attribute ] ) )
-  ], {class: "eventInspectorRow"}) )
-  
-
-  let adminInputAttributeViews = getRequiredUserInputs(Event).map( attribute => d([
-    d("brukerinput"),
-    d(attribute),
-    input({value: Event[ attribute ], style: "text-align: right;"}, "change", e => A.updateEventAttribute(Event, attribute , (typeof Event[ attribute ] === "number") ? Number(e.srcElement.value) : e.srcElement.value ) ),
-    d( String( getAttributeValidatorsObject()[attribute]( Event[ attribute] ) ) ),
-  ], {class: "eventInspectorRow"}) )
-
-  let calculatedAttributeViews = getAllOutputFunctionNames_eventLevel().map( attribute => d([
-    d("kalkulert (hendelsesnivå)"),
-    d(attribute),
-    d( String( Event[ attribute ] ) )
-  ], {class: "eventInspectorRow"}) )
-
-  let calculatedCompanyAttributeViews = getAllOutputFunctionNames_companyLevel().filter( attr => attr !== "company/appliedEvents" && attr !== "company/rejectedEvents").map( attribute => d([
-    d("kalkulert (selskapsnivå)"),
-    d(attribute),
-    d( JSON.stringify( CompanySnapshot[ attribute ] ) )
-  ], {class: "eventInspectorRow"}) )
-
-  let allCompanyAttributeViews = Object.keys(CompanySnapshot).filter( attr => attr !== "company/appliedEvents" && attr !== "company/rejectedEvents").map( attribute => dependencies.includes(attribute) ? d( `${attribute}: ${JSON.stringify(CompanySnapshot[ attribute ])} [ previousValue - TBD ] `, {style: `color:red;`} ) : d( `${attribute}: ${JSON.stringify(CompanySnapshot[ attribute ])}`)  )
-
-  let attributeViews = [
-    h3("Hendelse:"),
-    eventTypeSelector,
-    h3("Historiske variabler som brukes i valgt hendelsestype:"),
-    historicalInputAttributeViews,
-    h3("Brukerinput for valgt hendelsestype:"),
-    adminInputAttributeViews,
-    h3("Kalkulert output på hendelsesnivå:"),
-    calculatedAttributeViews,
-    h3("Kalkulert output på selskapssnivå:"),
-    calculatedCompanyAttributeViews,
-    retractEventButton(Event, A)
-  ].flat()
-
-  return d([
-    d(
-      attributeViews
-    , {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} ),
-    d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
-  ])
-
-
-
-}
-
-let rejectedEventView = ( Event, A ) => {
-
-  /* let inputAttributeObject = sharedConfig.inputAttributes
-  let eventTypeObject = sharedConfig.eventTypes[ Event["process/identifier"] ]
-
-  let genericEventAttributeViews = ["process/identifier"].map( attribute => inputAttributeObject[ attribute ].view( Event, A )  )
-  let inputAttributeViews = eventTypeObject["inputAttributes"].map( attribute => inputAttributeObject[ attribute ].view( Event, A )  )
-  let errorViews = d( [Event["event/errors"]].map( error => d( error.error )  ))
-
-  let attributeViews = [
-    h3("Ugyldig hendelse:"),
-    genericEventAttributeViews,
-    h3("Hendelsens input:"),
-    inputAttributeViews,
-    h3("Feilmeldinger:"),
-    errorViews,
-    retractEventButton(Event, A)
-  ].flat() */
-
-  return d([
-    d(
-      "TBD"//attributeViews
-    , {style: "width: 800px;padding:1em; margin-left:1em; background-color: #ff000024;border: solid 1px lightgray;"} ),
-    d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
-  ])
-
-
-
-}
-
-let companyInspectorView = ( companySnapshot, A ) => d([
-    d([
-    h3("Selskapsdokumentet"),
-    d("<br><br>"),
-    htmlElementObject("textarea", {style: "width: 800px; height: 400px;"}, JSON.stringify(companySnapshot)),
-    /* d( Object.keys(companySnapshot).map( attribute => d([
-      d(attribute), 
-      d(JSON.stringify(companySnapshot[attribute]))
-    ], {class: "eventInspectorRow"} )  ) ) */
-  ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-  d( `${companySnapshot["date"]} (id: ${companySnapshot["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
-])
-
-let addEventView = (CompanyDoc, A) => d([
   d([
-    h3("Legg til ny hendelse:"),
-    dropdown( 0, CompanyDoc["company/applicableEventTypes"].map( eventType => returnObject({label: `${eventType}`, value: eventType })).concat([{value: 0, label: ""}]), e => A.createEvent(CompanyDoc, String(e.srcElement.value) ) )
-  ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} ),
-  d( `${Event["date"]} (id: ${Event["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
-])
+    d(`Attribute`),
+    d(`User input`),
+    d(`Validity`)
+    ], {class: "eventInspectorRow"}),
+  d(getRequiredUserInputs(eventCycle["inputEvent"]).map( attribute =>  d([
+    d(`${attribute}:`),
+    //d(`${JSON.stringify(eventCycle["inputEvent"][attribute])}`),
+    input({value: eventCycle["inputEvent"][attribute], style: "text-align: right;"}, "change", e => getAttributeValidatorsObject()[attribute](getCorrectValueType(attribute, e.srcElement.value)) ? console.log("VALID: ",  getCorrectValueType(attribute, e.srcElement.value) ) : console.log("INVALID: ", getCorrectValueType(attribute, e.srcElement.value) ) ),
+    d(`${getAttributeValidatorsObject()[attribute](eventCycle["inputEvent"][attribute]) ? "valid" : "invalid"}`)
+    ], {class: "eventInspectorRow"})) ),
+    d("<br>"),
+    d("TBD: Should show proper error message if not valid"),
+    d("TBD: Should do proper client-side validation and post to server at the appropriate time on update."),
+    d("<br>")
+], {style: "border: 1px solid lightgray;"} )
+
+let unusedInputsView = (eventCycle, index) => d( [
+  d(`Step ${index}:`),
+  d("<br>"),
+  d(Object.keys(eventCycle["inputEvent"]).filter( attribute => !getSystemAttributes().concat(getRequiredUserInputs(eventCycle["inputEvent"])).includes(attribute)  ).map( attribute => d([
+    d(`${attribute}`),
+    d(`${JSON.stringify(eventCycle["inputEvent"][attribute])}`)
+  ] , {class: "eventInspectorRow"}) ) ),
+  d("<br>")
+], {style: "border: 1px solid lightgray;"} )
+
+let combinedEventValidationView = (eventCycle, index) => d( [
+  d(`Step ${index}:`),
+  d("<br>"),
+  d("Input validation:"),
+  d("eventIsValid: " + JSON.stringify(eventCycle["eventIsValid"])),
+  d("<br>"),
+  d("Combined event validation:"),
+  d("eventIsValid: " + JSON.stringify(eventCycle["eventIsValid"])),
+  d("<br>"),
+  d("TBD: Should show proper error message if not valid"),
+  d("<br>")
+], {style: "border: 1px solid lightgray;"} )
+
+let eventApplicabilityView = (eventCycle, index) => d( [
+  d(`Step ${index}:`),
+  d("<br>"),
+  d("eventIsApplicable: " + JSON.stringify(eventCycle["eventIsApplicable"])),
+  d("TBD: Should show validation of each criteria."),
+  d("TBD: Should show proper error message if not valid"),
+  d("<br>")
+], {style: "border: 1px solid lightgray;"} )
+
+let calculatedEventAttributesView = (eventCycle, index) => d( [
+  d(`Step ${index}:`),
+  d("<br>"),
+  d(Object.keys(eventCycle["updatedEventAttributes"]).map( attribute => d([
+    d(`${attribute}`),
+    d(`${JSON.stringify(eventCycle["updatedEventAttributes"][attribute])}`)
+  ] , {class: "eventInspectorRow"}) ) ),
+  d("<br>"),
+], {style: "border: 1px solid lightgray;"} )
+
+let calculatedCompanyAttributesView = (eventCycle, index) => d( [
+  d(`Step ${index}:`),
+  d("<br>"),
+  d(Object.keys(eventCycle["updatedCompanyAttributes"]).map( attribute => d([
+    d(`${attribute}`),
+    d(`${JSON.stringify(eventCycle["updatedCompanyAttributes"][attribute])}`)
+  ] , {class: "eventInspectorRow"}) ) ),
+  d("<br>"),
+  d("TBD: Should add available next events."),
+  d("<br>"),
+], {style: "border: 1px solid lightgray;"} )
+
+let companyDocView = (eventCycle, index) => d( [
+  d(`Step ${index}:`),
+  d("<br>"),
+  d(Object.keys(eventCycle["Company"]).map( attribute =>  d([
+    d(`${attribute}`),
+    d(`${JSON.stringify(eventCycle["Company"][attribute])}`)
+  ] , {class: "eventInspectorRow"}) ) ),
+  d("<br>")
+], {style: "border: 1px solid lightgray;"} )
+
+let addNewEventView = (eventCycle, index) => d( [
+  d(`Step ${index}:`),
+  d(`Add new event`),
+  d("<br>"),
+  d([
+    d("eventType: "),
+    dropdown("", eventCycle["Company"]["company/applicableEventTypes"].map( eventType => returnObject({label: eventType, value: eventType}) ), e => getAttributeValidatorsObject()[attribute](getCorrectValueType(attribute, e.srcElement.value)) ? console.log("VALID: ",  getCorrectValueType(attribute, e.srcElement.value) ) : console.log("INVALID: ", getCorrectValueType(attribute, e.srcElement.value) )  )
+  ], {class: "eventInspectorRow"}),
+  d("<br>")
+], {style: "border: 1px solid lightgray;"} )
+
+let eventCycleViews = [
+  eventCycle => h3(` Hendelse nr. ${eventCycle["eventCycle"]} `),
+  prevCompanyDocView,
+  eventTypeView,
+  attributeValidationView,
+  unusedInputsView,
+  combinedEventValidationView,
+  eventApplicabilityView,
+  calculatedEventAttributesView,
+  calculatedCompanyAttributesView,
+  companyDocView,
+  addNewEventView
+]
+
+let fullEventCycleView = ( eventCycle, A ) => feedContainer( eventCycleViews.map( (viewFunction, index) => viewFunction(eventCycle, index) ), eventCycle["constructedEvent"]["event/date"], eventCycle["constructedEvent"]["entity"] )
+
+//Event Cycle Views - END
 
 
 // COMPANY DOCUMENT CREATION PIPELINE
 
-let createCompanyPatch = ( prevCompany, constructedEvent ) => mergerino(
-  {}, 
-  getDependencies_companyLevel(constructedEvent).map( attribute => createObject(attribute, getCalculatedOutputFunction_companyLevel(attribute)( prevCompany, constructedEvent ) )  )
-)
+let createCompanyPatch = ( prevCompany, constructedEvent ) => mergerino({}, getDependencies_companyLevel(constructedEvent).map( attribute => createObject(attribute, getCalculatedOutputFunction_companyLevel(attribute)( prevCompany, constructedEvent ) )  ))
 
-let createEventPatch = ( prevCompany, Event ) => mergerino(
-  {}, 
-  getDependencies_eventLevel(Event).map( attribute => createObject(attribute, getCalculatedOutputFunction_eventLevel(attribute)( prevCompany, Event ) )  )
-)
-
+let createEventPatch = ( prevCompany, Event ) => mergerino( {}, getDependencies_eventLevel(Event).map( attribute => createObject(attribute, getCalculatedOutputFunction_eventLevel(attribute)( prevCompany, Event ) )  ))
 
 let createEventCycle = (prevCompany, inputEvent) => {
 
@@ -326,30 +292,10 @@ let getInitialCompany = () => returnObject({
 })
 
 
-let generateCompanyDocument = (Events) => Events.reduce( accumulateEvents, getInitialCompany() ) //generate initialCompany dynamically based on default values per outputVariable on company level?
-
-let accumulateEvents = (Company, Event) => ifNot( 
-  companyIsValid(Company), 
-  rejectEvent(Company, Event, "Cannot apply event to company unless all previous events are successfully applied."),   
-    ifNot( 
-      isApplicableEvent(Company, Event), 
-      rejectEvent(Company, Event, "The selected eventType is not applicable to the company."),
-        ifNot( 
-          isValidEvent( Event ) , 
-          rejectEvent(Company, Event, "The supplied event inputs are not valid."), 
-          applyNextEvent(Company, Event)
-    )
-  )
-)
-
-//Rejection function
-let rejectEvent = (prevCompany, Event, errorMessage) =>  mergerino(prevCompany, 
-  {"company/rejectedEvents": prevCompany["company/rejectedEvents"].concat( mergerino(Event, {"event/errors": {error: errorMessage} })) }
-)
 
 //Validators
 
-
+let validationPipeline = (input) => [].every( criteriumFunction => criteriumFunction(input)  )
 
 let companyIsValid = (Company) => [
   (Company) => ["company/isIncorporated", "company/applicableEventTypes"].every( attribute => Object.keys(Company).includes( attribute  ) ) , //Company has all required attributes
@@ -365,39 +311,11 @@ let isValidEvent = (Event) => [
   (Event) => getEventTypeInputCriteria(Event).every( criterumFunction =>  criterumFunction(Event) ), //All event level input criteria are fulfilled
 ].every( criteriumFunction => criteriumFunction(Event)  )
 
-//Construct event and apply to company
 
-let applyNextEvent = (Company, Event) => updateCompanyAttributes( Company, constructEvent(Company, Event)  )  // (Company, Event) -> updatedCompany
-
-let constructEvent = (Company, Event) => getDependencies_eventLevel(Event).reduce( (updatedEvent, calculatedAttributeName) => updateCalculatedAttribute_Event(Company, updatedEvent, calculatedAttributeName), Event ) // (Company, Event) -> constructedEvent
-
-let updateCompanyAttributes = (Company, constructedEvent) => getDefaultCalculatedAttributes()
-  .concat( getDependencies_companyLevel(constructedEvent) )
-  //.concat("company/applicableEventTypes")
-  .reduce( (updatedCompany, calculatedAttributeName) => updateCalculatedAttribute_Company(updatedCompany, constructedEvent, calculatedAttributeName), Company ) // (Company, constructedEvent) -> updatedCompany
-
-let updateCalculatedAttribute_Event = (Company, Event, calculatedAttributeName) => mergerino( Event,  //(Company, Event, calculatedAttributeName) -> updatedEvent
-  createObject(calculatedAttributeName, getCalculatedOutputFunction_eventLevel(calculatedAttributeName)(Company, Event))
-)
-
-let updateCalculatedAttribute_Company = (Company, constructedEvent, calculatedAttributeName) => mergerino( Company, //(Company, constructedEvent, calculatedAttributeName) -> updatedCompany
-  createObject(calculatedAttributeName, getCalculatedOutputFunction_companyLevel(calculatedAttributeName)(Company, constructedEvent))
-)
-
-let addAccountBalances = (prevAccountBalance, accountBalance) => {
-
-  let prevAccounts = Object.keys(prevAccountBalance).length > 0 ? Object.keys(prevAccountBalance) : []
-
-  let newAccounts = Object.keys(accountBalance).length > 0 ? Object.keys(accountBalance) : []
-
-  let allAccounts = prevAccounts.concat(newAccounts).filter( filterUniqueValues )
-
-  let newAccountBalance = mergerino({}, allAccounts.map( acc => createObject(acc, ifError(prevAccountBalance[acc], 0) +  ifError(accountBalance[acc], 0)) ))
-
-  return newAccountBalance
-}
 
 // COMPANY DOCUMENT CREATION PIPELINE - END
+
+//CONFIG DATA
 
 let Accounts = {
   '1070': {label: 'Utsatt skattefordel'}, 
@@ -481,6 +399,15 @@ let Accounts = {
   '8800': {label: 'Årsresultat'}
 }
 
+let attributeValueTypes = { 
+  "entity/type": "string",
+  "event/eventType": "string",
+  "event/index": v => "number",
+  "event/incorporation/orgnumber": "string",
+  "event/date": "string",
+  "event/incorporation/nominalSharePrice": "number"
+}
+
 let attributeValidators = { //Input attributes, ie. actual registered DB attributes
   "entity/type": v => [
       v => typeof v === "string", //validator + description of correct format should be sufficient [?]
@@ -538,11 +465,10 @@ let calculatedOutputs = { //Should only provide correct output when used in corr
   }
 }
 
-
-
 let getAllEventTypes = () => Object.keys(eventTypes)
 let getRequiredUserInputs = (Event) => eventTypes[ Event["event/eventType"] ]["userInputs"]
 let getRequiredCompanyInputs = (Event) => eventTypes[ Event["event/eventType"] ]["companyInputs"]
+let getAttributeValueTypes = (attribute) => attributeValueTypes[ attribute ]
 let getAttributeValidatorsObject = () => attributeValidators
 let getAllAttributeValidators = () => Object.values( getAttributeValidatorsObject() )
 let getEventTypeInputCriteria = (Event) => eventTypes[ Event["event/eventType"] ]["eventInputCriteria"]
@@ -559,9 +485,12 @@ let getCalculatedOutputFunction_eventLevel = (calculatedAttributeName) => calcul
 let getCalculatedOutputFunction_companyLevel = (calculatedAttributeName) => calculatedOutputs["company"][ calculatedAttributeName ]
 let getDefaultCalculatedAttributes = () => ["company/appliedEvents", "company/appliedEventsCount"]
 
+let getSystemAttributes = () => ["entity", "entity/type", "event/index", "event/eventType"]
+let getCorrectValueType = (attribute, value) => getAttributeValueTypes(attribute) === "number" ? Number(value) : value
 
 
 
+//CONFIG DATA - END
 
 let decisionTree = {
   conditions: [
@@ -575,12 +504,6 @@ let decisionTree = {
     "11": (input) => input
   }
 }
-
-
-
-
-
-
 
 
 
@@ -612,6 +535,59 @@ let getAttributeDatoms = (attributeName, valueType, doc) => [
 ]
 
 let orgnr = getAttributeDatoms("event/incorporation/orgnumber", "string", "Norwegian organizational number as according to the company's articles of assembly.") */
+
+/* let generateCompanyDocument = (Events) => Events.reduce( accumulateEvents, getInitialCompany() ) //generate initialCompany dynamically based on default values per outputVariable on company level?
+
+let accumulateEvents = (Company, Event) => ifNot( 
+  companyIsValid(Company), 
+  rejectEvent(Company, Event, "Cannot apply event to company unless all previous events are successfully applied."),   
+    ifNot( 
+      isApplicableEvent(Company, Event), 
+      rejectEvent(Company, Event, "The selected eventType is not applicable to the company."),
+        ifNot( 
+          isValidEvent( Event ) , 
+          rejectEvent(Company, Event, "The supplied event inputs are not valid."), 
+          applyNextEvent(Company, Event)
+    )
+  )
+) */
+
+//Rejection function
+/* let rejectEvent = (prevCompany, Event, errorMessage) =>  mergerino(prevCompany, 
+  {"company/rejectedEvents": prevCompany["company/rejectedEvents"].concat( mergerino(Event, {"event/errors": {error: errorMessage} })) }
+) 
+
+//Construct event and apply to company
+
+let applyNextEvent = (Company, Event) => updateCompanyAttributes( Company, constructEvent(Company, Event)  )  // (Company, Event) -> updatedCompany
+
+let constructEvent = (Company, Event) => getDependencies_eventLevel(Event).reduce( (updatedEvent, calculatedAttributeName) => updateCalculatedAttribute_Event(Company, updatedEvent, calculatedAttributeName), Event ) // (Company, Event) -> constructedEvent
+
+let updateCompanyAttributes = (Company, constructedEvent) => getDefaultCalculatedAttributes()
+  .concat( getDependencies_companyLevel(constructedEvent) )
+  //.concat("company/applicableEventTypes")
+  .reduce( (updatedCompany, calculatedAttributeName) => updateCalculatedAttribute_Company(updatedCompany, constructedEvent, calculatedAttributeName), Company ) // (Company, constructedEvent) -> updatedCompany
+
+let updateCalculatedAttribute_Event = (Company, Event, calculatedAttributeName) => mergerino( Event,  //(Company, Event, calculatedAttributeName) -> updatedEvent
+  createObject(calculatedAttributeName, getCalculatedOutputFunction_eventLevel(calculatedAttributeName)(Company, Event))
+)
+
+let updateCalculatedAttribute_Company = (Company, constructedEvent, calculatedAttributeName) => mergerino( Company, //(Company, constructedEvent, calculatedAttributeName) -> updatedCompany
+  createObject(calculatedAttributeName, getCalculatedOutputFunction_companyLevel(calculatedAttributeName)(Company, constructedEvent))
+)
+let addAccountBalances = (prevAccountBalance, accountBalance) => {
+
+  let prevAccounts = Object.keys(prevAccountBalance).length > 0 ? Object.keys(prevAccountBalance) : []
+
+  let newAccounts = Object.keys(accountBalance).length > 0 ? Object.keys(accountBalance) : []
+
+  let allAccounts = prevAccounts.concat(newAccounts).filter( filterUniqueValues )
+
+  let newAccountBalance = mergerino({}, allAccounts.map( acc => createObject(acc, ifError(prevAccountBalance[acc], 0) +  ifError(accountBalance[acc], 0)) ))
+
+  return newAccountBalance
+}
+*/
 
 /* let sharedConfig = {
   Accounts: H.Accounts,
