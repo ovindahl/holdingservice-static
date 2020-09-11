@@ -111,7 +111,6 @@ let companyDocView = (Company) => d( [
     d(Object.keys(Company).map( attribute =>  d(`${attribute} ${JSON.stringify(Company[attribute])}`)) ),
     d("<br>"),
     d("Should indicate which variables are used in this cycle."),
-    d("<br>"),
     d("<br>")
 ], {style: "border: 1px solid lightgray;"} )
 
@@ -121,6 +120,8 @@ let userInputView = (eventCycle) => d( [
   d(Object.keys(eventCycle["inputEvent"]).map( attribute =>  d(`${attribute} ${JSON.stringify(eventCycle["inputEvent"][attribute])}`)) ),
   d("<br>"),
   d("Should label system variables."),
+  d("Should show whether event is valid (attribute and event level)."),
+  d("Should show whether event is applicable (should have separate view for this!)"),
   d("<br>")
 ], {style: "border: 1px solid lightgray;"} )
 
