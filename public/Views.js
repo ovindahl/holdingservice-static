@@ -102,12 +102,67 @@ let headerBarView = (S) => d([
 const generateHTMLBody = (S, A) => [
   headerBarView(S),
   d( S.Events.map( E => E["company/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ), {style: "display:flex;"}),
-  d( S.CompanySnapshots.map( CompanySnapshot => CompanySnapshot["company/appliedEvents"].length > 0 ? appliedEventView(S, CompanySnapshot, A) : d("")   ), {class: "pageContainer"} ) ,
-  d( [companyInspectorView( S.CompanyDoc, A )]  , {class: "pageContainer"} ),
-  d( S.CompanyDoc["company/rejectedEvents"].map( rejectedEvent => rejectedEventView(rejectedEvent, A)   ), {class: "pageContainer"} ),
-  d( [addEventView(S.CompanyDoc, A)]  , {class: "pageContainer"} ),
+  d( S.Company["company/eventCycles"].map( eventCycle => eventCycleView(eventCycle, A)  ), {class: "pageContainer"} )
 ]
 
+let companyDocView = (Company) => d( [
+    d(`CompanyDoc after eventCycle ${Company["company/eventCycle"]}:`),
+    d("<br>"),
+    d(Object.keys(Company).map( attribute =>  d(`${attribute} ${JSON.stringify(Company[attribute])}`)) ),
+    d("<br>"),
+    d("Should indicate which variables are used in this cycle."),
+    d("<br>"),
+    d("<br>")
+], {style: "border: 1px solid lightgray;"} )
+
+let userInputView = (eventCycle) => d( [
+  d(`User input for event ${eventCycle["eventCycle"]}:`),
+  d("<br>"),
+  d(Object.keys(eventCycle["inputEvent"]).map( attribute =>  d(`${attribute} ${JSON.stringify(eventCycle["inputEvent"][attribute])}`)) ),
+  d("<br>"),
+  d("Should label system variables."),
+  d("<br>")
+], {style: "border: 1px solid lightgray;"} )
+
+let calculatedEventAttributesView = (eventCycle) => d( [
+  d(`Calculated event attributes for event ${eventCycle["eventCycle"]}:`),
+  d("<br>"),
+  d(Object.keys(eventCycle["updatedEventAttributes"]).map( attribute =>  d(`${attribute} ${JSON.stringify(eventCycle["updatedEventAttributes"][attribute])}`)) ),
+  d("<br>"),
+], {style: "border: 1px solid lightgray;"} )
+
+let calculatedCompanyAttributesView = (eventCycle) => d( [
+  d(`Calculated event attributes for event ${eventCycle["eventCycle"]}:`),
+  d("<br>"),
+  d(Object.keys(eventCycle["updatedCompanyAttributes"]).map( attribute =>  d(`${attribute} ${JSON.stringify(eventCycle["updatedCompanyAttributes"][attribute])}`)) ),
+  d("<br>"),
+], {style: "border: 1px solid lightgray;"} )
+
+let eventCycleView = ( eventCycle, A ) => {
+
+  console.log(eventCycle)
+
+  let constructedEvent = eventCycle["constructedEvent"]
+
+  let viewComponents = [
+    h3("Event cycle " + eventCycle["eventCycle"] ),
+    companyDocView(eventCycle["prevCompany"]),
+    userInputView(eventCycle),
+    calculatedEventAttributesView(eventCycle),
+    calculatedCompanyAttributesView(eventCycle),
+    companyDocView(eventCycle["Company"]),
+  ].flat()
+
+  return d([
+    d(
+      viewComponents
+    , {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} ),
+    d( `${constructedEvent["event/date"]} (id: ${constructedEvent["entity"]} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
+  ])
+
+
+
+}
 
 
 let appliedEventView = ( S, CompanySnapshot, A ) => {
@@ -123,9 +178,15 @@ let appliedEventView = ( S, CompanySnapshot, A ) => {
 
 
   let eventTypeSelector = d(JSON.stringify(Event["event/eventType"]))
+
+  let historicalInputAttributeViews = getRequiredCompanyInputs(Event).map( attribute => d([
+    d("historisk"),
+    d(attribute),
+    d( String( Event[ attribute ] ) )
+  ], {class: "eventInspectorRow"}) )
   
 
-  let adminInputAttributeViews = getRequiredAttributes(Event).map( attribute => d([
+  let adminInputAttributeViews = getRequiredUserInputs(Event).map( attribute => d([
     d("brukerinput"),
     d(attribute),
     input({value: Event[ attribute ], style: "text-align: right;"}, "change", e => A.updateEventAttribute(Event, attribute , (typeof Event[ attribute ] === "number") ? Number(e.srcElement.value) : e.srcElement.value ) ),
@@ -149,6 +210,8 @@ let appliedEventView = ( S, CompanySnapshot, A ) => {
   let attributeViews = [
     h3("Hendelse:"),
     eventTypeSelector,
+    h3("Historiske variabler som brukes i valgt hendelsestype:"),
+    historicalInputAttributeViews,
     h3("Brukerinput for valgt hendelsestype:"),
     adminInputAttributeViews,
     h3("Kalkulert output på hendelsesnivå:"),
@@ -223,12 +286,46 @@ let addEventView = (CompanyDoc, A) => d([
 
 // COMPANY DOCUMENT CREATION PIPELINE
 
-let generateCompanyDocument = (Events) => Events.reduce( accumulateEvents, {
+let createCompanyPatch = ( prevCompany, constructedEvent ) => mergerino(
+  {}, 
+  getDependencies_companyLevel(constructedEvent).map( attribute => createObject(attribute, getCalculatedOutputFunction_companyLevel(attribute)( prevCompany, constructedEvent ) )  )
+)
+
+let createEventPatch = ( prevCompany, Event ) => mergerino(
+  {}, 
+  getDependencies_eventLevel(Event).map( attribute => createObject(attribute, getCalculatedOutputFunction_eventLevel(attribute)( prevCompany, Event ) )  )
+)
+
+
+let createEventCycle = (prevCompany, inputEvent) => {
+
+  let eventCycle = prevCompany["company/eventCycle"] + 1
+  let eventIsValid = isValidEvent(inputEvent)
+  let eventIsApplicable = isApplicableEvent(prevCompany, inputEvent)
+  let updatedEventAttributes = createEventPatch( prevCompany, inputEvent  )
+  let constructedEvent = mergerino( inputEvent, updatedEventAttributes )
+  let updatedCompanyAttributes = createCompanyPatch( prevCompany, constructedEvent )
+  let Company = mergerino( prevCompany, updatedCompanyAttributes )
+
+  return {eventCycle, prevCompany, inputEvent, eventIsValid, eventIsApplicable, updatedEventAttributes, constructedEvent, updatedCompanyAttributes, Company}    
+}
+
+let companyDoc = (Events) => returnObject({
+  "company/name": "TBD",
+  "company/eventCycles": Events.map( (Event, index) =>  Events.slice(0, index + 1).reduce( (prevCompany, inputEvent) => createEventCycle(prevCompany, inputEvent) , getInitialCompany() ) )
+})
+
+let getInitialCompany = () => returnObject({
+  "company/eventCycle": 0,
+  "company/eventCycles": [],
   "company/isIncorporated": false, 
   "company/applicableEventTypes": ["incorporation"], 
   "company/rejectedEvents": [], 
   "company/appliedEvents": []
-} ) //generate initialCompany dynamically based on default values per outputVariable on company level?
+})
+
+
+let generateCompanyDocument = (Events) => Events.reduce( accumulateEvents, getInitialCompany() ) //generate initialCompany dynamically based on default values per outputVariable on company level?
 
 let accumulateEvents = (Company, Event) => ifNot( 
   companyIsValid(Company), 
@@ -262,8 +359,8 @@ let isApplicableEvent = (Company, Event) => Company["company/applicableEventType
 
 let isValidEvent = (Event) => [
   (Event) => getAllEventTypes().includes( Event["event/eventType"] ), //Event has a valid event type
-  (Event) => getRequiredAttributes(Event).every( attribute => Object.keys( Event ).includes( attribute ) ), //Event has all required attributes
-  (Event) => getRequiredAttributes(Event).every( attribute => getAttributeValidatorsObject()[ attribute ]( Event[ attribute ] ) ), //All attribute values are valid
+  (Event) => getRequiredUserInputs(Event).every( attribute => Object.keys( Event ).includes( attribute ) ), //Event has all required attributes
+  (Event) => getRequiredUserInputs(Event).every( attribute => getAttributeValidatorsObject()[ attribute ]( Event[ attribute ] ) ), //All attribute values are valid
   (Event) => getEventTypeInputCriteria(Event).every( criterumFunction =>  criterumFunction(Event) ), //All event level input criteria are fulfilled
 ].every( criteriumFunction => criteriumFunction(Event)  )
 
@@ -275,7 +372,7 @@ let constructEvent = (Company, Event) => getDependencies_eventLevel(Event).reduc
 
 let updateCompanyAttributes = (Company, constructedEvent) => getDefaultCalculatedAttributes()
   .concat( getDependencies_companyLevel(constructedEvent) )
-  .concat("company/applicableEventTypes")
+  //.concat("company/applicableEventTypes")
   .reduce( (updatedCompany, calculatedAttributeName) => updateCalculatedAttribute_Company(updatedCompany, constructedEvent, calculatedAttributeName), Company ) // (Company, constructedEvent) -> updatedCompany
 
 let updateCalculatedAttribute_Event = (Company, Event, calculatedAttributeName) => mergerino( Event,  //(Company, Event, calculatedAttributeName) -> updatedEvent
@@ -412,14 +509,15 @@ let attributeValidators = { //Input attributes, ie. actual registered DB attribu
 
 let eventTypes = {
   "incorporation": {
-    requiredAttributes: ["event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
+    userInputs: ["event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
+    companyInputs: ["company/appliedEvents"],
     eventInputCriteria: [
       Event => Event["event/eventType"] === "incorporation",
     ],
     applicabilityCriteria: [
       Company => Company["company/appliedEvents"].length === 0,
     ],
-    dependencies: ["event/isIncorporated", "company/isIncorporated", "company/orgnumber", "company/nominalSharePrice"],
+    dependencies: ["event/isIncorporated", "event/earlierEvents", "company/isIncorporated", "company/orgnumber", "company/nominalSharePrice", "company/appliedEvents", "company/appliedEventsCount"],
     //getAccountBalance: (Event) => returnObject({}),
   }
 }
@@ -427,14 +525,14 @@ let eventTypes = {
 let calculatedOutputs = { //Should only provide correct output when used in correct context, ie. no validation/error handling.
   "event": {
     "event/isIncorporated": (prevCompany, Event) => Event["event/eventType"] === "incorporation",
+    "event/earlierEvents": (prevCompany, Event) => prevCompany["company/appliedEvents"],
   },
   "company": {
     "company/isIncorporated": (prevCompany, Event) => Event["event/isIncorporated"],
     "company/orgnumber": (prevCompany, Event) => Event["event/incorporation/orgnumber"],
     "company/nominalSharePrice": (prevCompany, Event) => Event["event/incorporation/nominalSharePrice"],
-    "company/appliedEvents": (prevCompany, Event) => prevCompany["company/appliedEvents"].concat(Event),
-    "company/appliedEventsCount": (prevCompany, Event) => Event["event/isIncorporated"] ? 1 : prevCompany["company/appliedEventsCount"] + 1,
-    "company/applicableEventTypes": (prevCompany, Event) => getAllEventTypes().filter( eventType => getEventTypeApplicabilityCriteria(eventType).every( criteriumFunction => criteriumFunction(prevCompany) )   ) ,
+    "company/appliedEvents": (prevCompany, Event) => Event["event/earlierEvents"].concat(Event),
+    "company/appliedEventsCount": (prevCompany, Event) => Event["event/earlierEvents"].length + 1
     
   }
 }
@@ -442,7 +540,8 @@ let calculatedOutputs = { //Should only provide correct output when used in corr
 
 
 let getAllEventTypes = () => Object.keys(eventTypes)
-let getRequiredAttributes = (Event) => eventTypes[ Event["event/eventType"] ]["requiredAttributes"]
+let getRequiredUserInputs = (Event) => eventTypes[ Event["event/eventType"] ]["userInputs"]
+let getRequiredCompanyInputs = (Event) => eventTypes[ Event["event/eventType"] ]["companyInputs"]
 let getAttributeValidatorsObject = () => attributeValidators
 let getAllAttributeValidators = () => Object.values( getAttributeValidatorsObject() )
 let getEventTypeInputCriteria = (Event) => eventTypes[ Event["event/eventType"] ]["eventInputCriteria"]
