@@ -1,31 +1,90 @@
+
+//Mergerino
+const assign = Object.assign || ((a, b) => (b && Object.keys(b).forEach(k => (a[k] = b[k])), a))
+
+const run = (isArr, copy, patch) => {
+    const type = typeof patch
+    if (patch && type === 'object') {
+      if (Array.isArray(patch)) for (const p of patch) copy = run(isArr, copy, p)
+      else {
+        for (const k of Object.keys(patch)) {
+          const val = patch[k]
+          if (typeof val === 'function') copy[k] = val(copy[k], mergerino)
+          else if (val === undefined) isArr && !isNaN(k) ? copy.splice(k, 1) : delete copy[k]
+          else if (val === null || typeof val !== 'object' || Array.isArray(val)) copy[k] = val
+          else if (typeof copy[k] === 'object') copy[k] = val === copy[k] ? val : mergerino(copy[k], val)
+          else copy[k] = run(false, {}, val)
+        }
+      }
+    } else if (type === 'function') copy = patch(copy, mergerino)
+    return copy
+  }
+  
+const mergerino = (source, ...patches) => {
+    const isArr = Array.isArray(source)
+    return run(isArr, isArr ? source.slice() : assign({}, source), patches)
+}
+
+//Utils
+let createObject = (keyName, value) => Object.assign({}, {[keyName]: value} ) 
+let returnObject = (something) => something // a -> a
+let logThis = (something, label) => {
+console.log( (label) ? label : "Logging this: ", something )
+return something
+}
+
 //CONFIG DATA
 
-const EventType = {
-  requiredUserInputs: {
-    "incorporation": ["event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"]
-  },
-  getRequiredAttributes: (eventType) => EventType[ "requiredUserInputs" ][ eventType ],
-  requiredCompanyInputs: {
-    "incorporation": ["company/eventCycle"]
-  },
-  getRequiredCompanyInputs: (eventType) => EventType[ "requiredCompanyInputs" ][ eventType ],
-  applicabilityCriteria: {
-    "incorporation": [
-      Company => Company["company/eventCycle"] === 0,
-    ]
-  },
-  isApplicable: (eventType, Company) => EventType[ "applicabilityCriteria" ][ eventType ].every( criteriumFunction => criteriumFunction(Company) ), //Specify on companyInput level and combined level separately?
-  combinedInputCriteria: {
-    "incorporation": [
+let event_incorporation = {
+  eventType: "incorporation",
+  requiredUserInputs: ["event/index", "event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
+  requiredCompanyInputs: [],
+  applicabilityCriteria: [
+      companyVariables => JSON.stringify(companyVariables) === "{}", //...
+  ],
+  combinedInputCriteria: [
       Event => Event["event/eventType"] === "incorporation",
-    ]
-  },
+      Event => Event["event/index"] === 1,
+    ],
+  dependencies: ["company/:orgnumber", "company/:nominalSharePrice", "company/:applicableEventTypes"],
+}
+
+let event_testEvent = {
+  eventType: "testEvent",
+  requiredUserInputs: ["event/index", "event/date"],
+  requiredCompanyInputs: ["company/:nominalSharePrice"],
+  applicabilityCriteria: [
+      companyVariables =>  companyVariables["company/:nominalSharePrice"] > 10
+  ],
+  combinedInputCriteria: [
+      Event => Event["event/index"] > 1,
+  ],
+  dependencies: ["company/:applicableEventTypes"],
+}
+
+let allEventTypes = [
+  event_incorporation,
+  event_testEvent
+]
+
+let getEventTypeObject = (parameter) => mergerino({},
+  allEventTypes.map( eventType => createObject(eventType.eventType, eventType[parameter] )   )
+)
+
+let loadParameters = ["requiredUserInputs", "requiredCompanyInputs", "applicabilityCriteria", "combinedInputCriteria", "dependencies" ].map( parameter => getEventTypeObject(parameter) ) // TBD
+
+const EventType = {
+  requiredUserInputs: getEventTypeObject("requiredUserInputs"),
+  requiredCompanyInputs: getEventTypeObject("requiredCompanyInputs"),
+  applicabilityCriteria: getEventTypeObject("applicabilityCriteria"),
+  combinedInputCriteria: getEventTypeObject("combinedInputCriteria"),
+  dependencies: getEventTypeObject("dependencies"),
+  getRequiredAttributes: (eventType) => EventType[ "requiredUserInputs" ][ eventType ],
+  getRequiredCompanyInputs: (eventType) => EventType[ "requiredCompanyInputs" ][ eventType ],
+  isApplicable: (eventType, companyVariables) => EventType[ "applicabilityCriteria" ][ eventType ].every( criteriumFunction => criteriumFunction(companyVariables) ), //Specify on companyInput level and combined level separately?
   isValid: (Event) => EventType[ "combinedInputCriteria" ][ Event["event/eventType"] ].every( criteriumFunction => criteriumFunction(Event) ),
-  dependencies: {
-    "incorporation": ["event/:isIncorporated", "company/:orgnumber", "company/:nominalSharePrice"],
-  },
   getDependencies: (eventType) => EventType[ "dependencies" ][ eventType ],
-  getAllEventTypes: () => ["incorporation"]
+  getAllEventTypes: () => allEventTypes.map( eventType => eventType.eventType )
 }
 
 //Attributes
@@ -60,7 +119,7 @@ const Attribute = {
   },
   validate: (attribute, value) => Attribute.validators[ attribute ](value),
   isNumber: (attribute) => ["event/index", "event/incorporation/nominalSharePrice"].includes(attribute),
-  getSystemAttributes: () => ["entity", "entity/type", "event/index"]
+  getSystemAttributes: () => ["entity", "entity/type"]
 }
 
 
@@ -68,12 +127,11 @@ const Attribute = {
 
 const outputFunction = {
   functions: {
-    "event/:isIncorporated": (prevCompany, Event) => Event["event/eventType"] === "incorporation", //for testing..
-    "company/:isIncorporated": (prevCompany, Event) => Event["event/isIncorporated"],
-    "company/:orgnumber": (prevCompany, Event) => Event["event/incorporation/orgnumber"],
-    "company/:nominalSharePrice": (prevCompany, Event) => Event["event/incorporation/nominalSharePrice"]
+    "company/:orgnumber": (companyVariables, Event) => Event["event/incorporation/orgnumber"],
+    "company/:nominalSharePrice": (companyVariables, Event) => Event["event/incorporation/nominalSharePrice"],
+    "company/:applicableEventTypes": (companyVariables, Event) => EventType.getAllEventTypes(),
   },
-  calculate: (functionName, prevCompany, constructedEvent) => outputFunction.functions[ functionName ](prevCompany, constructedEvent)
+  calculate: (functionName, companyVariables, Event) => outputFunction.functions[ functionName ](companyVariables, Event)
 }
 
 
