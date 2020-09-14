@@ -120,102 +120,59 @@ let prevCompanyDocView = (eventCycle, index) => d( [
     d("<br>")
 ], {style: "border: 1px solid lightgray;"} )
 
-let eventTypeView = (eventCycle, index) => d( [
+let eventTypeView = (eventCycle, index, A) => d( [
   d(`Step ${index}:`),
   d("<br>"),
-  d([
-    d("eventType: "),
-    dropdown(eventCycle["inputEvent"]["event/eventType"], eventCycle["prevCompany"]["company/applicableEventTypes"].map( eventType => returnObject({label: eventType, value: eventType}) ), e => getAttributeValidatorsObject()[attribute](getCorrectValueType(attribute, e.srcElement.value)) ? console.log("VALID: ",  getCorrectValueType(attribute, e.srcElement.value) ) : console.log("INVALID: ", getCorrectValueType(attribute, e.srcElement.value) )  )
-  ], {class: "eventInspectorRow"}),
-  d("<br>"),
-  d("Assigned system variables"),
-  d(Object.keys(eventCycle["inputEvent"]).filter( attribute => getSystemAttributes().includes(attribute)  ).map( attribute => d([
+  d("0. Assigned system variables"),
+  d(Object.keys(eventCycle["inputEvent"]).filter( attribute => Attribute.getSystemAttributes().includes(attribute)  ).map( attribute => d([
     d(`${attribute}`),
     d(`${JSON.stringify(eventCycle["inputEvent"][attribute])}`)
   ] , {class: "eventInspectorRow"}) )),
   d("<br>"),
-  d("Required company variables: " + JSON.stringify( getRequiredCompanyInputs(eventCycle["inputEvent"]) ) ),
+  d("1. Selected eventType"),
+  d([
+    d("eventType: "),
+    dropdown(eventCycle["inputEvent"]["event/eventType"], eventCycle["prevCompany"]["company/applicableEventTypes"].map( eventType => returnObject({label: eventType, value: eventType}) ), e => A.updateEventAttribute(eventCycle["inputEvent"], "event/eventType", e)  )
+  ], {class: "eventInspectorRow"}),
+  eventCycle["prevCompany"]["company/applicableEventTypes"].includes(eventCycle["inputEvent"]["event/eventType"]) ? d("Selected eventType can be applied to company.") : d("Selected eventType can NOT be applied to company. [Error msg TBD]"),
   d("<br>"),
-  d("Required user inputs: " + JSON.stringify( getRequiredUserInputs(eventCycle["inputEvent"]) )),
+  d("2. Required historical company variables: "),
+  d([
+    d(`Variable`),
+    d(`Value`),
+    d(`Validity/SourceEvent`)
+    ], {class: "eventInspectorRow"}),
+  d( EventType.getRequiredCompanyInputs(eventCycle["inputEvent"]["event/eventType"]).map( attribute =>  d([
+    d(`${attribute}`),
+    d(`${JSON.stringify(eventCycle["prevCompany"][attribute])}`),
+    d(`TBD`),
+  ] , {class: "eventInspectorRow"}) ) ),
   d("<br>"),
-  d("Outputs to be generated (event level): " + JSON.stringify( getAllOutputFunctionNames_eventLevel(eventCycle["inputEvent"]) )),
+  EventType.isApplicable( eventCycle["inputEvent"]["event/eventType"], eventCycle["prevCompany"] ) ? d("The current values of companyInputs are valid for the eventType.") : d("The current values of companyInputs are NOT valid for the eventType. [Error msg TBD]"),
   d("<br>"),
-  d("Outputs to be generated (company level): " + JSON.stringify( getAllOutputFunctionNames_companyLevel(eventCycle["inputEvent"]) )),
-  d("<br>")
-], {style: "border: 1px solid lightgray;"} )
-
-let attributeValidationView = (eventCycle, index) => d( [
-  d(`Step ${index}:`),
+  d("TBD: Specify on single variable level and combined level separately", {style: "color: red;"} ),
   d("<br>"),
+  d("3. Required user inputs: "),
   d([
     d(`Attribute`),
     d(`User input`),
     d(`Validity`)
     ], {class: "eventInspectorRow"}),
-  d(getRequiredUserInputs(eventCycle["inputEvent"]).map( attribute =>  d([
+  d(EventType.getRequiredAttributes(eventCycle["inputEvent"]["event/eventType"]).map( attribute =>  d([
     d(`${attribute}:`),
-    //d(`${JSON.stringify(eventCycle["inputEvent"][attribute])}`),
-    input({value: eventCycle["inputEvent"][attribute], style: "text-align: right;"}, "change", e => getAttributeValidatorsObject()[attribute](getCorrectValueType(attribute, e.srcElement.value)) ? console.log("VALID: ",  getCorrectValueType(attribute, e.srcElement.value) ) : console.log("INVALID: ", getCorrectValueType(attribute, e.srcElement.value) ) ),
-    d(`${getAttributeValidatorsObject()[attribute](eventCycle["inputEvent"][attribute]) ? "valid" : "invalid"}`)
+    input({value: eventCycle["inputEvent"][attribute], style: "text-align: right;"}, "change", e => A.updateEventAttribute(eventCycle["inputEvent"], attribute, e) ),
+    d(`${Attribute.validate( attribute, eventCycle["inputEvent"][attribute]) ? "valid" : "invalid"}`)
     ], {class: "eventInspectorRow"})) ),
-    d("<br>"),
-    d("TBD: Should show proper error message if not valid"),
-    d("TBD: Should do proper client-side validation and post to server at the appropriate time on update."),
-    d("<br>")
-], {style: "border: 1px solid lightgray;"} )
-
-let unusedInputsView = (eventCycle, index) => d( [
-  d(`Step ${index}:`),
   d("<br>"),
-  d(Object.keys(eventCycle["inputEvent"]).filter( attribute => !getSystemAttributes().concat(getRequiredUserInputs(eventCycle["inputEvent"])).includes(attribute)  ).map( attribute => d([
+  EventType.isValid( eventCycle["inputEvent"] ) ? d("Combination of event inputs are valid.") : d("Combination of event inputs are not valid. [Error msg TBD]"),
+  d("<br>"),
+  d("4. Calculated outputs: "),
+  d(Object.keys(eventCycle["updatedAttributes"]).map( attribute => d([
     d(`${attribute}`),
-    d(`${JSON.stringify(eventCycle["inputEvent"][attribute])}`)
-  ] , {class: "eventInspectorRow"}) ) ),
-  d("<br>")
-], {style: "border: 1px solid lightgray;"} )
-
-let combinedEventValidationView = (eventCycle, index) => d( [
-  d(`Step ${index}:`),
-  d("<br>"),
-  d("Input validation:"),
-  d("eventIsValid: " + JSON.stringify(eventCycle["eventIsValid"])),
-  d("<br>"),
-  d("Combined event validation:"),
-  d("eventIsValid: " + JSON.stringify(eventCycle["eventIsValid"])),
-  d("<br>"),
-  d("TBD: Should show proper error message if not valid"),
-  d("<br>")
-], {style: "border: 1px solid lightgray;"} )
-
-let eventApplicabilityView = (eventCycle, index) => d( [
-  d(`Step ${index}:`),
-  d("<br>"),
-  d("eventIsApplicable: " + JSON.stringify(eventCycle["eventIsApplicable"])),
-  d("TBD: Should show validation of each criteria."),
-  d("TBD: Should show proper error message if not valid"),
-  d("<br>")
-], {style: "border: 1px solid lightgray;"} )
-
-let calculatedEventAttributesView = (eventCycle, index) => d( [
-  d(`Step ${index}:`),
-  d("<br>"),
-  d(Object.keys(eventCycle["updatedEventAttributes"]).map( attribute => d([
-    d(`${attribute}`),
-    d(`${JSON.stringify(eventCycle["updatedEventAttributes"][attribute])}`)
+    d(`${JSON.stringify(eventCycle["updatedAttributes"][attribute])}`)
   ] , {class: "eventInspectorRow"}) ) ),
   d("<br>"),
-], {style: "border: 1px solid lightgray;"} )
-
-let calculatedCompanyAttributesView = (eventCycle, index) => d( [
-  d(`Step ${index}:`),
-  d("<br>"),
-  d(Object.keys(eventCycle["updatedCompanyAttributes"]).map( attribute => d([
-    d(`${attribute}`),
-    d(`${JSON.stringify(eventCycle["updatedCompanyAttributes"][attribute])}`)
-  ] , {class: "eventInspectorRow"}) ) ),
-  d("<br>"),
-  d("TBD: Should add available next events."),
-  d("<br>"),
+  d("TBD: Should add available next events.", {style: "color: red;"}),
 ], {style: "border: 1px solid lightgray;"} )
 
 let companyDocView = (eventCycle, index) => d( [
@@ -228,13 +185,13 @@ let companyDocView = (eventCycle, index) => d( [
   d("<br>")
 ], {style: "border: 1px solid lightgray;"} )
 
-let addNewEventView = (eventCycle, index) => d( [
+let addNewEventView = (eventCycle, index, A) => d( [
   d(`Step ${index}:`),
   d(`Add new event`),
   d("<br>"),
   d([
     d("eventType: "),
-    dropdown("", eventCycle["Company"]["company/applicableEventTypes"].map( eventType => returnObject({label: eventType, value: eventType}) ), e => getAttributeValidatorsObject()[attribute](getCorrectValueType(attribute, e.srcElement.value)) ? console.log("VALID: ",  getCorrectValueType(attribute, e.srcElement.value) ) : console.log("INVALID: ", getCorrectValueType(attribute, e.srcElement.value) )  )
+    dropdown("", eventCycle["Company"]["company/applicableEventTypes"].map( eventType => returnObject({label: eventType, value: eventType}) ), e => A.updateEventAttribute(eventCycle["inputEvent"], "event/eventType", e)  )
   ], {class: "eventInspectorRow"}),
   d("<br>")
 ], {style: "border: 1px solid lightgray;"} )
@@ -243,41 +200,34 @@ let eventCycleViews = [
   eventCycle => h3(` Hendelse nr. ${eventCycle["eventCycle"]} `),
   prevCompanyDocView,
   eventTypeView,
-  attributeValidationView,
-  unusedInputsView,
-  combinedEventValidationView,
-  eventApplicabilityView,
-  calculatedEventAttributesView,
-  calculatedCompanyAttributesView,
-  companyDocView,
+  companyDocView, 
   addNewEventView
 ]
 
-let fullEventCycleView = ( eventCycle, A ) => feedContainer( eventCycleViews.map( (viewFunction, index) => viewFunction(eventCycle, index) ), eventCycle["constructedEvent"]["event/date"], eventCycle["constructedEvent"]["entity"] )
+let fullEventCycleView = ( eventCycle, A ) => feedContainer( eventCycleViews.map( (viewFunction, index) => viewFunction(eventCycle, index, A) ), eventCycle["inputEvent"]["event/date"], eventCycle["inputEvent"]["entity"] )
 
 //Event Cycle Views - END
 
 
 // COMPANY DOCUMENT CREATION PIPELINE
 
-let createCompanyPatch = ( prevCompany, constructedEvent ) => mergerino({}, getDependencies_companyLevel(constructedEvent).map( attribute => createObject(attribute, getCalculatedOutputFunction_companyLevel(attribute)( prevCompany, constructedEvent ) )  ))
-
-let createEventPatch = ( prevCompany, Event ) => mergerino( {}, getDependencies_eventLevel(Event).map( attribute => createObject(attribute, getCalculatedOutputFunction_eventLevel(attribute)( prevCompany, Event ) )  ))
+let getCalculatedOutputs = ( prevCompany, Event ) => mergerino( {}, Object.entries( 
+    EventType.getDependencies(Event["event/eventType"]  ).reduce( (updatedAttributes, functionName) => mergerino(updatedAttributes, createObject(functionName, outputFunction.calculate(functionName, prevCompany, Event ) )  ), Event  ) 
+  ).filter( entry => !Object.keys(Event).includes(entry[0])  ).map( entry => createObject(entry[0], entry[1]) )
+  ) 
 
 let createEventCycle = (prevCompany, inputEvent) => {
 
   let eventCycle = prevCompany["company/eventCycle"] + 1
   let eventIsValid = isValidEvent(inputEvent)
   let eventIsApplicable = isApplicableEvent(prevCompany, inputEvent)
-  let updatedEventAttributes = createEventPatch( prevCompany, inputEvent  )
-  let constructedEvent = mergerino( inputEvent, updatedEventAttributes )
-  let updatedCompanyAttributes = createCompanyPatch( prevCompany, constructedEvent )
-  let Company = mergerino( prevCompany, updatedCompanyAttributes )
+  let updatedAttributes = getCalculatedOutputs( prevCompany, inputEvent  )
+  let Company = mergerino( prevCompany, updatedAttributes )
 
-  return {eventCycle, prevCompany, inputEvent, eventIsValid, eventIsApplicable, updatedEventAttributes, constructedEvent, updatedCompanyAttributes, Company}    
+  return {eventCycle, prevCompany, inputEvent, eventIsValid, eventIsApplicable, updatedAttributes, Company}    
 }
 
-let companyDoc = (Events) => returnObject({
+let createCompanyDoc = (Events) => returnObject({
   "company/name": "TBD",
   "company/eventCycles": Events.map( (Event, index) =>  Events.slice(0, index + 1).reduce( (prevCompany, inputEvent) => createEventCycle(prevCompany, inputEvent) , getInitialCompany() ) )
 })
@@ -285,10 +235,7 @@ let companyDoc = (Events) => returnObject({
 let getInitialCompany = () => returnObject({
   "company/eventCycle": 0,
   "company/eventCycles": [],
-  "company/isIncorporated": false, 
-  "company/applicableEventTypes": ["incorporation"], 
-  "company/rejectedEvents": [], 
-  "company/appliedEvents": []
+  "company/applicableEventTypes": ["incorporation"],
 })
 
 
@@ -297,196 +244,19 @@ let getInitialCompany = () => returnObject({
 
 let validationPipeline = (input) => [].every( criteriumFunction => criteriumFunction(input)  )
 
-let companyIsValid = (Company) => [
-  (Company) => ["company/isIncorporated", "company/applicableEventTypes"].every( attribute => Object.keys(Company).includes( attribute  ) ) , //Company has all required attributes
-  (Company) => Company["company/rejectedEvents"].length === 0 //Company has no errors
-].every( criteriumFunction => criteriumFunction(Company) )
-
-let isApplicableEvent = (Company, Event) => Company["company/applicableEventTypes"].includes( Event["event/eventType"] )
+let isApplicableEvent = (Company, Event) => EventType.isApplicable( Event["event/eventType"], Company )
 
 let isValidEvent = (Event) => [
-  (Event) => getAllEventTypes().includes( Event["event/eventType"] ), //Event has a valid event type
-  (Event) => getRequiredUserInputs(Event).every( attribute => Object.keys( Event ).includes( attribute ) ), //Event has all required attributes
-  (Event) => getRequiredUserInputs(Event).every( attribute => getAttributeValidatorsObject()[ attribute ]( Event[ attribute ] ) ), //All attribute values are valid
-  (Event) => getEventTypeInputCriteria(Event).every( criterumFunction =>  criterumFunction(Event) ), //All event level input criteria are fulfilled
+  (Event) => EventType.getAllEventTypes().includes( Event["event/eventType"] ), //Event has a valid event type
+  (Event) => EventType.getRequiredAttributes(Event["event/eventType"]).every( attribute => Object.keys( Event ).includes( attribute ) ), //Event has all required attributes
+  (Event) => EventType.getRequiredAttributes(Event["event/eventType"]).every( attribute => Attribute.validate(attribute, Event[ attribute ] ) ), //All attribute values are valid
+  (Event) => EventType.isValid(Event)                    //getEventTypeInputCriteria(Event).every( criterumFunction =>  criterumFunction(Event) ), //All event level input criteria are fulfilled
 ].every( criteriumFunction => criteriumFunction(Event)  )
 
 
 
 // COMPANY DOCUMENT CREATION PIPELINE - END
 
-//CONFIG DATA
-
-let Accounts = {
-  '1070': {label: 'Utsatt skattefordel'}, 
-  '1300': {label: 'Investeringer i datterselskap'}, 
-  '1320': {label: 'Lån til foretak i samme konsern'}, 
-  '1330': {label: 'Investeringer i tilknyttet selskap'}, 
-  '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
-  '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
-  '1360': {label: 'Obligasjoner'}, 
-  '1370': {label: 'Fordringer på eiere'}, 
-  '1375': {label: 'Fordringer på styremedlemmer'}, 
-  '1380': {label: 'Fordringer på ansatte'}, 
-  '1399': {label: 'Andre fordringer'}, 
-  '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
-  '1579': {label: 'Andre kortsiktige fordringer'}, 
-  '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
-  '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
-  '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
-  '1820': {label: 'Andre aksjer'}, 
-  '1830': {label: 'Markedsbaserte obligasjoner'}, 
-  '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
-  '1880': {label: 'Andre finansielle instrumenter'}, 
-  '1920': {label: 'Bankinnskudd'}, 
-  '2000': {label: 'Aksjekapital'}, 
-  '2020': {label: 'Overkurs'}, 
-  '2030': {label: 'Annen innskutt egenkapital'}, 
-  '2050': {label: 'Annen egenkapital'}, 
-  '2080': {label: 'Udekket tap'}, 
-  '2120': {label: 'Utsatt skatt'}, 
-  '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
-  '2250': {label: 'Gjeld til ansatte og eiere'}, 
-  '2260': {label: 'Gjeld til selskap i samme konsern'}, 
-  '2290': {label: 'Annen langsiktig gjeld'}, 
-  '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
-  '2400': {label: 'Leverandørgjeld'}, 
-  '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
-  '2510': {label: 'Betalbar skatt, fastsatt'}, 
-  '2800': {label: 'Avsatt utbytte'}, 
-  '2910': {label: 'Gjeld til ansatte og eiere'}, 
-  '2920': {label: 'Gjeld til selskap i samme konsern'}, 
-  '2990': {label: 'Annen kortsiktig gjeld'}, 
-  '6540': {label: 'Inventar'}, 
-  '6551': {label: 'Datautstyr (hardware)'}, 
-  '6552': {label: 'Programvare (software)'}, 
-  '6580': {label: 'Andre driftsmidler'}, 
-  '6701': {label: 'Honorar revisjon'}, 
-  '6702': {label: 'Honorar rådgivning revisjon'}, 
-  '6705': {label: 'Honorar regnskap'}, 
-  '6720': {label: 'Honorar for økonomisk rådgivning'}, 
-  '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
-  '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
-  '6790': {label: 'Annen fremmed tjeneste'}, 
-  '6890': {label: 'Annen kontorkostnad'}, 
-  '6900': {label: 'Elektronisk kommunikasjon'}, 
-  '7770': {label: 'Bank og kortgebyrer'}, 
-  '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
-  '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
-  '8000': {label: 'Inntekt på investering i datterselskap'}, 
-  '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
-  '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
-  '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
-  '8055': {label: 'Andre renteinntekter'}, 
-  '8060': {label: 'Valutagevinst (agio)'}, 
-  '8070': {label: 'Annen finansinntekt'}, 
-  '8071': {label: 'Aksjeutbytte'}, 
-  '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
-  '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
-  '8090': {label: 'Inntekt på andre investeringer'}, 
-  '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
-  '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
-  '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
-  '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
-  '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
-  '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
-  '8155': {label: 'Andre rentekostnader'}, 
-  '8160': {label: 'Valutatap (disagio)'}, 
-  '8170': {label: 'Annen finanskostnad'}, 
-  '8178': {label: 'Tap ved realisasjon av aksjer'}, 
-  '8300': {label: 'Betalbar skatt'}, 
-  '8320': {label: 'Endring utsatt skatt'},
-  '8800': {label: 'Årsresultat'}
-}
-
-let attributeValueTypes = { 
-  "entity/type": "string",
-  "event/eventType": "string",
-  "event/index": v => "number",
-  "event/incorporation/orgnumber": "string",
-  "event/date": "string",
-  "event/incorporation/nominalSharePrice": "number"
-}
-
-let attributeValidators = { //Input attributes, ie. actual registered DB attributes
-  "entity/type": v => [
-      v => typeof v === "string", //validator + description of correct format should be sufficient [?]
-      v => ["process", "event"].includes(v)
-    ].every( f => f(v) ),
-  "event/eventType": v => [
-      v => typeof v === "string", 
-      v => getAllEventTypes().includes(v)
-    ].every( f => f(v) ),
-  "event/index": v => [
-        v => typeof v === "number",
-        v => v >= 1
-    ].every( f => f(v) ),
-  "event/incorporation/orgnumber": v => [
-    v => typeof v === "string", 
-    v => v.length === 9
-  ].every( f => f(v) ),
-  "event/date": v => [
-    v => typeof v === "string", 
-    v => v.length === 10
-  ].every( f => f( v ) ),
-  "event/incorporation/nominalSharePrice": v => [
-    v => typeof v === "number", 
-    v => v > 0
-  ].every( f => f(v) )
-}
-
-let eventTypes = {
-  "incorporation": {
-    userInputs: ["event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
-    companyInputs: ["company/appliedEvents"],
-    eventInputCriteria: [
-      Event => Event["event/eventType"] === "incorporation",
-    ],
-    applicabilityCriteria: [
-      Company => Company["company/appliedEvents"].length === 0,
-    ],
-    dependencies: ["event/isIncorporated", "event/earlierEvents", "company/isIncorporated", "company/orgnumber", "company/nominalSharePrice", "company/appliedEvents", "company/appliedEventsCount"],
-    //getAccountBalance: (Event) => returnObject({}),
-  }
-}
-
-let calculatedOutputs = { //Should only provide correct output when used in correct context, ie. no validation/error handling.
-  "event": {
-    "event/isIncorporated": (prevCompany, Event) => Event["event/eventType"] === "incorporation",
-    "event/earlierEvents": (prevCompany, Event) => prevCompany["company/appliedEvents"],
-  },
-  "company": {
-    "company/isIncorporated": (prevCompany, Event) => Event["event/isIncorporated"],
-    "company/orgnumber": (prevCompany, Event) => Event["event/incorporation/orgnumber"],
-    "company/nominalSharePrice": (prevCompany, Event) => Event["event/incorporation/nominalSharePrice"],
-    "company/appliedEvents": (prevCompany, Event) => Event["event/earlierEvents"].concat(Event),
-    "company/appliedEventsCount": (prevCompany, Event) => Event["event/earlierEvents"].length + 1
-    
-  }
-}
-
-let getAllEventTypes = () => Object.keys(eventTypes)
-let getRequiredUserInputs = (Event) => eventTypes[ Event["event/eventType"] ]["userInputs"]
-let getRequiredCompanyInputs = (Event) => eventTypes[ Event["event/eventType"] ]["companyInputs"]
-let getAttributeValueTypes = (attribute) => attributeValueTypes[ attribute ]
-let getAttributeValidatorsObject = () => attributeValidators
-let getAllAttributeValidators = () => Object.values( getAttributeValidatorsObject() )
-let getEventTypeInputCriteria = (Event) => eventTypes[ Event["event/eventType"] ]["eventInputCriteria"]
-let getEventTypeApplicabilityCriteria = (eventType) => eventTypes[ eventType ]["applicabilityCriteria"]
-let getDependencies = (Event) => eventTypes[ Event["event/eventType"] ]["dependencies"]
-let getDependencies_eventLevel = (Event) => getDependencies(Event).filter( dependency => dependency.startsWith("event/") )
-let getDependencies_companyLevel = (Event) => getDependencies(Event).filter( dependency => dependency.startsWith("company/") )
-let getOutputFunctionObject = () => calculatedOutputs
-let getOutputFunctionObject_eventLevel = () => getOutputFunctionObject()["event"]
-let getAllOutputFunctionNames_eventLevel = () => Object.keys( getOutputFunctionObject_eventLevel() ) 
-let getOutputFunctionObject_companyLevel = () => getOutputFunctionObject()["company"]
-let getAllOutputFunctionNames_companyLevel = () => Object.keys( getOutputFunctionObject_companyLevel() ) 
-let getCalculatedOutputFunction_eventLevel = (calculatedAttributeName) => calculatedOutputs["event"][ calculatedAttributeName ]
-let getCalculatedOutputFunction_companyLevel = (calculatedAttributeName) => calculatedOutputs["company"][ calculatedAttributeName ]
-let getDefaultCalculatedAttributes = () => ["company/appliedEvents", "company/appliedEventsCount"]
-
-let getSystemAttributes = () => ["entity", "entity/type", "event/index", "event/eventType"]
-let getCorrectValueType = (attribute, value) => getAttributeValueTypes(attribute) === "number" ? Number(value) : value
 
 
 
@@ -535,309 +305,3 @@ let getAttributeDatoms = (attributeName, valueType, doc) => [
 ]
 
 let orgnr = getAttributeDatoms("event/incorporation/orgnumber", "string", "Norwegian organizational number as according to the company's articles of assembly.") */
-
-/* let generateCompanyDocument = (Events) => Events.reduce( accumulateEvents, getInitialCompany() ) //generate initialCompany dynamically based on default values per outputVariable on company level?
-
-let accumulateEvents = (Company, Event) => ifNot( 
-  companyIsValid(Company), 
-  rejectEvent(Company, Event, "Cannot apply event to company unless all previous events are successfully applied."),   
-    ifNot( 
-      isApplicableEvent(Company, Event), 
-      rejectEvent(Company, Event, "The selected eventType is not applicable to the company."),
-        ifNot( 
-          isValidEvent( Event ) , 
-          rejectEvent(Company, Event, "The supplied event inputs are not valid."), 
-          applyNextEvent(Company, Event)
-    )
-  )
-) */
-
-//Rejection function
-/* let rejectEvent = (prevCompany, Event, errorMessage) =>  mergerino(prevCompany, 
-  {"company/rejectedEvents": prevCompany["company/rejectedEvents"].concat( mergerino(Event, {"event/errors": {error: errorMessage} })) }
-) 
-
-//Construct event and apply to company
-
-let applyNextEvent = (Company, Event) => updateCompanyAttributes( Company, constructEvent(Company, Event)  )  // (Company, Event) -> updatedCompany
-
-let constructEvent = (Company, Event) => getDependencies_eventLevel(Event).reduce( (updatedEvent, calculatedAttributeName) => updateCalculatedAttribute_Event(Company, updatedEvent, calculatedAttributeName), Event ) // (Company, Event) -> constructedEvent
-
-let updateCompanyAttributes = (Company, constructedEvent) => getDefaultCalculatedAttributes()
-  .concat( getDependencies_companyLevel(constructedEvent) )
-  //.concat("company/applicableEventTypes")
-  .reduce( (updatedCompany, calculatedAttributeName) => updateCalculatedAttribute_Company(updatedCompany, constructedEvent, calculatedAttributeName), Company ) // (Company, constructedEvent) -> updatedCompany
-
-let updateCalculatedAttribute_Event = (Company, Event, calculatedAttributeName) => mergerino( Event,  //(Company, Event, calculatedAttributeName) -> updatedEvent
-  createObject(calculatedAttributeName, getCalculatedOutputFunction_eventLevel(calculatedAttributeName)(Company, Event))
-)
-
-let updateCalculatedAttribute_Company = (Company, constructedEvent, calculatedAttributeName) => mergerino( Company, //(Company, constructedEvent, calculatedAttributeName) -> updatedCompany
-  createObject(calculatedAttributeName, getCalculatedOutputFunction_companyLevel(calculatedAttributeName)(Company, constructedEvent))
-)
-let addAccountBalances = (prevAccountBalance, accountBalance) => {
-
-  let prevAccounts = Object.keys(prevAccountBalance).length > 0 ? Object.keys(prevAccountBalance) : []
-
-  let newAccounts = Object.keys(accountBalance).length > 0 ? Object.keys(accountBalance) : []
-
-  let allAccounts = prevAccounts.concat(newAccounts).filter( filterUniqueValues )
-
-  let newAccountBalance = mergerino({}, allAccounts.map( acc => createObject(acc, ifError(prevAccountBalance[acc], 0) +  ifError(accountBalance[acc], 0)) ))
-
-  return newAccountBalance
-}
-*/
-
-/* let sharedConfig = {
-  Accounts: H.Accounts,
-  eventTypes: H.eventTypes,
-  inputAttributes: H.inputAttributes,
-  defaultCalculatedAttributes: ["company/appliedEvents", "company/appliedEventsCount"],
-  calculatedAttributes: H.calculatedAttributes,
-} 
-
-
-let H = {
-  Accounts: {
-    '1070': {label: 'Utsatt skattefordel'}, 
-    '1300': {label: 'Investeringer i datterselskap'}, 
-    '1320': {label: 'Lån til foretak i samme konsern'}, 
-    '1330': {label: 'Investeringer i tilknyttet selskap'}, 
-    '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
-    '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
-    '1360': {label: 'Obligasjoner'}, 
-    '1370': {label: 'Fordringer på eiere'}, 
-    '1375': {label: 'Fordringer på styremedlemmer'}, 
-    '1380': {label: 'Fordringer på ansatte'}, 
-    '1399': {label: 'Andre fordringer'}, 
-    '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
-    '1579': {label: 'Andre kortsiktige fordringer'}, 
-    '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
-    '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
-    '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
-    '1820': {label: 'Andre aksjer'}, 
-    '1830': {label: 'Markedsbaserte obligasjoner'}, 
-    '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
-    '1880': {label: 'Andre finansielle instrumenter'}, 
-    '1920': {label: 'Bankinnskudd'}, 
-    '2000': {label: 'Aksjekapital'}, 
-    '2020': {label: 'Overkurs'}, 
-    '2030': {label: 'Annen innskutt egenkapital'}, 
-    '2050': {label: 'Annen egenkapital'}, 
-    '2080': {label: 'Udekket tap'}, 
-    '2120': {label: 'Utsatt skatt'}, 
-    '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
-    '2250': {label: 'Gjeld til ansatte og eiere'}, 
-    '2260': {label: 'Gjeld til selskap i samme konsern'}, 
-    '2290': {label: 'Annen langsiktig gjeld'}, 
-    '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
-    '2400': {label: 'Leverandørgjeld'}, 
-    '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
-    '2510': {label: 'Betalbar skatt, fastsatt'}, 
-    '2800': {label: 'Avsatt utbytte'}, 
-    '2910': {label: 'Gjeld til ansatte og eiere'}, 
-    '2920': {label: 'Gjeld til selskap i samme konsern'}, 
-    '2990': {label: 'Annen kortsiktig gjeld'}, 
-    '6540': {label: 'Inventar'}, 
-    '6551': {label: 'Datautstyr (hardware)'}, 
-    '6552': {label: 'Programvare (software)'}, 
-    '6580': {label: 'Andre driftsmidler'}, 
-    '6701': {label: 'Honorar revisjon'}, 
-    '6702': {label: 'Honorar rådgivning revisjon'}, 
-    '6705': {label: 'Honorar regnskap'}, 
-    '6720': {label: 'Honorar for økonomisk rådgivning'}, 
-    '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
-    '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
-    '6790': {label: 'Annen fremmed tjeneste'}, 
-    '6890': {label: 'Annen kontorkostnad'}, 
-    '6900': {label: 'Elektronisk kommunikasjon'}, 
-    '7770': {label: 'Bank og kortgebyrer'}, 
-    '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
-    '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
-    '8000': {label: 'Inntekt på investering i datterselskap'}, 
-    '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
-    '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
-    '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
-    '8055': {label: 'Andre renteinntekter'}, 
-    '8060': {label: 'Valutagevinst (agio)'}, 
-    '8070': {label: 'Annen finansinntekt'}, 
-    '8071': {label: 'Aksjeutbytte'}, 
-    '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
-    '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
-    '8090': {label: 'Inntekt på andre investeringer'}, 
-    '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
-    '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
-    '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
-    '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
-    '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
-    '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
-    '8155': {label: 'Andre rentekostnader'}, 
-    '8160': {label: 'Valutatap (disagio)'}, 
-    '8170': {label: 'Annen finanskostnad'}, 
-    '8178': {label: 'Tap ved realisasjon av aksjer'}, 
-    '8300': {label: 'Betalbar skatt'}, 
-    '8320': {label: 'Endring utsatt skatt'},
-    '8800': {label: 'Årsresultat'}
-  },
-  inputAttributes: {
-    "type": { //Should be inputAttribute
-      validators: [
-        (value) => value === "process"
-      ],
-      valueType: "string",
-      view: (Event, A) => d([
-        d("Entitetstype."),
-        input({disabled: "disabled", value: Event["type"], style: "text-align: right;" })
-      ], {class: "inputWithLabel"}  )
-    },
-    "process/identifier": { //Should be inputAttribute
-      validators: [
-        (value) => Object.keys(sharedConfig.eventTypes).includes(value)
-      ],
-      valueType: "string",
-      view: (Event, A) => d([
-        d("Hendelsestype"),
-        dropdown( ifError( Event["process/identifier"], 0), Object.entries(sharedConfig.eventTypes).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.updateEventAttribute(Event, "process/identifier", String(e.srcElement.value) ) )
-      ], {class: "inputWithLabel"}  )
-    },
-    "transaction/records": { 
-      validators: [
-        (value) => typeof value === "object"
-      ],
-      valueType: "object",
-      view: (Event, A) => d(JSON.stringify(Event))
-    },
-    "transaction/generic/account": {
-      validators: [
-        (value) => typeof value === "string",
-        (value) => value.length === 4,
-        (value) => Number(value) >= 1000,
-        (value) => Number(value) < 10000
-      ],
-      valueType: "string",
-      view: (Event, A) => d([
-        d("Konto"),
-        dropdown( ifError( Event["transaction/generic/account"], 0), Object.entries( sharedConfig.Accounts ).map( entry => returnObject({label: `${entry[0]} - ${entry[1].label}`, value: entry[0] })).concat([{value: 0, label: ""}]), e => A.updateEventAttribute(Event, "transaction/generic/account", String(e.srcElement.value) ) )
-      ], {class: "inputWithLabel"}  )
-    },
-    "transaction/amount": {
-      validators: [
-        value => typeof value === "number",
-      ],
-      valueType: "number",
-      view: (Event, A) => d([
-        d("Beløp"),
-        input({value: Event["transaction/amount"], style: "text-align: right;"}, "change", e => A.updateEventAttribute(Event, "transaction/amount", Number(e.srcElement.value) ) )
-      ], {class: "inputWithLabel"}  )
-    },
-    "company/orgnumber": {
-      validators: [
-        (value) => typeof value === "string",
-        (value) => value.length === 9,
-        (value) => Number(value) >= 700000000,
-        (value) => Number(value) < 1000000000
-      ],
-      valueType: "string",
-      view: (Event, A) => d([
-        d("Orgnr."),
-        input({disabled: "disabled", value: Event["company/orgnumber"], style: "text-align: right;" })
-      ], {class: "inputWithLabel"}  )
-    },
-    "date": {
-      validators: [
-        (value) => true
-      ],
-      valueType: "string",
-      view: (Event, A) => d([
-        d("Dato."),
-        input({disabled: "disabled", value: Event["date"], style: "text-align: right;" })
-      ], {class: "inputWithLabel"}  )
-    },
-    "company/AoA/nominalSharePrice": { 
-      validators: [
-        (value) => typeof value === "number",
-        (value) => value >= 0.01
-      ],
-      valueType: "number",
-      view: (Event, A) => d([
-        d("Aksjenes pålydende"),
-        input({value: Event["company/AoA/nominalSharePrice"], style: "text-align: right;"}, "change", e => A.updateEventAttribute(Event, "company/AoA/nominalSharePrice", Number(e.srcElement.value) ) )
-      ], {class: "inputWithLabel"}  )
-    },
-  },
-  calculatedAttributes: {
-    "company/isIncorporated": (prevCompany, Event) => ( prevCompany["company/isIncorporated"] || Event["event/isIncorporated"]) ? true : false,
-    "company/orgnumber": (prevCompany, Event) => prevCompany["company/orgnumber"] ? prevCompany["company/orgnumber"] : Event["company/orgnumber"],
-    "company/AoA/nominalSharePrice": (prevCompany, Event) => Event["event/nominalSharePrice"],
-    "company/shareCount": (prevCompany, Event) => prevCompany["company/shareCount"] ? prevCompany["company/shareCount"] + Event["event/shareCountIncrease"] : Event["event/shareCountIncrease"],
-    "company/shareholders": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? Event["transaction/records"].map( shareholderTransaction => shareholderTransaction["company/orgnumber"] ).filter( filterUniqueValues ) : [],
-    "company/shareCapital": (prevCompany, Event) => Array.isArray(Event["transaction/records"]) ? Event["event/accountBalance"]["2000"] : null,
-    "company/accountBalance": (prevCompany, Event) => addAccountBalances( prevCompany["company/accountBalance"], Event["event/accountBalance"]),
-    "company/appliedEvents": (prevCompany, Event) => prevCompany["company/appliedEvents"].concat(Event),
-    "company/appliedEventsCount": (prevCompany, Event) => Event["event/isIncorporated"] ? 1 : prevCompany["company/appliedEventsCount"] + 1,
-    "company/applicableEventTypes": (prevCompany, Event) => Object.keys(sharedConfig["eventTypes"]).filter( eventType => sharedConfig["eventTypes"][ eventType ]["applicabilityCriteria"].every( criteriumFunction => criteriumFunction(prevCompany) === true )   ) ,
-    "event/isIncorporated": (prevCompany, eventInput) => eventInput["process/identifier"] === "incorporation" ? true : false,
-    "event/nominalSharePrice": (prevCompany, Event) => Event["company/AoA/nominalSharePrice"],
-    "event/shareCountIncrease": (prevCompany, eventInput) => Array.isArray(eventInput["transaction/records"]) ? eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"], 0 ) : null,
-    "event/shareCapitalIncrease": (prevCompany, eventInput) => Array.isArray(eventInput["transaction/records"]) ? eventInput["transaction/records"].reduce( (sum, shareholderTransaction) => sum + shareholderTransaction["transaction/investment/quantity"] * (eventInput["company/AoA/nominalSharePrice"] + shareholderTransaction["transaction/investment/unitPrice"]), 0 ) : null,
-    "event/accountBalance": (prevCompany, Event) => sharedConfig["eventTypes"][ Event["process/identifier"] ].getAccountBalance(Event)
-  },
-  eventTypes: {
-    "incorporation": {
-      label: "Stiftelse",
-      inputAttributes: ["date", "company/AoA/nominalSharePrice"],
-      eventInputCriteria: [
-        (Event) => Event["type"] === "process",
-        (Event) => Event["process/identifier"] === "incorporation",
-      ],
-      applicabilityCriteria: [
-        (Company) => Company["company/appliedEvents"].length === 0,
-      ],
-      calculatedAttributes: ["event/isIncorporated", "event/nominalSharePrice"],
-      getAccountBalance: (Event) => returnObject({}),
-      dependencies: ["company/isIncorporated", "company/orgnumber", "company/AoA/nominalSharePrice"] 
-    },
-    "incorporation/addFounder": {
-      label: "Legg til stifter",
-      inputAttributes: ["transaction/records"],
-      eventInputCriteria: [
-        (Event) => Event["type"] === "process",
-      ],
-      applicabilityCriteria: [
-        (Company) => Company["company/isIncorporated"],
-      ],
-      calculatedAttributes: ["event/shareCountIncrease", "event/shareCapitalIncrease", "event/accountBalance"],
-      getAccountBalance: (Event) => returnObject({}),
-      dependencies: ["company/shareCount", "company/shareholders", "company/shareCapital", "company/accountBalance"] 
-    },
-    "operatingCost": {
-      label: "Driftskostnader",
-      inputAttributes: ["transaction/generic/account", "transaction/amount"],
-      eventInputCriteria: [
-        (Event) => Event["type"] === "process",
-        (Event) => Event["process/identifier"] === "operatingCost",
-        (Event) => Number(Event["transaction/generic/account"]) >= 3000 && Number(Event["transaction/generic/account"]) < 8000,
-      ],
-      applicabilityCriteria: [
-        (Company) => Company["company/isIncorporated"],
-      ],
-      calculatedAttributes: ["event/accountBalance"],
-      getAccountBalance: (Event) => mergerino(
-        {"1920": Event["transaction/amount"] },
-        createObject(Event["transaction/generic/account"], -Event["transaction/amount"])
-      ),
-      dependencies: ["company/accountBalance"],
-      newEventDatoms: (CompanyDoc) => [
-        newDatom("newEvent", "type", "process"),
-        newDatom("newEvent", "process/identifier", "operatingCost"),
-        newDatom("newEvent", "company/orgnumber", CompanyDoc["company/orgnumber"]),
-        newDatom("newEvent", "date", CompanyDoc["company/appliedEvents"][ CompanyDoc["company/appliedEventsCount"] - 1 ]["date"]  ),
-        newDatom("newEvent", "transaction/generic/account", "7770"),
-        newDatom("newEvent", "transaction/amount", 0),
-      ]
-    }
-  }
-}
-
-*/

@@ -35,23 +35,21 @@ let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  
 
 let getUserActions = (S) => returnObject({
     updateLocalState: (patch) => update( mergerino(S, patch) ),
-    updateEventAttribute: async (Event, attribute, value) => {
-        let attributeValidators = sharedConfig.inputAttributes[ attribute ].validators //Attribute level validation
-        let eventValidators = sharedConfig.eventTypes[ Event["process/identifier"] ] //Event level validation TBD
+    updateEventAttribute: async (Event, attribute, e) => {
 
-        if( attributeValidators.every( validator => validator(value) ) ){
-            let datoms = [newDatom(Event["entity"], attribute, value)]
+        let value = Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value
 
-            let apiResponse = await APIRequest("POST", "transactor", JSON.stringify( datoms ) )
+        let apiResponse = Attribute.validate(attribute, value) //Only attribute validation, not event level.
+        ? await APIRequest("POST", "transactor", JSON.stringify( [newDatom(Event["entity"], attribute, value)] ) )
+        : null
 
-            let newS = mergerino(S, apiResponse)
+        let isInvalid = (apiResponse === null)
 
-            update( newS )
+        if(isInvalid){console.log("ERROR: Attribute value is not valid: ", Event, attribute, e)}
 
-        }else{
-            console.log("Datom validation error: ", Event, attribute, value)
-            update(S)
-        }
+        let newS = isInvalid ? S : mergerino(S, apiResponse)
+        
+        update( newS )
     },
     createEvent: async ( CompanyDoc, eventType ) => {
         let datoms = sharedConfig.eventTypes[ eventType ]["newEventDatoms"](CompanyDoc)
@@ -100,11 +98,11 @@ const sideEffects = {
 
 
 let update = (S) => {
-    S.Company = companyDoc( S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ) )
+    S.Company = createCompanyDoc( S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ) )
     S.elementTree = generateHTMLBody(S, getUserActions(S) )
-
-    console.log("State: ", S)
     
+    console.log("State: ", S)
+
     sideEffects.updateDOM( S.elementTree )
 }
 

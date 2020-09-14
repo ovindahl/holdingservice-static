@@ -1,370 +1,210 @@
+//CONFIG DATA
 
-var func = new Function("prevCompany, Event", "return prevCompany['company/shareholders'];" )
-var func2 = new Function("prevCompany, Event", "console.log(prevCompany['company/shareholders']) ;" )
-
-let eventTypes = {
-    "incorporation": {
-      label: "Stiftelse",
-      inputAttributes: ["transaction/records", "company/AoA/nominalSharePrice"],
-      eventInputCriteria: [ //Is the combination of inputs valid? Not taking into account anything but the provided event input.
-        (Event) => Event["type"] === "process",
-        (Event) => Event["process/identifier"] === "incorporation",
-      ],
-      applicabilityCriteria: [ //Is the eventType applicable to the current state of the company?
-        (Company) => Company["company/appliedEventsCount"] === 0,
-      ],
-      calculatedOutputs: ["event/isIncorporated", "event/shareCountIncrease", "event/shareCapitalIncrease", "event/accountBalance"],
-      dependencies: ["company/isIncorporated", "company/orgnumber", "company/AoA/nominalSharePrice", "company/shareCount", "company/shareholders", "company/shareCapital", "company/accountBalance"] //Which calculatedAttributes need to be recalculated as a consequence of applying the event?
-    },
-    "operatingCost": {
-      label: "Driftskostnader",
-      inputAttributes: ["transaction/generic/account", "transaction/amount"],
-      eventInputCriteria: [
-        (Event) => Event["type"] === "process",
-        (Event) => Event["process/identifier"] === "operatingCost",
-        (Event) => Number(Event["transaction/generic/account"]) >= 3000 && Number(Event["transaction/generic/account"]) < 8000,
-      ],
-      applicabilityCriteria: [
-        (Company) => Company["company/isIncorporated"] === true,
-      ],
-      calculatedOutputs: ["event/accountBalance"],
-      dependencies: ["company/accountBalance"]
-    }
-  }
-
-
-let inputAttributes = {
-  "entity/type": {
-    "attr/name": "entity/type",
-    "attr/valueType": "string",
-    "attr/doc": "String name used to distinguish between a set of defined object types, eg. 'User' or 'Event'.",
-    "attr/validatorFunction": (value) => [
-        value => ["event"].includes(value)
-    ].every( validator => validator(value) ),
+const EventType = {
+  requiredUserInputs: {
+    "incorporation": ["event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"]
   },
-  "event/eventType": {
-    "attr/name": "event/eventType",
-    "attr/valueType": "string",
-    "attr/doc": "String name used to distinguish between a set of defined event types, eg. 'incorporation' or 'operatingCost'.",
-    "attr/validatorFunction": (value) => [
-        value => Object.keys(eventTypes).includes(value)
-    ].every( validator => validator(value) ),
+  getRequiredAttributes: (eventType) => EventType[ "requiredUserInputs" ][ eventType ],
+  requiredCompanyInputs: {
+    "incorporation": ["company/eventCycle"]
   },
-  "event/index": {
-    "attr/name": "event/index",
-    "attr/valueType": "number",
-    "attr/doc": "The index of a given event in the timeline of a given company.",
-    "attr/validatorFunction": (value) => [
-        value => typeof value === "number",
-        value => value >= 1
-    ].every( validator => validator(value) ),
+  getRequiredCompanyInputs: (eventType) => EventType[ "requiredCompanyInputs" ][ eventType ],
+  applicabilityCriteria: {
+    "incorporation": [
+      Company => Company["company/eventCycle"] === 0,
+    ]
   },
-  "event/date": {
-    "attr/name": "event/date",
-    "attr/valueType": "string",
-    "attr/doc": "YYYY-MM-DD date to show on the company's timeline.",
-    "attr/validatorFunction": (value) => [
-        value => typeof value === "string",
-    ].every( validator => validator(value) ),
-    "attr/viewFunction": (Event, A) => d( JSON.stringify(Event) )
+  isApplicable: (eventType, Company) => EventType[ "applicabilityCriteria" ][ eventType ].every( criteriumFunction => criteriumFunction(Company) ), //Specify on companyInput level and combined level separately?
+  combinedInputCriteria: {
+    "incorporation": [
+      Event => Event["event/eventType"] === "incorporation",
+    ]
   },
-  "event/incorporation/nominalSharePrice": {
-    "attr/name": "event/incorporation/nominalSharePrice",
-    "attr/valueType": "number",
-    "attr/doc": "Nominal price per share as according to the company's articles of assembly.",
-    "attr/validatorFunction": (value) => typeof value === "number",
-    "attr/viewFunction": (Event, A) => d( JSON.stringify(Event) )
-  }, 
-  "event/incorporation/founder": {
-    "attr/name": "event/incorporation/founder",
-    "attr/valueType": "object",
-    "attr/doc": "Array of objects containng shareholderID, shareCount and sharePremium for each founder of the company.",
-    "attr/validatorFunction": (value) => Array.isArray(value) 
-    ? value.map( founder => (
-        typeof founder["shareholderID"] === "string" && 
-        typeof founder["shareCount"] === "number" && 
-        typeof founder["sharePremium"] === "number"  
-       ) ).every( founderValidation => founderValidation === true )
-    : false,
-    "attr/viewFunction": (Event, A) => d( JSON.stringify(Event) )
+  isValid: (Event) => EventType[ "combinedInputCriteria" ][ Event["event/eventType"] ].every( criteriumFunction => criteriumFunction(Event) ),
+  dependencies: {
+    "incorporation": ["event/:isIncorporated", "company/:orgnumber", "company/:nominalSharePrice"],
   },
-  // event/error, from companyConstructor
-  "event/incorporation/orgnumber": {
-    "attr/name": "event/incorporation/orgnumber",
-    "attr/valueType": "string",
-    "attr/doc": "Norwegian organizational number as according to the company's articles of assembly.",
-    "attr/validatorFunction": (value) => (typeof value === "string" && value.length === 9 && Number(value) >= 800000000 ),
-    "attr/viewFunction": (Event, A) => d( JSON.stringify(Event) )
-  }
+  getDependencies: (eventType) => EventType[ "dependencies" ][ eventType ],
+  getAllEventTypes: () => ["incorporation"]
 }
 
-let outputFunctions = {
-  "event/accountBalance": (prevCompany, Event) => mergerino( {}, Event["recordObjects"].map( record => record.account ).filter( filterUniqueValues ).map( account => createObject(account, Event["recordObjects"].filter( record => record.account === account ).reduce( (sum, record) => sum + record.amount, 0) )) ),
-  "event/incorporation/shareCount": (prevCompany, Event) => Event["event/incorporation/founders"].reduce( (sum, founderObject) => sum + founderObject.shareCount, 0),
-  "event/incorporation/shareCapital": (prevCompany, Event) => Event["event/incorporation/founders"].reduce( (sum, founderObject) => sum + (nominalSharePrice + founderObject.sharePremium) *  founderObject.shareCount, 0),
-  "event/incorporation/shareholders": (prevCompany, Event) => Event["event/incorporation/founders"].map( shareholder => shareholder["id"] ).filter( filterUniqueValues ),
-  "company/orgnumber": (prevCompany, Event) => Event["event/incorporation/orgnumber"] ? Event["event/incorporation/orgnumber"] : prevCompany["company/orgnumber"],
-  "company/Events": (prevCompany, Event) => prevCompany["company/Events"] ? prevCompany["company/Events"].concat(Event) : [Event],
-  "company/nominalSharePrice": (prevCompany, Event) => ifNot(Event["event/incorporation/nominalSharePrice"], prevCompany["company/nominalSharePrice"]),
-  "company/shareCount": (prevCompany, Event) => Event["event/incorporation/shareCount"] ? prevCompany["company/shareCount"] + Event["event/incorporation/shareCount"] : Event["company/shareCount"],
-  "company/shareholders": (prevCompany, Event) => ifNot( Event["event/incorporation/shareholders"], prevCompany["company/shareholders"] ),
-  "company/shareCapital": (prevCompany, Event) => Event["event/eventType"] === "incorporation" ? Event["event/incorporation/shareCapital"] : prevCompany["company/shareCapital"],
-  "company/accountBalance": (prevCompany, Event) => Event["event/eventType"] === "incorporation" ? Event["event/accountBalance"] : addAccountBalances(prevCompany["company/accountBalance"], Event["event/accountBalance"]),
-  "company/validEventTypes": (prevCompany, Event) => ["incorporation", "incorporationCost", "operatingCost", "shareholderLoan_increase", "investment_new"],
+//Attributes
+
+const Attribute = {
+  validators: {
+    "entity/type": v => [
+      v => typeof v === "string", //validator + description of correct format should be sufficient [?]
+      v => ["process", "event"].includes(v)
+    ].every( f => f(v) ),
+    "event/eventType": v => [
+        v => typeof v === "string", 
+        v => EventType.getAllEventTypes.includes(v)
+      ].every( f => f(v) ),
+    "event/index": v => [
+          v => typeof v === "number",
+          v => v >= 1
+      ].every( f => f(v) ),
+    "event/incorporation/orgnumber": v => [
+      v => typeof v === "string", 
+      v => v.length === 9,
+      v => v === "999999999" //for testing...
+    ].every( f => f(v) ),
+    "event/date": v => [
+      v => typeof v === "string", 
+      v => v.length === 10
+    ].every( f => f( v ) ),
+    "event/incorporation/nominalSharePrice": v => [
+      v => typeof v === "number", 
+      v => v > 0
+    ].every( f => f(v) )
+  },
+  validate: (attribute, value) => Attribute.validators[ attribute ](value),
+  isNumber: (attribute) => ["event/index", "event/incorporation/nominalSharePrice"].includes(attribute),
+  getSystemAttributes: () => ["entity", "entity/type", "event/index"]
+}
+
+
+//Output functions
+
+const outputFunction = {
+  functions: {
+    "event/:isIncorporated": (prevCompany, Event) => Event["event/eventType"] === "incorporation", //for testing..
+    "company/:isIncorporated": (prevCompany, Event) => Event["event/isIncorporated"],
+    "company/:orgnumber": (prevCompany, Event) => Event["event/incorporation/orgnumber"],
+    "company/:nominalSharePrice": (prevCompany, Event) => Event["event/incorporation/nominalSharePrice"]
+  },
+  calculate: (functionName, prevCompany, constructedEvent) => outputFunction.functions[ functionName ](prevCompany, constructedEvent)
 }
 
 
 
 
-//Annual report docs
+
+
+
+
+
+
+
+let Accounts = {
+  '1070': {label: 'Utsatt skattefordel'}, 
+  '1300': {label: 'Investeringer i datterselskap'}, 
+  '1320': {label: 'Lån til foretak i samme konsern'}, 
+  '1330': {label: 'Investeringer i tilknyttet selskap'}, 
+  '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
+  '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
+  '1360': {label: 'Obligasjoner'}, 
+  '1370': {label: 'Fordringer på eiere'}, 
+  '1375': {label: 'Fordringer på styremedlemmer'}, 
+  '1380': {label: 'Fordringer på ansatte'}, 
+  '1399': {label: 'Andre fordringer'}, 
+  '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
+  '1579': {label: 'Andre kortsiktige fordringer'}, 
+  '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
+  '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
+  '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
+  '1820': {label: 'Andre aksjer'}, 
+  '1830': {label: 'Markedsbaserte obligasjoner'}, 
+  '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
+  '1880': {label: 'Andre finansielle instrumenter'}, 
+  '1920': {label: 'Bankinnskudd'}, 
+  '2000': {label: 'Aksjekapital'}, 
+  '2020': {label: 'Overkurs'}, 
+  '2030': {label: 'Annen innskutt egenkapital'}, 
+  '2050': {label: 'Annen egenkapital'}, 
+  '2080': {label: 'Udekket tap'}, 
+  '2120': {label: 'Utsatt skatt'}, 
+  '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
+  '2250': {label: 'Gjeld til ansatte og eiere'}, 
+  '2260': {label: 'Gjeld til selskap i samme konsern'}, 
+  '2290': {label: 'Annen langsiktig gjeld'}, 
+  '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
+  '2400': {label: 'Leverandørgjeld'}, 
+  '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
+  '2510': {label: 'Betalbar skatt, fastsatt'}, 
+  '2800': {label: 'Avsatt utbytte'}, 
+  '2910': {label: 'Gjeld til ansatte og eiere'}, 
+  '2920': {label: 'Gjeld til selskap i samme konsern'}, 
+  '2990': {label: 'Annen kortsiktig gjeld'}, 
+  '6540': {label: 'Inventar'}, 
+  '6551': {label: 'Datautstyr (hardware)'}, 
+  '6552': {label: 'Programvare (software)'}, 
+  '6580': {label: 'Andre driftsmidler'}, 
+  '6701': {label: 'Honorar revisjon'}, 
+  '6702': {label: 'Honorar rådgivning revisjon'}, 
+  '6705': {label: 'Honorar regnskap'}, 
+  '6720': {label: 'Honorar for økonomisk rådgivning'}, 
+  '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
+  '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
+  '6790': {label: 'Annen fremmed tjeneste'}, 
+  '6890': {label: 'Annen kontorkostnad'}, 
+  '6900': {label: 'Elektronisk kommunikasjon'}, 
+  '7770': {label: 'Bank og kortgebyrer'}, 
+  '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
+  '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
+  '8000': {label: 'Inntekt på investering i datterselskap'}, 
+  '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
+  '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
+  '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
+  '8055': {label: 'Andre renteinntekter'}, 
+  '8060': {label: 'Valutagevinst (agio)'}, 
+  '8070': {label: 'Annen finansinntekt'}, 
+  '8071': {label: 'Aksjeutbytte'}, 
+  '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
+  '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
+  '8090': {label: 'Inntekt på andre investeringer'}, 
+  '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
+  '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
+  '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
+  '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
+  '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
+  '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
+  '8155': {label: 'Andre rentekostnader'}, 
+  '8160': {label: 'Valutatap (disagio)'}, 
+  '8170': {label: 'Annen finanskostnad'}, 
+  '8178': {label: 'Tap ved realisasjon av aksjer'}, 
+  '8300': {label: 'Betalbar skatt'}, 
+  '8320': {label: 'Endring utsatt skatt'},
+  '8800': {label: 'Årsresultat'}
+}
+
+
+
+//Archive
+
+//var func = new Function("prevCompany, Event", "return prevCompany['company/shareholders'];" )
+//var func2 = new Function("prevCompany, Event", "console.log(prevCompany['company/shareholders']) ;" )
+
 
 /* 
-let trialBalanceView = (financialYear) => d([
-  h3(`1: Foreløpig saldobalanse`),
-  d([d("Kontonr."), d("Konto"), d("Åpningsbalanse", {class: "numberCell"} ), d("Endring", {class: "numberCell"} ), d("Utgående balanse", {class: "numberCell"} )], {class: "trialBalanceRow"}),
-  Object.keys( financialYear["accounts"] ).map( account =>  {
-
-    let thisAccount = financialYear["accounts"][account]
-
-    let opening = thisAccount.openingBalance.amount
-    let closing = thisAccount.closingBalance.amount
-    let change = closing - opening
 
 
-    return d([ 
-      d( account ), 
-      d(H.Accounts[ account ]["label"] ), 
-      d( format.amount( opening ), {class: "numberCell"}), 
-      d( format.amount( change  ), {class: "numberCell"}), 
-      d( format.amount( closing ), {class: "numberCell"}), 
-    ], {class: "trialBalanceRow"})
-  } ).join('')
-])
+let eventTypes = {
+  "incorporation": {
+    userInputs: ["event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
+    companyInputs: ["company/appliedEvents"],
+    eventInputCriteria: [
+      Event => Event["event/eventType"] === "incorporation",
+    ],
+    applicabilityCriteria: [
+      Company => Company["company/eventCycle"] === 0,
+    ],
+    dependencies: ["event/earlierEvents", "company/orgnumber", "company/nominalSharePrice", "company/appliedEvents", "company/appliedEventsCount"],
+    //getAccountBalance: (Event) => returnObject({}),
+  }
+}
 
-let annualResultView = (financialYear) => {
-
-let taxCostRecord = financialYear.accounts["8300"].accountRecords[0]
-
-return d([
-  h3(`3: Beregning av årsresultat, overføringer og disponeringer`),
-  "<br>",
-  d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( taxCostRecord.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  d([ d( "Årets skattekostnad" ), d( format.amount( taxCostRecord.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  d([ d( "Årsresultat" ), d( format.amount( financialYear.accounts["8800"].closingBalance.amount ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  "<br>",
-  d([ d( "Overføres til Annen innskutt egenkapital" ), d( format.amount( financialYear.accounts["2050"].closingBalance.amount ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-  d([ d( "Overføres til Udekket tap" ), d( format.amount( financialYear.accounts["2080"].closingBalance.amount ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-])
-} 
-
-
-
-let yearEndPage = (S, A) => {  
-
-    let financialYear = S.selectedCompany["acc/financialYears"][S.selectedYear]
-
-    return d([
-    h3(`Årsavslutning ${S.selectedYear}`),
-    "[Fin visualisering med overordnet status på prosessen]",
-    "<br>",
-    trialBalanceView(financialYear),
-    "<br>",
-    h3(`2: Beregning av årets skattekostnad og resultat etter skatt`),
-      "<br>",
-    taxCostView(financialYear),
-    "<br>",
-      annualResultView(financialYear),
-    "<br>",
-    annualReportView(S, financialYear),
-    "<br>",
-    h3("6: Utfylling av offentlige skjemaer"),
-    d("RF-1028"),
-    Object.entries(financialYear["reports"]["rf_1028"]).map( entry => `[${entry[0]}]: ${format.amount(entry[1])}`).join("<br>"),
-    "<br><br>",
-    d("RF-1167"),
-    Object.entries(financialYear["reports"]["rf_1167"]).map( entry => `[${entry[0]}]: ${format.amount(entry[1])}`).join("<br>"),
-    "<br>",
-  ])
- }
-
-
- 
-let getAnnualReport = ( S, financialYear ) => {
-
-  let virtualAccounts = [
-    {virtualAccount: '9000', label: 'Sum driftsinntekter', firstAccount: "3000", lastAccount: "3999"},
-    {virtualAccount: '9010', label: 'Sum driftskostnader', firstAccount: "4000", lastAccount: "7999"},
-    {virtualAccount: '9050', label: 'Driftsresultat', firstAccount: "3000", lastAccount: "7999"},
-    {virtualAccount: '9060', label: 'Sum finansinntekter', firstAccount: "8000", lastAccount: "8099"},
-    {virtualAccount: '9070', label: 'Sum finanskostnader', firstAccount: "8100", lastAccount: "8199"},
-    {virtualAccount: '9100', label: 'Ordinært resultat før skattekostnad', firstAccount: "3000", lastAccount: "8199"},
-    {virtualAccount: '9150', label: 'Ordinært resultat', firstAccount: "3000", lastAccount: "8399"},
-    {virtualAccount: '9200', label: 'Årsresultat', firstAccount: "3000", lastAccount: "8699"},
-    {virtualAccount: '9300', label: 'Sum anleggsmidler', firstAccount: "1000", lastAccount: "1399"},
-    {virtualAccount: '9350', label: 'Sum omløpsmidler', firstAccount: "1400", lastAccount: "1999"},
-    {virtualAccount: '9400', label: 'Sum eiendeler', firstAccount: "1000", lastAccount: "1999"},
-    {virtualAccount: '9450', label: 'Sum egenkapital', firstAccount: "2000", lastAccount: "2099"},
-    {virtualAccount: '9500', label: 'Sum langsiktig gjeld', firstAccount: "2100", lastAccount: "2299"},
-    {virtualAccount: '9550', label: 'Sum kortsiktig gjeld', firstAccount: "2300", lastAccount: "2999"},
-    {virtualAccount: '9650', label: 'Sum egenkapital og gjeld', firstAccount: "2000", lastAccount: "2999"}
-]
-
-  let headerRow = d([ d(""), d("Kontoer"), d( String(financialYear.year) , {class: "numberCell"} ), d( String( Number(financialYear.year) - 1), {class: "numberCell"} )  ], {class: "financialStatementsRow"} )
-
-  let prevYear = S.selectedCompany["acc/financialYears"][Number(S.selectedYear) - 1] ? S.selectedCompany["acc/financialYears"][Number(S.selectedYear) - 1] : {}
-
-  let prevYearAccounts = prevYear.annualReportAccounts ? prevYear.annualReportAccounts : {}
-
-  let reportLines = [headerRow].concat( Object.keys(financialYear.annualReportAccounts).map( acc => d([
-     d(`[${String(acc)}] ${virtualAccounts.filter( vacc => vacc.virtualAccount === acc )[0].label} `), 
-     d(`${virtualAccounts.filter( vacc => vacc.virtualAccount === acc )[0].firstAccount} - ${virtualAccounts.filter( vacc => vacc.virtualAccount === acc )[0].lastAccount}`), 
-     d( format.amount( Number(financialYear.annualReportAccounts[ acc ])), {class: "numberCell"} ), 
-     d( format.amount( prevYearAccounts[acc] ? prevYearAccounts[acc] : "" ), {class: "numberCell"} ), 
-    ], {class: "financialStatementsRow"} )
-  ).join(''))
+let calculatedOutputs = { //Should only provide correct output when used in correct context, ie. no validation/error handling.
+  "event": {
+    "event/isIncorporated": (prevCompany, Event) => Event["event/eventType"] === "incorporation",
+    "event/earlierEvents": (prevCompany, Event) => prevCompany["company/appliedEvents"],
+  },
+  "company": {
+    "company/isIncorporated": (prevCompany, Event) => Event["event/isIncorporated"],
+    "company/orgnumber": (prevCompany, Event) => Event["event/incorporation/orgnumber"],
+    "company/nominalSharePrice": (prevCompany, Event) => Event["event/incorporation/nominalSharePrice"],
+    //"company/appliedEvents": (prevCompany, Event) => Event["event/earlierEvents"].concat(Event),
+    //"company/appliedEventsCount": (prevCompany, Event) => Event["event/earlierEvents"].length + 1
     
-
-  return reportLines
-
-}
-
-
-let annualReportView = (S, financialYear) => {
-
-  return d([
-    h3(`5: Årsregnskap`),
-    "<br>",
-    d(getAnnualReport( S, financialYear ), {class: "borderAndPadding"}),
-    "<br>",
-    d([h3(`Noter`), notesText( S, financialYear )], {class: "borderAndPadding"}),
-    "<br>",
-  ])
-}
-
-let em = (content) => String('<span class="emphasizedText">' + content + '</span>')
-
-let notesText = ( S, financialYear ) => {
-
-  let shareCapital_openingBalance = financialYear.accounts["2000"] ? financialYear.accounts["2000"].openingBalance.amount : 0
-  let shareCapital_closingBalance = financialYear.accounts["2000"] ? financialYear.accounts["2000"].closingBalance.amount : 0
-  let shareCapital_change = shareCapital_closingBalance - shareCapital_openingBalance
-
-  let sharePremium_openingBalance = financialYear.accounts["2020"] ? financialYear.accounts["2020"].openingBalance.amount : 0
-  let sharePremium_closingBalance = financialYear.accounts["2020"] ? financialYear.accounts["2020"].closingBalance.amount : 0
-  let sharePremium_change = sharePremium_closingBalance - sharePremium_openingBalance
-
-  let otherEquity_openingBalance = financialYear.accounts["2030"] ? financialYear.accounts["2030"].openingBalance.amount : 0
-  let otherEquity_closingBalance = financialYear.accounts["2030"] ? financialYear.accounts["2030"].closingBalance.amount : 0
-  let otherEquity_change = otherEquity_closingBalance - otherEquity_openingBalance
-
-  let taxRecord = financialYear.accounts["8300"].accountRecords[0]
-
-  let taxRate = taxRecord.taxRate * 100 + "%"
-
-  let shareCapitalAccount =  financialYear.accounts["2000"]
-
-  let shareholders = Object.values(shareCapitalAccount.closingBalance.shareholders)
-
-  let shareCount = shareCapitalAccount.closingBalance.shareCount
-
-  return `
-<h4>Note 1: Regnskapsprinsipper</h4>
-Regnskapet er utarbeidet i henhold til norske regnskapsregler/-standarder for små foretak.
-<br>
-<h5>Klassifisering og vurdering av balanseposter</h5>
-Omløpsmidler og kortsiktig gjeld omfatter poster som forfaller til betaling innen ett år etter anskaffelsestidspunktet, samt poster som knytter seg til varekretsløpet. Øvrige poster er klassifisert som anleggsmiddel/langsiktig gjeld.
-<br>
-Omløpsmidler vurderes til laveste av anskaffelseskost og virkelig verdi. Kortsiktig gjeld balanseføres til nominelt beløp på opptakstidspunktet.
-<br>
-Anleggsmidler vurderes til anskaffelseskost, men nedskrives til gjenvinnbart beløp dersom dette er lavere enn balanseført verdi. Gjenvinnbart beløp er det høyeste av netto salgsverdi og verdi i bruk. Langsiktig gjeld balanseføres til nominelt beløp på etableringstidspunktet.
-Markedsbaserte finansielle omløpsmidler som inngår i en handelsportefølje vurderes til virkelig verdi, mens andre markedsbaserte finansielle omløpsmidler vurderes til laveste av anskaffelseskost og virkelig verdi.
-<br>
-<h5>Skatt</h5>
-Skattekostnaden i resultatregnskapet omfatter både betalbar skatt for perioden og endring i utsatt skatt. Utsatt skatt er beregnet med ${em(taxRate)} på grunnlag av de midlertidige forskjeller som eksisterer mellom regnskapsmessige og skattemessige verdier, samt ligningsmessig underskudd til fremføring ved utgangen av regnskapsåret. Skatteøkende og skattereduserende midlertidige forskjeller som reverserer eller kan reversere i samme periode er utlignet og nettoført.
-<br>
-<h4>Note 2: Aksjekapital og aksjonærinformasjon</h4>
-Foretaket har ${em( format.amount(shareCount) ) } aksjer, pålydende kr ${em( format.amount( S.selectedCompany["company/AoA/nominalSharePrice"] ) )}, noe som gir en samlet aksjekapital på kr ${em(format.amount( shareCapital_closingBalance ) )}. Selskapet har én aksjeklasse.
-<br><br>
-Aksjene eies av: 
-<br>
-${shareholders.map( shareholder => d(em(`${shareholder.id}: ${shareholder.shareCount} <br>`))).join('')}
-
-<h4>Note 3: Egenkapital</h4>
-
-<table>
-<tbody>
-  <tr>
-    <td class="numberCell"></td>
-    <td class="numberCell">Aksjekapital</td>
-    <td class="numberCell">Overkurs</td>
-    <td class="numberCell">Annen egenkapital</td>
-    <td class="numberCell">Sum</td>
-  </tr>
-  <tr>
-    <td>Egenkapital 1.1 </td>
-    <td class="numberCell">${em( shareCapital_openingBalance ) }</td>
-    <td class="numberCell">${em( sharePremium_openingBalance ) }</td>
-    <td class="numberCell">${em( otherEquity_openingBalance ) }</td>
-    <td class="numberCell">${em( shareCapital_openingBalance + sharePremium_openingBalance + otherEquity_openingBalance ) }</td>
-  </tr>
-  <tr>
-    <td>Endring ila. året </td>
-    <td class="numberCell">${em( shareCapital_change ) }</td>
-    <td class="numberCell">${em( sharePremium_change ) }</td>
-    <td class="numberCell">${em( otherEquity_change ) }</td>
-    <td class="numberCell">${em( shareCapital_change + sharePremium_change + otherEquity_change ) }</td>
-  </tr>
-  <tr>
-    <td>Egenkapital 31.12 </td>
-    <td class="numberCell">${em( shareCapital_closingBalance ) }</td>
-    <td class="numberCell">${em( sharePremium_closingBalance ) }</td>
-    <td class="numberCell">${em( otherEquity_closingBalance ) }</td>
-    <td class="numberCell">${em( shareCapital_closingBalance + sharePremium_closingBalance + otherEquity_closingBalance ) }</td>
-  </tr>
-</tbody>
-</table>
-<br>
-<h4>Note 5: Skatt</h4>
-${taxCostView(financialYear)}
-
-<h4>Note 4: Lønnskostnader, antall ansatte, godtgjørelser, revisjonskostnader mm.</h4>
-Selskapet har i ${em( S.selectedYear ) } ikke hatt noen ansatte og er således ikke pliktig til å ha tjenestepensjon for de ansatte etter Lov om obligatoriske tjenestepensjon. Det er ikke utdelt styrehonorar.
-<br><br>
-Kostnadsført revisjonshonorar for ${em( S.selectedYear ) } utgjør kr ${em( 0 ) }. Honorar for annen bistand fra revisor utgjør kr ${em( 0 ) }.
-
-
-
-<h4>Note 6: Bankinnskudd</h4>
-Posten inneholder kun frie midler.
-
-<h4>Note 7: Gjeld til nærstående, ledelse og styre</h4>
-Selskapet har gjeld til følgende nærstående personer: <br>
-
-${shareholders.map( shareholder => d(em(`${shareholder.shareholder}: ${shareholder.creditOutstanding} <br>`))).join('')}
-
-`}
-
-let taxCostView = (financialYear) => {
-
-  let taxCostRecord = financialYear.accounts["8300"].accountRecords[0]
-
-
-  return d([
-    d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( taxCostRecord.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    "<br>",
-    d([ d( "Permanente forskjeller" ), d( format.amount( taxCostRecord.permanentDifferences ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Endring i midlertidige forskjeller" ), d( format.amount( taxCostRecord.temporaryDifferences ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Estimatavvik på feilberegnet skatt forrige år" ), d( format.amount( taxCostRecord.taxEstimateCorrection ), {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Skattegrunnlag før bruk av fremførbart underskudd" ), d( format.amount( taxCostRecord.taxResultBeforeUtilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    "<br>",
-    d([ d( "Inngående fremførbart underskudd" ), d( format.amount( taxCostRecord.accumulatedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Benyttet fremførbart underskudd" ), d( format.amount( taxCostRecord.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    d([ d( "Utgående fremførbart underskudd" ), d( format.amount( taxCostRecord.accumulatedLosses + taxCostRecord.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    "<br>",
-    d([ d( "Skattegrunnlag etter bruk av fremførbart underskudd" ), d( format.amount( taxCostRecord.taxResultAfterUtilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
-    "<br>",
-    d([ d( "Årets skattekostnad" ), d( format.amount( taxCostRecord.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"})
-  ])
+  }
 } */
-
-
