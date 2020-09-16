@@ -50,6 +50,12 @@ const AttributeValidators = { //Ad-hoc validators specified on event level. Glob
   }
 }
 
+const companyVariableValidators = {
+  "company/:nominalSharePrice": {
+    "above15": (value) => value > 15
+  }
+}
+
 const companyVariablesValidators = {
   "hasNominalSharePrice": (companyVariables) => Object.keys(companyVariables).includes("company/:nominalSharePrice"),
   "hasNominalSharePriceAbove10": (companyVariables) => companyVariables["company/:nominalSharePrice"] > 10
@@ -69,7 +75,8 @@ let event_incorporation = {
   attributeCriteria: [
     {attribute: "event/index", validator: "isFirstEvent" }
   ],
-  requiredCompanyInputs: ["company/:applicableEventTypes"],
+  requiredCompanyInputs: [],
+  companyVariableValidators: [],
   companyVariablesValidators: [],
   eventValidators: ["sumOfindexAndNomSPAbove10"],
   combinedValidators: [],
@@ -85,6 +92,9 @@ let event_testEvent = {
     {attribute: "event/date", validator: "is2020" },
   ],
   requiredCompanyInputs: ["company/:nominalSharePrice"],
+  companyVariableValidators: [
+    {companyVariable: "company/:nominalSharePrice", validator: "above15" }
+  ],
   companyVariablesValidators: ["hasNominalSharePrice", "hasNominalSharePriceAbove10"],
   eventValidators: [],
   combinedValidators: ["dateEqualToSP"],

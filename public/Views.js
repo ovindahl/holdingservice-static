@@ -76,16 +76,30 @@ let generateHTMLBody = (S, A) => [
 ]
 
 let invalidEventView = (eventCycle, A) =>  d( [
-  eventTypeHeaderView(eventCycle["inputEvent"]["event/eventType"], eventCycle["isApplied"]),
+  eventTypeHeaderView( eventCycle["eventType"], eventCycle["isApplied"]),
   d([
-    d(`Alle tidligere hendelser er gydlige`),
+    d(`Alle tidligere hendelser er gyldige`),
     input({value: eventCycle["prevEventCycleIsValid"], disabled: "disabled", style: `text-align: right; background-color: ${eventCycle["prevEventCycleIsValid"] ? "#1073104f" : "#fb9e9e" };"`}),
   ], {class: "eventInspectorRow"}),
   d("<br>"),
-  companyVarsTableWithValidationView(eventCycle["inputEvent"]["event/eventType"], eventCycle["prevCompanyVariables"], A),
-  eventCycle["attributesAreValid"] ? d("Alle attributter er gyldige") : d("Alle attributter er ikke gyldige"),
+  companyVarsTableWithValidationView( eventCycle["eventType"], eventCycle["companyVariablesValidation"]),
   attributesTableWithValidationView(eventCycle["inputEvent"], A),
-  d(JSON.stringify(eventCycle)  )
+  d("<br>"),
+  d("eventValidators:"),
+  d(
+    eventCycle["eventValidators"].map( eventValidator => d([
+      d( eventValidator["validatorName"] ),
+      input({value: eventValidator["isValid"], disabled: "disabled", style: `text-align: right; background-color: ${eventValidator["isValid"] ? "#1073104f" : "#fb9e9e" };"`}),
+    ], {class: "eventInspectorRow"}))
+  ),
+  d("<br>"),
+  d("combinedValidators:"),
+  d(
+    eventCycle["combinedValidators"].map( combinedValidator => d([
+      d( combinedValidator["validatorName"] ),
+      input({value: combinedValidator["isValid"], disabled: "disabled", style: `text-align: right; background-color: ${combinedValidator["isValid"] ? "#1073104f" : "#fb9e9e" };"`}),
+    ], {class: "eventInspectorRow"}))
+  ),
 ] )
 
 //Event Cycle Views
@@ -131,40 +145,24 @@ let attributesTableWithValidationView = (inputEvent, A) => d([
   d("<br>")
 ])
 
-let companyVarsTableWithValidationView = ( eventType , companyVariables, A) => {
+let companyVarsTableWithValidationView = ( eventType, companyVariables ) => d([
+  d([
+    d(`selskapsVariabel`),
+    d(`Historisk verdi`),
+    ], {class: "eventInspectorRow"}),
+  d(logThis(companyVariables).map( companyVariable =>  d([
+    d(`${companyVariable["companyVariable"]}:`),
+    input({
+      value: companyVariable[ "value" ], 
+      disabled: "disabled", 
+      style: "text-align: right;" + companyVariable["isValid"]
+          ? "background-color: #1073104f;" 
+          : "background-color: #fb9e9e;"
+    })
+    ], {class: "eventInspectorRow"})) ),
+  d("<br>")
+])
 
-  let requiredCompanyVars = EventType.getRequiredCompanyInputs(eventType)
-
-  
-
-  return d([
-    d([
-      d(`selskapsVariabel`),
-      d(`Historisk verdi`),
-      ], {class: "eventInspectorRow"}),
-    d(requiredCompanyVars.map( companyVariable =>  d([
-      d(`${companyVariable}:`),
-      companyVarValidatorView(companyVariables, eventType, companyVariable),
-      ], {class: "eventInspectorRow"})) ),
-    d("<br>")
-  ])
-
-}
-
-let companyVarValidatorView = (companyVariables, eventType, companyVariable) => {
-
-  let isPresent = typeof companyVariables[ companyVariable ] !== "undefined"
-
-  let isValid = isPresent //? EventType.validateCompanyVar(companyVariables, eventType, companyVariable) : false
-
-  let backgroundColor = isPresent
-  ? isValid
-    ? "background-color: #1073104f;"
-    : "background-color: #fddaa6;"
-  : "background-color: #fb9e9e;"
-
-  return input({value: companyVariables[ companyVariable ], disabled: "disabled", style: "text-align: right;" + backgroundColor})
-}
 
 let attributeValidatorView = (inputEvent, attribute, A) => {
 
@@ -199,12 +197,12 @@ let eventCycle = (prevEventCycle, inputEvent) => {
 
   
 
+  
+
+  
+
+  /* 
   let prevEventCycleIsValid = prevEventCycle["isApplied"]
-
-  let eventType = inputEvent["event/eventType"]
-
-  let prevCompanyVariables = prevEventCycle["companyVariables"]
-
   let companyVarsAreValid = prevEventCycleIsValid 
     ? EventType.hasRequiredCompanyVars( prevEventCycle["companyVariables"], eventType )
       ? EventType[ "companyVariablesValidators" ][ eventType ].every( validatorName => companyVariablesValidators[ validatorName ]( prevEventCycle["companyVariables"]  ))
@@ -225,32 +223,43 @@ let eventCycle = (prevEventCycle, inputEvent) => {
     ? EventType[ "combinedValidators" ][ eventType ].every( validatorName => combinedValidators[ validatorName ]( prevEventCycle["companyVariables"], inputEvent ) )
     : false
 
-  let isApplied = combinedEventIsValid
+  let isApplied = combinedEventIsValid */
 
-  let validationSteps = {
+  let eventType = inputEvent["event/eventType"]
+  let prevCompanyVariables = prevEventCycle["companyVariables"]
+  let eventTypeObject = eventTypes[ eventType ]
+  let requiredCompanyVariables = eventTypeObject[ "requiredCompanyInputs" ]
+
+  let eventCycle = {
+    eventType,
+    inputEvent,
     prevEventCycleIsValid: prevEventCycle["isApplied"],
-    companyVariables: {
-      hasRequiredCompanyVariables: EventType.hasRequiredCompanyVars( prevEventCycle["companyVariables"], eventType ),
-      companyVariablesAreValid: EventType[ "companyVariablesValidators" ][ eventType ].every( validatorName => companyVariablesValidators[ validatorName ]( prevEventCycle["companyVariables"]  ))
-    },
-    event: {
-      attributes: EventType.requiredAttributes[ eventType ].map( attribute =>  returnObject({
-        hasValidFormat: Attribute.validators[ attribute ]( inputEvent[ attribute ] ),
-        isValid: EventType[ "attributeCriteria" ][ eventType ].filter( attributeCriterium => attributeCriterium["attribute"] === attribute ).every( criterium => AttributeValidators[ attribute ][ criterium["validator"] ] ( inputEvent[ attribute ] ) ),
-      }) ),
-      combinedEvent: EventType[ "eventValidators" ][ eventType ].every( validatorName => eventValidators[ validatorName ]( inputEvent ) )
-    },
-    application: EventType[ "combinedValidators" ][ eventType ].every( validatorName => combinedValidators[ validatorName ]( prevEventCycle["companyVariables"], inputEvent ) )
+    companyVariablesValidation: requiredCompanyVariables.map( companyVariable => returnObject({
+      companyVariable: companyVariable,
+      value: prevEventCycle["companyVariables"][companyVariable], 
+      isValid: eventTypeObject[ "companyVariableValidators" ].every( validator => companyVariableValidators[ validator["companyVariable"] ][ validator["validator"] ]( prevEventCycle["companyVariables"][ companyVariable ]  ))
+    })),
+    attributes: eventTypeObject.requiredAttributes.map( attribute =>  returnObject({
+      attribute: attribute,
+      value: inputEvent[ attribute ], 
+      hasValidFormat: Attribute.validators[ attribute ]( inputEvent[ attribute ] ),
+      isValid: eventTypeObject[ "attributeCriteria" ].filter( attributeCriterium => attributeCriterium["attribute"] === attribute ).every( criterium => AttributeValidators[ attribute ][ criterium["validator"] ] ( inputEvent[ attribute ] ) ),
+    }) ),
+    eventValidators: eventTypeObject[ "eventValidators" ].map( validatorName => returnObject({validatorName, isValid: eventValidators[ validatorName ]( inputEvent ) })  ),
+    combinedValidators: eventTypeObject[ "combinedValidators" ].map( validatorName => returnObject({validatorName, isValid: combinedValidators[ validatorName ]( prevEventCycle["companyVariables"], inputEvent ) })  ),
+    
   }
 
-  console.log(inputEvent, validationSteps)
+  eventCycle.isApplied = eventCycle.prevEventCycleIsValid 
+    && eventCycle.companyVariablesValidation.every( companyVariable => companyVariable.isValid ) 
+    && eventCycle.attributes.every( attribute => attribute.hasValidFormat && attribute.isValid)
+    && eventCycle.eventValidators.every( eventValidator => eventValidator.isValid )
+    && eventCycle.combinedValidators.every( combinedValidator => combinedValidator.isValid )
 
-  let updatedCompanyVariables = eventIsValid ? getCalculatedOutputs( prevCompanyVariables, inputEvent  ) : {}
-  let companyVariables = mergerino(prevCompanyVariables, updatedCompanyVariables)
+  console.log(eventCycle)
 
-  let eventCycle = isApplied 
-    ? {isApplied, inputEvent, updatedCompanyVariables, companyVariables} 
-    : {isApplied, prevEventCycleIsValid, prevCompanyVariables, inputEvent, companyVarsAreValid, attributesAreValid, eventIsValid, combinedEventIsValid, companyVariables}
+  eventCycle.updatedCompanyVariables = eventCycle.isApplied ? getCalculatedOutputs( prevCompanyVariables, inputEvent  ) : {}
+  eventCycle.companyVariables = mergerino(prevCompanyVariables, eventCycle.updatedCompanyVariables)
 
   return eventCycle
 
