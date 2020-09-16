@@ -51,8 +51,18 @@ let getUserActions = (S) => returnObject({
         
         update( newS )
     },
-    createEvent: async ( CompanyDoc, eventType ) => {
-        let datoms = sharedConfig.eventTypes[ eventType ]["newEventDatoms"](CompanyDoc)
+    createEvent: async ( eventCycle, eventType ) => {
+
+        //let datoms = sharedConfig.eventTypes[ eventType ]["newEventDatoms"](CompanyDoc)
+        let datoms = [
+            newDatom("newEvent", "type", "process"), //TBU..
+            newDatom("newEvent", "entity/type", "event"),
+            newDatom("newEvent", "event/eventType", eventType),
+            newDatom("newEvent", "event/incorporation/orgnumber", eventCycle["inputEvent"]["event/incorporation/orgnumber"]), //TBU..
+            newDatom("newEvent", "event/index", eventCycle["inputEvent"]["event/index"] + 1),
+            newDatom("newEvent", "entity/type", "event"),
+        ]
+        console.log(datoms)
         let apiResponse = await APIRequest("POST", "transactor", JSON.stringify( datoms ))
         let newS = mergerino(S, apiResponse)
         update( newS )
@@ -98,7 +108,13 @@ const sideEffects = {
 
 
 let update = (S) => {
-    S.Company = createCompanyDoc( S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ) )
+
+    let selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )
+
+    S.eventCycles = selectedEvents.map( (event, index) => selectedEvents.slice( 0, index + 1 ).reduce( (prevEventCycle, inputEvent) => eventCycle(prevEventCycle, inputEvent), getInitialEventCycle() )  )
+
+    console.log(S.eventCycles)
+
     S.elementTree = generateHTMLBody(S, getUserActions(S) )
     
     console.log("State: ", S)

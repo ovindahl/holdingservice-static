@@ -35,31 +35,60 @@ return something
 
 //CONFIG DATA
 
+const AttributeValidators = { //Ad-hoc validators specified on event level. Global attribute validation has been performed already.
+  "event/index": {
+    "isFirstEvent": value => value === 1,
+    "notFirstEvent": value => value > 1,
+    "notLaterThanFifthEvent": value => value <= 5,
+  },
+  "event/date": {
+    "is2020": value => value.startsWith("2020")
+  },
+  "event/incorporation/nominalSharePrice": {
+    "isPositiveNumber": value => value > 0,
+    "isAboveFive": value => value > 5,
+  }
+}
+
+const companyVariablesValidators = {
+  "hasNominalSharePrice": (companyVariables) => Object.keys(companyVariables).includes("company/:nominalSharePrice"),
+  "hasNominalSharePriceAbove10": (companyVariables) => companyVariables["company/:nominalSharePrice"] > 10
+}
+
+const eventValidators = {
+  "sumOfindexAndNomSPAbove10": (inputEvent) => (inputEvent["event/index"] + inputEvent["event/incorporation/nominalSharePrice"]) > 10
+}
+
+const combinedValidators = {
+  "dateEqualToSP": (companyVariables, inputEvent) =>  inputEvent["event/date"].endsWith( String(companyVariables["company/:nominalSharePrice"]) )
+}
+
 let event_incorporation = {
   eventType: "incorporation",
-  requiredUserInputs: ["event/index", "event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
-  requiredCompanyInputs: [],
-  applicabilityCriteria: [
-      companyVariables => JSON.stringify(companyVariables) === "{}", //...
+  requiredAttributes: ["event/index", "event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
+  attributeCriteria: [
+    {attribute: "event/index", validator: "isFirstEvent" }
   ],
-  combinedInputCriteria: [
-      Event => Event["event/eventType"] === "incorporation",
-      Event => Event["event/index"] === 1,
-    ],
-  dependencies: ["company/:orgnumber", "company/:nominalSharePrice", "company/:applicableEventTypes"],
+  requiredCompanyInputs: ["company/:applicableEventTypes"],
+  companyVariablesValidators: [],
+  eventValidators: ["sumOfindexAndNomSPAbove10"],
+  combinedValidators: [],
+  dependencies: ["company/:orgnumber", "company/:nominalSharePrice", "company/:applicableEventTypes", "company/:currentEventEntity", "company/:applicableEventTypes"],
 }
 
 let event_testEvent = {
   eventType: "testEvent",
-  requiredUserInputs: ["event/index", "event/date"],
+  requiredAttributes: ["event/index", "event/date"],
+  attributeCriteria: [
+    {attribute: "event/index", validator: "notFirstEvent" },
+    {attribute: "event/index", validator: "notLaterThanFifthEvent" },
+    {attribute: "event/date", validator: "is2020" },
+  ],
   requiredCompanyInputs: ["company/:nominalSharePrice"],
-  applicabilityCriteria: [
-      companyVariables =>  companyVariables["company/:nominalSharePrice"] > 10
-  ],
-  combinedInputCriteria: [
-      Event => Event["event/index"] > 1,
-  ],
-  dependencies: ["company/:applicableEventTypes"],
+  companyVariablesValidators: ["hasNominalSharePrice", "hasNominalSharePriceAbove10"],
+  eventValidators: [],
+  combinedValidators: ["dateEqualToSP"],
+  dependencies: ["company/:testOutput", "company/:currentEventEntity", "company/:prevEventEntity", "company/:applicableEventTypes"],
 }
 
 let allEventTypes = [
@@ -67,22 +96,32 @@ let allEventTypes = [
   event_testEvent
 ]
 
+let eventTypes = {
+  incorporation: event_incorporation,
+  testEvent: event_testEvent
+}
+
 let getEventTypeObject = (parameter) => mergerino({},
   allEventTypes.map( eventType => createObject(eventType.eventType, eventType[parameter] )   )
 )
 
-let loadParameters = ["requiredUserInputs", "requiredCompanyInputs", "applicabilityCriteria", "combinedInputCriteria", "dependencies" ].map( parameter => getEventTypeObject(parameter) ) // TBD
+
+
 
 const EventType = {
-  requiredUserInputs: getEventTypeObject("requiredUserInputs"),
+  requiredAttributes: getEventTypeObject("requiredAttributes"),
   requiredCompanyInputs: getEventTypeObject("requiredCompanyInputs"),
-  applicabilityCriteria: getEventTypeObject("applicabilityCriteria"),
-  combinedInputCriteria: getEventTypeObject("combinedInputCriteria"),
+  attributeCriteria: getEventTypeObject("attributeCriteria"),
+  companyVariablesValidators: getEventTypeObject("companyVariablesValidators"),
+  eventValidators: getEventTypeObject("eventValidators"),
+  combinedValidators: getEventTypeObject("combinedValidators"),
   dependencies: getEventTypeObject("dependencies"),
-  getRequiredAttributes: (eventType) => EventType[ "requiredUserInputs" ][ eventType ],
+  getRequiredAttributes: (eventType) => EventType[ "requiredAttributes" ][ eventType ],
   getRequiredCompanyInputs: (eventType) => EventType[ "requiredCompanyInputs" ][ eventType ],
-  isApplicable: (eventType, companyVariables) => EventType[ "applicabilityCriteria" ][ eventType ].every( criteriumFunction => criteriumFunction(companyVariables) ), //Specify on companyInput level and combined level separately?
-  isValid: (Event) => EventType[ "combinedInputCriteria" ][ Event["event/eventType"] ].every( criteriumFunction => criteriumFunction(Event) ),
+  prevEventCycleIncludesEventType: (companyVariables, eventType) => companyVariables["company/:applicableEventTypes"].includes(eventType),
+  hasRequiredCompanyVars: (companyVariables, eventType) => EventType.getRequiredCompanyInputs(eventType ).every( requiredCompanyVariable => Object.keys(companyVariables).includes(requiredCompanyVariable)  ),
+  combinedEventInputsAreValid: (inputEvent) => EventType[ "eventValidators" ][ inputEvent["event/eventType"] ].every( eventCriterium => eventValidators[ eventCriterium ](inputEvent) ),
+  companyVariablesAreValid: (companyVariables, eventType) => EventType[ "companyVariablesValidators" ][ eventType ].every( applicabilityCriterium => companyVariablesValidators[ applicabilityCriterium ]( companyVariables ) ),
   getDependencies: (eventType) => EventType[ "dependencies" ][ eventType ],
   getAllEventTypes: () => allEventTypes.map( eventType => eventType.eventType )
 }
@@ -97,7 +136,7 @@ const Attribute = {
     ].every( f => f(v) ),
     "event/eventType": v => [
         v => typeof v === "string", 
-        v => EventType.getAllEventTypes.includes(v)
+        v => EventType.getAllEventTypes().includes(v)
       ].every( f => f(v) ),
     "event/index": v => [
           v => typeof v === "number",
@@ -118,6 +157,7 @@ const Attribute = {
     ].every( f => f(v) )
   },
   validate: (attribute, value) => Attribute.validators[ attribute ](value),
+  validateAttributes: (inputEvent) => Object.entries(inputEvent).filter( entry => Object.keys(Attribute.validators).includes(entry[0]) ).every( entry => Attribute.validators[ entry[0] ](entry[1]) ),
   isNumber: (attribute) => ["event/index", "event/incorporation/nominalSharePrice"].includes(attribute),
   getSystemAttributes: () => ["entity", "entity/type"]
 }
@@ -127,9 +167,12 @@ const Attribute = {
 
 const outputFunction = {
   functions: {
+    "company/:currentEventEntity": (companyVariables, Event) => Event["entity"],
+    "company/:prevEventEntity": (companyVariables, Event) => companyVariables["company/:currentEventEntity"],
     "company/:orgnumber": (companyVariables, Event) => Event["event/incorporation/orgnumber"],
     "company/:nominalSharePrice": (companyVariables, Event) => Event["event/incorporation/nominalSharePrice"],
-    "company/:applicableEventTypes": (companyVariables, Event) => EventType.getAllEventTypes(),
+    "company/:applicableEventTypes": (companyVariables, Event) => allEventTypes.map( eventType => eventType.eventType ),
+    "company/:testOutput": (companyVariables, Event) => Math.round( Math.random() * 3 ),
   },
   calculate: (functionName, companyVariables, Event) => outputFunction.functions[ functionName ](companyVariables, Event)
 }
