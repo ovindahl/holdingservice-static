@@ -107,14 +107,75 @@ const sideEffects = {
 }
 
 
+// COMPANY DOCUMENT CREATION PIPELINE
+
+let getCalculatedOutputs = ( accumulatedVariables_before, eventAttributes ) => mergerino( {}, 
+    eventTypes[ eventAttributes["event/eventType"] ]["dependencies"].map( functionName => createObject(functionName, outputFunction.calculate(functionName, accumulatedVariables_before, eventAttributes ) )  )
+  )
+
+let getInitialEventCycle = () =>  returnObject({"company/:allEventsAreValid": true})
+  
+let getEventOutputPatch = (accumulatedVariables_before, eventAttributes) => accumulatedVariables_before["company/:allEventsAreValid"] ? getCalculatedOutputs(accumulatedVariables_before, eventAttributes) : {}  
+  
+let getAccumulatedOutputs = (Events) => Events.reduce( (accumulatedVariables_before, eventAttributes) => mergerino(accumulatedVariables_before, getEventOutputPatch(accumulatedVariables_before, eventAttributes) ), getInitialEventCycle() )
+
+let getValidationReport = (accumulatedVariables_before, eventAttributes) => {
+
+    let eventType = eventAttributes["event/eventType"]
+
+    let validationResults = eventTypes[ eventType ][ "validators" ].map(  eventValidator => {
+
+
+        let argumentsSwitch = {
+            "attributeValidator": eventAttributes[ eventValidator["attribute"] ],
+            "companyVariableValidator": accumulatedVariables_before[ eventValidator["companyVariable"] ],
+            "eventValidator": eventAttributes,
+            "companyValidator": accumulatedVariables_before,
+            "combined": "TBD" //NB...
+        }
+
+        let validatorArgument = argumentsSwitch[ eventValidator["type"] ]
+
+        let isValid = eventValidator["type"] === "combinedValidator" ? Validators[ eventValidator[ "validator" ]  ]( accumulatedVariables_before, eventAttributes ) : Validators[ eventValidator[ "validator" ]  ]( validatorArgument )
+
+        let validationResult = mergerino( eventValidator, {validatorArgument: validatorArgument, isValid: isValid} )
+
+        return validationResult
+
+    }  )
+
+
+    let isValid = validationResults.every( validationResult => validationResult.isValid )
+
+    let validationReport = {eventType, isValid, validationErrors: validationResults.filter( validationResult => !validationResult.isValid ) }
+
+    return validationReport
+}
+
+let prepareEventCycles = (Events) => Events.map( (eventAttributes, index) => {
+
+    let eventType = eventAttributes["event/eventType"]
+    let accumulatedVariables_before = getAccumulatedOutputs( Events.slice( 0, index ) )
+    
+
+    let validationReport = getValidationReport(accumulatedVariables_before, eventAttributes)
+    let validationErrors = validationReport.validationErrors
+    let isValid = validationReport.isValid
+
+    let eventPatch = getEventOutputPatch(accumulatedVariables_before, eventAttributes)
+    let accumulatedVariables_after = mergerino(accumulatedVariables_before, eventPatch)
+
+
+    return {index,eventType, accumulatedVariables_before,eventAttributes,isValid,validationErrors,eventPatch,accumulatedVariables_after}
+}   )
+
+// COMPANY DOCUMENT CREATION PIPELINE - END
+
 let update = (S) => {
 
-    let selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )
 
-    S.eventCycles = selectedEvents.map( (event, index) => selectedEvents.slice( 0, index + 1 ).reduce( (prevEventCycle, inputEvent) => eventCycle(prevEventCycle, inputEvent), getInitialEventCycle() )  )
-
-    console.log(S.eventCycles)
-
+    S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )
+    S.eventCycles = prepareEventCycles(S.selectedEvents)
     S.elementTree = generateHTMLBody(S, getUserActions(S) )
     
     console.log("State: ", S)
@@ -131,3 +192,5 @@ let Admin = {
     ? await APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms)
 }
+
+
