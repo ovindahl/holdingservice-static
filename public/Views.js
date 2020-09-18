@@ -71,7 +71,7 @@ let feedContainer = (content, date, entityID) => d([
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
   d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ), {style: "display:flex;"}),
-  d( S.eventCycles.map( (eventCycle, index) => feedContainer(  eventCycle["isValid"] ? validEventView( eventCycle, A ) :  eventValidationView( eventCycle, A ) , eventCycle["eventAttributes"]["event/date"], eventCycle["eventAttributes"]["entity"] )  ), {class: "pageContainer"} ),
+  d( S.eventCycles.map( (eventCycle, index) => feedContainer(  eventCycle["accumulatedVariables_after"]["company/:allEventsAreValid"] ? validEventView( eventCycle, A ) :  eventValidationView( eventCycle, A ) , eventCycle["eventAttributes"]["event/date"], eventCycle["eventAttributes"]["entity"] )  ), {class: "pageContainer"} ),
 ]
 
 //Event Cycle Views
@@ -98,7 +98,7 @@ let eventValidationView = (eventCycle , A) => d([
   d("<br>"),
   attributesTableView(eventCycle["eventAttributes"], A),
   h3("Valideringsfeil:"),
-  d( eventCycle["validationErrors"].map( (error, index) => d(`${index + 1}: [${error["type"]} ERROR]: companyVariable [${error["companyVariable"]}] did not pass validation rule [${error["validator"]}] <br> `) ) )
+  d( eventCycle["accumulatedVariables_after"]["company/:currentEventValidationErrors"].map( validator => d( `[${validator["type"]}: ${validator["validator"]}]: ${validator["errorMessage"]}<br> `)))
 ])
 
 let attributesTableView = (selectedEvent, A) => d([

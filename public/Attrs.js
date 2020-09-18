@@ -25,6 +25,8 @@ const mergerino = (source, ...patches) => {
     return run(isArr, isArr ? source.slice() : assign({}, source), patches)
 }
 
+let mergeArray = (array) => array.every( object => typeof object === "object") ? mergerino( {}, array ) : console.log( " mergeArray received invalid array ", array )
+
 //Utils
 let createObject = (keyName, value) => Object.assign({}, {[keyName]: value} ) 
 let returnObject = (something) => something // a -> a
@@ -35,47 +37,86 @@ return something
 
 //CONFIG DATA
 
-const Validators = {
-  "isTrue": value => value === true,
-  "companyVariableValidator/numberAbove15": value => value > 15,
-  "companyValidator/hasNominalSharePrice": accumulatedVariables_before => Object.keys(accumulatedVariables_before).includes("company/:nominalSharePrice"),
-  "companyValidator/hasNominalSharePriceAbove10": accumulatedVariables_before => accumulatedVariables_before["company/:nominalSharePrice"] > 9,
-  "attributeValidator/isDefined": value => typeof value !== "undefined",
-  "attributeValidator/isFirstEvent": value => value === 1,
-  "attributeValidator/notFirstEvent": value => value > 1,
-  "attributeValidator/notLaterThanFifthEvent": value => value <= 5,
-  "attributeValidator/is2020": value => value.startsWith("2020"),
-  "attributeValidator/isPositiveNumber": value => value > 0,
-  "attributeValidator/isAboveFive": value => value > 5,
-  "eventValidator/sumOfindexAndNomSPAbove10": eventAttributes => (eventAttributes["event/index"] + eventAttributes["event/incorporation/nominalSharePrice"]) > 10,
-  "combinedValidator/dateEqualToSP": (accumulatedVariables_before, eventAttributes) =>  eventAttributes["event/date"].endsWith( String(accumulatedVariables_before["company/:nominalSharePrice"]) )
+const outputFunction = {
+  functions: {
+    "company/:currentEventEntity": (accumulatedVariables_before, eventAttributes) => eventAttributes["entity"],
+    "company/:prevEventEntity": (accumulatedVariables_before, eventAttributes) => accumulatedVariables_before["company/:currentEventEntity"],
+    "company/:orgnumber": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/incorporation/orgnumber"],
+    "company/:nominalSharePrice": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/incorporation/nominalSharePrice"],
+    "company/:applicableEventTypes": (accumulatedVariables_before, eventAttributes) => Object.keys(eventTypes),
+    "company/:testOutput": (accumulatedVariables_before, eventAttributes) => Math.round( Math.random() * 3 ),
+    "company/:allEventsAreValid": (accumulatedVariables_before, eventAttributes) => getValidationReport(accumulatedVariables_before, eventAttributes).isValid,
+    "company/:currentEventValidationErrors": (accumulatedVariables_before, eventAttributes) => Validators.validate(accumulatedVariables_before, eventAttributes, eventTypes[ eventAttributes["event/eventType"] ]["validators"] ).filter( validator => !validator.isValid )
+  },
+  defaultDependencies: ["company/:currentEventEntity", "company/:prevEventEntity", "company/:allEventsAreValid", "company/:applicableEventTypes", "company/:currentEventValidationErrors"],
+  calculate: (functionName, accumulatedVariables_before, eventAttributes) => outputFunction.functions[ functionName ](accumulatedVariables_before, eventAttributes),
+  calculateAllDependencies: ( accumulatedVariables_before, eventAttributes ) => eventTypes[ eventAttributes["event/eventType"] ]["dependencies"].concat(outputFunction.defaultDependencies).map( functionName => createObject(functionName, outputFunction.calculate(functionName, accumulatedVariables_before, eventAttributes ) ) )
 }
+
+getValidatorArgument = (accumulatedVariables_before, eventAttributes, validator ) => {
+
+  let ValidatorTypes = {
+    "attributeValidator": eventAttributes[ validator["attribute"] ],
+    "companyVariableValidator": accumulatedVariables_before[ validator["companyVariable"] ],
+    "eventValidator": eventAttributes,
+    "companyValidator": accumulatedVariables_before
+  }
+
+  let argument = ValidatorTypes[ validator["type"] ]
+
+  return argument
+}
+
+
+
+const Validators = {
+  "validators": {
+    "isTrue": value => value === true,
+    "companyVariableValidator/numberAbove15": value => value > 15,
+    "companyValidator/hasNominalSharePrice": accumulatedVariables_before => Object.keys(accumulatedVariables_before).includes("company/:nominalSharePrice"),
+    "companyValidator/hasNominalSharePriceAbove10": accumulatedVariables_before => accumulatedVariables_before["company/:nominalSharePrice"] > 9,
+    "attributeValidator/isDefined": value => typeof value !== "undefined",
+    "attributeValidator/isFirstEvent": value => value === 1,
+    "attributeValidator/notFirstEvent": value => value > 1,
+    "attributeValidator/notLaterThanFifthEvent": value => value <= 5,
+    "attributeValidator/is2020": value => value.startsWith("2020"),
+    "attributeValidator/isPositiveNumber": value => value > 0,
+    "attributeValidator/isAboveFive": value => value > 5,
+    "eventValidator/sumOfindexAndNomSPAbove10": eventAttributes => (eventAttributes["event/index"] + eventAttributes["event/incorporation/nominalSharePrice"]) > 10,
+    "combinedValidator/dateEqualToSP": (accumulatedVariables_before, eventAttributes) =>  eventAttributes["event/date"].endsWith( String(accumulatedVariables_before["company/:nominalSharePrice"]) )
+  },
+  defaultValidators: [ 
+    {type: "companyVariableValidator", companyVariable: "company/:allEventsAreValid", validator: "isTrue" } // TBU...
+  ],
+  validate: (accumulatedVariables_before, eventAttributes, validators) => validators.map( validator => mergerino(validator, createObject( "isValid", validator["type"] === "combinedValidator" 
+  ? Validators["validators"][validator.validator](accumulatedVariables_before, eventAttributes)
+  : Validators["validators"][validator.validator]( getValidatorArgument(accumulatedVariables_before, eventAttributes, validator) )  ) ) )
+} 
+
 
 let event_incorporation = {
   eventType: "incorporation",
-  dependencies: ["company/:orgnumber", "company/:nominalSharePrice", "company/:applicableEventTypes", "company/:currentEventEntity", "company/:applicableEventTypes", "company/:allEventsAreValid"],
-  validators: [
-    {type: "attributeValidator", attribute: "event/index", validator: "attributeValidator/isFirstEvent" },
-    {type: "attributeValidator", attribute: "event/date", validator: "attributeValidator/isDefined" },
-    {type: "attributeValidator", attribute: "event/incorporation/orgnumber", validator: "attributeValidator/isDefined" },
-    {type: "attributeValidator", attribute: "event/incorporation/nominalSharePrice", validator: "attributeValidator/isDefined" },
-    {type: "eventValidator", validator: "eventValidator/sumOfindexAndNomSPAbove10" }
-  ]
+  dependencies: ["company/:orgnumber", "company/:nominalSharePrice"],
+  validators: Validators.defaultValidators.concat([
+    {type: "attributeValidator", attribute: "event/index", validator: "attributeValidator/isFirstEvent", errorMessage: "incorporation must be the first event." },
+    {type: "attributeValidator", attribute: "event/date", validator: "attributeValidator/isDefined", errorMessage: "event/date is missing." },
+    {type: "attributeValidator", attribute: "event/incorporation/orgnumber", validator: "attributeValidator/isDefined", errorMessage: "event/incorporation/orgnumber is missing."  },
+    {type: "attributeValidator", attribute: "event/incorporation/nominalSharePrice", validator: "attributeValidator/isDefined", errorMessage: "event/incorporation/nominalSharePrice is missing."  },
+    {type: "eventValidator", validator: "eventValidator/sumOfindexAndNomSPAbove10", errorMessage: "Sum of event/index and event/incorporation/nominalSharePrice must be > 10"  }
+  ])
 }
 
 let event_testEvent = {
   eventType: "testEvent",
-  dependencies: ["company/:testOutput", "company/:currentEventEntity", "company/:prevEventEntity", "company/:applicableEventTypes", "company/:allEventsAreValid"],
-  validators: [
-    {type: "companyVariableValidator", companyVariable: "company/:allEventsAreValid", validator: "isTrue" },
-    {type: "companyVariableValidator", companyVariable: "company/:nominalSharePrice", validator: "companyVariableValidator/numberAbove15" },
-    {type: "attributeValidator", attribute: "event/index", validator: "attributeValidator/notFirstEvent" },
-    {type: "attributeValidator", attribute: "event/index", validator: "attributeValidator/notLaterThanFifthEvent" },
-    {type: "attributeValidator", attribute: "event/date", validator: "attributeValidator/is2020" },
-    {type: "companyValidator", validator: "companyValidator/hasNominalSharePrice" },
-    {type: "companyValidator", validator: "companyValidator/hasNominalSharePriceAbove10" },
-    {type: "combinedValidator", validator: "combinedValidator/dateEqualToSP" },
-  ]
+  dependencies: ["company/:testOutput"],
+  validators: Validators.defaultValidators.concat([
+    {type: "companyVariableValidator", companyVariable: "company/:nominalSharePrice", validator: "companyVariableValidator/numberAbove15", errorMessage: "event/incorporation/nominalSharePrice must be > 15." },
+    {type: "attributeValidator", attribute: "event/index", validator: "attributeValidator/notFirstEvent", errorMessage: "testEvent cannot be first event." },
+    {type: "attributeValidator", attribute: "event/index", validator: "attributeValidator/notLaterThanFifthEvent", errorMessage: "testEvent cannot be later than fifth event." },
+    {type: "attributeValidator", attribute: "event/date", validator: "attributeValidator/is2020", errorMessage: "event/date must be in 2020." },
+    {type: "companyValidator", validator: "companyValidator/hasNominalSharePriceAbove10", errorMessage: "company/:nominalSharePrice must be > 10" },
+    {type: "combinedValidator", validator: "combinedValidator/dateEqualToSP", errorMessage: "event/date must end in same two digits as nominal share price" },
+  ])
 }
 
 
@@ -83,7 +124,6 @@ const eventTypes = {
   incorporation: event_incorporation,
   testEvent: event_testEvent
 }
-
 
 //Attributes
 
@@ -121,21 +161,8 @@ const Attribute = {
   getSystemAttributes: () => ["entity", "entity/type"]
 }
 
-
 //Output functions
 
-const outputFunction = {
-  functions: {
-    "company/:currentEventEntity": (accumulatedVariables_before, eventAttributes) => eventAttributes["entity"],
-    "company/:prevEventEntity": (accumulatedVariables_before, eventAttributes) => accumulatedVariables_before["company/:currentEventEntity"],
-    "company/:orgnumber": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/incorporation/orgnumber"],
-    "company/:nominalSharePrice": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/incorporation/nominalSharePrice"],
-    "company/:applicableEventTypes": (accumulatedVariables_before, eventAttributes) => Object.keys(eventTypes),
-    "company/:testOutput": (accumulatedVariables_before, eventAttributes) => Math.round( Math.random() * 3 ),
-    "company/:allEventsAreValid": (accumulatedVariables_before, eventAttributes) => getValidationReport(accumulatedVariables_before, eventAttributes).isValid
-  },
-  calculate: (functionName, accumulatedVariables_before, eventAttributes) => outputFunction.functions[ functionName ](accumulatedVariables_before, eventAttributes)
-}
 
 
 
@@ -144,6 +171,7 @@ const outputFunction = {
 
 
 
+//Other config..
 
 
 

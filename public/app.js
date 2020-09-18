@@ -109,15 +109,11 @@ const sideEffects = {
 
 // COMPANY DOCUMENT CREATION PIPELINE
 
-let getCalculatedOutputs = ( accumulatedVariables_before, eventAttributes ) => mergerino( {}, 
-    eventTypes[ eventAttributes["event/eventType"] ]["dependencies"].map( functionName => createObject(functionName, outputFunction.calculate(functionName, accumulatedVariables_before, eventAttributes ) )  )
-  )
+
 
 let getInitialEventCycle = () =>  returnObject({"company/:allEventsAreValid": true})
   
-let getEventOutputPatch = (accumulatedVariables_before, eventAttributes) => accumulatedVariables_before["company/:allEventsAreValid"] ? getCalculatedOutputs(accumulatedVariables_before, eventAttributes) : {}  
-  
-let getAccumulatedOutputs = (Events) => Events.reduce( (accumulatedVariables_before, eventAttributes) => mergerino(accumulatedVariables_before, getEventOutputPatch(accumulatedVariables_before, eventAttributes) ), getInitialEventCycle() )
+let getAccumulatedOutputs = (Events) => Events.reduce( (accumulatedVariables_before, eventAttributes) => mergerino(accumulatedVariables_before, mergeArray( outputFunction.calculateAllDependencies( accumulatedVariables_before, eventAttributes  ) ) ), getInitialEventCycle() )
 
 let getValidationReport = (accumulatedVariables_before, eventAttributes) => {
 
@@ -131,12 +127,11 @@ let getValidationReport = (accumulatedVariables_before, eventAttributes) => {
             "companyVariableValidator": accumulatedVariables_before[ eventValidator["companyVariable"] ],
             "eventValidator": eventAttributes,
             "companyValidator": accumulatedVariables_before,
-            "combined": "TBD" //NB...
         }
 
         let validatorArgument = argumentsSwitch[ eventValidator["type"] ]
 
-        let isValid = eventValidator["type"] === "combinedValidator" ? Validators[ eventValidator[ "validator" ]  ]( accumulatedVariables_before, eventAttributes ) : Validators[ eventValidator[ "validator" ]  ]( validatorArgument )
+        let isValid = eventValidator["type"] === "combinedValidator" ? Validators["validators"][ eventValidator[ "validator" ]  ]( accumulatedVariables_before, eventAttributes ) : Validators["validators"][ eventValidator[ "validator" ]  ]( validatorArgument )
 
         let validationResult = mergerino( eventValidator, {validatorArgument: validatorArgument, isValid: isValid} )
 
@@ -157,16 +152,15 @@ let prepareEventCycles = (Events) => Events.map( (eventAttributes, index) => {
     let eventType = eventAttributes["event/eventType"]
     let accumulatedVariables_before = getAccumulatedOutputs( Events.slice( 0, index ) )
     
-
-    let validationReport = getValidationReport(accumulatedVariables_before, eventAttributes)
+    /* let validationReport = getValidationReport( accumulatedVariables_before, eventAttributes )
     let validationErrors = validationReport.validationErrors
-    let isValid = validationReport.isValid
+    let isValid = validationReport.isValid */
 
-    let eventPatch = getEventOutputPatch(accumulatedVariables_before, eventAttributes)
-    let accumulatedVariables_after = mergerino(accumulatedVariables_before, eventPatch)
+    let eventPatch = mergeArray( outputFunction.calculateAllDependencies( accumulatedVariables_before, eventAttributes  ) )
+    let accumulatedVariables_after = mergerino( accumulatedVariables_before, eventPatch )
 
 
-    return {index,eventType, accumulatedVariables_before,eventAttributes,isValid,validationErrors,eventPatch,accumulatedVariables_after}
+    return {index,eventType, accumulatedVariables_before,eventAttributes,eventPatch,accumulatedVariables_after}
 }   )
 
 // COMPANY DOCUMENT CREATION PIPELINE - END
