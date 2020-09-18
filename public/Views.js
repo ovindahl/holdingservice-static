@@ -1,19 +1,7 @@
 let IDcounter = [0];
 let getNewElementID = () => String( IDcounter.push( IDcounter.length  ) )
 
-//Datom creation functions
-let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
-let filterUniqueValues = (value, index, self) => self.indexOf(value) === index
-
-function split(array, isValid) {
-  return array.reduce(([pass, fail], elem) => {
-    return isValid(elem) ? [[...pass, elem], fail] : [pass, [...fail, elem]];
-  }, [[], []]);
-}
-
-let ifError = (value, fallback) => value ? value : fallback
-let ifNot = (test, ifNot, then) => test ? then : ifNot
 
 //HTML element generation
 let isVoid = tagName => ["area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"].includes(tagName)
@@ -44,12 +32,13 @@ let htmlElementObject = (tagName, attributesObject, innerHTML, eventType, action
 
 }
 let d = (innerHTML, attributesObject, eventType, action) => htmlElementObject("div", attributesObject, innerHTML , eventType, action )
-let h3 = content => htmlElementObject("h3", {} , content)
+let h3 = (content, attributesObject)  => htmlElementObject("h3", attributesObject , content)
 let input = (attributesObject, eventType, action) => htmlElementObject("input", attributesObject, "", eventType, action)
 
 let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", updateFunction  )
 
-let retractEventButton = (Event, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(Event) )
+let createEventButton = (currentEventEntityID, eventType, A) => d("Ny hendelse", {class: "textButton"}, "click", e => A.createEvent(currentEventEntityID, eventType) )
+let retractEventButton = (entityID, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(entityID) )
 
 let headerBarView = (S) => d([
   d('<header><h1>Holdingservice Beta</h1></header>', {class: "textButton"}),
@@ -71,49 +60,79 @@ let feedContainer = (content, date, entityID) => d([
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
   d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ), {style: "display:flex;"}),
-  d( S.eventCycles.map( (eventCycle, index) => feedContainer(  eventCycle["accumulatedVariables_after"]["company/:allEventsAreValid"] ? validEventView( eventCycle, A ) :  eventValidationView( eventCycle, A ) , eventCycle["eventAttributes"]["event/date"], eventCycle["eventAttributes"]["entity"] )  ), {class: "pageContainer"} ),
+  d( S.eventCycles.map( (eventCycle, index) => feedContainer(  eventCycle["accumulatedVariables_after"]["company/:allEventsAreValid"] ? validEventView( eventCycle, A ) :  validEventView( eventCycle, A ) , eventCycle["eventAttributes"]["event/date"], eventCycle["eventAttributes"]["entity"] )  ), {class: "pageContainer"} ),
+  d( [feedContainer(  accumulatedVariablesView( S.eventCycles[ S.eventCycles.length - 1 ] ) , S.eventCycles[ S.eventCycles.length - 1 ]["eventAttributes"]["event/date"], S.eventCycles[ S.eventCycles.length - 1 ]["eventAttributes"]["entity"] )], {class: "pageContainer"}  ),
 ]
 
 //Event Cycle Views
 
-let eventTypeHeaderView = (eventType, isApplied) => d( eventType , {style: `background-color: ${isApplied ? "#1073104f" : "#fb9e9e"}; padding: 1em; margin: 1em;`} )
-
 let validEventView = (eventCycle , A) => d([
-  eventTypeHeaderView(eventCycle["eventType"], true ),
-  attributesTableView(eventCycle["eventAttributes"], A),
+  h3(eventCycle["eventType"], {style: `background-color: ${eventCycle[ "accumulatedVariables_after" ]["company/:currentEventValidationErrors"].length === 0 ? "#1073104f" : "#fb9e9e"}; padding: 1em;`} ),
   d("<br>"),
-  d([
-    d(`"outputVariabel"`),
-    d(`Beregnet verdi`),
-    ], {class: "eventInspectorRow"}),
-  d( Object.keys(eventCycle["eventPatch"]).map( companyVariable =>  d([
-    d(`${companyVariable}:`),
-    input({value: eventCycle["eventPatch"][companyVariable], style: "text-align: right;", disabled: "disabled"}),
-    ], {class: "eventInspectorRow"})) ),
+  historicVariablesTableView(eventCycle),
   d("<br>"),
+  attributesTableView(eventCycle, A),
+  d("<br>"),
+  d( eventCycle[ "accumulatedVariables_after" ]["company/:currentEventValidationErrors"].filter( error => error["type"] === "combinedValidator").map(  error => d(`[${error.validator}] ${error.errorMessage}`, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"}))),
+  d("<br>"),
+  outputTableView(eventCycle["eventPatch"]),
+  d("<br>"),
+  retractEventButton( eventCycle["eventAttributes"]["entity"]  , A),
+  createEventButton( eventCycle["eventAttributes"]["entity"], "testEvent", A)
 ])
 
-let eventValidationView = (eventCycle , A) => d([
-  eventTypeHeaderView(eventCycle["eventType"], false ),
+let historicVariablesTableView = (eventCycle) => d([
+  h3("Historiske variabler som brukes"),
+  d( getRequiredHistoricalVariables( eventCycle["eventType"] ).map( companyVariable =>  historicVariablesTableRowView(
+      companyVariable, 
+      eventCycle[ "accumulatedVariables_before" ][companyVariable], 
+      eventCycle[ "accumulatedVariables_after" ]["company/:currentEventValidationErrors"].filter( error => error["type"] === "companyVariableValidator").filter( error => error["companyVariable"] === companyVariable)
+      )) ),
   d("<br>"),
-  attributesTableView(eventCycle["eventAttributes"], A),
-  h3("Valideringsfeil:"),
-  d( eventCycle["accumulatedVariables_after"]["company/:currentEventValidationErrors"].map( validator => d( `[${validator["type"]}: ${validator["validator"]}]: ${validator["errorMessage"]}<br> `)))
-])
-
-let attributesTableView = (selectedEvent, A) => d([
-  d([
-    d(`Attributt`),
-    d(`Oppgitt verdi`),
-    ], {class: "eventInspectorRow"}),
-  d(Object.keys(selectedEvent).map( attribute =>  d([
-    d(`${attribute}:`),
-    input({value: selectedEvent[ attribute ], style: "text-align: right;"}, "change", e => A.updateEventAttribute( selectedEvent, attribute, e) ),
-    ], {class: "eventInspectorRow"})) ),
+  d( eventCycle[ "accumulatedVariables_after" ]["company/:currentEventValidationErrors"].filter( error => error["type"] === "companyValidator").map(  error => d(`[${error.validator}] ${error.errorMessage}`, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"}))),
   d("<br>")
+], {style: "background-color: #f1f0f0; padding: 1em;"})
+
+let historicVariablesTableRowView = (companyVariable, value, errors) => d([
+  d([
+    d(`${companyVariable}:`),
+    input({value: value, disabled: "disabled", style: `text-align: right; ${(errors.length === 0) ? "background-color: none;" : "background-color: #ffb1b1;"}`}),
+    ], {class: "eventInspectorRow"}),
+    d( errors.map( error => d(`[${error.validator}] ${error.errorMessage}`, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  ) )
 ])
 
-let validatorWithLabelView = (label, isValid) => d([
-  d(label),
-  input({value: isValid, disabled: "disabled", style: `text-align: right; background-color: ${isValid ? "#1073104f" : "#fb9e9e" };"`}),
-], {class: "eventInspectorRow"})
+let attributesTableView = (eventCycle, A) => d([
+  h3("Brukerinput"),
+  d( Object.keys(eventCycle["eventAttributes"]).map( attribute =>  attributeTableRowView(
+    attribute, 
+    eventCycle["eventAttributes"][ attribute ], 
+    eventCycle[ "accumulatedVariables_after" ]["company/:currentEventValidationErrors"].filter( error => error["type"] === "attributeValidator").filter( error => error["attribute"] === attribute), 
+    e => A.updateEventAttribute( eventCycle["eventAttributes"], attribute, e)) ) 
+  ),
+  d("<br>"),
+  d( eventCycle[ "accumulatedVariables_after" ]["company/:currentEventValidationErrors"].filter( error => error["type"] === "eventValidator").map(  error => d(`[${error.validator}] ${error.errorMessage}`, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"}))),
+  d("<br>")
+], {style: "background-color: #f1f0f0; padding: 1em;"})
+
+
+let attributeTableRowView = (attribute, value, errors, onChange) => d([
+  d([
+    d(`${attribute}`),
+    input({value: value, style: `text-align: right; ${(errors.length === 0) ? "background-color: none;" : "background-color: #ffb1b1;"}`}, "change", onChange ),
+    ], {class: "eventInspectorRow"}),
+    d( errors.map( error => d(`[${error.validator}] ${error.errorMessage}`, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  ) )
+])
+
+let outputTableView = (eventPatch) => d([
+  h3("Beregnet output"),
+  d( Object.keys(eventPatch).map( companyVariable =>  d([
+      d(`${companyVariable}:`),
+      input({value: eventPatch[companyVariable], style: "text-align: right;", disabled: "disabled"}),
+      ], {class: "eventInspectorRow"})) ),
+  d("<br>")
+], {style: "background-color: #f1f0f0; padding: 1em;"})
+
+let accumulatedVariablesView = (eventCycle) => d([
+  h3(`Akkumulerte selskapsvariabler etter event ${eventCycle["eventAttributes"]["entity"]}`),
+  outputTableView( eventCycle["accumulatedVariables_after"] )
+])
