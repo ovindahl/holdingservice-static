@@ -98,6 +98,9 @@ let update = (S) => {
 
     S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )
     S.eventCycles = prepareEventCycles(S.selectedEvents)
+
+    console.log(S.eventCycles)
+
     S.elementTree = generateHTMLBody(S, getUserActions(S) )
     
     console.log("State: ", S)
