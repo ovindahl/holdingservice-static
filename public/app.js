@@ -77,10 +77,10 @@ let getUserActions = (S) => returnObject({
         
         update( newS )
     },
-    createEvent: async ( entityID, eventType ) => {
+    createEvent: async ( eventCycle, newEventType ) => {
 
-        let storedEntity = S.Events.filter( e => e.entity === entityID  )[0]
-        let datoms = eventTypes[ eventType ]["newEventDatoms"](entityID, storedEntity["event/incorporation/orgnumber"], storedEntity["event/index"] + 1)
+        let datoms = eventTypes[ newEventType ]["newEventDatoms"](eventCycle)
+
         let apiResponse = await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms ))
         let newS = mergerino(S, apiResponse)
         update( newS )
