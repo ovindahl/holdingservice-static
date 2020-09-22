@@ -137,8 +137,6 @@ let prepareEventCycles = (Events) => Events.reduce( (eventCycles, eventAttribute
 
 let updateAccountBalance = (accountBalance, patch) => mergerino( accountBalance, Object.entries( patch ).map( entry => createObject(entry[0],  accountBalance[ entry[0] ] ?   accountBalance[ entry[0] ] + entry[1] : entry[1] )  ) ) 
 
-
-
 const outputFunction = {
   functions: {
     "company/:orgnumber": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/incorporation/orgnumber"],
@@ -175,8 +173,6 @@ let event_incorporation = {
   ]
 }
 
-
-
 let event_addFounder = {
   eventType: "incorporation/addFounder",
   attributes: ["event/index", "event/date", "event/shareholder", "event/shareCount", "event/sharePremium"],
@@ -186,13 +182,8 @@ let event_addFounder = {
     let sharePrice = accumulatedVariables_before["company/:nominalSharePrice"] + eventAttributes["event/sharePremium"]
     let shareCapital = eventAttributes["event/shareCount"] * sharePrice
 
-    return createObject( 
-      "event/:accountBalance", {
-        "1370": shareCapital, 
-        "2000": -shareCapital
-      }
-    )
-  } ,
+    return {"event/:accountBalance": {"1370": shareCapital, "2000": -shareCapital} } 
+  },
   calculatedFields_companyLevel: ["company/:shareholders", "company/:accountBalance"],
   validators: [
     {
@@ -281,7 +272,7 @@ const Attribute = {
         v => typeof v === "string", 
         v => Object.keys(eventTypes).includes(v)
       ].every( f => f(v) ),
-    "event/index": v => [
+    "event/index": v => [ //Change to "event/prevEventEntity" ???
           v => typeof v === "number",
           v => v >= 1
       ].every( f => f(v) ),
