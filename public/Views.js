@@ -1,9 +1,7 @@
-let IDcounter = [0];
-let getNewElementID = () => String( IDcounter.push( IDcounter.length  ) )
-
-
 
 //HTML element generation
+let IDcounter = [0];
+let getNewElementID = () => String( IDcounter.push( IDcounter.length  ) )
 let isVoid = tagName => ["area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"].includes(tagName)
 let htmlElementObject = (tagName, attributesObject, innerHTML, eventType, action) => {
 
@@ -40,6 +38,8 @@ let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("sele
 let createEventButton = (eventCycle, newEventType, A) => d(`[Ny hendelse: ${newEventType}] `, {class: "textButton"}, "click", e => A.createEvent(eventCycle, newEventType) )
 let retractEventButton = (entityID, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(entityID) )
 
+//Page frame
+
 let headerBarView = (S) => d([
   d('<header><h1>Holdingservice Beta</h1></header>', {class: "textButton"}),
   d(`Server version: ${S.serverConfig.serverVersion}`),
@@ -62,6 +62,8 @@ let generateHTMLBody = (S, A) => [
   d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ), {style: "display:flex;"}),
   d( S.eventCycles.map( (eventCycle, index) => feedContainer(  eventCycle["isValidEventType"] ? validEventView( eventCycle, A ) :  invalidEventTypeView( eventCycle, A ) , eventCycle["eventAttributes"]["event/date"], eventCycle["eventAttributes"]["entity"] )  ), {class: "pageContainer"} ),
   d( [feedContainer(  accumulatedVariablesView( S.eventCycles[ S.eventCycles.length - 1 ] ) , S.eventCycles[ S.eventCycles.length - 1 ]["eventAttributes"]["event/date"], S.eventCycles[ S.eventCycles.length - 1 ]["eventAttributes"]["entity"] )], {class: "pageContainer"}  ),
+  d( [feedContainer(  testView( S.eventCycles[ S.eventCycles.length - 1 ] ) , S.eventCycles[ S.eventCycles.length - 1 ]["eventAttributes"]["event/date"], S.eventCycles[ S.eventCycles.length - 1 ]["eventAttributes"]["entity"] )], {class: "pageContainer"})
+  
 ]
 
 //Event Cycle Views
@@ -115,12 +117,8 @@ let systemAttributesTableView = (eventCycle) => d([
     d(`${companyVariable}:`),
     input({value: eventCycle["eventAttributes"][companyVariable], style: "text-align: right;", disabled: "disabled"}),
     ], {class: "eventInspectorRow"})) ),
-  d("<br>"),
-  /* d( eventCycle[ "accumulatedVariables_after" ]["company/:currentEventEventValidators"].filter( validator => !validator["isValid"]).map(  error => d(`[${error.validator}] ${error.errorMessage}`, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"}))),
-  d("<br>") */
+  d("<br>")
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
-
-
 
 let attributesTableView = (eventCycle, A) => d([
   h3("Attributter"),
@@ -133,7 +131,6 @@ let attributesTableView = (eventCycle, A) => d([
   //d( eventCycle[ "accumulatedVariables_after" ]["company/:currentEventEventValidators"].filter( validator => !validator["isValid"]).map(  error => d(`[${error.validator}] ${error.errorMessage}`, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"}))),
   d("<br>")
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
-
 
 let attributeTableRowView = (attribute, value, onChange) => d([
   d([
@@ -165,3 +162,9 @@ let accumulatedVariablesView = (eventCycle) => eventCycle.isValid ? d([
     input({value: eventCycle["accumulatedVariables_after"][companyVariable], style: "text-align: right;", disabled: "disabled"}),
     ], {class: "eventInspectorRow"})) ),
 ]) : d("Kan ikke vise selskapsdokumentet.")
+
+
+let testView = (eventCycle) => d([
+  h3("TESTVIEW - noter"),
+  d( eventCycle["accumulatedVariables_after"]["company/:reports/notesText"] )
+]) 

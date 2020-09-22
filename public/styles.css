@@ -29,3 +29,12 @@ body {background-color: #F2F3F5;}
 .eventInspectorRow:hover {
     background-color: lightgray;
 }
+
+
+.emphasizedText {
+    background-color: #b1e8f97d;
+}
+
+.emphasizedText:hover {
+    background-color: #59caec;
+}
