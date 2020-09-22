@@ -65,6 +65,10 @@ let getUserActions = (S) => returnObject({
 
         let value = Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value
 
+        let datoms = [newDatom(Event["entity"], attribute, value)]
+
+        console.log(datoms)
+
         let apiResponse = Attribute.validate(attribute, value) //Only attribute validation, not event level.
         ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( [newDatom(Event["entity"], attribute, value)] ) )
         : null
