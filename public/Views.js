@@ -69,7 +69,7 @@ let generateHTMLBody = (S, A) => [
 
 let pageRouter = {
   "timeline": (S, A) => timelineView(S.companyDoc, A),
-  "companyDoc": (S, A) => d( [feedContainer(  companyDocView( S.companyDoc ) , "na." , "na." )], {class: "pageContainer"})
+  "companyDoc": (S, A) => companyDocPage( S.companyDoc )
 }
 
 //Event Cycle Views
@@ -166,7 +166,16 @@ let outputTableView = (appliedEvent) => d([
   d("<br>")
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
 
-let companyDocView = (companyDoc) => d([
-  h3("TESTVIEW - companyDoc"),
-  d( Object.keys(companyDoc).map( key => d(key, {class: "eventInspectorRow"}) ) )
+
+let companyDocViews = {
+  "company/:accountBalance": (accountBalance) =>  d( Object.keys( accountBalance ).map( account => d(`${account}: ${accountBalance[account]}`) ) )
+}
+
+
+let companyDocPage = (companyDoc) => d( Object.keys(companyDoc).map( key =>  feedContainer( variableView(companyDoc, key) , "na." , "na." )), {class: "pageContainer"} )
+
+
+let variableView = (companyDoc, key) => d([
+  h3(key),
+  Object.keys(companyDocViews).includes(key) ? companyDocViews[key]( companyDoc[key] ) : d( JSON.stringify(companyDoc[key]) , {class: "eventInspectorRow"})
 ])
