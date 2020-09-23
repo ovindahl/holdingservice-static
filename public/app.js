@@ -39,7 +39,7 @@ const sideEffects = {
         if(isAuthenticated){
             console.log("Authenticated");
             let S = await sideEffects.APIRequest("GET", "userContent", null)
-            S.currentPage = "overview"
+            S.currentPage = "timeline"
             S.selectedOrgnumber = "999999999"
             update(S)
         }else{
@@ -81,9 +81,9 @@ let getUserActions = (S) => returnObject({
         
         update( newS )
     },
-    createEvent: async ( eventCycle, newEventType ) => {
+    createEvent: async ( appliedEvent, newEventType ) => {
 
-        let datoms = eventTypes[ newEventType ]["newEventDatoms"](eventCycle)
+        let datoms = eventTypes[ newEventType ]["newEventDatoms"](appliedEvent)
 
         let apiResponse = await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms ))
         let newS = mergerino(S, apiResponse)
@@ -100,10 +100,9 @@ let getUserActions = (S) => returnObject({
 
 let update = (S) => {
 
-    S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )
-    S.eventCycles = prepareEventCycles(S.selectedEvents)
-
-    console.log(S.eventCycles)
+    S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )    
+    S.companyDoc = prepareCompanyDoc(S.selectedEvents)
+    console.log("companyDoc", S.companyDoc)
 
     S.elementTree = generateHTMLBody(S, getUserActions(S) )
     

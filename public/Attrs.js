@@ -50,85 +50,69 @@ let ifNot = (test, ifNot, then) => test ? then : ifNot
 
 // COMPANY DOCUMENT CREATION PIPELINE
 
-let getEventErrors = (accumulatedVariables_before, eventAttributes) => eventTypes[ eventAttributes["event/eventType"] ]["attributes"].map( attribute => 
-  Attribute.validate( attribute, eventAttributes[ attribute ]  ) 
+let getEventErrors = (companyDoc, Event) => eventTypes[ Event["event/eventType"] ]["attributes"].map( attribute => 
+  Attribute.validate( attribute, Event[ attribute ]  ) 
     ? false 
     : `Attribute not valid: ${attribute}.`   )
-  .concat( eventTypes[ eventAttributes["event/eventType"] ].validators.map( validator => 
-    validator.validator(accumulatedVariables_before, eventAttributes) 
+  .concat( eventTypes[ Event["event/eventType"] ].validators.map( validator => 
+    validator.validator(companyDoc, Event) 
     ? false 
     : validator.errorMessage 
   )
   ).filter( result => result !== false  ) 
 
-let prepareEventCycles = (Events) => Events.reduce( (eventCycles, eventAttributes, index) => {
 
-  let isValidEventType = Object.keys( eventTypes ).includes( eventAttributes["event/eventType"] )
-  
-
-  if(isValidEventType){
-
-    let eventType = eventAttributes["event/eventType"]
-    let prevEventsAreValid = eventCycles[ index ]["isValid"]
-
-    if(prevEventsAreValid){
-
-      
-      let accumulatedVariables_before = eventCycles[ index ]["accumulatedVariables_after"]  
-      
-      let eventErrors = getEventErrors(accumulatedVariables_before, eventAttributes)
-
-      
-
-      let isValid = prevEventsAreValid && eventErrors.length === 0
-
-      if(isValid){
-
-        let calculatedEventAttributes = outputFunction.getCalculatedEventFields( accumulatedVariables_before, eventAttributes, eventType )
-        let constructedEvent = mergerino( eventAttributes, calculatedEventAttributes )
-        let eventPatch = mergerino( outputFunction.getCalculatedCompanyFields( accumulatedVariables_before, constructedEvent, eventType ) )
-        let accumulatedVariables_after = mergerino(accumulatedVariables_before, eventPatch)
-
-        return eventCycles.concat( {eventType, isValidEventType, prevEventsAreValid, isValid, eventErrors, accumulatedVariables_before, eventAttributes, calculatedEventAttributes, eventPatch, accumulatedVariables_after} )
+let rejectEventWithErrors = (companyDoc, Event) => mergerino(
+  companyDoc,
+  {"company/:rejectedEvents": companyDoc["company/:rejectedEvents"].concat( mergerino(
+    Event,
+    {"event/:eventErrors": getEventErrors(companyDoc, Event) },
+  )  ) },
+  {"company/:isValid": false}
+)
 
 
-    }else{
 
-      let isValid = false
+let constructEvent = (companyDoc, Event) => mergerino(
+  Event,  
+  outputFunction.getCalculatedEventFields( companyDoc, Event, Event["event/eventType"] ),
+)
 
-      return eventCycles.concat( {eventType, isValidEventType, prevEventsAreValid, isValid, eventErrors, accumulatedVariables_before, eventAttributes} )
+let isValidEvent = (companyDoc, Event) => getEventErrors(companyDoc, Event).length === 0
 
-    }
+let constructCompanyPatch = (companyDoc, Event) => mergerino( outputFunction.getCalculatedCompanyFields( 
+  companyDoc,
+  constructEvent(companyDoc, Event), 
+  Event["event/eventType"] 
+  )
+)
 
+let applyEvent = (companyDoc, Event) => mergerino(
+  companyDoc,
+  constructCompanyPatch(companyDoc, Event)
+)
 
-    
+let prepareCompanyDoc = Events => Events.reduce( (companyDoc, Event) => companyDoc["company/:isValid"]
+  ? Object.keys( eventTypes ).includes( Event["event/eventType"] )
+    ? isValidEvent( companyDoc, Event ) 
+      ? applyEvent(companyDoc, Event) 
+      : rejectEventWithErrors(companyDoc, Event)
+    : rejectEventWithErrors(companyDoc, Event)
+  : rejectEventWithErrors(companyDoc, Event),
+  getBlankCompanyDoc()
+)
 
-    }else{
-
-      let isValid = false
-
-      return eventCycles.concat( {eventType, isValidEventType, prevEventsAreValid, isValid, eventAttributes} )
-
-    }
-
-    
-
-  }else{
-
-    let isValid = false
-
-    return eventCycles.concat( {eventType, isValidEventType, isValid, eventAttributes} )
-
-  }
-
-  
-}, [ {isValid: true, "accumulatedVariables_after": {
+let getBlankCompanyDoc = () => returnObject({
   "company/:shareholders": [], 
   "company/:accountBalance": {"1920": 0}, 
   "company/:bankTransactions": [],
+  "company/:appliedEvents": [],
+  "company/:rejectedEvents": [],
+  "company/:prevCompanyDoc": {},
   "company/:eventCount": 0,
-  "company/:shareCount": 0
-  } }]   ).slice(1, Events.length + 1 ) //removing initial..
+  "company/:shareCount": 0,
+  "company/:isValid": true
+})
 
 //Company output functions
 
@@ -136,31 +120,30 @@ let updateAccountBalance = (accountBalance, patch) => mergerino( accountBalance,
 
 const outputFunction = {
   functions: {
-    "company/:orgnumber": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/incorporation/orgnumber"],
-    "company/:nominalSharePrice": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/incorporation/nominalSharePrice"],
-    "company/:incorporationDate": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/date"],
-    "company/:shareholders": (accumulatedVariables_before, eventAttributes) => accumulatedVariables_before["company/:shareholders"].concat( eventAttributes["event/shareholder"] ),
-    "company/:shareCount": (accumulatedVariables_before, eventAttributes) => accumulatedVariables_before["company/:shareCount"] + eventAttributes["event/shareCount"] ,
-    "company/:openingBalance": (accumulatedVariables_before, eventAttributes) => returnObject({"1920": 0, "2000": 0}),
-    "company/:accountBalance": (accumulatedVariables_before, eventAttributes) => updateAccountBalance( accumulatedVariables_before["company/:accountBalance"], eventAttributes["event/:accountBalance"] ),
-    "company/:currentYear": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/date"].slice(0,4),
-    "company/:bankTransactions": (accumulatedVariables_before, eventAttributes) => accumulatedVariables_before["company/:bankTransactions"].concat( eventAttributes["event/bankTransactionReference"] ),
-    "company/:applicableEventTypes": (accumulatedVariables_before, eventAttributes) => Object.keys( eventTypes ).filter( key => key !== "incorporation" ),
-    "company/:latestEventDate": (accumulatedVariables_before, eventAttributes) => eventAttributes["event/date"],
-    "company/:eventCount": (accumulatedVariables_before, eventAttributes) => accumulatedVariables_before["company/:eventCount"] + 1,
-    "company/:reports/rf_1028": (accumulatedVariables_before, eventAttributes) => Reports["rf_1028"].prepare(accumulatedVariables_before["company/:accountBalance"]),
-    "company/:reports/rf_1167": (accumulatedVariables_before, eventAttributes) => Reports["rf_1167"].prepare(accumulatedVariables_before["company/:accountBalance"]),
-    "company/:reports/annualReport": (accumulatedVariables_before, eventAttributes) => Reports["annualReport"].prepare(accumulatedVariables_before["company/:accountBalance"]),
-    "company/:reports/notesText": (accumulatedVariables_before, eventAttributes) => Reports["notesText"].prepare(accumulatedVariables_before),
+    "company/:orgnumber": (companyDoc, Event) => Event["event/incorporation/orgnumber"],
+    "company/:nominalSharePrice": (companyDoc, Event) => Event["event/incorporation/nominalSharePrice"],
+    "company/:incorporationDate": (companyDoc, Event) => Event["event/date"],
+    "company/:shareholders": (companyDoc, Event) => companyDoc["company/:shareholders"].concat( Event["event/shareholder"] ),
+    "company/:shareCount": (companyDoc, Event) => companyDoc["company/:shareCount"] + Event["event/shareCount"] ,
+    "company/:openingBalance": (companyDoc, Event) => returnObject({"1920": 0, "2000": 0}),
+    "company/:accountBalance": (companyDoc, Event) => updateAccountBalance( companyDoc["company/:accountBalance"], Event["event/:accountBalance"] ),
+    "company/:currentYear": (companyDoc, Event) => Event["event/date"].slice(0,4),
+    "company/:bankTransactions": (companyDoc, Event) => companyDoc["company/:bankTransactions"].concat( Event["event/bankTransactionReference"] ),
+    "company/:appliedEvents": (companyDoc, Event) => companyDoc["company/:appliedEvents"].concat( Event ),
+    "company/:prevCompanyDoc": (companyDoc, Event) => companyDoc,
+    "company/:applicableEventTypes": (companyDoc, Event) => Object.keys( eventTypes ).filter( key => key !== "incorporation" ),
+    "company/:latestEventDate": (companyDoc, Event) => Event["event/date"],
+    "company/:eventCount": (companyDoc, Event) => companyDoc["company/:eventCount"] + 1,
+    "company/:reports/rf_1028": (companyDoc, Event) => Reports["rf_1028"].prepare(companyDoc["company/:accountBalance"]),
+    "company/:reports/rf_1167": (companyDoc, Event) => Reports["rf_1167"].prepare(companyDoc["company/:accountBalance"]),
+    "company/:reports/annualReport": (companyDoc, Event) => Reports["annualReport"].prepare(companyDoc["company/:accountBalance"]),
+    "company/:reports/notesText": (companyDoc, Event) => Reports["notesText"].prepare(companyDoc),
   },
-  defaultDependencies: ["company/:latestEventDate", "company/:currentYear", "company/:applicableEventTypes", "company/:eventCount"],
-  calculate: (functionName, accumulatedVariables_before, eventAttributes) => outputFunction.functions[ functionName ](accumulatedVariables_before, eventAttributes),
-  getCalculatedEventFields: ( accumulatedVariables_before, eventAttributes, eventType ) => eventTypes[ eventType ]["eventConstructor"]( accumulatedVariables_before, eventAttributes ),
-  getCalculatedCompanyFields: ( accumulatedVariables_before, calculatedEventAttributes, eventType ) => eventTypes[ eventType ]["calculatedFields_companyLevel"].concat(outputFunction.defaultDependencies).map( (calculatedField) => createObject(calculatedField, outputFunction.calculate(calculatedField, accumulatedVariables_before, calculatedEventAttributes ) )  ),
+  defaultDependencies: ["company/:prevCompanyDoc", "company/:latestEventDate", "company/:currentYear", "company/:appliedEvents", "company/:applicableEventTypes", "company/:eventCount"],
+  calculate: (functionName, companyDoc, Event) => outputFunction.functions[ functionName ](companyDoc, Event),
+  getCalculatedEventFields: ( companyDoc, Event, eventType ) => eventTypes[ eventType ]["eventConstructor"]( companyDoc, Event ),
+  getCalculatedCompanyFields: ( companyDoc, calculatedEventAttributes, eventType ) => eventTypes[ eventType ]["calculatedFields_companyLevel"].concat(outputFunction.defaultDependencies).map( (calculatedField) => createObject(calculatedField, outputFunction.calculate(calculatedField, companyDoc, calculatedEventAttributes ) )  ),
 }
-
-
-
 
 //Event types
 
@@ -168,11 +151,11 @@ let event_incorporation = {
   eventType: "incorporation",
   attributes: ["event/index", "event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
   requiredCalculatedFields: [],
-  eventConstructor: ( accumulatedVariables_before, eventAttributes ) => {},
+  eventConstructor: ( companyDoc, Event ) => {},
   calculatedFields_companyLevel: ["company/:orgnumber", "company/:nominalSharePrice", "company/:incorporationDate", "company/:openingBalance"],
   validators: [
     {
-      validator: ( accumulatedVariables_before, eventAttributes ) => eventAttributes["event/index"] === 1,
+      validator: ( companyDoc, Event ) => Event["event/index"] === 1,
       errorMessage: "Incorporation must be the first event." 
     }
   ]
@@ -182,36 +165,36 @@ let event_addFounder = {
   eventType: "incorporation/addFounder",
   attributes: ["event/index", "event/date", "event/shareholder", "event/shareCount", "event/sharePremium"],
   requiredCalculatedFields: ["company/:nominalSharePrice"],
-  eventConstructor: ( accumulatedVariables_before, eventAttributes ) => {
+  eventConstructor: ( companyDoc, Event ) => {
 
-    let sharePrice = accumulatedVariables_before["company/:nominalSharePrice"] + eventAttributes["event/sharePremium"]
-    let shareCapital = eventAttributes["event/shareCount"] * sharePrice
+    let sharePrice = companyDoc["company/:nominalSharePrice"] + Event["event/sharePremium"]
+    let shareCapital = Event["event/shareCount"] * sharePrice
 
     return {"event/:accountBalance": {"1370": shareCapital, "2000": -shareCapital}} 
   },
   calculatedFields_companyLevel: ["company/:shareholders", "company/:shareCount", "company/:accountBalance"],
   validators: [
     {
-      validator: ( accumulatedVariables_before, eventAttributes ) => eventAttributes["event/date"].slice(0, 4) === accumulatedVariables_before["company/:currentYear"],
+      validator: ( companyDoc, Event ) => Event["event/date"].slice(0, 4) === companyDoc["company/:currentYear"],
       errorMessage: "Date must be in current financial year." 
     },
     {
-      validator: ( accumulatedVariables_before, eventAttributes ) => eventAttributes["event/date"] ===  accumulatedVariables_before["company/:incorporationDate"] ,
+      validator: ( companyDoc, Event ) => Event["event/date"] ===  companyDoc["company/:incorporationDate"] ,
       errorMessage: "Must have same date as incorporation event." 
     },
     {
-      validator: ( accumulatedVariables_before, eventAttributes ) => !accumulatedVariables_before["company/:shareholders"].includes( eventAttributes["event/shareholder"]  ) ,
+      validator: ( companyDoc, Event ) => !companyDoc["company/:shareholders"].includes( Event["event/shareholder"]  ) ,
       errorMessage: "Shareholder has already been added." 
     } 
     //TBD: Validator on process level should require share capital of > 30k NOK
   ],
-  newEventDatoms: (eventCycle) => [
+  newEventDatoms: (appliedEvent) => [
     newDatom("newEvent", "type", "process"), //TBU..
     newDatom("newEvent", "entity/type", "event"),
     newDatom("newEvent", "event/eventType", "incorporation/addFounder"),
-    newDatom("newEvent", "event/incorporation/orgnumber", eventCycle["accumulatedVariables_after"]["company/:orgnumber"] ), //TBU..
-    newDatom("newEvent", "event/index", eventCycle["eventAttributes"]["event/index"] + 1 ),
-    newDatom("newEvent", "event/date", eventCycle["accumulatedVariables_after"]["company/:incorporationDate"]),
+    newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
+    newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
+    newDatom("newEvent", "event/date", appliedEvent["event/date"]),
   ]
 }
 
@@ -219,37 +202,37 @@ let event_operatingCostFromBankTransaction = {
   eventType: "operatingCost/bank",
   attributes: ["event/index", "event/date", "event/account", "event/amount", "event/bankTransactionReference"],
   requiredCalculatedFields: ["company/:accountBalance"],
-  eventConstructor: ( accumulatedVariables_before, eventAttributes ) => createObject( 
+  eventConstructor: ( companyDoc, Event ) => createObject( 
     "event/:accountBalance" , 
     mergerino( {
-      "1920": eventAttributes["event/amount"]} , 
-      createObject(eventAttributes["event/account"], -eventAttributes["event/amount"])
+      "1920": Event["event/amount"]} , 
+      createObject(Event["event/account"], -Event["event/amount"])
     )
   ),
   calculatedFields_companyLevel: ["company/:bankTransactions", "company/:accountBalance"],
   validators: [
     {
-      validator: ( accumulatedVariables_before, eventAttributes ) => eventAttributes["event/date"].slice(0, 4) === accumulatedVariables_before["company/:currentYear"],
+      validator: ( companyDoc, Event ) => Event["event/date"].slice(0, 4) === companyDoc["company/:currentYear"],
       errorMessage: "Date must be in current financial year." 
     },
     {
-      validator: ( accumulatedVariables_before, eventAttributes ) => Object.keys(Accounts).filter( acc => Number(acc) >= 4000 && Number(acc) < 8000 ).includes( eventAttributes["event/account"] ),
+      validator: ( companyDoc, Event ) => Object.keys(Accounts).filter( acc => Number(acc) >= 4000 && Number(acc) < 8000 ).includes( Event["event/account"] ),
       errorMessage: "Must be an operating cost account." 
     },{
-      validator: ( accumulatedVariables_before, eventAttributes ) => !accumulatedVariables_before["company/:bankTransactions"].includes( eventAttributes["event/bankTransactionReference"] )  ,
+      validator: ( companyDoc, Event ) => !companyDoc["company/:bankTransactions"].includes( Event["event/bankTransactionReference"] )  ,
       errorMessage: "Bank transaction reference has already been used." 
     },{
-      validator: ( accumulatedVariables_before, eventAttributes ) => eventAttributes["event/amount"] < 0,
+      validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
       errorMessage: "Cost must have negative bank amount" 
     },
   ],
-  newEventDatoms: (eventCycle) => [
+  newEventDatoms: (appliedEvent) => [
     newDatom("newEvent", "type", "process"), //TBU..
     newDatom("newEvent", "entity/type", "event"),
     newDatom("newEvent", "event/eventType", "operatingCost/bank"),
-    newDatom("newEvent", "event/incorporation/orgnumber", eventCycle["accumulatedVariables_after"]["company/:orgnumber"] ), //TBU..
-    newDatom("newEvent", "event/index", eventCycle["eventAttributes"]["event/index"] + 1 ),
-    newDatom("newEvent", "event/date", eventCycle["eventAttributes"]["event/date"])
+    newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
+    newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
+    newDatom("newEvent", "event/date", appliedEvent["event/date"]),
   ]
 }
 
@@ -257,21 +240,21 @@ let event_yearEnd = {
   eventType: "yearEnd",
   attributes: ["event/index", "event/date"],
   requiredCalculatedFields: ["company/:accountBalance"],
-  eventConstructor: ( accumulatedVariables_before, eventAttributes ) => returnObject({}),
+  eventConstructor: ( companyDoc, Event ) => returnObject({}),
   calculatedFields_companyLevel: ["company/:reports/rf_1028", "company/:reports/rf_1167", "company/:reports/annualReport", "company/:reports/notesText"],
   validators: [
     {
-      validator: ( accumulatedVariables_before, eventAttributes ) => eventAttributes["event/date"] === `${accumulatedVariables_before["company/:currentYear"]}-12-31`,
+      validator: ( companyDoc, Event ) => Event["event/date"] === `${companyDoc["company/:currentYear"]}-12-31`,
       errorMessage: "Date must be 31/12 in current financial year." 
     }
   ],
-  newEventDatoms: (eventCycle) => [
+  newEventDatoms: (appliedEvent) => [
     newDatom("newEvent", "type", "process"), //TBU..
     newDatom("newEvent", "entity/type", "event"),
     newDatom("newEvent", "event/eventType", "yearEnd"),
-    newDatom("newEvent", "event/incorporation/orgnumber", eventCycle["accumulatedVariables_after"]["company/:orgnumber"] ), //TBU..
-    newDatom("newEvent", "event/index", eventCycle["eventAttributes"]["event/index"] + 1 ),
-    newDatom("newEvent", "event/date", `${eventCycle["accumulatedVariables_after"]["company/:currentYear"]}-12-31`)
+    newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
+    newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
+    newDatom("newEvent", "event/date", appliedEvent["event/date"]),
   ]
 }
 
@@ -457,6 +440,9 @@ const Reports = {
       )  
     )
   },
+  "rf_1086": {
+    prepare: ( accumulatedVariables ) => returnObject({TBD: "TBD"})
+  },
   "annualReport": {
     accountMapping: {"9000":[],"9010":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791"],"9050":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791"],"9060":["8000","8020","8030","8050","8055","8060","8070","8071","8078","8080","8090"],"9070":["8100","8110","8120","8130","8140","8150","8155","8160","8170","8178"],"9100":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791","8000","8020","8030","8050","8055","8060","8070","8071","8078","8080","8090","8100","8110","8120","8130","8140","8150","8155","8160","8170","8178"],"9150":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791","8000","8020","8030","8050","8055","8060","8070","8071","8078","8080","8090","8100","8110","8120","8130","8140","8150","8155","8160","8170","8178","8300","8320"],"9200":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791","8000","8020","8030","8050","8055","8060","8070","8071","8078","8080","8090","8100","8110","8120","8130","8140","8150","8155","8160","8170","8178","8300","8320"],"9300":["1070","1300","1320","1330","1340","1350","1360","1370","1375","1380","1399"],"9350":["1576","1579","1749","1800","1810","1820","1830","1870","1880","1920"],"9400":["1070","1300","1320","1330","1340","1350","1360","1370","1375","1380","1399","1576","1579","1749","1800","1810","1820","1830","1870","1880","1920"],"9450":["2000","2020","2030","2050","2080"],"9500":["2120","2220","2250","2260","2290"],"9550":["2390","2400","2500","2510","2800","2910","2920","2990"],"9650":["2000","2020","2030","2050","2080","2120","2220","2250","2260","2290","2390","2400","2500","2510","2800","2910","2920","2990"]},
     prepare: ( accountBalance ) => mergeArray( 
@@ -486,15 +472,15 @@ const Reports = {
   ]
   },
   "notesText": {
-    prepare: ( accumulatedVariables_before ) => {
+    prepare: ( companyDoc ) => {
 
-      let openingBalance = accumulatedVariables_before["company/:openingBalance"]
-      let accountBalance = accumulatedVariables_before["company/:accountBalance"]
+      let openingBalance = companyDoc["company/:openingBalance"]
+      let accountBalance = companyDoc["company/:accountBalance"]
     
-      let shareholders = accumulatedVariables_before["company/:shareholders"]
-      let shareCount = accumulatedVariables_before["company/:shareCount"]
+      let shareholders = companyDoc["company/:shareholders"]
+      let shareCount = companyDoc["company/:shareCount"]
   
-      let nominalSharePrice = accumulatedVariables_before["company/:nominalSharePrice"]
+      let nominalSharePrice = companyDoc["company/:nominalSharePrice"]
   
       let em = (content) => String('<span class="emphasizedText">' + content + '</span>')
     
@@ -559,9 +545,9 @@ const Reports = {
     ${"[TBD]" }
     
     <h4>Note 4: Lønnskostnader, antall ansatte, godtgjørelser, revisjonskostnader mm.</h4>
-    Selskapet har i ${em( accumulatedVariables_before["company/:currentYear"] ) } ikke hatt noen ansatte og er således ikke pliktig til å ha tjenestepensjon for de ansatte etter Lov om obligatoriske tjenestepensjon. Det er ikke utdelt styrehonorar.
+    Selskapet har i ${em( companyDoc["company/:currentYear"] ) } ikke hatt noen ansatte og er således ikke pliktig til å ha tjenestepensjon for de ansatte etter Lov om obligatoriske tjenestepensjon. Det er ikke utdelt styrehonorar.
     <br><br>
-    Kostnadsført revisjonshonorar for ${em( accumulatedVariables_before["company/:currentYear"] ) } utgjør kr ${em( 0 ) }. Honorar for annen bistand fra revisor utgjør kr ${em( 0 ) }.
+    Kostnadsført revisjonshonorar for ${em( companyDoc["company/:currentYear"] ) } utgjør kr ${em( 0 ) }. Honorar for annen bistand fra revisor utgjør kr ${em( 0 ) }.
     
     
     
