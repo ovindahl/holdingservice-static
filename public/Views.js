@@ -35,7 +35,6 @@ let input = (attributesObject, eventType, action) => htmlElementObject("input", 
 
 let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", updateFunction  )
 
-let createEventButton = (appliedEvent, newEventType, A) => d(`[Ny hendelse: ${newEventType}] `, {class: "textButton"}, "click", e => A.createEvent(appliedEvent, newEventType) )
 let retractEventButton = (entityID, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(entityID) )
 
 //Page frame
@@ -57,7 +56,9 @@ let feedContainer = (content, date, entityID) => d([
   d( `${date} (id: ${entityID} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
 ])
 
-let companySelectionMenuRow = (S, A) => d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ), {style: "display:flex;"})
+let companySelectionMenuRow = (S, A) => d([
+  d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => A.createEvent( null, "incorporation" ) )), {style: "display:flex;"}),
+]) 
 let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
@@ -81,16 +82,16 @@ let timelineView = (companyDoc, A) => d([
 
 let appliedEventView = (appliedEvent , A) => d([
     h3(appliedEvent["event/eventType"], {style: `background-color: #1073104f; padding: 1em;`} ),
-    systemAttributesTableView(appliedEvent),
+    /* systemAttributesTableView(appliedEvent),
     d("<br>"),
     historicVariablesTableView(appliedEvent),
-    d("<br>"),
+    d("<br>"), */
     attributesTableView(appliedEvent, A),
     d("<br>"),
-    outputTableView(appliedEvent),
-    d("<br>"),
-    appliedEvent["event/eventType"] === "incorporation" ? d("") : retractEventButton( appliedEvent["entity"], A),
-    d( Object.keys(eventTypes).map( newEventType => createEventButton( appliedEvent, newEventType, A) ))
+    /* outputTableView(appliedEvent),
+    d("<br>"), */
+    retractEventButton( appliedEvent["entity"], A),
+    newEventDropdown(A, appliedEvent)
 ])
 
 let rejectedEventView = (rejectedEvent , A) => d([
@@ -104,7 +105,7 @@ let rejectedEventView = (rejectedEvent , A) => d([
   attributesTableView(rejectedEvent, A),
   d("<br>"),
   rejectedEvent["event/eventType"] === "incorporation" ? d("") : retractEventButton( rejectedEvent["entity"], A),
-  d( Object.keys(eventTypes).map( newEventType => createEventButton( rejectedEvent, newEventType, A) ))
+  newEventDropdown(A, rejectedEvent)
 ])
 
 
@@ -135,20 +136,13 @@ let systemAttributesTableView = (appliedEvent) => d([
 
 let attributesTableView = (appliedEvent, A) => d([
   h3("Attributter"),
-  d( getRequiredAttributes( appliedEvent["event/eventType"] ) .map( attribute =>  attributeTableRowView(
-    attribute, 
-    appliedEvent[ attribute ],
-    e => A.updateEventAttribute( appliedEvent, attribute, e)) ) 
+  d( getRequiredAttributes( appliedEvent["event/eventType"] ) .map( attribute =>  attributeView(A, attribute, appliedEvent[ attribute ], appliedEvent["entity"] ) ) 
   ),
   d("<br>")
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
 
-let attributeTableRowView = (attribute, value, onChange) => d([
-  d([
-    d(`${attribute}`),
-    input({value: value, style: `text-align: right;`}, "change", onChange ),
-    ], {class: "eventInspectorRow"}),
-])
+
+
 
 let outputTableView = (appliedEvent) => d([
   h3("Kalkulerte felter"),
@@ -179,3 +173,77 @@ let variableView = (companyDoc, key) => d([
   h3(key),
   Object.keys(companyDocViews).includes(key) ? companyDocViews[key]( companyDoc[key] ) : d( JSON.stringify(companyDoc[key]) , {class: "eventInspectorRow"})
 ])
+
+
+
+
+
+
+
+
+
+//Tailor-made complex views
+
+let recordsView = (A, attribute, value, entityID) => d([
+  d("transaction/records"),
+  d( Object.keys(value).map( account => d([
+    dropdown(account, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })), 
+      e => A.updateEventAttribute( 
+        entityID, 
+        attribute, 
+        mergerino(
+          value, 
+          createObject( account, undefined ),
+          createObject( e.srcElement.value, value[ account ]  ) ) 
+      ) 
+    ),
+    input({value: value[account], style: `text-align: right;`}, "change", e => A.updateEventAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( account , Number( e.srcElement.value ) ) ) 
+    ) ),
+    d("X", {class: "textButton"}, "click", e => A.updateEventAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( account , undefined ) ) 
+    ) )
+    ], {class: "recordRow"}),
+  ) ),
+  dropdown(
+    0, 
+    Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })).concat({value: 0, label: "Legg til konto"}), 
+    e => A.updateEventAttribute( entityID, attribute, mergerino( value, createObject( e.srcElement.value , 0 ) ) ),
+  )
+], {style: "border: solid 1px black;"})
+
+
+
+
+
+
+
+let attributeView = (A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](A, attribute, value, entityID) : genericAttributeView( attribute, value, e => A.updateEventAttribute( entityID, attribute, Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value) )
+
+let genericAttributeView = (attribute, value, onChange) => d([
+  d([
+    d(`${attribute}`),
+    input({value: value, style: `text-align: right;`}, "change", onChange ),
+    ], {class: "eventInspectorRow"}),
+])
+
+let newEventDropdown = (A, Event) => dropdown( "", 
+  Object.keys(eventTypes).map( newEventType => returnObject({value: newEventType, label: newEventType }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
+  e => A.createEvent(Event, e.srcElement.value )
+)
+  
+let specialAttributeViews = {
+  "event/account": (A, attribute, value, entityID) => d([
+    d(`event/account`),
+    dropdown(value, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })).concat({value: "", label: "Ingen konto valgt."}), e => A.updateEventAttribute( entityID, attribute, e.srcElement.value) ),
+    ], {class: "eventInspectorRow"}),
+  "transaction/records": recordsView
+}

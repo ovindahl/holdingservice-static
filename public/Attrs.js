@@ -158,6 +158,14 @@ let event_incorporation = {
       validator: ( companyDoc, Event ) => Event["event/index"] === 1,
       errorMessage: "Incorporation must be the first event." 
     }
+  ],
+  newEventDatoms: (appliedEvent) => [
+    newDatom("newEvent", "type", "process"), //TBU..
+    newDatom("newEvent", "entity/type", "event"),
+    newDatom("newEvent", "event/eventType", "incorporation"),
+    newDatom("newEvent", "event/incorporation/orgnumber", "111222333"), //TBU..
+    newDatom("newEvent", "event/index", 1 ),
+    newDatom("newEvent", "event/date", "" )
   ]
 }
 
@@ -236,6 +244,38 @@ let event_operatingCostFromBankTransaction = {
   ]
 }
 
+let event_complexTransaction = {
+  eventType: "complexTransaction",
+  attributes: ["event/index", "event/date", "transaction/records", "event/bankTransactionReference"],
+  requiredCalculatedFields: ["company/:accountBalance"],
+  eventConstructor: ( companyDoc, Event ) => createObject( "event/:accountBalance" , Event["transaction/records"] ),
+  calculatedFields_companyLevel: ["company/:accountBalance"],
+  validators: [
+    {
+      validator: ( companyDoc, Event ) => Event["event/date"].slice(0, 4) === companyDoc["company/:currentYear"],
+      errorMessage: "Date must be in current financial year." 
+    },{
+      validator: ( companyDoc, Event ) => Object.keys(Event["transaction/records"]).every( account => Object.keys(Accounts).includes( account ) )   ,
+      errorMessage: "Accounts not valid." 
+    },{
+      validator: ( companyDoc, Event ) => Object.values( Event["transaction/records"] ).every( value => typeof value === "number" ),
+      errorMessage: "Amount must be number." 
+    },{
+      validator: ( companyDoc, Event ) => Object.values( Event["transaction/records"] ).reduce( (sum, amount) => sum + amount, 0 ) === 0,
+      errorMessage: "Transaction must be in balance." 
+    }
+  ],
+  newEventDatoms: (appliedEvent) => [
+    newDatom("newEvent", "type", "process"), //TBU..
+    newDatom("newEvent", "entity/type", "event"),
+    newDatom("newEvent", "event/eventType", "complexTransaction"),
+    newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
+    newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
+    newDatom("newEvent", "event/date", appliedEvent["event/date"]),
+    newDatom("newEvent", "transaction/records", {} ),
+  ]
+}
+
 let event_yearEnd = {
   eventType: "yearEnd",
   attributes: ["event/index", "event/date"],
@@ -262,6 +302,7 @@ const eventTypes = {
   "incorporation": event_incorporation,
   "incorporation/addFounder": event_addFounder,
   "operatingCost/bank": event_operatingCostFromBankTransaction,
+  "complexTransaction": event_complexTransaction,
   "yearEnd": event_yearEnd
 }
 
@@ -289,7 +330,6 @@ const Attribute = {
     "event/incorporation/orgnumber": v => [
       v => typeof v === "string", 
       v => v.length === 9,
-      v => v === "999999999" //for testing...
     ].every( f => f(v) ),
     "event/date": v => [
       v => typeof v === "string", 
@@ -321,6 +361,9 @@ const Attribute = {
     ].every( f => f(v) ),
     "event/bankTransactionReference": v => [
       v => typeof v === "string",
+    ].every( f => f(v) ),
+    "transaction/records": v => [
+      v => typeof v === "object"
     ].every( f => f(v) ),
   },
   validate: (attribute, value) => Attribute.validators[ attribute ](value),

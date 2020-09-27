@@ -61,21 +61,21 @@ let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  
 
 let getUserActions = (S) => returnObject({
     updateLocalState: (patch) => update( mergerino(S, patch) ),
-    updateEventAttribute: async (Event, attribute, e) => {
+    updateEventAttribute: async (entityID, attribute, value) => {
 
-        let value = Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value
+        //let value = Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value
 
-        let datoms = [newDatom(Event["entity"], attribute, value)]
+        let datoms = [newDatom(entityID, attribute, value)]
 
         console.log(datoms)
 
         let apiResponse = Attribute.validate(attribute, value) //Only attribute validation, not event level.
-        ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( [newDatom(Event["entity"], attribute, value)] ) )
+        ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( [newDatom(entityID, attribute, value)] ) )
         : null
 
         let isInvalid = (apiResponse === null)
 
-        if(isInvalid){console.log("ERROR: Attribute value is not valid: ", Event, attribute, e)}
+        if(isInvalid){console.log("ERROR: Attribute value is not valid: ", entityID, attribute, value)}
 
         let newS = isInvalid ? S : mergerino(S, apiResponse)
         
@@ -116,7 +116,37 @@ sideEffects.configureClient();
 let Admin = {
     updateClientRelease: (newVersion) => submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
-    submitDatoms: async (datoms) => datoms.length < 20 
+    submitDatoms: async (datoms) => datoms.length > 2
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms)
+}
+
+
+
+
+let ruun = async () => {
+
+    let E = await sideEffects.APIRequest("GET", "serverCache", null)
+
+    let simpleTransactions = E.Entities
+        .filter( e => e["type"] === "transactions" )
+        .filter( t => E.Entities.filter( e => e["parent"] === t["entity"] ).length === 2  )
+        .filter( t => E.Entities.filter( e => e["parent"] === t["entity"] ).map( record => record["transaction/generic/account"] ).includes("1920")  )
+
+    let newEvents = simpleTransactions.map( (simpleTransaction, index) => [
+        newDatom(simpleTransaction["entity"], "type", "process"), //TBU..
+        newDatom(simpleTransaction["entity"], "entity/type", "event"),
+        newDatom(simpleTransaction["entity"], "event/eventType", "operatingCost/bank"),
+        newDatom(simpleTransaction["entity"], "event/incorporation/orgnumber", simpleTransaction["company/orgnumber"]  ), //TBU..
+        newDatom(simpleTransaction["entity"], "event/index", index + 2 ),
+        newDatom(simpleTransaction["entity"], "event/date", simpleTransaction["date"] ),
+        newDatom(simpleTransaction["entity"], "event/account", "" ),
+        newDatom(simpleTransaction["entity"], "event/amount", E.Entities.filter( e => e["parent"] === simpleTransaction["entity"] && e["transaction/generic/account"] === "1920" )[0]["transaction/amount"]  ) ,
+        newDatom(simpleTransaction["entity"], "event/bankTransactionReference", E.Entities.filter( e => e["parent"] === simpleTransaction["entity"] && e["transaction/generic/account"] === "1920" )[0]["transaction/bankTransactionReference"] ? E.Entities.filter( e => e["parent"] === simpleTransaction["entity"] && e["transaction/generic/account"] === "1920" )[0]["transaction/bankTransactionReference"] : "" ),
+      ]  ).flat()
+
+    return newEvents
+
+
+
 }
