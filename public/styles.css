@@ -30,13 +30,24 @@ body {background-color: #F2F3F5;}
     background-color: lightgray;
 }
 
-.recordRow{
+.recordRow {
     display:grid;
     grid-template-columns: 10fr 5fr 1fr;
     padding: 1px; 
 }
 
 .recordRow:hover {
+    background-color: lightgray;
+}
+
+
+.shareholderRow {
+    display:grid;
+    grid-template-columns: 5fr 5fr 5fr 1fr;
+    padding: 1px; 
+}
+
+.shareholderRow:hover {
     background-color: lightgray;
 }
 

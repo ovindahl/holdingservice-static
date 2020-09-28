@@ -116,7 +116,7 @@ sideEffects.configureClient();
 let Admin = {
     updateClientRelease: (newVersion) => submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
-    submitDatoms: async (datoms) => datoms.length > 2
+    submitDatoms: async (datoms) => datoms.length < 20
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms)
 }

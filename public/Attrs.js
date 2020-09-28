@@ -147,16 +147,33 @@ const outputFunction = {
 
 //Event types
 
+
+
 let event_incorporation = {
   eventType: "incorporation",
-  attributes: ["event/index", "event/date", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice"],
+  attributes: ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice", "event/incorporation/shareholders", "event/incorporation/incorporationCost"],
   requiredCalculatedFields: [],
-  eventConstructor: ( companyDoc, Event ) => {},
+  eventConstructor: ( companyDoc, Event ) => {
+    let shareCapital = Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0)
+    return {"event/:accountBalance": {"1579": shareCapital, "2000": -shareCapital}}
+  } ,
   calculatedFields_companyLevel: ["company/:orgnumber", "company/:nominalSharePrice", "company/:incorporationDate", "company/:openingBalance"],
   validators: [
     {
       validator: ( companyDoc, Event ) => Event["event/index"] === 1,
       errorMessage: "Incorporation must be the first event." 
+    },
+    {
+      validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK",
+      errorMessage: "Currency must be NOK." 
+    },
+    {
+      validator: ( companyDoc, Event ) => Object.keys( Event["event/incorporation/shareholders"] ).length > 0,
+      errorMessage: "Must have at least one shareholder." 
+    },
+    {
+      validator: ( companyDoc, Event ) => Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000  ,
+      errorMessage: "Share capital must be >= 30 000 NOK" 
     }
   ],
   newEventDatoms: (appliedEvent) => [
@@ -165,44 +182,10 @@ let event_incorporation = {
     newDatom("newEvent", "event/eventType", "incorporation"),
     newDatom("newEvent", "event/incorporation/orgnumber", "111222333"), //TBU..
     newDatom("newEvent", "event/index", 1 ),
-    newDatom("newEvent", "event/date", "" )
-  ]
-}
-
-let event_addFounder = {
-  eventType: "incorporation/addFounder",
-  attributes: ["event/index", "event/date", "event/shareholder", "event/shareCount", "event/sharePremium"],
-  requiredCalculatedFields: ["company/:nominalSharePrice"],
-  eventConstructor: ( companyDoc, Event ) => {
-
-    let sharePrice = companyDoc["company/:nominalSharePrice"] + Event["event/sharePremium"]
-    let shareCapital = Event["event/shareCount"] * sharePrice
-
-    return {"event/:accountBalance": {"1370": shareCapital, "2000": -shareCapital}} 
-  },
-  calculatedFields_companyLevel: ["company/:shareholders", "company/:shareCount", "company/:accountBalance"],
-  validators: [
-    {
-      validator: ( companyDoc, Event ) => Event["event/date"].slice(0, 4) === companyDoc["company/:currentYear"],
-      errorMessage: "Date must be in current financial year." 
-    },
-    {
-      validator: ( companyDoc, Event ) => Event["event/date"] ===  companyDoc["company/:incorporationDate"] ,
-      errorMessage: "Must have same date as incorporation event." 
-    },
-    {
-      validator: ( companyDoc, Event ) => !companyDoc["company/:shareholders"].includes( Event["event/shareholder"]  ) ,
-      errorMessage: "Shareholder has already been added." 
-    } 
-    //TBD: Validator on process level should require share capital of > 30k NOK
-  ],
-  newEventDatoms: (appliedEvent) => [
-    newDatom("newEvent", "type", "process"), //TBU..
-    newDatom("newEvent", "entity/type", "event"),
-    newDatom("newEvent", "event/eventType", "incorporation/addFounder"),
-    newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
-    newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
-    newDatom("newEvent", "event/date", appliedEvent["event/date"]),
+    newDatom("newEvent", "event/date", "" ),
+    newDatom("newEvent", "event/currency", "NOK"),
+    newDatom("newEvent", "event/description", "Stiftelse" ),
+    newDatom("newEvent", "event/incorporation/shareholders", {} ),
   ]
 }
 
@@ -300,7 +283,6 @@ let event_yearEnd = {
 
 const eventTypes = {
   "incorporation": event_incorporation,
-  "incorporation/addFounder": event_addFounder,
   "operatingCost/bank": event_operatingCostFromBankTransaction,
   "complexTransaction": event_complexTransaction,
   "yearEnd": event_yearEnd
@@ -314,6 +296,11 @@ let getSystemAttributes = () => ["entity", "entity/type", "event/eventType", "ty
 //Attributes
 
 const Attribute = {
+  attributes: {
+    "event/incorporation/nominalSharePrice": {
+      label: "Pålydende per aksje"
+    }
+  },
   validators: {
     "entity/type": v => [
       v => typeof v === "string", //validator + description of correct format should be sufficient [?]
@@ -327,9 +314,19 @@ const Attribute = {
           v => typeof v === "number",
           v => v >= 1
       ].every( f => f(v) ),
+    "event/description": v => [
+        v => typeof v === "string",
+    ].every( f => f(v) ),
+    "event/currency": v => [
+        v => typeof v === "string",
+    ].every( f => f(v) ),
     "event/incorporation/orgnumber": v => [
       v => typeof v === "string", 
       v => v.length === 9,
+    ].every( f => f(v) ),
+    "event/incorporation/shareholders": v => [
+      v => typeof v === "object", 
+      v => Object.values( v ).every( shareholder => (typeof shareholder["shareholder"] === "string" && typeof shareholder["shareCount"] === "number" && typeof shareholder["sharePrice"] === "number" )  ),
     ].every( f => f(v) ),
     "event/date": v => [
       v => typeof v === "string", 
@@ -339,16 +336,9 @@ const Attribute = {
       v => typeof v === "number", 
       v => v > 0
     ].every( f => f(v) ),
-    "event/shareholder": v => [
-      v => typeof v === "string", 
-    ].every( f => f(v) ),
-    "event/shareCount": v => [
+    "event/incorporation/incorporationCost": v => [
       v => typeof v === "number", 
       v => v > 0
-    ].every( f => f(v) ),
-    "event/sharePremium": v => [
-      v => typeof v === "number", 
-      v => v >= 0
     ].every( f => f(v) ),
     "event/account": v => [
       v => typeof v === "string", 
@@ -367,7 +357,7 @@ const Attribute = {
     ].every( f => f(v) ),
   },
   validate: (attribute, value) => Attribute.validators[ attribute ](value),
-  isNumber: (attribute) => ["event/index", "event/incorporation/nominalSharePrice", "event/shareCount", "event/sharePremium", "event/amount"].includes(attribute),
+  isNumber: (attribute) => ["event/index", "event/incorporation/nominalSharePrice", "event/shareCount", "event/incorporation/incorporationCost", "event/amount"].includes(attribute),
   getSystemAttributes: () => ["entity", "entity/type"]
 }
 

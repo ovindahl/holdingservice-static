@@ -104,7 +104,7 @@ let rejectedEventView = (rejectedEvent , A) => d([
   d("<br>"),
   attributesTableView(rejectedEvent, A),
   d("<br>"),
-  rejectedEvent["event/eventType"] === "incorporation" ? d("") : retractEventButton( rejectedEvent["entity"], A),
+  retractEventButton( rejectedEvent["entity"], A),
   newEventDropdown(A, rejectedEvent)
 ])
 
@@ -220,8 +220,53 @@ let recordsView = (A, attribute, value, entityID) => d([
   )
 ], {style: "border: solid 1px black;"})
 
-
-
+let foundersView = (A, attribute, value, entityID) => d([
+  d("event/incorporation/shareholders"),
+  d([d("AksjonærID"), d("Antall aksjer"), d("Pris per aksje")], {class: "shareholderRow"}),
+  d( Object.values(value).map( shareholder => d([
+    input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEventAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( shareholder["shareholder"], undefined ),
+        createObject( e.srcElement.value, mergerino(
+          value[shareholder["shareholder"]],
+          createObject( "shareholder" , e.srcElement.value ),
+          )
+        )
+    ) )),
+    input({value: shareholder["shareCount"], style: `text-align: right;`}, "change", e => A.updateEventAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( shareholder["shareholder"] , createObject("shareCount", Number( e.srcElement.value ) ) ),
+    ) )),
+    input({value: shareholder["sharePrice"], style: `text-align: right;`}, "change", e => A.updateEventAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( shareholder["shareholder"] , createObject("sharePrice", Number( e.srcElement.value ) ) ),
+    ) )),
+    d("X", {class: "textButton"}, "click", e => A.updateEventAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( shareholder["shareholder"] , undefined ) ) 
+    ) )
+    ], {class: "shareholderRow"}),
+  ) ),
+  d("Legg til stifter", {class: "textButton"}, "click", e => A.updateEventAttribute( 
+    entityID, 
+    attribute, 
+    mergerino(
+      value,
+      createObject( "[AksjonærID]" , {shareholder: "[AksjonærID]", shareCount: 0, sharePrice: 0} ),
+  ) ) )
+], {style: "border: solid 1px black;"})
 
 
 
@@ -245,5 +290,6 @@ let specialAttributeViews = {
     d(`event/account`),
     dropdown(value, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })).concat({value: "", label: "Ingen konto valgt."}), e => A.updateEventAttribute( entityID, attribute, e.srcElement.value) ),
     ], {class: "eventInspectorRow"}),
-  "transaction/records": recordsView
+  "transaction/records": recordsView,
+  "event/incorporation/shareholders": foundersView
 }
