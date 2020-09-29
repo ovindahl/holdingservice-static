@@ -254,8 +254,8 @@ const eventTypes = {
       newDatom("newEvent", "event/supplier", "[Brreg]" ),
     ])
   },
-  "operatingCost/supplierDebt": {
-    eventType: "operatingCost/supplierDebt",
+  "eventType/operatingCost/supplierDebt": {
+    eventType: "eventType/operatingCost/supplierDebt",
     attributes: defaultEventAttributes.concat(["event/supplier", "event/amount"]),
     eventConstructor: ( companyDoc, Event ) => mergerino(  
       {"event/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} }
@@ -272,7 +272,7 @@ const eventTypes = {
       }
     ],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-      newDatom("newEvent", "event/eventType", "operatingCost/supplierDebt"),
+      newDatom("newEvent", "event/eventType", "eventType/operatingCost/supplierDebt"),
       newDatom("newEvent", "event/description", "Annen driftskostnad, betalt av selskapet." ),
       newDatom("newEvent", "event/supplier", "[Orgnr. på leverandør]" ),
       newDatom("newEvent", "event/amount", 0 ),
@@ -437,6 +437,17 @@ const Attribute = {
     "attr/doc": v => typeof v === "string",
     "attr/label": v => typeof v === "string",
     "attr/valueType": v => ["string", "number", "object"].includes(v),
+    "eventType/name": v => [
+      v => typeof v === "string",
+      v => v.startsWith("eventType/")
+    ].every( f => f(v) ),
+    "eventType/doc": v => typeof v === "string",
+    "eventType/label": v => typeof v === "string",
+    "eventType/attributes":  v => [
+      v => typeof v === "object", //validator + description of correct format should be sufficient [?]
+      v => Array.isArray(v),
+      v => v.every( attr => Object.keys( Attribute.validators ).includes(attr) )
+    ].every( f => f(v) ),
     "entity/type": v => [
       v => typeof v === "string", //validator + description of correct format should be sufficient [?]
       v => ["process", "event"].includes(v)
@@ -839,7 +850,7 @@ let generateHTMLBody = (S, A) => [
 ]
 
 let pageRouter = {
-  "timeline": (S, A) => timelineView(S.companyDoc, A),
+  "timeline": (S, A) => timelineView(S, S.companyDoc, A),
   "companyDoc": (S, A) => companyDocPage( S.companyDoc ),
   "admin/eventAttributes": (S, A) => attributesPage( S, A ),
   "admin/eventTypes": (S, A) => eventTypesPage( S, A )
@@ -847,66 +858,34 @@ let pageRouter = {
 
 //Event Cycle Views
 
-let timelineView = (companyDoc, A) => d([
-  d( companyDoc["company/:appliedEvents"].map( appliedEvent => feedContainer(  appliedEventView( appliedEvent, A ) , appliedEvent["event/date"], appliedEvent["entity"] )  ), {class: "pageContainer"}),
-  d( companyDoc["company/:rejectedEvents"].map( rejectedEvent => feedContainer(  rejectedEventView( rejectedEvent, A ) , rejectedEvent["event/date"], rejectedEvent["entity"] )  ), {class: "pageContainer"})
+let timelineView = (S, companyDoc, A) => d([
+  d( companyDoc["company/:appliedEvents"].map( appliedEvent => feedContainer(  appliedEventView( S, appliedEvent, A ) , appliedEvent["event/date"], appliedEvent["entity"] )  ), {class: "pageContainer"}),
+  d( companyDoc["company/:rejectedEvents"].map( rejectedEvent => feedContainer(  rejectedEventView( S, rejectedEvent, A ) , rejectedEvent["event/date"], rejectedEvent["entity"] )  ), {class: "pageContainer"})
 ])
 
-let appliedEventView = (appliedEvent , A) => d([
-    h3(appliedEvent["event/eventType"], {style: `background-color: #1073104f; padding: 1em;`} ),
-    attributesTableView(appliedEvent, A),
+let appliedEventView = (S, appliedEvent , A) => d([
+    h3( S.eventTypes[ appliedEvent["event/eventType"] ] ? S.eventTypes[ appliedEvent["event/eventType"] ]["eventType/label"] : appliedEvent["event/eventType"] , {style: `background-color: #1073104f; padding: 1em;`} ),
+    attributesTableView(S, appliedEvent, A),
     retractEventButton( appliedEvent["entity"], A),
     newEventDropdown(A, appliedEvent)
 ])
 
-let rejectedEventView = (rejectedEvent , A) => d([
-  h3(rejectedEvent["event/eventType"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
+let rejectedEventView = (S, rejectedEvent , A) => d([
+  h3(S.eventTypes[ rejectedEvent["event/eventType"] ] ? S.eventTypes[ rejectedEvent["event/eventType"] ]["eventType/label"] : rejectedEvent["event/eventType"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
   d( rejectedEvent["event/:eventErrors"].map( error => d(error, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  )),
   d("<br>"),
-  systemAttributesTableView(rejectedEvent),
-  d("<br>"),
-  /* historicVariablesTableView(rejectedEvent),
-  d("<br>"), */
-  attributesTableView(rejectedEvent, A),
+  attributesTableView(S, rejectedEvent, A),
   d("<br>"),
   retractEventButton( rejectedEvent["entity"], A),
   newEventDropdown(A, rejectedEvent)
 ])
 
-
-/* let historicVariablesTableView = (appliedEvent) => d([
-  h3("Historiske kalkulerte felter som brukes"),
-  d( getRequiredHistoricalVariables( appliedEvent["event/eventType"] ).map( companyVariable =>  historicVariablesTableRowView(
-      companyVariable, 
-      appliedEvent[companyVariable]
-      )) ),
-  d("<br>")
-], {style: "background-color: #f1f0f0; padding: 1em;"}) */
-
-/* let historicVariablesTableRowView = (companyVariable, value, errors) => d([
-  d([
-    d(`${companyVariable}:`),
-    input({value: value, disabled: "disabled", style: `text-align: right; ${!errors ? "background-color: none;" : "background-color: #ffb1b1;"}`}),
-    ], {class: "eventInspectorRow"})
-])
- */
-let systemAttributesTableView = (appliedEvent) => d([
-  h3("Systemattributter"),
-  d( getSystemAttributes().map( companyVariable =>  d([
-    d(`${companyVariable}:`),
-    input({value: appliedEvent[companyVariable], style: "text-align: right;", disabled: "disabled"}),
-    ], {class: "eventInspectorRow"})) ),
-  d("<br>")
-], {style: "background-color: #f1f0f0; padding: 1em;"})
-
-let attributesTableView = (appliedEvent, A) => d([
+let attributesTableView = (S, appliedEvent, A) => d([
   h3("Attributter"),
-  d( getRequiredAttributes( appliedEvent["event/eventType"] ) .map( attribute =>  attributeView(A, attribute, appliedEvent[ attribute ], appliedEvent["entity"] ) ) 
+  d( getRequiredAttributes( appliedEvent["event/eventType"] ) .map( attribute =>  attributeView(S, A, attribute, appliedEvent[ attribute ], appliedEvent["entity"] ) ) 
   ),
   d("<br>")
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
-
-
 
 
 let outputTableView = (appliedEvent) => d([
@@ -941,7 +920,7 @@ let attributesPage = ( S, A ) => d([
     d("attr/valueType"),
     d("attr/doc")
   ], {class: "attributeRow", style: "background-color: gray;"} ),
-  d( S.eventAttributes.map( Attribute => d([
+  d( Object.values(S.eventAttributes).map( Attribute => d([
     d(String(Attribute["entity"])),
     d(Attribute["attr/name"]),
     input({value: Attribute["attr/label"]}, "change", e => A.updateEntityAttribute( Attribute.entity, "attr/label", e.srcElement.value ) ),
@@ -954,7 +933,38 @@ let attributesPage = ( S, A ) => d([
   ], {class: "attributeRow"} ),
 ]) 
 
-let eventTypesPage = ( S, A ) => d("TBD") 
+let eventTypesPage = ( S, A ) => d([
+  d([
+    d("entity"),
+    d("eventType/name"),
+    d("eventType/label"),
+    d("eventType/attributes"),
+    d("eventType/doc"),
+  ], {class: "eventTypeRow", style: "background-color: gray;"} ),
+  d( Object.values(S.eventTypes).map( eventType => d([
+    d(String(eventType["entity"])),
+    d([input({value: eventType["eventType/name"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/name", e.srcElement.value ) )], {style: "display: flex;"}),
+    d([input({value: eventType["eventType/label"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/label", e.srcElement.value ) )], {style: "display: flex;"}),
+    d( eventType["eventType/attributes"].map( attribute => d([span(
+      S.eventAttributes[attribute]["attr/label"] + "[X]", 
+      S.eventAttributes[attribute]["attr/doc"])], 
+      {class: "textButton_narrow"}, 
+      "click", 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/attributes", eventType["eventType/attributes"].filter( attr => attr !== attribute )  ) 
+      ) 
+    ).concat( dropdown(
+      0, 
+      Object.values(S.eventAttributes).filter( eventAttribute => !eventType["eventType/attributes"].includes( eventAttribute["attr/name"] )  ).map( eventAttribute => returnObject({value: eventAttribute["attr/name"], label: eventAttribute["attr/label"]})).concat({value: 0, label: "Legg til"}), 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/attributes", eventType["eventType/attributes"].concat( e.srcElement.value )  )   
+      )  ) 
+    ),
+    d([input({value: eventType["eventType/doc"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/doc", e.srcElement.value ) )], {style: "display: flex;"}),
+  ], {class: "eventTypeRow"} ) ) ),
+  d([
+    d("Opprett ny"),
+    input({value: "eventType/[newEventType]" }, "change", e => A.createEventType( e.srcElement.value ) )
+  ], {class: "eventTypeRow"} ),
+]) 
 
 
 
@@ -966,16 +976,10 @@ let variableView = (companyDoc, key) => d([
 
 
 
-
-
-
-
-
-
 //Tailor-made complex views
 
-let recordsView = (A, attribute, value, entityID) => d([
-  d("transaction/records"),
+let recordsView = (S, A, attribute, value, entityID) => d([
+  span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
   d( Object.keys(value).map( account => d([
     dropdown(account, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })), 
       e => A.updateEntityAttribute( 
@@ -1010,8 +1014,8 @@ let recordsView = (A, attribute, value, entityID) => d([
   )
 ], {style: "border: solid 1px black;"})
 
-let foundersView = (A, attribute, value, entityID) => d([
-  d("event/incorporation/shareholders"),
+let foundersView = (S, A, attribute, value, entityID) => d([
+  span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
   d([d("AksjonærID"), d("Antall aksjer"), d("Pris per aksje")], {class: "shareholderRow"}),
   d( Object.values(value).map( shareholder => d([
     input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
@@ -1059,13 +1063,13 @@ let foundersView = (A, attribute, value, entityID) => d([
 ], {style: "border: solid 1px black;"})
 
 
+let span = (text, tooltip, attributesObject, eventType, action) => htmlElementObject("span", mergerino({"title": tooltip}, attributesObject), text, eventType, action)
 
+let attributeView = (S, A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](S, A, attribute, value, entityID) : genericAttributeView( S, attribute, value, e => A.updateEntityAttribute( entityID, attribute, Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value) )
 
-let attributeView = (A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](A, attribute, value, entityID) : genericAttributeView( attribute, value, e => A.updateEntityAttribute( entityID, attribute, Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value) )
-
-let genericAttributeView = (attribute, value, onChange) => d([
+let genericAttributeView = (S, attribute, value, onChange) => d([
   d([
-    d(`${attribute}`),
+    span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
     input({value: value, style: `text-align: right;`}, "change", onChange ),
     ], {class: "eventInspectorRow"}),
 ])
@@ -1076,7 +1080,7 @@ let newEventDropdown = (A, Event) => dropdown( "",
 )
   
 let specialAttributeViews = {
-  "event/account": (A, attribute, value, entityID) => d([
+  "event/account": (S, A, attribute, value, entityID) => d([
     d(`event/account`),
     dropdown(value, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })).concat({value: "", label: "Ingen konto valgt."}), e => A.updateEntityAttribute( entityID, attribute, e.srcElement.value) ),
     ], {class: "eventInspectorRow"}),

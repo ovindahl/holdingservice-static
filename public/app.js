@@ -107,7 +107,23 @@ let getUserActions = (S) => returnObject({
         let newS = mergerino(S, apiResponse)
         update( newS )
 
-    } 
+    },
+    createEventType: async eventTypeName => {
+
+        let datoms = [
+            newDatom("newEventType", "type", "eventType"),
+            newDatom("newEventType", "eventType/name", eventTypeName),
+            newDatom("newEventType", "eventType/label", "[label]"),
+            newDatom("newEventType", "eventType/attributes", ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"] ),
+            newDatom("newEventType", "eventType/doc", "[doc]"),
+        ]
+
+        let apiResponse = eventTypeName.startsWith("eventType/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new eventType not valid", eventTypeName)
+
+        let newS = mergerino(S, apiResponse)
+        update( newS )
+
+    }
 })
 
 let update = (S) => {
@@ -115,6 +131,9 @@ let update = (S) => {
     S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )    
     S.companyDoc = prepareCompanyDoc(S.selectedEvents)
     console.log("companyDoc", S.companyDoc)
+
+    S.eventAttributes = Array.isArray(S.eventAttributes) ?  mergeArray( S.eventAttributes.map( eventAttribute => createObject(eventAttribute["attr/name"], eventAttribute) ) ) : S.eventAttributes //Ugly.......
+    S.eventTypes = Array.isArray(S.eventTypes) ?  mergeArray( S.eventTypes.map( eventType => createObject(eventType["eventType/name"], eventType) ) ) : S.eventTypes
 
     S.elementTree = generateHTMLBody(S, getUserActions(S) )
     
