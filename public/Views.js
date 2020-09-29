@@ -59,7 +59,7 @@ let feedContainer = (content, date, entityID) => d([
 let companySelectionMenuRow = (S, A) => d([
   d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => A.createEvent( null, "incorporation" ) )), {style: "display:flex;"}),
 ]) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "attributes"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -70,7 +70,8 @@ let generateHTMLBody = (S, A) => [
 
 let pageRouter = {
   "timeline": (S, A) => timelineView(S.companyDoc, A),
-  "companyDoc": (S, A) => companyDocPage( S.companyDoc )
+  "companyDoc": (S, A) => companyDocPage( S.companyDoc ),
+  "attributes": (S, A) => attributesPage( S )
 }
 
 //Event Cycle Views
@@ -167,6 +168,10 @@ let companyDocViews = {
 
 
 let companyDocPage = (companyDoc) => d( Object.keys(companyDoc).map( key =>  feedContainer( variableView(companyDoc, key) , "na." , "na." )), {class: "pageContainer"} )
+
+let attributesPage = ( S ) => d([
+  d(S.eventAttributes.map( Attribute => d( JSON.stringify(Attribute) ) ))
+])
 
 
 let variableView = (companyDoc, key) => d([
