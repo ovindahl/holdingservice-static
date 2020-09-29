@@ -30,7 +30,6 @@ app.get("/", (req,res)=>{res.send(`
         <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
         <script src="https://momentjs.com/downloads/moment-with-locales.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/accounting.js/0.4.1/accounting.min.js"></script>
-        <script src="/static/Attrs.js"></script>
         <script src="/static/Views.js"></script>
         <script src="/static/app.js"></script>
     </body>

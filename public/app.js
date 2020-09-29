@@ -64,9 +64,7 @@ let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  
 
 let getUserActions = (S) => returnObject({
     updateLocalState: (patch) => update( mergerino(S, patch) ),
-    updateEventAttribute: async (entityID, attribute, value) => {
-
-        //let value = Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value
+    updateEntityAttribute: async (entityID, attribute, value) => {
 
         let datoms = [newDatom(entityID, attribute, value)]
 
@@ -102,7 +100,21 @@ let getUserActions = (S) => returnObject({
         let newS = mergerino(S, apiResponse)
         newS.eventAttributes = S.eventAttributes
         update( newS )
-    }
+    },
+    createAttribute: async attributeName => {
+
+        let datoms = [
+            newDatom("newAttr", "attr/name", attributeName),
+            newDatom("newAttr", "attr/label", "[attributeName]")
+        ]
+
+        let apiResponse = attributeName.startsWith("event/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new Attribtue not valid", attributeName)
+
+        let newS = mergerino(S, apiResponse)
+        newS.eventAttributes = S.eventAttributes
+        update( newS )
+
+    } 
 })
 
 let update = (S) => {

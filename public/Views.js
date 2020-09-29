@@ -444,6 +444,9 @@ const Attribute = {
     }
   },
   validators: {
+    "attr/doc": v => typeof v === "string",
+    "attr/label": v => typeof v === "string",
+    "attr/valueType": v => ["string", "number", "object"].includes(v),
     "entity/type": v => [
       v => typeof v === "string", //validator + description of correct format should be sufficient [?]
       v => ["process", "event"].includes(v)
@@ -848,7 +851,7 @@ let generateHTMLBody = (S, A) => [
 let pageRouter = {
   "timeline": (S, A) => timelineView(S.companyDoc, A),
   "companyDoc": (S, A) => companyDocPage( S.companyDoc ),
-  "attributes": (S, A) => attributesPage( S )
+  "attributes": (S, A) => attributesPage( S, A )
 }
 
 //Event Cycle Views
@@ -946,9 +949,26 @@ let companyDocViews = {
 
 let companyDocPage = (companyDoc) => d( Object.keys(companyDoc).map( key =>  feedContainer( variableView(companyDoc, key) , "na." , "na." )), {class: "pageContainer"} )
 
-let attributesPage = ( S ) => d([
-  d(S.eventAttributes.map( Attribute => d( JSON.stringify(Attribute) ) ))
-])
+let attributesPage = ( S, A ) => d([
+  d([
+    d("entity"),
+    d("attr/name"),
+    d("attr/label"),
+    d("attr/valueType"),
+    d("attr/doc")
+  ], {class: "attributeRow", style: "background-color: gray;"} ),
+  d( S.eventAttributes.map( Attribute => d([
+    d(String(Attribute["entity"])),
+    d(Attribute["attr/name"]),
+    input({value: Attribute["attr/label"]}, "change", e => A.updateEntityAttribute( Attribute.entity, "attr/label", e.srcElement.value ) ),
+    Attribute["attr/valueType"] ? d(Attribute["attr/valueType"]) : input({value: "string/number"}, "change", e => A.updateEntityAttribute( Attribute.entity, "attr/valueType", e.srcElement.value ) ) ,
+    input({value: Attribute["attr/doc"]}, "change", e => A.updateEntityAttribute( Attribute.entity, "attr/doc", e.srcElement.value ) )
+  ], {class: "attributeRow"} ) ) ),
+  d([
+    d("Opprett ny"),
+    input({value: "event/nyAttributt" }, "change", e => A.createAttribute( e.srcElement.value ) )
+  ], {class: "attributeRow"} ),
+]) 
 
 
 let variableView = (companyDoc, key) => d([
@@ -970,7 +990,7 @@ let recordsView = (A, attribute, value, entityID) => d([
   d("transaction/records"),
   d( Object.keys(value).map( account => d([
     dropdown(account, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })), 
-      e => A.updateEventAttribute( 
+      e => A.updateEntityAttribute( 
         entityID, 
         attribute, 
         mergerino(
@@ -979,14 +999,14 @@ let recordsView = (A, attribute, value, entityID) => d([
           createObject( e.srcElement.value, value[ account ]  ) ) 
       ) 
     ),
-    input({value: value[account], style: `text-align: right;`}, "change", e => A.updateEventAttribute( 
+    input({value: value[account], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
       entityID, 
       attribute, 
       mergerino(
         value,
         createObject( account , Number( e.srcElement.value ) ) ) 
     ) ),
-    d("X", {class: "textButton"}, "click", e => A.updateEventAttribute( 
+    d("X", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
       entityID, 
       attribute, 
       mergerino(
@@ -998,7 +1018,7 @@ let recordsView = (A, attribute, value, entityID) => d([
   dropdown(
     0, 
     Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })).concat({value: 0, label: "Legg til konto"}), 
-    e => A.updateEventAttribute( entityID, attribute, mergerino( value, createObject( e.srcElement.value , 0 ) ) ),
+    e => A.updateEntityAttribute( entityID, attribute, mergerino( value, createObject( e.srcElement.value , 0 ) ) ),
   )
 ], {style: "border: solid 1px black;"})
 
@@ -1006,7 +1026,7 @@ let foundersView = (A, attribute, value, entityID) => d([
   d("event/incorporation/shareholders"),
   d([d("AksjonærID"), d("Antall aksjer"), d("Pris per aksje")], {class: "shareholderRow"}),
   d( Object.values(value).map( shareholder => d([
-    input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEventAttribute( 
+    input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
       entityID, 
       attribute, 
       mergerino(
@@ -1018,21 +1038,21 @@ let foundersView = (A, attribute, value, entityID) => d([
           )
         )
     ) )),
-    input({value: shareholder["shareCount"], style: `text-align: right;`}, "change", e => A.updateEventAttribute( 
+    input({value: shareholder["shareCount"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
       entityID, 
       attribute, 
       mergerino(
         value,
         createObject( shareholder["shareholder"] , createObject("shareCount", Number( e.srcElement.value ) ) ),
     ) )),
-    input({value: shareholder["sharePrice"], style: `text-align: right;`}, "change", e => A.updateEventAttribute( 
+    input({value: shareholder["sharePrice"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
       entityID, 
       attribute, 
       mergerino(
         value,
         createObject( shareholder["shareholder"] , createObject("sharePrice", Number( e.srcElement.value ) ) ),
     ) )),
-    d("X", {class: "textButton"}, "click", e => A.updateEventAttribute( 
+    d("X", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
       entityID, 
       attribute, 
       mergerino(
@@ -1041,7 +1061,7 @@ let foundersView = (A, attribute, value, entityID) => d([
     ) )
     ], {class: "shareholderRow"}),
   ) ),
-  d("Legg til stifter", {class: "textButton"}, "click", e => A.updateEventAttribute( 
+  d("Legg til stifter", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
     entityID, 
     attribute, 
     mergerino(
@@ -1053,7 +1073,7 @@ let foundersView = (A, attribute, value, entityID) => d([
 
 
 
-let attributeView = (A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](A, attribute, value, entityID) : genericAttributeView( attribute, value, e => A.updateEventAttribute( entityID, attribute, Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value) )
+let attributeView = (A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](A, attribute, value, entityID) : genericAttributeView( attribute, value, e => A.updateEntityAttribute( entityID, attribute, Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value) )
 
 let genericAttributeView = (attribute, value, onChange) => d([
   d([
@@ -1070,7 +1090,7 @@ let newEventDropdown = (A, Event) => dropdown( "",
 let specialAttributeViews = {
   "event/account": (A, attribute, value, entityID) => d([
     d(`event/account`),
-    dropdown(value, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })).concat({value: "", label: "Ingen konto valgt."}), e => A.updateEventAttribute( entityID, attribute, e.srcElement.value) ),
+    dropdown(value, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })).concat({value: "", label: "Ingen konto valgt."}), e => A.updateEntityAttribute( entityID, attribute, e.srcElement.value) ),
     ], {class: "eventInspectorRow"}),
   "transaction/records": recordsView,
   "event/incorporation/shareholders": foundersView

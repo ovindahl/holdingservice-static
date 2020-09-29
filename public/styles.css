@@ -59,3 +59,13 @@ body {background-color: #F2F3F5;}
 .emphasizedText:hover {
     background-color: #59caec;
 }
+
+.attributeRow {
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 3fr;
+    padding: 1px; 
+}
+
+.attributeRow:hover {
+    background-color: lightgray;
+}
