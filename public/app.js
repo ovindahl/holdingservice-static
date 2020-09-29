@@ -40,8 +40,6 @@ const sideEffects = {
             console.log("Authenticated");
             
             let S = await sideEffects.APIRequest("GET", "userContent", null)
-            let E = await sideEffects.APIRequest("GET", "serverCache", null)
-            S.eventAttributes = E.Entities.filter( e => e["attr/name"] ).filter( e =>  e["attr/name"].startsWith("event/") )
             S.currentPage = "timeline"
             S.selectedOrgnumber = "999999999"
             update(S)
@@ -80,8 +78,6 @@ let getUserActions = (S) => returnObject({
 
         let newS = isInvalid ? S : mergerino(S, apiResponse)
 
-        newS.eventAttributes = S.eventAttributes
-        
         update( newS )
     },
     createEvent: async ( appliedEvent, newEventType ) => {
@@ -90,7 +86,6 @@ let getUserActions = (S) => returnObject({
 
         let apiResponse = await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms ))
         let newS = mergerino(S, apiResponse)
-        newS.eventAttributes = S.eventAttributes
         update( newS )
     },
     retractEvent: async entityID => {
@@ -98,7 +93,6 @@ let getUserActions = (S) => returnObject({
         let retractionDatoms = getRetractionDatomsWithoutChildren([storedEntity])
         let apiResponse = retractionDatoms.length < 20 ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( retractionDatoms )) : console.log("ERROR: >20 retraction datoms submitted: ", retractionDatoms)
         let newS = mergerino(S, apiResponse)
-        newS.eventAttributes = S.eventAttributes
         update( newS )
     },
     createAttribute: async attributeName => {
@@ -111,7 +105,6 @@ let getUserActions = (S) => returnObject({
         let apiResponse = attributeName.startsWith("event/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new Attribtue not valid", attributeName)
 
         let newS = mergerino(S, apiResponse)
-        newS.eventAttributes = S.eventAttributes
         update( newS )
 
     } 

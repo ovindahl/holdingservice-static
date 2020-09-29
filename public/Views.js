@@ -155,7 +155,6 @@ const outputFunction = {
 let event_complexTransaction = {
   eventType: "complexTransaction",
   attributes: ["event/index", "event/date", "transaction/records", "event/bankTransactionReference"],
-  requiredCalculatedFields: ["company/:accountBalance"],
   eventConstructor: ( companyDoc, Event ) => createObject( "event/:accountBalance" , Event["transaction/records"] ),
   calculatedFields_companyLevel: ["company/:accountBalance"],
   validators: [
@@ -187,7 +186,6 @@ let event_complexTransaction = {
 let event_yearEnd = {
   eventType: "yearEnd",
   attributes: ["event/index", "event/date"],
-  requiredCalculatedFields: ["company/:accountBalance"],
   eventConstructor: ( companyDoc, Event ) => returnObject({}),
   calculatedFields_companyLevel: ["company/:reports/rf_1028", "company/:reports/rf_1167", "company/:reports/annualReport", "company/:reports/notesText"],
   validators: [
@@ -222,7 +220,6 @@ const eventTypes = {
   "incorporation": {
     eventType: "incorporation",
     attributes: defaultEventAttributes.concat(["event/incorporation/nominalSharePrice", "event/incorporation/shareholders", "event/incorporation/incorporationCost", "event/supplier"]),
-    requiredCalculatedFields: [],
     eventConstructor: ( companyDoc, Event ) => {
       let shareCapital = Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0)
       return {
@@ -260,7 +257,6 @@ const eventTypes = {
   "operatingCost/supplierDebt": {
     eventType: "operatingCost/supplierDebt",
     attributes: defaultEventAttributes.concat(["event/supplier", "event/amount"]),
-    requiredCalculatedFields: [],
     eventConstructor: ( companyDoc, Event ) => mergerino(  
       {"event/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} }
     ) ,
@@ -285,7 +281,6 @@ const eventTypes = {
   "operatingCost/shareholderDebt": {
     eventType: "operatingCost/shareholderDebt",
     attributes: defaultEventAttributes.concat(["event/supplier", "event/amount", "event/shareholder"]),
-    requiredCalculatedFields: [],
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"7790": -Event["event/amount"], "2910": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
     validators: [
@@ -313,7 +308,6 @@ const eventTypes = {
   "operatingCost/bank": {
     eventType: "operatingCost/bank",
     attributes: defaultEventAttributes.concat(["event/supplier", "event/amount", "event/bankTransactionReference"]),
-    requiredCalculatedFields: ["company/:accountBalance"],
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"7790": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
     validators: [
@@ -335,7 +329,6 @@ const eventTypes = {
   "payments/shareCapital": {
     eventType: "payments/shareCapital",
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/shareholder"]),
-    requiredCalculatedFields: ["company/:accountBalance"],
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"1576": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
     validators: [
@@ -359,7 +352,6 @@ const eventTypes = {
   "payments/supplierDebt": {
     eventType: "payments/supplierDebt",
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/supplier"]),
-    requiredCalculatedFields: ["company/:accountBalance"],
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"2400": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
     validators: [
@@ -383,7 +375,6 @@ const eventTypes = {
   "shareholderLoan/increase": {
     eventType: "shareholderLoan/increase",
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/shareholder"]),
-    requiredCalculatedFields: ["company/:accountBalance"],
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"2250": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
     validators: [
@@ -407,7 +398,6 @@ const eventTypes = {
   "investments/new/unlisted/bank": {
     eventType: "investments/new/unlisted/bank",
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/investment/orgnumber"]),
-    requiredCalculatedFields: ["company/:accountBalance"],
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"1350": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
     validators: [
@@ -424,13 +414,18 @@ const eventTypes = {
         newDatom("newEvent", "event/amount", 0 ),
     ])
   },
-  "complexTransaction": event_complexTransaction,
-  "yearEnd": event_yearEnd
+  "complexTransaction": event_complexTransaction
 }
 
+let eventTypeAttributeDatoms = [
+  newDatom("newEventType", "type", "eventType"),
+  newDatom("newEventType", "eventType/name", "eventType/incorporation"),
+  newDatom("newEventType", "eventType/attributes", ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice", "event/incorporation/shareholders", "event/incorporation/incorporationCost", "event/supplier"]),
+]
 
 
-let getRequiredHistoricalVariables = eventType => eventTypes[ eventType ]["requiredCalculatedFields"]
+
+//let getRequiredHistoricalVariables = eventType => eventTypes[ eventType ]["requiredCalculatedFields"]
 let getRequiredAttributes = eventType => eventTypes[ eventType ]["attributes"]
 let getCalculatedFields_companyLevel = eventType => eventTypes[ eventType ]["calculatedFields_companyLevel"]
 let getSystemAttributes = () => ["entity", "entity/type", "event/eventType", "type" ]
@@ -438,11 +433,6 @@ let getSystemAttributes = () => ["entity", "entity/type", "event/eventType", "ty
 //Attributes
 
 const Attribute = {
-  attributes: {
-    "event/incorporation/nominalSharePrice": {
-      label: "Pålydende per aksje"
-    }
-  },
   validators: {
     "attr/doc": v => typeof v === "string",
     "attr/label": v => typeof v === "string",
@@ -839,7 +829,7 @@ let feedContainer = (content, date, entityID) => d([
 let companySelectionMenuRow = (S, A) => d([
   d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => A.createEvent( null, "incorporation" ) )), {style: "display:flex;"}),
 ]) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "attributes"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "admin/eventAttributes", "admin/eventTypes"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -851,7 +841,8 @@ let generateHTMLBody = (S, A) => [
 let pageRouter = {
   "timeline": (S, A) => timelineView(S.companyDoc, A),
   "companyDoc": (S, A) => companyDocPage( S.companyDoc ),
-  "attributes": (S, A) => attributesPage( S, A )
+  "admin/eventAttributes": (S, A) => attributesPage( S, A ),
+  "admin/eventTypes": (S, A) => eventTypesPage( S, A )
 }
 
 //Event Cycle Views
@@ -863,14 +854,7 @@ let timelineView = (companyDoc, A) => d([
 
 let appliedEventView = (appliedEvent , A) => d([
     h3(appliedEvent["event/eventType"], {style: `background-color: #1073104f; padding: 1em;`} ),
-    /* systemAttributesTableView(appliedEvent),
-    d("<br>"),
-    historicVariablesTableView(appliedEvent),
-    d("<br>"), */
     attributesTableView(appliedEvent, A),
-    d("<br>"),
-    /* outputTableView(appliedEvent),
-    d("<br>"), */
     retractEventButton( appliedEvent["entity"], A),
     newEventDropdown(A, appliedEvent)
 ])
@@ -881,8 +865,8 @@ let rejectedEventView = (rejectedEvent , A) => d([
   d("<br>"),
   systemAttributesTableView(rejectedEvent),
   d("<br>"),
-  historicVariablesTableView(rejectedEvent),
-  d("<br>"),
+  /* historicVariablesTableView(rejectedEvent),
+  d("<br>"), */
   attributesTableView(rejectedEvent, A),
   d("<br>"),
   retractEventButton( rejectedEvent["entity"], A),
@@ -890,22 +874,22 @@ let rejectedEventView = (rejectedEvent , A) => d([
 ])
 
 
-let historicVariablesTableView = (appliedEvent) => d([
+/* let historicVariablesTableView = (appliedEvent) => d([
   h3("Historiske kalkulerte felter som brukes"),
   d( getRequiredHistoricalVariables( appliedEvent["event/eventType"] ).map( companyVariable =>  historicVariablesTableRowView(
       companyVariable, 
       appliedEvent[companyVariable]
       )) ),
   d("<br>")
-], {style: "background-color: #f1f0f0; padding: 1em;"})
+], {style: "background-color: #f1f0f0; padding: 1em;"}) */
 
-let historicVariablesTableRowView = (companyVariable, value, errors) => d([
+/* let historicVariablesTableRowView = (companyVariable, value, errors) => d([
   d([
     d(`${companyVariable}:`),
     input({value: value, disabled: "disabled", style: `text-align: right; ${!errors ? "background-color: none;" : "background-color: #ffb1b1;"}`}),
     ], {class: "eventInspectorRow"})
 ])
-
+ */
 let systemAttributesTableView = (appliedEvent) => d([
   h3("Systemattributter"),
   d( getSystemAttributes().map( companyVariable =>  d([
@@ -969,6 +953,10 @@ let attributesPage = ( S, A ) => d([
     input({value: "event/nyAttributt" }, "change", e => A.createAttribute( e.srcElement.value ) )
   ], {class: "attributeRow"} ),
 ]) 
+
+let eventTypesPage = ( S, A ) => d("TBD") 
+
+
 
 
 let variableView = (companyDoc, key) => d([
