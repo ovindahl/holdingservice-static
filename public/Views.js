@@ -56,10 +56,10 @@ let getEventErrors = (companyDoc, Event) => eventTypes[ Event["event/eventType"]
   Attribute.validate( attribute, Event[ attribute ]  ) 
     ? false 
     : `Attribute not valid: ${attribute}.`   )
-  .concat( eventTypes[ Event["event/eventType"] ].validators.map( validator => 
-    validator.validator(companyDoc, Event) 
+  .concat( eventTypes[ Event["event/eventType"] ].validators.map( validatorName => 
+    eventValidators[ validatorName ].validator(companyDoc, Event) 
     ? false 
-    : validator.errorMessage 
+    : eventValidators[ validatorName ].errorMessage 
   )
   ).filter( result => result !== false  ) 
 
@@ -151,60 +151,6 @@ const outputFunction = {
 
 //Event types
 
-
-let event_complexTransaction = {
-  eventType: "complexTransaction",
-  attributes: ["event/index", "event/date", "transaction/records", "event/bankTransactionReference"],
-  eventConstructor: ( companyDoc, Event ) => createObject( "event/:accountBalance" , Event["transaction/records"] ),
-  calculatedFields_companyLevel: ["company/:accountBalance"],
-  validators: [
-    {
-      validator: ( companyDoc, Event ) => Event["event/date"].slice(0, 4) === companyDoc["company/:currentYear"],
-      errorMessage: "Date must be in current financial year." 
-    },{
-      validator: ( companyDoc, Event ) => Object.keys(Event["transaction/records"]).every( account => Object.keys(Accounts).includes( account ) )   ,
-      errorMessage: "Accounts not valid." 
-    },{
-      validator: ( companyDoc, Event ) => Object.values( Event["transaction/records"] ).every( value => typeof value === "number" ),
-      errorMessage: "Amount must be number." 
-    },{
-      validator: ( companyDoc, Event ) => Object.values( Event["transaction/records"] ).reduce( (sum, amount) => sum + amount, 0 ) === 0,
-      errorMessage: "Transaction must be in balance." 
-    }
-  ],
-  newEventDatoms: (appliedEvent) => [
-    newDatom("newEvent", "type", "process"), //TBU..
-    newDatom("newEvent", "entity/type", "event"),
-    newDatom("newEvent", "event/eventType", "complexTransaction"),
-    newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
-    newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
-    newDatom("newEvent", "event/date", appliedEvent["event/date"]),
-    newDatom("newEvent", "transaction/records", {} ),
-  ]
-}
-
-let event_yearEnd = {
-  eventType: "yearEnd",
-  attributes: ["event/index", "event/date"],
-  eventConstructor: ( companyDoc, Event ) => returnObject({}),
-  calculatedFields_companyLevel: ["company/:reports/rf_1028", "company/:reports/rf_1167", "company/:reports/annualReport", "company/:reports/notesText"],
-  validators: [
-    {
-      validator: ( companyDoc, Event ) => Event["event/date"] === `${companyDoc["company/:currentYear"]}-12-31`,
-      errorMessage: "Date must be 31/12 in current financial year." 
-    }
-  ],
-  newEventDatoms: (appliedEvent) => [
-    newDatom("newEvent", "type", "process"), //TBU..
-    newDatom("newEvent", "entity/type", "event"),
-    newDatom("newEvent", "event/eventType", "yearEnd"),
-    newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
-    newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
-    newDatom("newEvent", "event/date", appliedEvent["event/date"]),
-  ]
-}
-
-
 let defaultEventDatoms = (appliedEvent) => [
   newDatom("newEvent", "type", "process"), //TBU..
   newDatom("newEvent", "entity/type", "event"),
@@ -215,6 +161,38 @@ let defaultEventDatoms = (appliedEvent) => [
 ]
 
 let defaultEventAttributes = ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"]
+
+let eventValidators = {
+  "eventValidator/currencyIsNOK": {
+    validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK",
+    errorMessage: "Currency must be NOK." 
+  },
+  "eventValidator/shareholderRequired": {
+    validator: ( companyDoc, Event ) => Object.keys( Event["event/incorporation/shareholders"] ).length > 0,
+    errorMessage: "Must have at least one shareholder." 
+  },
+  "eventValidator/minimumShareCapital": {
+    validator: ( companyDoc, Event ) => Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000  ,
+    errorMessage: "Share capital must be >= 30 000 NOK" 
+  },
+  "eventValidator/negativeAmount": {
+    validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
+    errorMessage: "Amount must be < 0" 
+  },
+  "eventValidator/positiveAmount": {
+    validator: ( companyDoc, Event ) => Event["event/amount"] > 0,
+    errorMessage: "Amount must be > 0" 
+  },
+  "eventValidator/isExistingSupplier": {
+    validator: ( companyDoc, Event ) => companyDoc["company/:suppliers"].includes( Event["event/supplier"] ),
+    errorMessage: "Oppgitt leverandør eksisterer ikke [validering mot utestående gjeld TBD]." 
+  },
+  "eventValidator/isExistingShareholder": {
+    validator: ( companyDoc, Event ) => companyDoc["company/:shareholders"].includes( Event["event/shareholder"] ) ,
+    errorMessage: "Oppgitt aksjonær eksisterer ikke." 
+  }
+
+}
 
 const eventTypes = {
   "incorporation": {
@@ -228,24 +206,7 @@ const eventTypes = {
       }
     } ,
     calculatedFields_companyLevel: ["company/:orgnumber", "company/:nominalSharePrice", "company/:incorporationDate", "company/:accountBalance", "company/:shareholders", , "company/:suppliers"],
-    validators: [
-      {
-        validator: ( companyDoc, Event ) => Event["event/index"] === 1,
-        errorMessage: "Incorporation must be the first event." 
-      },
-      {
-        validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK",
-        errorMessage: "Currency must be NOK." 
-      },
-      {
-        validator: ( companyDoc, Event ) => Object.keys( Event["event/incorporation/shareholders"] ).length > 0,
-        errorMessage: "Must have at least one shareholder." 
-      },
-      {
-        validator: ( companyDoc, Event ) => Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000  ,
-        errorMessage: "Share capital must be >= 30 000 NOK" 
-      }
-    ],
+    validators: ["eventValidator/currencyIsNOK", "eventValidator/shareholderRequired", "eventValidator/minimumShareCapital" ],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
       newDatom("newEvent", "event/eventType", "incorporation"),
       newDatom("newEvent", "event/description", "Stiftelse" ),
@@ -261,16 +222,7 @@ const eventTypes = {
       {"event/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} }
     ) ,
     calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
-    validators: [
-      {
-        validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK",
-        errorMessage: "Currency must be NOK." 
-      },
-      {
-        validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
-        errorMessage: "Amount must be < 0" 
-      }
-    ],
+    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
       newDatom("newEvent", "event/eventType", "eventType/operatingCost/supplierDebt"),
       newDatom("newEvent", "event/description", "Annen driftskostnad, betalt av selskapet." ),
@@ -283,20 +235,7 @@ const eventTypes = {
     attributes: defaultEventAttributes.concat(["event/supplier", "event/amount", "event/shareholder"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"7790": -Event["event/amount"], "2910": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
-    validators: [
-      {
-        validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK",
-        errorMessage: "Currency must be NOK." 
-      },
-      {
-        validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
-        errorMessage: "Amount must be < 0" 
-      },
-      {
-        validator: ( companyDoc, Event ) => companyDoc["company/:shareholders"].includes( Event["event/shareholder"] ) ,
-        errorMessage: "Oppgitt aksjonær eksisterer ikke." 
-      }
-    ],
+    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount", "eventValidator/shareholderRequired"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
       newDatom("newEvent", "event/eventType", "operatingCost/shareholderDebt"),
       newDatom("newEvent", "event/description", "Annen driftskostnad, betalt ved utlegg." ),
@@ -310,12 +249,7 @@ const eventTypes = {
     attributes: defaultEventAttributes.concat(["event/supplier", "event/amount", "event/bankTransactionReference"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"7790": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
-    validators: [
-      {
-        validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
-        errorMessage: "Amount must be < 0" 
-      },
-    ],
+    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
         newDatom("newEvent", "event/eventType", "operatingCost/bank"),
         newDatom("newEvent", "event/description", "Annen driftskostnad, betalt fra bedriftens bankkonto." ),
@@ -323,24 +257,13 @@ const eventTypes = {
         newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
         newDatom("newEvent", "event/amount", 0 ),
     ])
-    
-    
   },
   "payments/shareCapital": {
     eventType: "payments/shareCapital",
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/shareholder"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"1576": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
-    validators: [
-      {
-        validator: ( companyDoc, Event ) => Event["event/amount"] > 0,
-        errorMessage: "Amount must be > 0" 
-      },
-      {
-        validator: ( companyDoc, Event ) => companyDoc["company/:shareholders"].includes( Event["event/shareholder"] ) ,
-        errorMessage: "Oppgitt aksjonær eksisterer ikke." 
-      }
-    ],
+    validators: ["eventValidator/currencyIsNOK", "eventValidator/positiveAmount", "eventValidator/shareholderRequired"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
         newDatom("newEvent", "event/eventType", "payments/shareCapital"),
         newDatom("newEvent", "event/description", "Innbetaling av aksjekapital." ),
@@ -354,16 +277,7 @@ const eventTypes = {
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/supplier"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"2400": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
-    validators: [
-      {
-        validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
-        errorMessage: "Amount must be < 0" 
-      },
-      {
-        validator: ( companyDoc, Event ) => companyDoc["company/:suppliers"].includes( Event["event/supplier"] ),
-        errorMessage: "Oppgitt leverandør eksisterer ikke [validering mot utestående gjeld TBD]." 
-      }
-    ],
+    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount", "eventValidator/isExistingSupplier"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
         newDatom("newEvent", "event/eventType", "payments/supplierDebt"),
         newDatom("newEvent", "event/description", "Betaling leverandørgjeld" ),
@@ -377,16 +291,7 @@ const eventTypes = {
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/shareholder"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"2250": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
-    validators: [
-      {
-        validator: ( companyDoc, Event ) => Event["event/amount"] > 0,
-        errorMessage: "Amount must be > 0" 
-      },
-      {
-        validator: ( companyDoc, Event ) => companyDoc["company/:shareholders"].includes( Event["event/shareholder"] ) ,
-        errorMessage: "Oppgitt aksjonær eksisterer ikke." 
-      }
-    ],
+    validators: ["eventValidator/currencyIsNOK", "eventValidator/positiveAmount", "eventValidator/isExistingShareholder"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
         newDatom("newEvent", "event/eventType", "shareholderLoan/increase"),
         newDatom("newEvent", "event/description", "Lån fra aksjonær, kontantoppgjør, ingen forfall, skjermingsrente" ),
@@ -400,12 +305,7 @@ const eventTypes = {
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/investment/orgnumber"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"1350": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
-    validators: [
-      {
-        validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
-        errorMessage: "Amount must be < 0" 
-      }
-    ],
+    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
         newDatom("newEvent", "event/eventType", "investments/new/unlisted/bank"),
         newDatom("newEvent", "event/description", "Kjøp norsk aksje kontantoppgjør NOK, ikke noterte, langsiktig" ),
@@ -413,16 +313,8 @@ const eventTypes = {
         newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
         newDatom("newEvent", "event/amount", 0 ),
     ])
-  },
-  "complexTransaction": event_complexTransaction
+  }
 }
-
-let eventTypeAttributeDatoms = [
-  newDatom("newEventType", "type", "eventType"),
-  newDatom("newEventType", "eventType/name", "eventType/incorporation"),
-  newDatom("newEventType", "eventType/attributes", ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber", "event/incorporation/nominalSharePrice", "event/incorporation/shareholders", "event/incorporation/incorporationCost", "event/supplier"]),
-]
-
 
 
 //let getRequiredHistoricalVariables = eventType => eventTypes[ eventType ]["requiredCalculatedFields"]
@@ -444,10 +336,22 @@ const Attribute = {
     "eventType/doc": v => typeof v === "string",
     "eventType/label": v => typeof v === "string",
     "eventType/attributes":  v => [
-      v => typeof v === "object", //validator + description of correct format should be sufficient [?]
+      v => typeof v === "object",
       v => Array.isArray(v),
       v => v.every( attr => Object.keys( Attribute.validators ).includes(attr) )
     ].every( f => f(v) ),
+    "eventType/eventValidators":  v => [
+      v => typeof v === "object",
+      v => Array.isArray(v),
+      //v => v.every( attr => Object.keys( Attribute.validators ).includes(attr) )
+    ].every( f => f(v) ),
+    "eventValidator/name": v => [
+      v => typeof v === "string",
+      v => v.startsWith("eventValidator/")
+    ].every( f => f(v) ),
+    "eventValidator/doc": v => typeof v === "string",
+    "eventValidator/label": v => typeof v === "string",
+    "eventValidator/errorMessage": v => typeof v === "string",
     "entity/type": v => [
       v => typeof v === "string", //validator + description of correct format should be sufficient [?]
       v => ["process", "event"].includes(v)
@@ -518,8 +422,6 @@ const Attribute = {
 
 
 //Other config..
-
-
 
 let Accounts = {
   '1070': {label: 'Utsatt skattefordel'}, 
@@ -956,6 +858,19 @@ let eventTypesPage = ( S, A ) => d([
       0, 
       Object.values(S.eventAttributes).filter( eventAttribute => !eventType["eventType/attributes"].includes( eventAttribute["attr/name"] )  ).map( eventAttribute => returnObject({value: eventAttribute["attr/name"], label: eventAttribute["attr/label"]})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( eventType.entity, "eventType/attributes", eventType["eventType/attributes"].concat( e.srcElement.value )  )   
+      )  ) 
+    ),
+    d( eventType["eventType/eventValidators"].map( validatorName => d([span(
+      S.eventValidators[validatorName]["eventValidator/label"] + "[X]", 
+      S.eventValidators[validatorName]["eventValidator/doc"])], 
+      {class: "textButton_narrow"}, 
+      "click", 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].filter( attr => attr !== attribute )  ) 
+      ) 
+    ).concat( dropdown(
+      0, 
+      Object.values(S.eventValidators).filter( eventValidator => !eventType["eventType/eventValidators"].includes( eventValidator["eventValidator/name"] )  ).map( eventValidator => returnObject({value: eventValidator["eventValidator/name"], label: eventValidator["eventValidator/label"]})).concat({value: 0, label: "Legg til"}), 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].concat( e.srcElement.value )  )   
       )  ) 
     ),
     d([input({value: eventType["eventType/doc"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/doc", e.srcElement.value ) )], {style: "display: flex;"}),
