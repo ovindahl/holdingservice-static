@@ -68,7 +68,7 @@ let getUserActions = (S) => returnObject({
 
         console.log(datoms)
 
-        let apiResponse = Attribute.validate(attribute, value) //Only attribute validation, not event level.
+        let apiResponse = S.attributeValidators[attribute](value)
         ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( [newDatom(entityID, attribute, value)] ) )
         : null
 
@@ -115,6 +115,7 @@ let getUserActions = (S) => returnObject({
             newDatom("newEventType", "eventType/name", eventTypeName),
             newDatom("newEventType", "eventType/label", "[label]"),
             newDatom("newEventType", "eventType/attributes", ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"] ),
+            newDatom("newEventType", "eventType/eventValidators", ["eventValidator/currencyIsNOK"] ),
             newDatom("newEventType", "eventType/doc", "[doc]"),
         ]
 
@@ -146,8 +147,6 @@ let getUserActions = (S) => returnObject({
 
 let update = (S) => {
 
-    Object.keys(eventValidators).forEach( eventValidatorName => eventValidators[eventValidatorName]["errorMessage"] = S["eventValidators"][eventValidatorName]["eventValidator/errorMessage"] )
-
     const attributeValidators = {
         "attr/doc": v => typeof v === "string",
         "attr/label": v => typeof v === "string",
@@ -161,12 +160,11 @@ let update = (S) => {
         "eventType/attributes":  v => [
         v => typeof v === "object",
         v => Array.isArray(v),
-        v => v.every( attr => Object.keys( Attribute.validators ).includes(attr) )
+        v => v.every( attr => Object.keys( attributeValidators ).includes(attr) )
         ].every( f => f(v) ),
         "eventType/eventValidators":  v => [
         v => typeof v === "object",
         v => Array.isArray(v),
-        //v => v.every( attr => Object.keys( Attribute.validators ).includes(attr) )
         ].every( f => f(v) ),
         "eventValidator/name": v => [
         v => typeof v === "string",
@@ -238,18 +236,127 @@ let update = (S) => {
         ].every( f => f(v) ),
     }
 
+    S.attributeValidators = attributeValidators
+
     Object.keys(S.eventAttributes).forEach( eventAttributeName => S.eventAttributes[ eventAttributeName ]["validator"] = attributeValidators[ eventAttributeName ] )
 
+    const eventValidators = {
+        "eventValidator/test": {
+          validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK" 
+        },
+        "eventValidator/currencyIsNOK": {
+          validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK" 
+        },
+        "eventValidator/shareholderRequired": {
+          validator: ( companyDoc, Event ) => Object.keys( Event["event/incorporation/shareholders"] ).length > 0,
+        },
+        "eventValidator/minimumShareCapital": {
+          validator: ( companyDoc, Event ) => Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000  ,
+        },
+        "eventValidator/negativeAmount": {
+          validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
+        },
+        "eventValidator/positiveAmount": {
+          validator: ( companyDoc, Event ) => Event["event/amount"] > 0,
+        },
+        "eventValidator/isExistingSupplier": {
+          validator: ( companyDoc, Event ) => companyDoc["company/:suppliers"].includes( Event["event/supplier"] ),
+        },
+        "eventValidator/isExistingShareholder": {
+          validator: ( companyDoc, Event ) => companyDoc["company/:shareholders"].includes( Event["event/shareholder"] ) ,
+        }
+      
+    }
 
-    S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )    
+    Object.keys(S.eventValidators).forEach( validatorName => S.eventValidators[ validatorName ]["validator"] = eventValidators[ validatorName ]["validator"] )
+
+    const Accounts = {
+        '1070': {label: 'Utsatt skattefordel'}, 
+        '1300': {label: 'Investeringer i datterselskap'}, 
+        '1320': {label: 'Lån til foretak i samme konsern'}, 
+        '1330': {label: 'Investeringer i tilknyttet selskap'}, 
+        '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
+        '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
+        '1360': {label: 'Obligasjoner'}, 
+        '1370': {label: 'Fordringer på eiere'}, 
+        '1375': {label: 'Fordringer på styremedlemmer'}, 
+        '1380': {label: 'Fordringer på ansatte'}, 
+        '1399': {label: 'Andre fordringer'}, 
+        '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
+        '1579': {label: 'Andre kortsiktige fordringer'}, 
+        '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
+        '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
+        '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
+        '1820': {label: 'Andre aksjer'}, 
+        '1830': {label: 'Markedsbaserte obligasjoner'}, 
+        '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
+        '1880': {label: 'Andre finansielle instrumenter'}, 
+        '1920': {label: 'Bankinnskudd'}, 
+        '2000': {label: 'Aksjekapital'}, 
+        '2020': {label: 'Overkurs'}, 
+        '2030': {label: 'Annen innskutt egenkapital'}, 
+        '2050': {label: 'Annen egenkapital'}, 
+        '2080': {label: 'Udekket tap'}, 
+        '2120': {label: 'Utsatt skatt'}, 
+        '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
+        '2250': {label: 'Gjeld til ansatte og eiere'}, 
+        '2260': {label: 'Gjeld til selskap i samme konsern'}, 
+        '2290': {label: 'Annen langsiktig gjeld'}, 
+        '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
+        '2400': {label: 'Leverandørgjeld'}, 
+        '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
+        '2510': {label: 'Betalbar skatt, fastsatt'}, 
+        '2800': {label: 'Avsatt utbytte'}, 
+        '2910': {label: 'Gjeld til ansatte og eiere'}, 
+        '2920': {label: 'Gjeld til selskap i samme konsern'}, 
+        '2990': {label: 'Annen kortsiktig gjeld'}, 
+        '6540': {label: 'Inventar'}, 
+        '6551': {label: 'Datautstyr (hardware)'}, 
+        '6552': {label: 'Programvare (software)'}, 
+        '6580': {label: 'Andre driftsmidler'}, 
+        '6701': {label: 'Honorar revisjon'}, 
+        '6702': {label: 'Honorar rådgivning revisjon'}, 
+        '6705': {label: 'Honorar regnskap'}, 
+        '6720': {label: 'Honorar for økonomisk rådgivning'}, 
+        '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
+        '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
+        '6790': {label: 'Annen fremmed tjeneste'}, 
+        '6890': {label: 'Annen kontorkostnad'}, 
+        '6900': {label: 'Elektronisk kommunikasjon'}, 
+        '7770': {label: 'Bank og kortgebyrer'}, 
+        '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
+        '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
+        '8000': {label: 'Inntekt på investering i datterselskap'}, 
+        '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
+        '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
+        '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
+        '8055': {label: 'Andre renteinntekter'}, 
+        '8060': {label: 'Valutagevinst (agio)'}, 
+        '8070': {label: 'Annen finansinntekt'}, 
+        '8071': {label: 'Aksjeutbytte'}, 
+        '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
+        '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
+        '8090': {label: 'Inntekt på andre investeringer'}, 
+        '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
+        '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
+        '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
+        '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
+        '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
+        '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
+        '8155': {label: 'Andre rentekostnader'}, 
+        '8160': {label: 'Valutatap (disagio)'}, 
+        '8170': {label: 'Annen finanskostnad'}, 
+        '8178': {label: 'Tap ved realisasjon av aksjer'}, 
+        '8300': {label: 'Betalbar skatt'}, 
+        '8320': {label: 'Endring utsatt skatt'},
+        '8800': {label: 'Årsresultat'}
+    }
+
+    S.Accounts = Accounts
+
+    S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )
     S.companyDoc = prepareCompanyDoc(S, S.selectedEvents)
     console.log("companyDoc", S.companyDoc)
-/* 
-    S.eventAttributes = Array.isArray(S.eventAttributes) ?  mergeArray( S.eventAttributes.map( eventAttribute => createObject(eventAttribute["attr/name"], eventAttribute) ) ) : S.eventAttributes //Ugly.......
-    S.eventTypes = Array.isArray(S.eventTypes) ?  mergeArray( S.eventTypes.map( eventType => createObject(eventType["eventType/name"], eventType) ) ) : S.eventTypes */
-
-
-    
 
     S.elementTree = generateHTMLBody(S, getUserActions(S) )
     
@@ -263,7 +370,7 @@ sideEffects.configureClient();
 let Admin = {
     updateClientRelease: (newVersion) => Admin.submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
-    submitDatoms: async (datoms) => datoms.length < 20
+    submitDatoms: async (datoms) => datoms.length < 2000
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms)
 }

@@ -52,16 +52,11 @@ let ifNot = (test, ifNot, then) => test ? then : ifNot
 
 // COMPANY DOCUMENT CREATION PIPELINE
 
-let getEventErrors = (S, companyDoc, Event) => eventTypes[ Event["event/eventType"] ]["attributes"].map( attribute => 
-  S["eventAttributes"][attribute]["validator"]( Event[ attribute ] ) //Attribute.validate( attribute, Event[ attribute ]  ) 
-    ? false 
-    : `Attribute not valid: ${attribute}.`   )
-  .concat( eventTypes[ Event["event/eventType"] ].validators.map( validatorName => 
-    eventValidators[ validatorName ].validator(companyDoc, Event) 
-    ? false 
-    : eventValidators[ validatorName ].errorMessage 
-  )
-  ).filter( result => result !== false  ) 
+let getAttributeErrors = (S, Event)=> S["eventTypes"][ Event["event/eventType"] ]["eventType/attributes"].map( attribute => S["eventAttributes"][attribute]["validator"]( Event[ attribute ] ) ? false : `Attribute not valid: ${attribute}.` ).filter( result => result !== false  )
+let getEventTypeErrors = (S, companyDoc, Event) => S["eventTypes"][ Event["event/eventType"] ]["eventType/eventValidators"].map( validatorName => S["eventValidators"][validatorName]["validator"](companyDoc, Event ) ? false : S["eventValidators"][validatorName]["eventValidator/errorMessage"]).filter( result => result !== false  )
+
+let getEventErrors = (S, companyDoc, Event) => getAttributeErrors(S, Event).concat( getEventTypeErrors(S, companyDoc, Event)  )
+
 
 
 let rejectEventWithErrors = (S, companyDoc, Event) => mergerino(
@@ -94,8 +89,10 @@ let applyEvent = (companyDoc, Event) => mergerino(
   constructCompanyPatch(companyDoc, Event)
 )
 
+let isValidEventType = (S, eventType) => Object.keys( S.eventTypes ).includes( eventType )
+
 let prepareCompanyDoc = (S, Events) => Events.reduce( (companyDoc, Event) => companyDoc["company/:isValid"]
-  ? Object.keys( eventTypes ).includes( Event["event/eventType"] )
+  ? isValidEventType( S, Event["event/eventType"] )
     ?  isValidEvent( S, companyDoc, Event )
       ? applyEvent(companyDoc, Event) 
       : rejectEventWithErrors(S, companyDoc, Event)
@@ -108,12 +105,8 @@ let getBlankCompanyDoc = () => returnObject({
   "company/:shareholders": [], 
   "company/:suppliers": [],
   "company/:accountBalance": {"1920": 0}, 
-  "company/:bankTransactions": [],
   "company/:appliedEvents": [],
   "company/:rejectedEvents": [],
-  "company/:prevCompanyDoc": {},
-  "company/:eventCount": 0,
-  "company/:shareCount": 0,
   "company/:isValid": true
 })
 
@@ -124,26 +117,12 @@ let updateAccountBalance = (accountBalance, patch) => mergerino( accountBalance,
 const outputFunction = {
   functions: {
     "company/:orgnumber": (companyDoc, Event) => Event["event/incorporation/orgnumber"],
-    "company/:nominalSharePrice": (companyDoc, Event) => Event["event/incorporation/nominalSharePrice"],
-    "company/:incorporationDate": (companyDoc, Event) => Event["event/date"],
     "company/:shareholders": (companyDoc, Event) => companyDoc["company/:shareholders"].concat( Event["event/:shareholders"] ),
-    "company/:shareCount": (companyDoc, Event) => companyDoc["company/:shareCount"] + Event["event/shareCount"] ,
-    "company/:openingBalance": (companyDoc, Event) => returnObject({"1920": 0, "2000": 0}),
     "company/:accountBalance": (companyDoc, Event) => updateAccountBalance( companyDoc["company/:accountBalance"], Event["event/:accountBalance"] ),
     "company/:suppliers": (companyDoc, Event) => companyDoc["company/:suppliers"].includes(Event["event/supplier"]) ? companyDoc["company/:suppliers"] : companyDoc["company/:suppliers"].concat( Event["event/supplier"] ),
-    "company/:currentYear": (companyDoc, Event) => Event["event/date"].slice(0,4),
-    "company/:bankTransactions": (companyDoc, Event) => companyDoc["company/:bankTransactions"].concat( Event["event/bankTransactionReference"] ),
     "company/:appliedEvents": (companyDoc, Event) => companyDoc["company/:appliedEvents"].concat( Event ),
-    "company/:prevCompanyDoc": (companyDoc, Event) => companyDoc,
-    "company/:applicableEventTypes": (companyDoc, Event) => Object.keys( eventTypes ).filter( key => key !== "incorporation" ),
-    "company/:latestEventDate": (companyDoc, Event) => Event["event/date"],
-    "company/:eventCount": (companyDoc, Event) => companyDoc["company/:eventCount"] + 1,
-    "company/:reports/rf_1028": (companyDoc, Event) => Reports["rf_1028"].prepare(companyDoc["company/:accountBalance"]),
-    "company/:reports/rf_1167": (companyDoc, Event) => Reports["rf_1167"].prepare(companyDoc["company/:accountBalance"]),
-    "company/:reports/annualReport": (companyDoc, Event) => Reports["annualReport"].prepare(companyDoc["company/:accountBalance"]),
-    "company/:reports/notesText": (companyDoc, Event) => Reports["notesText"].prepare(companyDoc),
   },
-  defaultDependencies: ["company/:prevCompanyDoc", "company/:latestEventDate", "company/:currentYear", "company/:appliedEvents", "company/:applicableEventTypes", "company/:eventCount"],
+  defaultDependencies: ["company/:appliedEvents"],
   calculate: (functionName, companyDoc, Event) => outputFunction.functions[ functionName ](companyDoc, Event),
   getCalculatedEventFields: ( companyDoc, Event, eventType ) => eventTypes[ eventType ]["eventConstructor"]( companyDoc, Event ),
   getCalculatedCompanyFields: ( companyDoc, calculatedEventAttributes, eventType ) => eventTypes[ eventType ]["calculatedFields_companyLevel"].concat(outputFunction.defaultDependencies).map( (calculatedField) => createObject(calculatedField, outputFunction.calculate(calculatedField, companyDoc, calculatedEventAttributes ) )  ),
@@ -162,34 +141,9 @@ let defaultEventDatoms = (appliedEvent) => [
 
 let defaultEventAttributes = ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"]
 
-let eventValidators = {
-  "eventValidator/currencyIsNOK": {
-    validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK" 
-  },
-  "eventValidator/shareholderRequired": {
-    validator: ( companyDoc, Event ) => Object.keys( Event["event/incorporation/shareholders"] ).length > 0,
-  },
-  "eventValidator/minimumShareCapital": {
-    validator: ( companyDoc, Event ) => Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000  ,
-  },
-  "eventValidator/negativeAmount": {
-    validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
-  },
-  "eventValidator/positiveAmount": {
-    validator: ( companyDoc, Event ) => Event["event/amount"] > 0,
-  },
-  "eventValidator/isExistingSupplier": {
-    validator: ( companyDoc, Event ) => companyDoc["company/:suppliers"].includes( Event["event/supplier"] ),
-  },
-  "eventValidator/isExistingShareholder": {
-    validator: ( companyDoc, Event ) => companyDoc["company/:shareholders"].includes( Event["event/shareholder"] ) ,
-  }
-
-}
-
 const eventTypes = {
-  "incorporation": {
-    eventType: "incorporation",
+  "eventType/incorporation": {
+    eventType: "eventType/incorporation",
     attributes: defaultEventAttributes.concat(["event/incorporation/nominalSharePrice", "event/incorporation/shareholders", "event/incorporation/incorporationCost", "event/supplier"]),
     eventConstructor: ( companyDoc, Event ) => {
       let shareCapital = Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0)
@@ -198,10 +152,9 @@ const eventTypes = {
         "event/:shareholders": Object.keys(Event["event/incorporation/shareholders"])
       }
     } ,
-    calculatedFields_companyLevel: ["company/:orgnumber", "company/:nominalSharePrice", "company/:incorporationDate", "company/:accountBalance", "company/:shareholders", , "company/:suppliers"],
-    validators: ["eventValidator/currencyIsNOK", "eventValidator/shareholderRequired", "eventValidator/minimumShareCapital" ],
+    calculatedFields_companyLevel: ["company/:orgnumber", "company/:accountBalance", "company/:shareholders", , "company/:suppliers"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-      newDatom("newEvent", "event/eventType", "incorporation"),
+      newDatom("newEvent", "event/eventType", "eventType/incorporation"),
       newDatom("newEvent", "event/description", "Stiftelse" ),
       newDatom("newEvent", "event/incorporation/shareholders", {} ),
       newDatom("newEvent", "event/incorporation/incorporationCost", -5570 ),
@@ -215,7 +168,6 @@ const eventTypes = {
       {"event/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} }
     ) ,
     calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
-    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
       newDatom("newEvent", "event/eventType", "eventType/operatingCost/supplierDebt"),
       newDatom("newEvent", "event/description", "Annen driftskostnad, betalt av selskapet." ),
@@ -223,84 +175,78 @@ const eventTypes = {
       newDatom("newEvent", "event/amount", 0 ),
     ])
   },
-  "operatingCost/shareholderDebt": {
+  "eventType/operatingCost/shareholderDebt": {
     eventType: "operatingCost/shareholderDebt",
     attributes: defaultEventAttributes.concat(["event/supplier", "event/amount", "event/shareholder"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"7790": -Event["event/amount"], "2910": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
-    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount", "eventValidator/shareholderRequired"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-      newDatom("newEvent", "event/eventType", "operatingCost/shareholderDebt"),
+      newDatom("newEvent", "event/eventType", "eventType/operatingCost/shareholderDebt"),
       newDatom("newEvent", "event/description", "Annen driftskostnad, betalt ved utlegg." ),
       newDatom("newEvent", "event/supplier", "[Orgnr. på leverandør]" ),
       newDatom("newEvent", "event/shareholder", "[AksjonærID]" ),
       newDatom("newEvent", "event/amount", 0 ),
     ])
   },
-  "operatingCost/bank": {
+  "eventType/operatingCost/bank": {
     eventType: "operatingCost/bank",
     attributes: defaultEventAttributes.concat(["event/supplier", "event/amount", "event/bankTransactionReference"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"7790": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
-    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "operatingCost/bank"),
+        newDatom("newEvent", "event/eventType", "eventType/operatingCost/bank"),
         newDatom("newEvent", "event/description", "Annen driftskostnad, betalt fra bedriftens bankkonto." ),
         newDatom("newEvent", "event/supplier", "[Orgnr. på leverandør]" ),
         newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
         newDatom("newEvent", "event/amount", 0 ),
     ])
   },
-  "payments/shareCapital": {
+  "eventType/payments/shareCapital": {
     eventType: "payments/shareCapital",
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/shareholder"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"1576": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
-    validators: ["eventValidator/currencyIsNOK", "eventValidator/positiveAmount", "eventValidator/shareholderRequired"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "payments/shareCapital"),
+        newDatom("newEvent", "event/eventType", "eventType/payments/shareCapital"),
         newDatom("newEvent", "event/description", "Innbetaling av aksjekapital." ),
         newDatom("newEvent", "event/shareholder", "[AksjonærID]" ),
         newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
         newDatom("newEvent", "event/amount", 0 ),
     ])
   },
-  "payments/supplierDebt": {
+  "eventType/payments/supplierDebt": {
     eventType: "payments/supplierDebt",
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/supplier"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"2400": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
-    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount", "eventValidator/isExistingSupplier"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "payments/supplierDebt"),
+        newDatom("newEvent", "event/eventType", "eventType/payments/supplierDebt"),
         newDatom("newEvent", "event/description", "Betaling leverandørgjeld" ),
         newDatom("newEvent", "event/supplier", "[Orgnr. på leverandør]" ),
         newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
         newDatom("newEvent", "event/amount", 0 ),
     ])
   },
-  "shareholderLoan/increase": {
+  "eventType/shareholderLoan/increase": {
     eventType: "shareholderLoan/increase",
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/shareholder"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"2250": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
-    validators: ["eventValidator/currencyIsNOK", "eventValidator/positiveAmount", "eventValidator/isExistingShareholder"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "shareholderLoan/increase"),
+        newDatom("newEvent", "event/eventType", "eventType/shareholderLoan/increase"),
         newDatom("newEvent", "event/description", "Lån fra aksjonær, kontantoppgjør, ingen forfall, skjermingsrente" ),
         newDatom("newEvent", "event/shareholder", "[AksjonærID]" ),
         newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
         newDatom("newEvent", "event/amount", 0 ),
     ])
   },
-  "investments/new/unlisted/bank": {
+  "eventType/investments/new/unlisted/bank": {
     eventType: "investments/new/unlisted/bank",
     attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/investment/orgnumber"]),
     eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"1350": -Event["event/amount"], "1920": Event["event/amount"]} ),
     calculatedFields_companyLevel: ["company/:accountBalance"],
-    validators: ["eventValidator/currencyIsNOK", "eventValidator/negativeAmount"],
     newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "investments/new/unlisted/bank"),
+        newDatom("newEvent", "event/eventType", "eventType/investments/new/unlisted/bank"),
         newDatom("newEvent", "event/description", "Kjøp norsk aksje kontantoppgjør NOK, ikke noterte, langsiktig" ),
         newDatom("newEvent", "event/investment/orgnumber", "[Org.nr investering]" ),
         newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
@@ -310,94 +256,332 @@ const eventTypes = {
 }
 
 
-//let getRequiredHistoricalVariables = eventType => eventTypes[ eventType ]["requiredCalculatedFields"]
-let getRequiredAttributes = eventType => eventTypes[ eventType ]["attributes"]
-let getCalculatedFields_companyLevel = eventType => eventTypes[ eventType ]["calculatedFields_companyLevel"]
+//HTML element generation
+let IDcounter = [0];
+let getNewElementID = () => String( IDcounter.push( IDcounter.length  ) )
+let isVoid = tagName => ["area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"].includes(tagName)
+let htmlElementObject = (tagName, attributesObject, innerHTML, eventType, action) => {
 
-//Other config..
+  let isArray = Array.isArray(innerHTML)
+  let isString = typeof innerHTML === "string"
+  let isEither = (isArray || isString)
 
-let Accounts = {
-  '1070': {label: 'Utsatt skattefordel'}, 
-  '1300': {label: 'Investeringer i datterselskap'}, 
-  '1320': {label: 'Lån til foretak i samme konsern'}, 
-  '1330': {label: 'Investeringer i tilknyttet selskap'}, 
-  '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
-  '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
-  '1360': {label: 'Obligasjoner'}, 
-  '1370': {label: 'Fordringer på eiere'}, 
-  '1375': {label: 'Fordringer på styremedlemmer'}, 
-  '1380': {label: 'Fordringer på ansatte'}, 
-  '1399': {label: 'Andre fordringer'}, 
-  '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
-  '1579': {label: 'Andre kortsiktige fordringer'}, 
-  '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
-  '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
-  '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
-  '1820': {label: 'Andre aksjer'}, 
-  '1830': {label: 'Markedsbaserte obligasjoner'}, 
-  '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
-  '1880': {label: 'Andre finansielle instrumenter'}, 
-  '1920': {label: 'Bankinnskudd'}, 
-  '2000': {label: 'Aksjekapital'}, 
-  '2020': {label: 'Overkurs'}, 
-  '2030': {label: 'Annen innskutt egenkapital'}, 
-  '2050': {label: 'Annen egenkapital'}, 
-  '2080': {label: 'Udekket tap'}, 
-  '2120': {label: 'Utsatt skatt'}, 
-  '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
-  '2250': {label: 'Gjeld til ansatte og eiere'}, 
-  '2260': {label: 'Gjeld til selskap i samme konsern'}, 
-  '2290': {label: 'Annen langsiktig gjeld'}, 
-  '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
-  '2400': {label: 'Leverandørgjeld'}, 
-  '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
-  '2510': {label: 'Betalbar skatt, fastsatt'}, 
-  '2800': {label: 'Avsatt utbytte'}, 
-  '2910': {label: 'Gjeld til ansatte og eiere'}, 
-  '2920': {label: 'Gjeld til selskap i samme konsern'}, 
-  '2990': {label: 'Annen kortsiktig gjeld'}, 
-  '6540': {label: 'Inventar'}, 
-  '6551': {label: 'Datautstyr (hardware)'}, 
-  '6552': {label: 'Programvare (software)'}, 
-  '6580': {label: 'Andre driftsmidler'}, 
-  '6701': {label: 'Honorar revisjon'}, 
-  '6702': {label: 'Honorar rådgivning revisjon'}, 
-  '6705': {label: 'Honorar regnskap'}, 
-  '6720': {label: 'Honorar for økonomisk rådgivning'}, 
-  '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
-  '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
-  '6790': {label: 'Annen fremmed tjeneste'}, 
-  '6890': {label: 'Annen kontorkostnad'}, 
-  '6900': {label: 'Elektronisk kommunikasjon'}, 
-  '7770': {label: 'Bank og kortgebyrer'}, 
-  '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
-  '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
-  '8000': {label: 'Inntekt på investering i datterselskap'}, 
-  '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
-  '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
-  '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
-  '8055': {label: 'Andre renteinntekter'}, 
-  '8060': {label: 'Valutagevinst (agio)'}, 
-  '8070': {label: 'Annen finansinntekt'}, 
-  '8071': {label: 'Aksjeutbytte'}, 
-  '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
-  '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
-  '8090': {label: 'Inntekt på andre investeringer'}, 
-  '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
-  '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
-  '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
-  '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
-  '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
-  '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
-  '8155': {label: 'Andre rentekostnader'}, 
-  '8160': {label: 'Valutatap (disagio)'}, 
-  '8170': {label: 'Annen finanskostnad'}, 
-  '8178': {label: 'Tap ved realisasjon av aksjer'}, 
-  '8300': {label: 'Betalbar skatt'}, 
-  '8320': {label: 'Endring utsatt skatt'},
-  '8800': {label: 'Årsresultat'}
+  if( !isEither ){console.log("ERROR: innerHTML is not array or string:", tagName, attributesObject, innerHTML, eventType, action)} //should input null for void elements?
+  
+  let id = getNewElementID()
+  let attributes = mergerino(attributesObject, {id: id} )
+  
+  let children = Array.isArray(innerHTML) ? innerHTML : []
+  let ownInnerHTML = typeof innerHTML === "string" ? innerHTML : ""
+  let openingTag = `<${tagName} ${Object.entries(attributes).map( (keyValuePair) => ` ${keyValuePair[0]}="${keyValuePair[1]}" `).join('')}>` 
+  let closingTag = `</${tagName}>`
+  let childrenHTML = children.map( child => child.html ).join('')
+  let html = isVoid(tagName) ? openingTag : openingTag + ownInnerHTML + childrenHTML + closingTag
+  
+
+  let ownEventListeners = (eventType && action) ? [{eventType, action, id}] : []
+  let childrenEventListeners = children.map( child => child.eventListeners ).flat()
+  let eventListeners = ownEventListeners.concat(childrenEventListeners)
+
+  return {tagName, attributes, innerHTML, eventListeners, html}  
+
+}
+let d = (innerHTML, attributesObject, eventType, action) => htmlElementObject("div", attributesObject, innerHTML , eventType, action )
+let h3 = (content, attributesObject)  => htmlElementObject("h3", attributesObject , content)
+let input = (attributesObject, eventType, action) => htmlElementObject("input", attributesObject, "", eventType, action)
+
+let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", updateFunction  )
+
+let retractEventButton = (entityID, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(entityID) )
+
+//Page frame
+
+let headerBarView = (S) => d([
+  d('<header><h1>Holdingservice Beta</h1></header>', {class: "textButton"}),
+  d(`Server version: ${S.serverConfig.serverVersion}`),
+  d(`Client app version: ${S.serverConfig.clientVersion}`),
+  d(`DB version: ${S.tx}`),
+  d(`Server cache updated: ${moment(S.serverConfig.cacheUpdated).format()}`),
+  d([
+    d("Logg ut", {class: "textButton"}, "click", e => console.log("Log out!")),
+    d("Innstillinger", {class: "textButton"}, "click", e => console.log("Innstillinger!"))
+  ], {style: "display:flex;"} )
+], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
+
+let feedContainer = (content, date, entityID) => d([
+  d([content], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} ),
+  d( `${date} (id: ${entityID} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
+])
+
+let companySelectionMenuRow = (S, A) => d([
+  d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => console.log("TBD...") )), {style: "display:flex;"}),
+]) 
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "admin/eventAttributes", "admin/eventTypes", "admin/eventValidators"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+
+let generateHTMLBody = (S, A) => [
+  headerBarView(S),
+  companySelectionMenuRow(S, A),
+  pageSelectionMenuRow(S, A),
+  pageRouter[ S.currentPage ]( S, A )  
+]
+
+let pageRouter = {
+  "timeline": (S, A) => timelineView(S, S.companyDoc, A),
+  "companyDoc": (S, A) => companyDocPage( S.companyDoc ),
+  "admin/eventAttributes": (S, A) => attributesPage( S, A ),
+  "admin/eventTypes": (S, A) => eventTypesPage( S, A ),
+  "admin/eventValidators": (S, A) => eventValidatorsPage( S, A )
 }
 
+//Event Cycle Views
+
+let timelineView = (S, companyDoc, A) => d([
+  d( companyDoc["company/:appliedEvents"].map( appliedEvent => feedContainer(  appliedEventView( S, appliedEvent, A ) , appliedEvent["event/date"], appliedEvent["entity"] )  ), {class: "pageContainer"}),
+  d( companyDoc["company/:rejectedEvents"].map( rejectedEvent => feedContainer(  rejectedEventView( S, rejectedEvent, A ) , rejectedEvent["event/date"], rejectedEvent["entity"] )  ), {class: "pageContainer"})
+])
+
+let appliedEventView = (S, appliedEvent , A) => d([
+    h3( S.eventTypes[ appliedEvent["event/eventType"] ] ? S.eventTypes[ appliedEvent["event/eventType"] ]["eventType/label"] : appliedEvent["event/eventType"] , {style: `background-color: #1073104f; padding: 1em;`} ),
+    attributesTableView(S, appliedEvent, A),
+    retractEventButton( appliedEvent["entity"], A),
+    newEventDropdown(S, A, appliedEvent)
+])
+
+let rejectedEventView = (S, rejectedEvent , A) => d([
+  h3(S.eventTypes[ rejectedEvent["event/eventType"] ] ? S.eventTypes[ rejectedEvent["event/eventType"] ]["eventType/label"] : rejectedEvent["event/eventType"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
+  d( rejectedEvent["event/:eventErrors"].map( error => d(error, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  )),
+  d("<br>"),
+  attributesTableView(S, rejectedEvent, A),
+  d("<br>"),
+  retractEventButton( rejectedEvent["entity"], A),
+  newEventDropdown(S, A, rejectedEvent)
+])
+
+let attributesTableView = (S, appliedEvent, A) => d([
+  h3("Attributter"),
+  d( S["eventTypes"][ appliedEvent["event/eventType"] ]["eventType/attributes"].map( attribute =>  attributeView(S, A, attribute, appliedEvent[ attribute ], appliedEvent["entity"] ) ) 
+  ),
+  d("<br>")
+], {style: "background-color: #f1f0f0; padding: 1em;"})
+
+let companyDocViews = {
+  "company/:accountBalance": (accountBalance) =>  d( Object.keys( accountBalance ).map( account => d(`${account}: ${accountBalance[account]}`) ) )
+}
+
+let companyDocPage = (companyDoc) => d( Object.keys(companyDoc).map( key =>  feedContainer( variableView(companyDoc, key) , "na." , "na." )), {class: "pageContainer"} )
+
+let attributesPage = ( S, A ) => d([
+  d([
+    d("entity"),
+    d("attr/name"),
+    d("attr/label"),
+    d("attr/valueType"),
+    d("attr/doc")
+  ], {class: "attributeRow", style: "background-color: gray;"} ),
+  d( Object.values(S.eventAttributes).map( attribute => d([
+    d(String(attribute["entity"])),
+    d(attribute["attr/name"]),
+    input({value: attribute["attr/label"]}, "change", e => A.updateEntityAttribute( attribute.entity, "attr/label", e.srcElement.value ) ),
+    attribute["attr/valueType"] ? d(attribute["attr/valueType"]) : input({value: "string/number"}, "change", e => A.updateEntityAttribute( attribute.entity, "attr/valueType", e.srcElement.value ) ) ,
+    input({value: attribute["attr/doc"]}, "change", e => A.updateEntityAttribute( attribute.entity, "attr/doc", e.srcElement.value ) )
+  ], {class: "attributeRow"} ) ) ),
+  d([
+    d("Opprett ny"),
+    input({value: "event/nyAttributt" }, "change", e => A.createAttribute( e.srcElement.value ) )
+  ], {class: "attributeRow"} ),
+]) 
+
+let eventTypesPage = ( S, A ) => d([
+  d([
+    d("entity"),
+    d("name, label, doc"),
+    d("eventType/attributes"),
+    d("eventType/eventValidators"),
+  ], {class: "eventTypeRow", style: "background-color: gray;"} ),
+  d( Object.values(S.eventTypes).map( eventType => d([
+    d(String(eventType["entity"])),
+    d([
+      input({value: eventType["eventType/name"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/name", e.srcElement.value ) ),
+      input({value: eventType["eventType/label"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/label", e.srcElement.value ) ),
+      input({value: eventType["eventType/doc"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/doc", e.srcElement.value ) )
+    ], {style: "display: grid;"}),
+    d( eventType["eventType/attributes"].map( attribute => d([span(
+      S.eventAttributes[attribute]["attr/label"] + "[X]", 
+      S.eventAttributes[attribute]["attr/doc"])], 
+      {class: "textButton_narrow"}, 
+      "click", 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/attributes", eventType["eventType/attributes"].filter( attr => attr !== attribute )  ) 
+      ) 
+    ).concat( dropdown(
+      0, 
+      Object.values(S.eventAttributes).filter( eventAttribute => !eventType["eventType/attributes"].includes( eventAttribute["attr/name"] )  ).map( eventAttribute => returnObject({value: eventAttribute["attr/name"], label: eventAttribute["attr/label"]})).concat({value: 0, label: "Legg til"}), 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/attributes", eventType["eventType/attributes"].concat( e.srcElement.value )  )   
+      )  ) 
+    ),
+    d( eventType["eventType/eventValidators"].map( validatorName => d([span(
+      S.eventValidators[validatorName]["eventValidator/label"] + "[X]", 
+      S.eventValidators[validatorName]["eventValidator/doc"])], 
+      {class: "textButton_narrow"}, 
+      "click", 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].filter( validator => validator !== validatorName )  ) 
+      ) 
+    ).concat( dropdown(
+      0, 
+      Object.values(S.eventValidators).filter( eventValidator => !eventType["eventType/eventValidators"].includes( eventValidator["eventValidator/name"] )  ).map( eventValidator => returnObject({value: eventValidator["eventValidator/name"], label: eventValidator["eventValidator/label"]})).concat({value: 0, label: "Legg til"}), 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].concat( e.srcElement.value )  )   
+      )  ) 
+    ),
+  ], {class: "eventTypeRow"} ) ) ),
+  d([
+    d("Opprett ny"),
+    input({value: "eventType/[newEventType]" }, "change", e => A.createEventType( e.srcElement.value ) )
+  ], {class: "eventTypeRow"} ),
+]) 
+
+let eventValidatorsPage = ( S, A ) => d([
+  d([
+    d("entity"),
+    d("eventValidator/name"),
+    d("eventValidator/label"),
+    d("eventValidator/errorMessage"),
+    d("eventValidator/doc")
+  ], {class: "attributeRow", style: "background-color: gray;"} ),
+  d( Object.values(S.eventValidators).map( eventValidator => d([
+    d(String(eventValidator["entity"])),
+    input({value: eventValidator["eventValidator/name"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/name", e.srcElement.value ) ),
+    input({value: eventValidator["eventValidator/label"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/label", e.srcElement.value ) ),
+    input({value: eventValidator["eventValidator/errorMessage"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/errorMessage", e.srcElement.value ) ),
+    input({value: eventValidator["eventValidator/doc"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/doc", e.srcElement.value ) ),
+  ], {class: "attributeRow"} ) ) ),
+  d([
+    d("Opprett ny"),
+    input({value: "eventValidator/[name]" }, "change", e => A.createEventValidator( e.srcElement.value ) )
+  ], {class: "attributeRow"} ),
+]) 
+
+let variableView = (companyDoc, key) => d([
+  h3(key),
+  Object.keys(companyDocViews).includes(key) ? companyDocViews[key]( companyDoc[key] ) : d( JSON.stringify(companyDoc[key]) , {class: "eventInspectorRow"})
+])
+
+
+
+//Tailor-made complex views
+
+let recordsView = (S, A, attribute, value, entityID) => d([
+  span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
+  d( Object.keys(value).map( account => d([
+    dropdown(account, Object.keys(S.Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${S.Accounts[ accountNumber ].label}` })), 
+      e => A.updateEntityAttribute( 
+        entityID, 
+        attribute, 
+        mergerino(
+          value, 
+          createObject( account, undefined ),
+          createObject( e.srcElement.value, value[ account ]  ) ) 
+      ) 
+    ),
+    input({value: value[account], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( account , Number( e.srcElement.value ) ) ) 
+    ) ),
+    d("X", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( account , undefined ) ) 
+    ) )
+    ], {class: "recordRow"}),
+  ) ),
+  dropdown(
+    0, 
+    Object.keys(S.Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${S.Accounts[ accountNumber ].label}` })).concat({value: 0, label: "Legg til konto"}), 
+    e => A.updateEntityAttribute( entityID, attribute, mergerino( value, createObject( e.srcElement.value , 0 ) ) ),
+  )
+], {style: "border: solid 1px black;"})
+
+let foundersView = (S, A, attribute, value, entityID) => d([
+  span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
+  d([d("AksjonærID"), d("Antall aksjer"), d("Pris per aksje")], {class: "shareholderRow"}),
+  d( Object.values(value).map( shareholder => d([
+    input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( shareholder["shareholder"], undefined ),
+        createObject( e.srcElement.value, mergerino(
+          value[shareholder["shareholder"]],
+          createObject( "shareholder" , e.srcElement.value ),
+          )
+        )
+    ) )),
+    input({value: shareholder["shareCount"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( shareholder["shareholder"] , createObject("shareCount", Number( e.srcElement.value ) ) ),
+    ) )),
+    input({value: shareholder["sharePrice"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( shareholder["shareholder"] , createObject("sharePrice", Number( e.srcElement.value ) ) ),
+    ) )),
+    d("X", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
+      entityID, 
+      attribute, 
+      mergerino(
+        value,
+        createObject( shareholder["shareholder"] , undefined ) ) 
+    ) )
+    ], {class: "shareholderRow"}),
+  ) ),
+  d("Legg til stifter", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
+    entityID, 
+    attribute, 
+    mergerino(
+      value,
+      createObject( "[AksjonærID]" , {shareholder: "[AksjonærID]", shareCount: 0, sharePrice: 0} ),
+  ) ) )
+], {style: "border: solid 1px black;"})
+
+
+let span = (text, tooltip, attributesObject, eventType, action) => htmlElementObject("span", mergerino({"title": tooltip}, attributesObject), text, eventType, action)
+
+let attributeView = (S, A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](S, A, attribute, value, entityID) : genericAttributeView( S, attribute, value, e => A.updateEntityAttribute( entityID, attribute, S.eventAttributes[attribute]["attr/valueType"] === "number" ? Number(e.srcElement.value) : e.srcElement.value) )
+
+let genericAttributeView = (S, attribute, value, onChange) => d([
+  d([
+    span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
+    input({value: value, style: `text-align: right;`}, "change", onChange ),
+    ], {class: "eventInspectorRow"}),
+])
+
+let newEventDropdown = (S, A, Event) => dropdown( "", 
+  Object.keys(S.eventTypes).map( newEventType => returnObject({value: newEventType, label: S.eventTypes[newEventType]["eventType/label"] }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
+  e => A.createEvent(Event, e.srcElement.value )
+)
+  
+let specialAttributeViews = {
+  "event/account": (S, A, attribute, value, entityID) => d([
+    d(`event/account`),
+    dropdown(value, Object.keys(S.Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${S.Accounts[ accountNumber ].label}` })).concat({value: "", label: "Ingen konto valgt."}), e => A.updateEntityAttribute( entityID, attribute, e.srcElement.value) ),
+    ], {class: "eventInspectorRow"}),
+  "transaction/records": recordsView,
+  "event/incorporation/shareholders": foundersView
+}
+
+
+
+
+//Archive
 
 const Reports = {
   "rf_1028": {
@@ -568,357 +752,6 @@ let taxCostView = (financialYear) => {
 }
 
 
-//Archive
-
 //var func = new Function("prevCompany, Event", "return prevCompany['company/shareholders'];" )
 //var func2 = new Function("prevCompany, Event", "console.log(prevCompany['company/shareholders']) ;" )
 
-
-
-//HTML element generation
-let IDcounter = [0];
-let getNewElementID = () => String( IDcounter.push( IDcounter.length  ) )
-let isVoid = tagName => ["area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"].includes(tagName)
-let htmlElementObject = (tagName, attributesObject, innerHTML, eventType, action) => {
-
-  let isArray = Array.isArray(innerHTML)
-  let isString = typeof innerHTML === "string"
-  let isEither = (isArray || isString)
-
-  if( !isEither ){console.log("ERROR: innerHTML is not array or string:", tagName, attributesObject, innerHTML, eventType, action)} //should input null for void elements?
-  
-  let id = getNewElementID()
-  let attributes = mergerino(attributesObject, {id: id} )
-  
-  let children = Array.isArray(innerHTML) ? innerHTML : []
-  let ownInnerHTML = typeof innerHTML === "string" ? innerHTML : ""
-  let openingTag = `<${tagName} ${Object.entries(attributes).map( (keyValuePair) => ` ${keyValuePair[0]}="${keyValuePair[1]}" `).join('')}>` 
-  let closingTag = `</${tagName}>`
-  let childrenHTML = children.map( child => child.html ).join('')
-  let html = isVoid(tagName) ? openingTag : openingTag + ownInnerHTML + childrenHTML + closingTag
-  
-
-  let ownEventListeners = (eventType && action) ? [{eventType, action, id}] : []
-  let childrenEventListeners = children.map( child => child.eventListeners ).flat()
-  let eventListeners = ownEventListeners.concat(childrenEventListeners)
-
-  return {tagName, attributes, innerHTML, eventListeners, html}  
-
-}
-let d = (innerHTML, attributesObject, eventType, action) => htmlElementObject("div", attributesObject, innerHTML , eventType, action )
-let h3 = (content, attributesObject)  => htmlElementObject("h3", attributesObject , content)
-let input = (attributesObject, eventType, action) => htmlElementObject("input", attributesObject, "", eventType, action)
-
-let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", updateFunction  )
-
-let retractEventButton = (entityID, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(entityID) )
-
-//Page frame
-
-let headerBarView = (S) => d([
-  d('<header><h1>Holdingservice Beta</h1></header>', {class: "textButton"}),
-  d(`Server version: ${S.serverConfig.serverVersion}`),
-  d(`Client app version: ${S.serverConfig.clientVersion}`),
-  d(`DB version: ${S.tx}`),
-  d(`Server cache updated: ${moment(S.serverConfig.cacheUpdated).format()}`),
-  d([
-    d("Logg ut", {class: "textButton"}, "click", e => console.log("Log out!")),
-    d("Innstillinger", {class: "textButton"}, "click", e => console.log("Innstillinger!"))
-  ], {style: "display:flex;"} )
-], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
-
-let feedContainer = (content, date, entityID) => d([
-  d([content], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} ),
-  d( `${date} (id: ${entityID} )` , {style: "margin-right: 1em;text-align: right;margin-bottom: 1em;color:#979797;margin-top: 3px;"})
-])
-
-let companySelectionMenuRow = (S, A) => d([
-  d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => A.createEvent( null, "incorporation" ) )), {style: "display:flex;"}),
-]) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "admin/eventAttributes", "admin/eventTypes", "admin/eventValidators"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
-
-let generateHTMLBody = (S, A) => [
-  headerBarView(S),
-  companySelectionMenuRow(S, A),
-  pageSelectionMenuRow(S, A),
-  pageRouter[ S.currentPage ]( S, A )  
-]
-
-let pageRouter = {
-  "timeline": (S, A) => timelineView(S, S.companyDoc, A),
-  "companyDoc": (S, A) => companyDocPage( S.companyDoc ),
-  "admin/eventAttributes": (S, A) => attributesPage( S, A ),
-  "admin/eventTypes": (S, A) => eventTypesPage( S, A ),
-  "admin/eventValidators": (S, A) => eventValidatorsPage( S, A )
-}
-
-//Event Cycle Views
-
-let timelineView = (S, companyDoc, A) => d([
-  d( companyDoc["company/:appliedEvents"].map( appliedEvent => feedContainer(  appliedEventView( S, appliedEvent, A ) , appliedEvent["event/date"], appliedEvent["entity"] )  ), {class: "pageContainer"}),
-  d( companyDoc["company/:rejectedEvents"].map( rejectedEvent => feedContainer(  rejectedEventView( S, rejectedEvent, A ) , rejectedEvent["event/date"], rejectedEvent["entity"] )  ), {class: "pageContainer"})
-])
-
-let appliedEventView = (S, appliedEvent , A) => d([
-    h3( S.eventTypes[ appliedEvent["event/eventType"] ] ? S.eventTypes[ appliedEvent["event/eventType"] ]["eventType/label"] : appliedEvent["event/eventType"] , {style: `background-color: #1073104f; padding: 1em;`} ),
-    attributesTableView(S, appliedEvent, A),
-    retractEventButton( appliedEvent["entity"], A),
-    newEventDropdown(A, appliedEvent)
-])
-
-let rejectedEventView = (S, rejectedEvent , A) => d([
-  h3(S.eventTypes[ rejectedEvent["event/eventType"] ] ? S.eventTypes[ rejectedEvent["event/eventType"] ]["eventType/label"] : rejectedEvent["event/eventType"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
-  d( rejectedEvent["event/:eventErrors"].map( error => d(error, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  )),
-  d("<br>"),
-  attributesTableView(S, rejectedEvent, A),
-  d("<br>"),
-  retractEventButton( rejectedEvent["entity"], A),
-  newEventDropdown(A, rejectedEvent)
-])
-
-let attributesTableView = (S, appliedEvent, A) => d([
-  h3("Attributter"),
-  d( getRequiredAttributes( appliedEvent["event/eventType"] ) .map( attribute =>  attributeView(S, A, attribute, appliedEvent[ attribute ], appliedEvent["entity"] ) ) 
-  ),
-  d("<br>")
-], {style: "background-color: #f1f0f0; padding: 1em;"})
-
-
-let outputTableView = (appliedEvent) => d([
-  h3("Kalkulerte felter"),
-  d("Hendelsesnivå:"),
-  d( Object.keys( appliedEvent ).filter( key => key.startsWith("event/:") ).map( calculatedEventAttribute =>  d([
-    d(`${calculatedEventAttribute}:`),
-    input({value: appliedEvent[calculatedEventAttribute], style: "text-align: right;", disabled: "disabled"}),
-    ], {class: "eventInspectorRow"})) ),
-  d("<br>"),
-  d("Selskapsnivå:"),
-  d( getCalculatedFields_companyLevel( appliedEvent["event/eventType"] ).map( companyVariable =>  d([
-      d(`${companyVariable}:`),
-      input({value: appliedEvent[companyVariable], style: "text-align: right;", disabled: "disabled"}),
-      ], {class: "eventInspectorRow"})) ),
-  d("<br>")
-], {style: "background-color: #f1f0f0; padding: 1em;"})
-
-
-let companyDocViews = {
-  "company/:accountBalance": (accountBalance) =>  d( Object.keys( accountBalance ).map( account => d(`${account}: ${accountBalance[account]}`) ) )
-}
-
-
-let companyDocPage = (companyDoc) => d( Object.keys(companyDoc).map( key =>  feedContainer( variableView(companyDoc, key) , "na." , "na." )), {class: "pageContainer"} )
-
-let attributesPage = ( S, A ) => d([
-  d([
-    d("entity"),
-    d("attr/name"),
-    d("attr/label"),
-    d("attr/valueType"),
-    d("attr/doc")
-  ], {class: "attributeRow", style: "background-color: gray;"} ),
-  d( Object.values(S.eventAttributes).map( attribute => d([
-    d(String(attribute["entity"])),
-    d(attribute["attr/name"]),
-    input({value: attribute["attr/label"]}, "change", e => A.updateEntityAttribute( attribute.entity, "attr/label", e.srcElement.value ) ),
-    attribute["attr/valueType"] ? d(attribute["attr/valueType"]) : input({value: "string/number"}, "change", e => A.updateEntityAttribute( attribute.entity, "attr/valueType", e.srcElement.value ) ) ,
-    input({value: attribute["attr/doc"]}, "change", e => A.updateEntityAttribute( attribute.entity, "attr/doc", e.srcElement.value ) )
-  ], {class: "attributeRow"} ) ) ),
-  d([
-    d("Opprett ny"),
-    input({value: "event/nyAttributt" }, "change", e => A.createAttribute( e.srcElement.value ) )
-  ], {class: "attributeRow"} ),
-]) 
-
-let eventTypesPage = ( S, A ) => d([
-  d([
-    d("entity"),
-    d("name, label, doc"),
-    d("eventType/attributes"),
-    d("eventType/eventValidators"),
-  ], {class: "eventTypeRow", style: "background-color: gray;"} ),
-  d( Object.values(S.eventTypes).map( eventType => d([
-    d(String(eventType["entity"])),
-    d([
-      input({value: eventType["eventType/name"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/name", e.srcElement.value ) ),
-      input({value: eventType["eventType/label"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/label", e.srcElement.value ) ),
-      input({value: eventType["eventType/doc"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/doc", e.srcElement.value ) )
-    ], {style: "display: grid;"}),
-    d( eventType["eventType/attributes"].map( attribute => d([span(
-      S.eventAttributes[attribute]["attr/label"] + "[X]", 
-      S.eventAttributes[attribute]["attr/doc"])], 
-      {class: "textButton_narrow"}, 
-      "click", 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/attributes", eventType["eventType/attributes"].filter( attr => attr !== attribute )  ) 
-      ) 
-    ).concat( dropdown(
-      0, 
-      Object.values(S.eventAttributes).filter( eventAttribute => !eventType["eventType/attributes"].includes( eventAttribute["attr/name"] )  ).map( eventAttribute => returnObject({value: eventAttribute["attr/name"], label: eventAttribute["attr/label"]})).concat({value: 0, label: "Legg til"}), 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/attributes", eventType["eventType/attributes"].concat( e.srcElement.value )  )   
-      )  ) 
-    ),
-    d( eventType["eventType/eventValidators"].map( validatorName => d([span(
-      S.eventValidators[validatorName]["eventValidator/label"] + "[X]", 
-      S.eventValidators[validatorName]["eventValidator/doc"])], 
-      {class: "textButton_narrow"}, 
-      "click", 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].filter( validator => validator !== validatorName )  ) 
-      ) 
-    ).concat( dropdown(
-      0, 
-      Object.values(S.eventValidators).filter( eventValidator => !eventType["eventType/eventValidators"].includes( eventValidator["eventValidator/name"] )  ).map( eventValidator => returnObject({value: eventValidator["eventValidator/name"], label: eventValidator["eventValidator/label"]})).concat({value: 0, label: "Legg til"}), 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].concat( e.srcElement.value )  )   
-      )  ) 
-    ),
-  ], {class: "eventTypeRow"} ) ) ),
-  d([
-    d("Opprett ny"),
-    input({value: "eventType/[newEventType]" }, "change", e => A.createEventType( e.srcElement.value ) )
-  ], {class: "eventTypeRow"} ),
-]) 
-
-
-
-let eventValidatorsPage = ( S, A ) => d([
-  d([
-    d("entity"),
-    d("eventValidator/name"),
-    d("eventValidator/label"),
-    d("eventValidator/errorMessage"),
-    d("eventValidator/doc")
-  ], {class: "attributeRow", style: "background-color: gray;"} ),
-  d( Object.values(S.eventValidators).map( eventValidator => d([
-    d(String(eventValidator["entity"])),
-    input({value: eventValidator["eventValidator/name"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/name", e.srcElement.value ) ),
-    input({value: eventValidator["eventValidator/label"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/label", e.srcElement.value ) ),
-    input({value: eventValidator["eventValidator/errorMessage"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/errorMessage", e.srcElement.value ) ),
-    input({value: eventValidator["eventValidator/doc"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/doc", e.srcElement.value ) ),
-  ], {class: "attributeRow"} ) ) ),
-  d([
-    d("Opprett ny"),
-    input({value: "eventValidator/[name]" }, "change", e => A.createEventValidator( e.srcElement.value ) )
-  ], {class: "attributeRow"} ),
-]) 
-
-
-
-
-
-
-let variableView = (companyDoc, key) => d([
-  h3(key),
-  Object.keys(companyDocViews).includes(key) ? companyDocViews[key]( companyDoc[key] ) : d( JSON.stringify(companyDoc[key]) , {class: "eventInspectorRow"})
-])
-
-
-
-//Tailor-made complex views
-
-let recordsView = (S, A, attribute, value, entityID) => d([
-  span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
-  d( Object.keys(value).map( account => d([
-    dropdown(account, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })), 
-      e => A.updateEntityAttribute( 
-        entityID, 
-        attribute, 
-        mergerino(
-          value, 
-          createObject( account, undefined ),
-          createObject( e.srcElement.value, value[ account ]  ) ) 
-      ) 
-    ),
-    input({value: value[account], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( account , Number( e.srcElement.value ) ) ) 
-    ) ),
-    d("X", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( account , undefined ) ) 
-    ) )
-    ], {class: "recordRow"}),
-  ) ),
-  dropdown(
-    0, 
-    Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })).concat({value: 0, label: "Legg til konto"}), 
-    e => A.updateEntityAttribute( entityID, attribute, mergerino( value, createObject( e.srcElement.value , 0 ) ) ),
-  )
-], {style: "border: solid 1px black;"})
-
-let foundersView = (S, A, attribute, value, entityID) => d([
-  span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
-  d([d("AksjonærID"), d("Antall aksjer"), d("Pris per aksje")], {class: "shareholderRow"}),
-  d( Object.values(value).map( shareholder => d([
-    input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( shareholder["shareholder"], undefined ),
-        createObject( e.srcElement.value, mergerino(
-          value[shareholder["shareholder"]],
-          createObject( "shareholder" , e.srcElement.value ),
-          )
-        )
-    ) )),
-    input({value: shareholder["shareCount"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( shareholder["shareholder"] , createObject("shareCount", Number( e.srcElement.value ) ) ),
-    ) )),
-    input({value: shareholder["sharePrice"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( shareholder["shareholder"] , createObject("sharePrice", Number( e.srcElement.value ) ) ),
-    ) )),
-    d("X", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( shareholder["shareholder"] , undefined ) ) 
-    ) )
-    ], {class: "shareholderRow"}),
-  ) ),
-  d("Legg til stifter", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
-    entityID, 
-    attribute, 
-    mergerino(
-      value,
-      createObject( "[AksjonærID]" , {shareholder: "[AksjonærID]", shareCount: 0, sharePrice: 0} ),
-  ) ) )
-], {style: "border: solid 1px black;"})
-
-
-let span = (text, tooltip, attributesObject, eventType, action) => htmlElementObject("span", mergerino({"title": tooltip}, attributesObject), text, eventType, action)
-
-let attributeView = (S, A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](S, A, attribute, value, entityID) : genericAttributeView( S, attribute, value, e => A.updateEntityAttribute( entityID, attribute, S.eventAttributes[attribute]["attr/valueType"] === "number" ? Number(e.srcElement.value) : e.srcElement.value) )
-
-let genericAttributeView = (S, attribute, value, onChange) => d([
-  d([
-    span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
-    input({value: value, style: `text-align: right;`}, "change", onChange ),
-    ], {class: "eventInspectorRow"}),
-])
-
-let newEventDropdown = (A, Event) => dropdown( "", 
-  Object.keys(eventTypes).map( newEventType => returnObject({value: newEventType, label: newEventType }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
-  e => A.createEvent(Event, e.srcElement.value )
-)
-  
-let specialAttributeViews = {
-  "event/account": (S, A, attribute, value, entityID) => d([
-    d(`event/account`),
-    dropdown(value, Object.keys(Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${Accounts[ accountNumber ].label}` })).concat({value: "", label: "Ingen konto valgt."}), e => A.updateEntityAttribute( entityID, attribute, e.srcElement.value) ),
-    ], {class: "eventInspectorRow"}),
-  "transaction/records": recordsView,
-  "event/incorporation/shareholders": foundersView
-}
