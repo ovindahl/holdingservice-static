@@ -123,17 +123,133 @@ let getUserActions = (S) => returnObject({
         let newS = mergerino(S, apiResponse)
         update( newS )
 
-    }
+    },
+    createEventValidator: async eventValidatorName => {
+
+        let datoms = [
+            newDatom("newEventType", "type", "eventValidator"),
+            newDatom("newEventType", "eventValidator/name", eventValidatorName),
+            newDatom("newEventType", "eventValidator/label", "[label]"),
+            newDatom("newEventType", "eventValidator/errorMessage", "[errorMessage]" ),
+            newDatom("newEventType", "eventValidator/doc", "[doc]"),
+        ]
+
+        let apiResponse = eventValidatorName.startsWith("eventValidator/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new eventValidator not valid", eventValidatorName)
+
+        let newS = mergerino(S, apiResponse)
+        update( newS )
+
+    },
+
+    
 })
 
 let update = (S) => {
 
-    S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )    
-    S.companyDoc = prepareCompanyDoc(S.selectedEvents)
-    console.log("companyDoc", S.companyDoc)
+    Object.keys(eventValidators).forEach( eventValidatorName => eventValidators[eventValidatorName]["errorMessage"] = S["eventValidators"][eventValidatorName]["eventValidator/errorMessage"] )
 
+    const attributeValidators = {
+        "attr/doc": v => typeof v === "string",
+        "attr/label": v => typeof v === "string",
+        "attr/valueType": v => ["string", "number", "object"].includes(v),
+        "eventType/name": v => [
+        v => typeof v === "string",
+        v => v.startsWith("eventType/")
+        ].every( f => f(v) ),
+        "eventType/doc": v => typeof v === "string",
+        "eventType/label": v => typeof v === "string",
+        "eventType/attributes":  v => [
+        v => typeof v === "object",
+        v => Array.isArray(v),
+        v => v.every( attr => Object.keys( Attribute.validators ).includes(attr) )
+        ].every( f => f(v) ),
+        "eventType/eventValidators":  v => [
+        v => typeof v === "object",
+        v => Array.isArray(v),
+        //v => v.every( attr => Object.keys( Attribute.validators ).includes(attr) )
+        ].every( f => f(v) ),
+        "eventValidator/name": v => [
+        v => typeof v === "string",
+        v => v.startsWith("eventValidator/")
+        ].every( f => f(v) ),
+        "eventValidator/doc": v => typeof v === "string",
+        "eventValidator/label": v => typeof v === "string",
+        "eventValidator/errorMessage": v => typeof v === "string",
+        "entity/type": v => [
+        v => typeof v === "string",
+        v => ["process", "event"].includes(v)
+        ].every( f => f(v) ),
+        "event/eventType": v => [
+            v => typeof v === "string", 
+            v => Object.keys(eventTypes).includes(v)
+        ].every( f => f(v) ),
+        "event/index": v => [ 
+            v => typeof v === "number",
+            v => v >= 1
+        ].every( f => f(v) ),
+        "event/description": v => [
+            v => typeof v === "string",
+        ].every( f => f(v) ),
+        "event/currency": v => [
+            v => typeof v === "string",
+        ].every( f => f(v) ),
+        "event/incorporation/orgnumber": v => [
+        v => typeof v === "string", 
+        v => v.length === 9,
+        ].every( f => f(v) ),
+        "event/incorporation/shareholders": v => [
+        v => typeof v === "object", 
+        v => Object.values( v ).every( shareholder => (typeof shareholder["shareholder"] === "string" && typeof shareholder["shareCount"] === "number" && typeof shareholder["sharePrice"] === "number" )  ),
+        ].every( f => f(v) ),
+        "event/date": v => [
+        v => typeof v === "string", 
+        v => v.length === 10
+        ].every( f => f( v ) ),
+        "event/incorporation/nominalSharePrice": v => [
+        v => typeof v === "number", 
+        v => v > 0
+        ].every( f => f(v) ),
+        "event/incorporation/incorporationCost": v => [
+        v => typeof v === "number", 
+        ].every( f => f(v) ),
+        "event/account": v => [
+        v => typeof v === "string", 
+        v => v.length === 4,
+        v => Number(v) >= 1000,
+        v => Number(v) < 10000,
+        ].every( f => f(v) ),
+        "event/amount": v => [
+        v => typeof v === "number",
+        ].every( f => f(v) ),
+        "event/bankTransactionReference": v => [
+        v => typeof v === "string",
+        ].every( f => f(v) ),
+        "transaction/records": v => [
+        v => typeof v === "object"
+        ].every( f => f(v) ),
+        "event/supplier": v => [
+        v => typeof v === "string"
+        ].every( f => f(v) ),
+        "event/shareholder": v => [
+        v => typeof v === "string"
+        ].every( f => f(v) ),
+        "event/investment/orgnumber": v => [
+        v => typeof v === "string"
+        ].every( f => f(v) ),
+    }
+
+    Object.keys(S.eventAttributes).forEach( eventAttributeName => S.eventAttributes[ eventAttributeName ]["validator"] = attributeValidators[ eventAttributeName ] )
+
+
+    S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )    
+    S.companyDoc = prepareCompanyDoc(S, S.selectedEvents)
+    console.log("companyDoc", S.companyDoc)
+/* 
     S.eventAttributes = Array.isArray(S.eventAttributes) ?  mergeArray( S.eventAttributes.map( eventAttribute => createObject(eventAttribute["attr/name"], eventAttribute) ) ) : S.eventAttributes //Ugly.......
-    S.eventTypes = Array.isArray(S.eventTypes) ?  mergeArray( S.eventTypes.map( eventType => createObject(eventType["eventType/name"], eventType) ) ) : S.eventTypes
+    S.eventTypes = Array.isArray(S.eventTypes) ?  mergeArray( S.eventTypes.map( eventType => createObject(eventType["eventType/name"], eventType) ) ) : S.eventTypes */
+
+
+    
 
     S.elementTree = generateHTMLBody(S, getUserActions(S) )
     

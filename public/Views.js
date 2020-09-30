@@ -52,8 +52,8 @@ let ifNot = (test, ifNot, then) => test ? then : ifNot
 
 // COMPANY DOCUMENT CREATION PIPELINE
 
-let getEventErrors = (companyDoc, Event) => eventTypes[ Event["event/eventType"] ]["attributes"].map( attribute => 
-  Attribute.validate( attribute, Event[ attribute ]  ) 
+let getEventErrors = (S, companyDoc, Event) => eventTypes[ Event["event/eventType"] ]["attributes"].map( attribute => 
+  S["eventAttributes"][attribute]["validator"]( Event[ attribute ] ) //Attribute.validate( attribute, Event[ attribute ]  ) 
     ? false 
     : `Attribute not valid: ${attribute}.`   )
   .concat( eventTypes[ Event["event/eventType"] ].validators.map( validatorName => 
@@ -64,11 +64,11 @@ let getEventErrors = (companyDoc, Event) => eventTypes[ Event["event/eventType"]
   ).filter( result => result !== false  ) 
 
 
-let rejectEventWithErrors = (companyDoc, Event) => mergerino(
+let rejectEventWithErrors = (S, companyDoc, Event) => mergerino(
   companyDoc,
   {"company/:rejectedEvents": companyDoc["company/:rejectedEvents"].concat( mergerino(
     Event,
-    {"event/:eventErrors": getEventErrors(companyDoc, Event) },
+    {"event/:eventErrors": getEventErrors(S, companyDoc, Event) },
   )  ) },
   {"company/:isValid": false}
 )
@@ -80,7 +80,7 @@ let constructEvent = (companyDoc, Event) => mergerino(
   outputFunction.getCalculatedEventFields( companyDoc, Event, Event["event/eventType"] ),
 )
 
-let isValidEvent = (companyDoc, Event) => getEventErrors(companyDoc, Event).length === 0
+let isValidEvent = (S, companyDoc, Event) => getEventErrors(S, companyDoc, Event).length === 0
 
 let constructCompanyPatch = (companyDoc, Event) => mergerino( outputFunction.getCalculatedCompanyFields( 
   companyDoc,
@@ -94,13 +94,13 @@ let applyEvent = (companyDoc, Event) => mergerino(
   constructCompanyPatch(companyDoc, Event)
 )
 
-let prepareCompanyDoc = Events => Events.reduce( (companyDoc, Event) => companyDoc["company/:isValid"]
+let prepareCompanyDoc = (S, Events) => Events.reduce( (companyDoc, Event) => companyDoc["company/:isValid"]
   ? Object.keys( eventTypes ).includes( Event["event/eventType"] )
-    ? isValidEvent( companyDoc, Event ) 
+    ?  isValidEvent( S, companyDoc, Event )
       ? applyEvent(companyDoc, Event) 
-      : rejectEventWithErrors(companyDoc, Event)
-    : rejectEventWithErrors(companyDoc, Event)
-  : rejectEventWithErrors(companyDoc, Event),
+      : rejectEventWithErrors(S, companyDoc, Event)
+    : rejectEventWithErrors(S, companyDoc, Event)
+  : rejectEventWithErrors(S, companyDoc, Event),
   getBlankCompanyDoc()
 )
 
@@ -164,32 +164,25 @@ let defaultEventAttributes = ["event/index", "event/date", "event/currency", "ev
 
 let eventValidators = {
   "eventValidator/currencyIsNOK": {
-    validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK",
-    errorMessage: "Currency must be NOK." 
+    validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK" 
   },
   "eventValidator/shareholderRequired": {
     validator: ( companyDoc, Event ) => Object.keys( Event["event/incorporation/shareholders"] ).length > 0,
-    errorMessage: "Must have at least one shareholder." 
   },
   "eventValidator/minimumShareCapital": {
     validator: ( companyDoc, Event ) => Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000  ,
-    errorMessage: "Share capital must be >= 30 000 NOK" 
   },
   "eventValidator/negativeAmount": {
     validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
-    errorMessage: "Amount must be < 0" 
   },
   "eventValidator/positiveAmount": {
     validator: ( companyDoc, Event ) => Event["event/amount"] > 0,
-    errorMessage: "Amount must be > 0" 
   },
   "eventValidator/isExistingSupplier": {
     validator: ( companyDoc, Event ) => companyDoc["company/:suppliers"].includes( Event["event/supplier"] ),
-    errorMessage: "Oppgitt leverandør eksisterer ikke [validering mot utestående gjeld TBD]." 
   },
   "eventValidator/isExistingShareholder": {
     validator: ( companyDoc, Event ) => companyDoc["company/:shareholders"].includes( Event["event/shareholder"] ) ,
-    errorMessage: "Oppgitt aksjonær eksisterer ikke." 
   }
 
 }
@@ -320,106 +313,6 @@ const eventTypes = {
 //let getRequiredHistoricalVariables = eventType => eventTypes[ eventType ]["requiredCalculatedFields"]
 let getRequiredAttributes = eventType => eventTypes[ eventType ]["attributes"]
 let getCalculatedFields_companyLevel = eventType => eventTypes[ eventType ]["calculatedFields_companyLevel"]
-let getSystemAttributes = () => ["entity", "entity/type", "event/eventType", "type" ]
-
-//Attributes
-
-const Attribute = {
-  validators: {
-    "attr/doc": v => typeof v === "string",
-    "attr/label": v => typeof v === "string",
-    "attr/valueType": v => ["string", "number", "object"].includes(v),
-    "eventType/name": v => [
-      v => typeof v === "string",
-      v => v.startsWith("eventType/")
-    ].every( f => f(v) ),
-    "eventType/doc": v => typeof v === "string",
-    "eventType/label": v => typeof v === "string",
-    "eventType/attributes":  v => [
-      v => typeof v === "object",
-      v => Array.isArray(v),
-      v => v.every( attr => Object.keys( Attribute.validators ).includes(attr) )
-    ].every( f => f(v) ),
-    "eventType/eventValidators":  v => [
-      v => typeof v === "object",
-      v => Array.isArray(v),
-      //v => v.every( attr => Object.keys( Attribute.validators ).includes(attr) )
-    ].every( f => f(v) ),
-    "eventValidator/name": v => [
-      v => typeof v === "string",
-      v => v.startsWith("eventValidator/")
-    ].every( f => f(v) ),
-    "eventValidator/doc": v => typeof v === "string",
-    "eventValidator/label": v => typeof v === "string",
-    "eventValidator/errorMessage": v => typeof v === "string",
-    "entity/type": v => [
-      v => typeof v === "string", //validator + description of correct format should be sufficient [?]
-      v => ["process", "event"].includes(v)
-    ].every( f => f(v) ),
-    "event/eventType": v => [
-        v => typeof v === "string", 
-        v => Object.keys(eventTypes).includes(v)
-      ].every( f => f(v) ),
-    "event/index": v => [ //Change to "event/prevEventEntity" ???
-          v => typeof v === "number",
-          v => v >= 1
-      ].every( f => f(v) ),
-    "event/description": v => [
-        v => typeof v === "string",
-    ].every( f => f(v) ),
-    "event/currency": v => [
-        v => typeof v === "string",
-    ].every( f => f(v) ),
-    "event/incorporation/orgnumber": v => [
-      v => typeof v === "string", 
-      v => v.length === 9,
-    ].every( f => f(v) ),
-    "event/incorporation/shareholders": v => [
-      v => typeof v === "object", 
-      v => Object.values( v ).every( shareholder => (typeof shareholder["shareholder"] === "string" && typeof shareholder["shareCount"] === "number" && typeof shareholder["sharePrice"] === "number" )  ),
-    ].every( f => f(v) ),
-    "event/date": v => [
-      v => typeof v === "string", 
-      v => v.length === 10
-    ].every( f => f( v ) ),
-    "event/incorporation/nominalSharePrice": v => [
-      v => typeof v === "number", 
-      v => v > 0
-    ].every( f => f(v) ),
-    "event/incorporation/incorporationCost": v => [
-      v => typeof v === "number", 
-    ].every( f => f(v) ),
-    "event/account": v => [
-      v => typeof v === "string", 
-      v => v.length === 4,
-      v => Number(v) >= 1000,
-      v => Number(v) < 10000,
-    ].every( f => f(v) ),
-    "event/amount": v => [
-      v => typeof v === "number",
-    ].every( f => f(v) ),
-    "event/bankTransactionReference": v => [
-      v => typeof v === "string",
-    ].every( f => f(v) ),
-    "transaction/records": v => [
-      v => typeof v === "object"
-    ].every( f => f(v) ),
-    "event/supplier": v => [
-      v => typeof v === "string"
-    ].every( f => f(v) ),
-    "event/shareholder": v => [
-      v => typeof v === "string"
-    ].every( f => f(v) ),
-    "event/investment/orgnumber": v => [
-      v => typeof v === "string"
-    ].every( f => f(v) ),
-  },
-  validate: (attribute, value) => Attribute.validators[ attribute ](value),
-  isNumber: (attribute) => ["event/index", "event/incorporation/nominalSharePrice", "event/shareCount", "event/incorporation/incorporationCost", "event/amount"].includes(attribute),
-  getSystemAttributes: () => ["entity", "entity/type"]
-}
-
-
 
 //Other config..
 
@@ -742,7 +635,7 @@ let feedContainer = (content, date, entityID) => d([
 let companySelectionMenuRow = (S, A) => d([
   d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => A.createEvent( null, "incorporation" ) )), {style: "display:flex;"}),
 ]) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "admin/eventAttributes", "admin/eventTypes"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "admin/eventAttributes", "admin/eventTypes", "admin/eventValidators"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -755,7 +648,8 @@ let pageRouter = {
   "timeline": (S, A) => timelineView(S, S.companyDoc, A),
   "companyDoc": (S, A) => companyDocPage( S.companyDoc ),
   "admin/eventAttributes": (S, A) => attributesPage( S, A ),
-  "admin/eventTypes": (S, A) => eventTypesPage( S, A )
+  "admin/eventTypes": (S, A) => eventTypesPage( S, A ),
+  "admin/eventValidators": (S, A) => eventValidatorsPage( S, A )
 }
 
 //Event Cycle Views
@@ -822,12 +716,12 @@ let attributesPage = ( S, A ) => d([
     d("attr/valueType"),
     d("attr/doc")
   ], {class: "attributeRow", style: "background-color: gray;"} ),
-  d( Object.values(S.eventAttributes).map( Attribute => d([
-    d(String(Attribute["entity"])),
-    d(Attribute["attr/name"]),
-    input({value: Attribute["attr/label"]}, "change", e => A.updateEntityAttribute( Attribute.entity, "attr/label", e.srcElement.value ) ),
-    Attribute["attr/valueType"] ? d(Attribute["attr/valueType"]) : input({value: "string/number"}, "change", e => A.updateEntityAttribute( Attribute.entity, "attr/valueType", e.srcElement.value ) ) ,
-    input({value: Attribute["attr/doc"]}, "change", e => A.updateEntityAttribute( Attribute.entity, "attr/doc", e.srcElement.value ) )
+  d( Object.values(S.eventAttributes).map( attribute => d([
+    d(String(attribute["entity"])),
+    d(attribute["attr/name"]),
+    input({value: attribute["attr/label"]}, "change", e => A.updateEntityAttribute( attribute.entity, "attr/label", e.srcElement.value ) ),
+    attribute["attr/valueType"] ? d(attribute["attr/valueType"]) : input({value: "string/number"}, "change", e => A.updateEntityAttribute( attribute.entity, "attr/valueType", e.srcElement.value ) ) ,
+    input({value: attribute["attr/doc"]}, "change", e => A.updateEntityAttribute( attribute.entity, "attr/doc", e.srcElement.value ) )
   ], {class: "attributeRow"} ) ) ),
   d([
     d("Opprett ny"),
@@ -838,15 +732,17 @@ let attributesPage = ( S, A ) => d([
 let eventTypesPage = ( S, A ) => d([
   d([
     d("entity"),
-    d("eventType/name"),
-    d("eventType/label"),
+    d("name, label, doc"),
     d("eventType/attributes"),
-    d("eventType/doc"),
+    d("eventType/eventValidators"),
   ], {class: "eventTypeRow", style: "background-color: gray;"} ),
   d( Object.values(S.eventTypes).map( eventType => d([
     d(String(eventType["entity"])),
-    d([input({value: eventType["eventType/name"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/name", e.srcElement.value ) )], {style: "display: flex;"}),
-    d([input({value: eventType["eventType/label"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/label", e.srcElement.value ) )], {style: "display: flex;"}),
+    d([
+      input({value: eventType["eventType/name"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/name", e.srcElement.value ) ),
+      input({value: eventType["eventType/label"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/label", e.srcElement.value ) ),
+      input({value: eventType["eventType/doc"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/doc", e.srcElement.value ) )
+    ], {style: "display: grid;"}),
     d( eventType["eventType/attributes"].map( attribute => d([span(
       S.eventAttributes[attribute]["attr/label"] + "[X]", 
       S.eventAttributes[attribute]["attr/doc"])], 
@@ -865,7 +761,7 @@ let eventTypesPage = ( S, A ) => d([
       S.eventValidators[validatorName]["eventValidator/doc"])], 
       {class: "textButton_narrow"}, 
       "click", 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].filter( attr => attr !== attribute )  ) 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].filter( validator => validator !== validatorName )  ) 
       ) 
     ).concat( dropdown(
       0, 
@@ -873,13 +769,37 @@ let eventTypesPage = ( S, A ) => d([
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].concat( e.srcElement.value )  )   
       )  ) 
     ),
-    d([input({value: eventType["eventType/doc"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/doc", e.srcElement.value ) )], {style: "display: flex;"}),
   ], {class: "eventTypeRow"} ) ) ),
   d([
     d("Opprett ny"),
     input({value: "eventType/[newEventType]" }, "change", e => A.createEventType( e.srcElement.value ) )
   ], {class: "eventTypeRow"} ),
 ]) 
+
+
+
+let eventValidatorsPage = ( S, A ) => d([
+  d([
+    d("entity"),
+    d("eventValidator/name"),
+    d("eventValidator/label"),
+    d("eventValidator/errorMessage"),
+    d("eventValidator/doc")
+  ], {class: "attributeRow", style: "background-color: gray;"} ),
+  d( Object.values(S.eventValidators).map( eventValidator => d([
+    d(String(eventValidator["entity"])),
+    input({value: eventValidator["eventValidator/name"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/name", e.srcElement.value ) ),
+    input({value: eventValidator["eventValidator/label"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/label", e.srcElement.value ) ),
+    input({value: eventValidator["eventValidator/errorMessage"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/errorMessage", e.srcElement.value ) ),
+    input({value: eventValidator["eventValidator/doc"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/doc", e.srcElement.value ) ),
+  ], {class: "attributeRow"} ) ) ),
+  d([
+    d("Opprett ny"),
+    input({value: "eventValidator/[name]" }, "change", e => A.createEventValidator( e.srcElement.value ) )
+  ], {class: "attributeRow"} ),
+]) 
+
+
 
 
 
@@ -980,7 +900,7 @@ let foundersView = (S, A, attribute, value, entityID) => d([
 
 let span = (text, tooltip, attributesObject, eventType, action) => htmlElementObject("span", mergerino({"title": tooltip}, attributesObject), text, eventType, action)
 
-let attributeView = (S, A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](S, A, attribute, value, entityID) : genericAttributeView( S, attribute, value, e => A.updateEntityAttribute( entityID, attribute, Attribute.isNumber(attribute) ? Number(e.srcElement.value) : e.srcElement.value) )
+let attributeView = (S, A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](S, A, attribute, value, entityID) : genericAttributeView( S, attribute, value, e => A.updateEntityAttribute( entityID, attribute, S.eventAttributes[attribute]["attr/valueType"] === "number" ? Number(e.srcElement.value) : e.srcElement.value) )
 
 let genericAttributeView = (S, attribute, value, onChange) => d([
   d([

@@ -72,8 +72,10 @@ body {background-color: #F2F3F5;}
 
 .eventTypeRow {
     display:grid;
-    grid-template-columns: 1fr 3fr 3fr 3fr 3fr;
-    padding: 1px; 
+    grid-template-columns: 1fr 4fr 2fr 2fr;
+    padding: 1px;     
+    border: 1px solid gray;
+
 }
 
 
