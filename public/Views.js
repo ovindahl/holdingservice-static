@@ -53,11 +53,9 @@ let ifNot = (test, ifNot, then) => test ? then : ifNot
 // COMPANY DOCUMENT CREATION PIPELINE
 
 let getAttributeErrors = (S, Event)=> S["eventTypes"][ Event["event/eventType"] ]["eventType/attributes"].map( attribute => S["eventAttributes"][attribute]["validator"]( Event[ attribute ] ) ? false : `Attribute not valid: ${attribute}.` ).filter( result => result !== false  )
-let getEventTypeErrors = (S, companyDoc, Event) => S["eventTypes"][ Event["event/eventType"] ]["eventType/eventValidators"].map( validatorName => S["eventValidators"][validatorName]["validator"](companyDoc, Event ) ? false : S["eventValidators"][validatorName]["eventValidator/errorMessage"]).filter( result => result !== false  )
+let getEventTypeErrors = (S, companyDoc, constructedEvent) => S["eventTypes"][ constructedEvent["event/eventType"] ]["eventType/eventValidators"].map( validatorName => S["eventValidators"][validatorName]["validator"](companyDoc, constructedEvent ) ? false : S["eventValidators"][validatorName]["eventValidator/errorMessage"]).filter( result => result !== false  )
 
-let getEventErrors = (S, companyDoc, Event) => getAttributeErrors(S, Event).concat( getEventTypeErrors(S, companyDoc, Event)  )
-
-
+let getEventErrors = (S, companyDoc, Event) => getAttributeErrors(S, Event).concat( getEventTypeErrors(S, companyDoc, mergerino(Event, constructEvent(S, Event) ) )  )
 
 let rejectEventWithErrors = (S, companyDoc, Event) => mergerino(
   companyDoc,
@@ -68,25 +66,18 @@ let rejectEventWithErrors = (S, companyDoc, Event) => mergerino(
   {"company/:isValid": false}
 )
 
-
-
-let constructEvent = (companyDoc, Event) => mergerino(
-  Event,  
-  outputFunction.getCalculatedEventFields( companyDoc, Event, Event["event/eventType"] ),
-)
+let constructEvent = (S, Event) => S.eventTypes[ Event["event/eventType"] ]["eventConstructor"](Event)
 
 let isValidEvent = (S, companyDoc, Event) => getEventErrors(S, companyDoc, Event).length === 0
 
-let constructCompanyPatch = (companyDoc, Event) => mergerino( outputFunction.getCalculatedCompanyFields( 
-  companyDoc,
-  constructEvent(companyDoc, Event), 
-  Event["event/eventType"] 
-  )
+let constructCompanyPatch = (S, companyDoc, Event) => mergeArray( 
+  Object.keys( constructEvent(S, Event) ).map( calculatedEventField => 
+    calculatedEventFields[ calculatedEventField ]["dependencies"] ).flat().map( calculatedField => createObject(calculatedField, outputFunction.calculate(S, calculatedField, companyDoc, Event, constructEvent(S, Event) ) )  )
 )
 
-let applyEvent = (companyDoc, Event) => mergerino(
+let applyEvent = (S, companyDoc, Event) => mergerino(
   companyDoc,
-  constructCompanyPatch(companyDoc, Event)
+  constructCompanyPatch(S, companyDoc, Event)
 )
 
 let isValidEventType = (S, eventType) => Object.keys( S.eventTypes ).includes( eventType )
@@ -94,7 +85,7 @@ let isValidEventType = (S, eventType) => Object.keys( S.eventTypes ).includes( e
 let prepareCompanyDoc = (S, Events) => Events.reduce( (companyDoc, Event) => companyDoc["company/:isValid"]
   ? isValidEventType( S, Event["event/eventType"] )
     ?  isValidEvent( S, companyDoc, Event )
-      ? applyEvent(companyDoc, Event) 
+      ? applyEvent(S, companyDoc, Event) 
       : rejectEventWithErrors(S, companyDoc, Event)
     : rejectEventWithErrors(S, companyDoc, Event)
   : rejectEventWithErrors(S, companyDoc, Event),
@@ -114,147 +105,27 @@ let getBlankCompanyDoc = () => returnObject({
 
 let updateAccountBalance = (accountBalance, patch) => mergerino( accountBalance, Object.entries( patch ).map( entry => createObject(entry[0],  accountBalance[ entry[0] ] ?   accountBalance[ entry[0] ] + entry[1] : entry[1] )  ) ) 
 
+const calculatedEventFields = {
+  "event/:accountBalance": {
+    "dependencies": ["company/:accountBalance"]
+  },
+  "event/:supplier": {
+    "dependencies": ["company/:suppliers"]
+  },
+  "event/:shareholders": {
+    "dependencies": ["company/:shareholders"]
+  },
+}
+
 const outputFunction = {
   functions: {
-    "company/:orgnumber": (companyDoc, Event) => Event["event/incorporation/orgnumber"],
-    "company/:shareholders": (companyDoc, Event) => companyDoc["company/:shareholders"].concat( Event["event/:shareholders"] ),
-    "company/:accountBalance": (companyDoc, Event) => updateAccountBalance( companyDoc["company/:accountBalance"], Event["event/:accountBalance"] ),
-    "company/:suppliers": (companyDoc, Event) => companyDoc["company/:suppliers"].includes(Event["event/supplier"]) ? companyDoc["company/:suppliers"] : companyDoc["company/:suppliers"].concat( Event["event/supplier"] ),
-    "company/:appliedEvents": (companyDoc, Event) => companyDoc["company/:appliedEvents"].concat( Event ),
+    "company/:shareholders": (S, companyDoc, Event, calculatedEventAttributes) => companyDoc["company/:shareholders"].concat( calculatedEventAttributes["event/:shareholders"] ),
+    "company/:accountBalance": (S, companyDoc, Event, calculatedEventAttributes) => updateAccountBalance( companyDoc["company/:accountBalance"], calculatedEventAttributes["event/:accountBalance"] ),
+    "company/:suppliers": (S, companyDoc, Event, calculatedEventAttributes) => companyDoc["company/:suppliers"].includes(calculatedEventAttributes["event/:supplier"]) ? companyDoc["company/:suppliers"] : companyDoc["company/:suppliers"].concat( calculatedEventAttributes["event/:supplier"] ),
+    "company/:appliedEvents": (S, companyDoc, Event, calculatedEventAttributes) => companyDoc["company/:appliedEvents"].concat( mergerino(Event, calculatedEventAttributes ) ),
   },
-  defaultDependencies: ["company/:appliedEvents"],
-  calculate: (functionName, companyDoc, Event) => outputFunction.functions[ functionName ](companyDoc, Event),
-  getCalculatedEventFields: ( companyDoc, Event, eventType ) => eventTypes[ eventType ]["eventConstructor"]( companyDoc, Event ),
-  getCalculatedCompanyFields: ( companyDoc, calculatedEventAttributes, eventType ) => eventTypes[ eventType ]["calculatedFields_companyLevel"].concat(outputFunction.defaultDependencies).map( (calculatedField) => createObject(calculatedField, outputFunction.calculate(calculatedField, companyDoc, calculatedEventAttributes ) )  ),
+  calculate: (S, functionName, companyDoc, Event, calculatedEventAttributes) => outputFunction.functions[ functionName ](S, companyDoc, Event, calculatedEventAttributes),
 }
-
-//Event types
-
-let defaultEventDatoms = (appliedEvent) => [
-  newDatom("newEvent", "type", "process"), //TBU..
-  newDatom("newEvent", "entity/type", "event"),
-  newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
-  newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
-  newDatom("newEvent", "event/date", appliedEvent["event/date"] ),
-  newDatom("newEvent", "event/currency", "NOK")
-]
-
-let defaultEventAttributes = ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"]
-
-const eventTypes = {
-  "eventType/incorporation": {
-    eventType: "eventType/incorporation",
-    attributes: defaultEventAttributes.concat(["event/incorporation/nominalSharePrice", "event/incorporation/shareholders", "event/incorporation/incorporationCost", "event/supplier"]),
-    eventConstructor: ( companyDoc, Event ) => {
-      let shareCapital = Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0)
-      return {
-        "event/:accountBalance": {"1576": shareCapital, "2000": -shareCapital, "2036": Event["event/incorporation/incorporationCost"], "2400": -Event["event/incorporation/incorporationCost"] },
-        "event/:shareholders": Object.keys(Event["event/incorporation/shareholders"])
-      }
-    } ,
-    calculatedFields_companyLevel: ["company/:orgnumber", "company/:accountBalance", "company/:shareholders", , "company/:suppliers"],
-    newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-      newDatom("newEvent", "event/eventType", "eventType/incorporation"),
-      newDatom("newEvent", "event/description", "Stiftelse" ),
-      newDatom("newEvent", "event/incorporation/shareholders", {} ),
-      newDatom("newEvent", "event/incorporation/incorporationCost", -5570 ),
-      newDatom("newEvent", "event/supplier", "[Brreg]" ),
-    ])
-  },
-  "eventType/operatingCost/supplierDebt": {
-    eventType: "eventType/operatingCost/supplierDebt",
-    attributes: defaultEventAttributes.concat(["event/supplier", "event/amount"]),
-    eventConstructor: ( companyDoc, Event ) => mergerino(  
-      {"event/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} }
-    ) ,
-    calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
-    newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-      newDatom("newEvent", "event/eventType", "eventType/operatingCost/supplierDebt"),
-      newDatom("newEvent", "event/description", "Annen driftskostnad, betalt av selskapet." ),
-      newDatom("newEvent", "event/supplier", "[Orgnr. på leverandør]" ),
-      newDatom("newEvent", "event/amount", 0 ),
-    ])
-  },
-  "eventType/operatingCost/shareholderDebt": {
-    eventType: "operatingCost/shareholderDebt",
-    attributes: defaultEventAttributes.concat(["event/supplier", "event/amount", "event/shareholder"]),
-    eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"7790": -Event["event/amount"], "2910": Event["event/amount"]} ),
-    calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
-    newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-      newDatom("newEvent", "event/eventType", "eventType/operatingCost/shareholderDebt"),
-      newDatom("newEvent", "event/description", "Annen driftskostnad, betalt ved utlegg." ),
-      newDatom("newEvent", "event/supplier", "[Orgnr. på leverandør]" ),
-      newDatom("newEvent", "event/shareholder", "[AksjonærID]" ),
-      newDatom("newEvent", "event/amount", 0 ),
-    ])
-  },
-  "eventType/operatingCost/bank": {
-    eventType: "operatingCost/bank",
-    attributes: defaultEventAttributes.concat(["event/supplier", "event/amount", "event/bankTransactionReference"]),
-    eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"7790": -Event["event/amount"], "1920": Event["event/amount"]} ),
-    calculatedFields_companyLevel: ["company/:accountBalance", "company/:suppliers"],
-    newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "eventType/operatingCost/bank"),
-        newDatom("newEvent", "event/description", "Annen driftskostnad, betalt fra bedriftens bankkonto." ),
-        newDatom("newEvent", "event/supplier", "[Orgnr. på leverandør]" ),
-        newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
-        newDatom("newEvent", "event/amount", 0 ),
-    ])
-  },
-  "eventType/payments/shareCapital": {
-    eventType: "payments/shareCapital",
-    attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/shareholder"]),
-    eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"1576": -Event["event/amount"], "1920": Event["event/amount"]} ),
-    calculatedFields_companyLevel: ["company/:accountBalance"],
-    newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "eventType/payments/shareCapital"),
-        newDatom("newEvent", "event/description", "Innbetaling av aksjekapital." ),
-        newDatom("newEvent", "event/shareholder", "[AksjonærID]" ),
-        newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
-        newDatom("newEvent", "event/amount", 0 ),
-    ])
-  },
-  "eventType/payments/supplierDebt": {
-    eventType: "payments/supplierDebt",
-    attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/supplier"]),
-    eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"2400": -Event["event/amount"], "1920": Event["event/amount"]} ),
-    calculatedFields_companyLevel: ["company/:accountBalance"],
-    newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "eventType/payments/supplierDebt"),
-        newDatom("newEvent", "event/description", "Betaling leverandørgjeld" ),
-        newDatom("newEvent", "event/supplier", "[Orgnr. på leverandør]" ),
-        newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
-        newDatom("newEvent", "event/amount", 0 ),
-    ])
-  },
-  "eventType/shareholderLoan/increase": {
-    eventType: "shareholderLoan/increase",
-    attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/shareholder"]),
-    eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"2250": -Event["event/amount"], "1920": Event["event/amount"]} ),
-    calculatedFields_companyLevel: ["company/:accountBalance"],
-    newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "eventType/shareholderLoan/increase"),
-        newDatom("newEvent", "event/description", "Lån fra aksjonær, kontantoppgjør, ingen forfall, skjermingsrente" ),
-        newDatom("newEvent", "event/shareholder", "[AksjonærID]" ),
-        newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
-        newDatom("newEvent", "event/amount", 0 ),
-    ])
-  },
-  "eventType/investments/new/unlisted/bank": {
-    eventType: "investments/new/unlisted/bank",
-    attributes: defaultEventAttributes.concat(["event/amount", "event/bankTransactionReference", "event/investment/orgnumber"]),
-    eventConstructor: ( companyDoc, Event ) => createObject("event/:accountBalance" , {"1350": -Event["event/amount"], "1920": Event["event/amount"]} ),
-    calculatedFields_companyLevel: ["company/:accountBalance"],
-    newEventDatoms: (appliedEvent) => defaultEventDatoms(appliedEvent).concat([
-        newDatom("newEvent", "event/eventType", "eventType/investments/new/unlisted/bank"),
-        newDatom("newEvent", "event/description", "Kjøp norsk aksje kontantoppgjør NOK, ikke noterte, langsiktig" ),
-        newDatom("newEvent", "event/investment/orgnumber", "[Org.nr investering]" ),
-        newDatom("newEvent", "event/bankTransactionReference", "[Transaksjonsreferanse fra bank]" ),
-        newDatom("newEvent", "event/amount", 0 ),
-    ])
-  }
-}
-
 
 //HTML element generation
 let IDcounter = [0];
@@ -341,14 +212,14 @@ let timelineView = (S, companyDoc, A) => d([
 ])
 
 let appliedEventView = (S, appliedEvent , A) => d([
-    h3( S.eventTypes[ appliedEvent["event/eventType"] ] ? S.eventTypes[ appliedEvent["event/eventType"] ]["eventType/label"] : appliedEvent["event/eventType"] , {style: `background-color: #1073104f; padding: 1em;`} ),
+    h3( S.eventTypes[ logThis(appliedEvent)["event/eventType"] ]["eventType/label"], {style: `background-color: #1073104f; padding: 1em;`} ),
     attributesTableView(S, appliedEvent, A),
     retractEventButton( appliedEvent["entity"], A),
     newEventDropdown(S, A, appliedEvent)
 ])
 
 let rejectedEventView = (S, rejectedEvent , A) => d([
-  h3(S.eventTypes[ rejectedEvent["event/eventType"] ] ? S.eventTypes[ rejectedEvent["event/eventType"] ]["eventType/label"] : rejectedEvent["event/eventType"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
+  h3( S.eventTypes[ rejectedEvent["event/eventType"] ]["eventType/label"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
   d( rejectedEvent["event/:eventErrors"].map( error => d(error, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  )),
   d("<br>"),
   attributesTableView(S, rejectedEvent, A),
@@ -507,7 +378,7 @@ let recordsView = (S, A, attribute, value, entityID) => d([
 let foundersView = (S, A, attribute, value, entityID) => d([
   span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
   d([d("AksjonærID"), d("Antall aksjer"), d("Pris per aksje")], {class: "shareholderRow"}),
-  d( Object.values(value).map( shareholder => d([
+  d( Object.values( value).map( shareholder => d([
     input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
       entityID, 
       attribute, 

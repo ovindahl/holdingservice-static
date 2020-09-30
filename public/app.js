@@ -82,7 +82,19 @@ let getUserActions = (S) => returnObject({
     },
     createEvent: async ( appliedEvent, newEventType ) => {
 
-        let datoms = eventTypes[ newEventType ]["newEventDatoms"](appliedEvent)
+
+
+
+        let datoms = [
+            newDatom("newEvent", "type", "process"),
+            newDatom("newEvent", "entity/type", "event"),
+            newDatom("newEvent", "event/eventType", newEventType),
+            newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
+            newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
+            newDatom("newEvent", "event/date", appliedEvent["event/date"] ),
+            newDatom("newEvent", "event/currency", "NOK")
+        ]
+        
 
         let apiResponse = await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms ))
         let newS = mergerino(S, apiResponse)
@@ -146,6 +158,38 @@ let getUserActions = (S) => returnObject({
 })
 
 let update = (S) => {
+
+    const eventConstructors = {
+    "eventType/incorporation": Event => {
+        let shareCapital = (typeof Event["event/incorporation/shareholders"] === "object") ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) : 0
+        return {
+            "event/:accountBalance": {"1576": shareCapital, "2000": -shareCapital, "2036": Event["event/incorporation/incorporationCost"], "2400": -Event["event/incorporation/incorporationCost"] },
+            "event/:shareholders": (typeof Event["event/incorporation/shareholders"] === "object") ? Object.keys(Event["event/incorporation/shareholders"]) : [],
+            "event/:supplier": Event["event/supplier"]
+        }
+    },
+    "eventType/operatingCost/supplierDebt": Event => mergerino(  
+        {"event/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} },
+        {"event/:supplier": Event["event/supplier"]}
+    ),
+    "eventType/operatingCost/shareholderDebt": Event => mergerino(
+        {"event/:accountBalance": {"7790": -Event["event/amount"], "2910": Event["event/amount"]}},
+        {"event/:supplier": Event["event/supplier"]}
+    ),
+    "eventType/operatingCost/bank": Event => mergerino(
+        {"event/:accountBalance": {"7790": -Event["event/amount"], "1920": Event["event/amount"]}},
+        {"event/:supplier": Event["event/supplier"]}
+    ),
+    "eventType/payments/shareCapital": Event => returnObject({"event/:accountBalance": {"1576": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/payments/supplierDebt": Event => mergerino(
+            {"event/:accountBalance": {"2400": -Event["event/amount"], "1920": Event["event/amount"]}},
+            {"event/:supplier": Event["event/supplier"]}
+    ),
+    "eventType/shareholderLoan/increase": Event => returnObject({"event/:accountBalance": {"2250": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/investments/new/unlisted/bank": Event => returnObject({"event/:accountBalance": {"1350": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    }
+
+    Object.keys(S.eventTypes).forEach( eventType => S.eventTypes[ eventType ]["eventConstructor"] = eventConstructors[ eventType ] )
 
     const attributeValidators = {
         "attr/doc": v => typeof v === "string",
@@ -248,10 +292,10 @@ let update = (S) => {
           validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK" 
         },
         "eventValidator/shareholderRequired": {
-          validator: ( companyDoc, Event ) => Object.keys( Event["event/incorporation/shareholders"] ).length > 0,
+          validator: ( companyDoc, Event ) => typeof Event === "object",
         },
         "eventValidator/minimumShareCapital": {
-          validator: ( companyDoc, Event ) => Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000  ,
+          validator: ( companyDoc, Event ) => Event["event/incorporation/shareholders"] ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000 : false,
         },
         "eventValidator/negativeAmount": {
           validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
