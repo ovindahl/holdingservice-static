@@ -153,8 +153,37 @@ let getUserActions = (S) => returnObject({
         update( newS )
 
     },
+    createEventField: async eventFieldName => {
 
-    
+        let datoms = [
+            newDatom("newEventType", "type", "eventField"),
+            newDatom("newEventType", "eventField/name", eventFieldName),
+            newDatom("newEventType", "eventField/label", "[label]"),
+            newDatom("newEventType", "eventField/companyFields", ["companyField/:accountBalance"] ),
+            newDatom("newEventType", "eventField/doc", "[doc]"),
+        ]
+
+        let apiResponse = eventFieldName.startsWith("eventField/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new eventFieldName not valid", eventFieldName)
+
+        let newS = mergerino(S, apiResponse)
+        update( newS )
+
+    },
+    createCompanyField: async companyFieldName => {
+
+        let datoms = [
+            newDatom("newEventType", "type", "companyField"),
+            newDatom("newEventType", "companyField/name", companyFieldName),
+            newDatom("newEventType", "companyField/label", "[label]"),
+            newDatom("newEventType", "companyField/doc", "[doc]"),
+        ]
+
+        let apiResponse = companyFieldName.startsWith("companyField/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new companyFieldName not valid", companyFieldName)
+
+        let newS = mergerino(S, apiResponse)
+        update( newS )
+
+    },
 })
 
 let update = (S) => {
@@ -210,6 +239,10 @@ let update = (S) => {
         v => typeof v === "object",
         v => Array.isArray(v),
         ].every( f => f(v) ),
+        "eventType/eventFields":  v => [
+            v => typeof v === "object",
+            v => Array.isArray(v),
+        ].every( f => f(v) ),
         "eventValidator/name": v => [
         v => typeof v === "string",
         v => v.startsWith("eventValidator/")
@@ -217,6 +250,22 @@ let update = (S) => {
         "eventValidator/doc": v => typeof v === "string",
         "eventValidator/label": v => typeof v === "string",
         "eventValidator/errorMessage": v => typeof v === "string",
+        "eventField/name": v => [
+            v => typeof v === "string",
+            v => v.startsWith("eventField/")
+            ].every( f => f(v) ),
+        "eventField/doc": v => typeof v === "string",
+        "eventField/label": v => typeof v === "string",
+        "eventField/companyFields":  v => [
+            v => typeof v === "object",
+            v => Array.isArray(v),
+            ].every( f => f(v) ),
+        "companyField/name": v => [
+            v => typeof v === "string",
+            v => v.startsWith("eventField/")
+            ].every( f => f(v) ),
+        "companyField/doc": v => typeof v === "string",
+        "companyField/label": v => typeof v === "string",
         "entity/type": v => [
         v => typeof v === "string",
         v => ["process", "event"].includes(v)
@@ -304,10 +353,10 @@ let update = (S) => {
           validator: ( Event, eventPrecedents ) => Event["event/amount"] > 0,
         },
         "eventValidator/isExistingSupplier": {
-          validator: ( Event, eventPrecedents ) => eventPrecedents["company/:suppliers"].includes( Event["event/supplier"] ),
+          validator: ( Event, eventPrecedents ) => eventPrecedents["companyField/:suppliers"].includes( Event["event/supplier"] ),
         },
         "eventValidator/isExistingShareholder": {
-          validator: ( Event, eventPrecedents ) => eventPrecedents["company/:shareholders"].includes( Event["event/shareholder"] ) ,
+          validator: ( Event, eventPrecedents ) => eventPrecedents["companyField/:shareholders"].includes( Event["event/shareholder"] ) ,
         }
       
     }
@@ -398,50 +447,24 @@ let update = (S) => {
 
     S.Accounts = Accounts
 
-    //Company output functions
-
-
-    const eventFields = {
-        "eventField/:accountBalance": {
-            "eventField/name": "eventField/:accountBalance",
-            "eventField/label": "Hendelsens saldobalanse",
-            "eventField/doc": "Netto saldobalanse for en hendelse",
-            "eventField/companyFields": ["company/:accountBalance"]
-        },
-        "eventField/:supplier": {
-            "eventField/name": "eventField/:supplier",
-            "eventField/label": "Ny leverandør?",
-            "eventField/doc": "TBD",
-            "eventField/companyFields": ["company/:suppliers"]
-        },
-        "eventField/:shareholders": {
-            "eventField/name": "eventField/:shareholders",
-            "eventField/label": "Nye aksjonærer?",
-            "eventField/doc": "TBD",
-            "eventField/companyFields": ["company/:shareholders"]
-        },
-    }
-
-    S.eventFields = eventFields
     
-    const companyFields =  {
-        "company/:shareholders": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( calculatedEventAttributes["eventField/:shareholders"] ),
-        "company/:accountBalance": (prevValue, Event, calculatedEventAttributes) => mergerino( prevValue, Object.entries( calculatedEventAttributes["eventField/:accountBalance"] ).map( entry => createObject(entry[0],  prevValue[ entry[0] ] ?   prevValue[ entry[0] ] + entry[1] : entry[1] )  ) ),
-        "company/:suppliers": (prevValue, Event, calculatedEventAttributes) => prevValue.includes(calculatedEventAttributes["eventField/:supplier"]) ? prevValue : prevValue.concat( calculatedEventAttributes["eventField/:supplier"] ),
-        "company/:appliedEvents": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( mergerino(Event, calculatedEventAttributes ) ),
+    const companyFieldConstructors =  {
+        "companyField/:shareholders": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( calculatedEventAttributes["eventField/:shareholders"] ),
+        "companyField/:accountBalance": (prevValue, Event, calculatedEventAttributes) => mergerino( prevValue, Object.entries( calculatedEventAttributes["eventField/:accountBalance"] ).map( entry => createObject(entry[0],  prevValue[ entry[0] ] ?   prevValue[ entry[0] ] + entry[1] : entry[1] )  ) ),
+        "companyField/:suppliers": (prevValue, Event, calculatedEventAttributes) => prevValue.includes(calculatedEventAttributes["eventField/:supplier"]) ? prevValue : prevValue.concat( calculatedEventAttributes["eventField/:supplier"] ),
+        "companyField/:appliedEvents": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( mergerino(Event, calculatedEventAttributes ) ),
     }
 
-    S.companyFields = companyFields
+    Object.keys(S.companyFields).forEach( companyField => S.companyFields[ companyField ]["constructor"] = companyFieldConstructors[ companyField ] )
 
     S.companyDocVersions = [{
-        "company/:version": 0, 
-        "company/:shareholders": [], 
-        "company/:suppliers": [],
-        "company/:accountBalance": {}, 
+        "companyField/:version": 0, 
+        "companyField/:shareholders": [], 
+        "companyField/:suppliers": [],
+        "companyField/:accountBalance": {}, 
     }]
     S.appliedEvents = []
     S.rejectedEvents = []
-    //S.validatedEvents = S.selectedEvents.reduce( (validatedEvents, Event) => getAttributeErrors(S, Event).length === 0 ? validatedEvents.concat(Event) : validatedEvents, [] )
 
     S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ).forEach( (Event, index) => {
 
@@ -461,7 +484,7 @@ let update = (S) => {
 
                 //1: Get (and validate?) required historical variables
 
-            let requiredHistoricalVariables = (eventType === "eventType/operatingCost/shareholderDebt" || eventType ===  "eventType/payments/shareCapital") ? ["company/:shareholders"] : [] // S.eventTypes[ eventType ]["eventType/precedents"]
+            let requiredHistoricalVariables = (eventType === "eventType/operatingCost/shareholderDebt" || eventType ===  "eventType/payments/shareCapital") ? ["companyField/:shareholders"] : [] // S.eventTypes[ eventType ]["eventType/precedents"]
 
             let eventPrecedents = mergeArray( requiredHistoricalVariables.map( variableName => createObject( variableName, companyDoc[ variableName ] )  ) ) 
 
@@ -483,7 +506,7 @@ let update = (S) => {
 
                 let calculatedFields = S.eventTypes[ eventType ]["eventType/eventConstructor"]( Event, eventPrecedents )
 
-                let companyPatch = mergeArray( S.eventTypes[ eventType ]["eventType/eventFields"].map( eventField => S.eventFields[ eventField ][ "eventField/companyFields" ].reduce( (companyPatch, companyField) => mergerino( companyPatch, createObject(companyField, companyFields[ companyField ]( companyDoc[ companyField ]  , Event, calculatedFields) )   ), {} ) ) )
+                let companyPatch = mergeArray( S.eventTypes[ eventType ]["eventType/eventFields"].map( eventField => S.eventFields[ eventField ][ "eventField/companyFields" ].reduce( (companyPatch, companyField) => mergerino( companyPatch, createObject(companyField, S.companyFields[ companyField ]["constructor"]( companyDoc[ companyField ]  , Event, calculatedFields) )   ), {} ) ) )
 
                 let constructedEvent = mergerino(Event, calculatedFields, companyPatch)
 
@@ -499,8 +522,6 @@ let update = (S) => {
     }  )
 
 
-    //S.companyDoc = prepareCompanyDoc(S, S.selectedEvents)
-    //console.log("companyDoc", S.companyDoc)
 
     console.log("State: ", S)
 

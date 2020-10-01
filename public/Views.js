@@ -112,7 +112,7 @@ let feedContainer = (content, date, entityID) => d([
 let companySelectionMenuRow = (S, A) => d([
   d( S.Events.filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S.selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => console.log("TBD...") )), {style: "display:flex;"}),
 ]) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "admin/eventAttributes", "admin/eventTypes", "admin/eventValidators"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "admin/eventAttributes", "admin/eventTypes", "admin/eventValidators", "admin/eventFields", "admin/companyFields"].map( pageName => d( pageName, {class: pageName === S.currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -126,6 +126,8 @@ let pageRouter = {
   "companyDoc": (S, A) => companyDocPage( S.companyDoc ),
   "admin/eventAttributes": (S, A) => attributesPage( S, A ),
   "admin/eventTypes": (S, A) => eventTypesPage( S, A ),
+  "admin/eventFields": (S, A) => eventFieldsPage( S, A ),
+  "admin/companyFields": (S, A) => companyFieldsPage( S, A ),
   "admin/eventValidators": (S, A) => eventValidatorsPage( S, A )
 }
 
@@ -139,6 +141,9 @@ let timelineView = (S, companyDoc, A) => d([
 let appliedEventView = (S, Event , A) => d([
     h3( S.eventTypes[ Event["event/eventType"] ]["eventType/label"], {style: `background-color: #1073104f; padding: 1em;`} ),
     attributesTableView(S, Event, A),
+    d("<br>"),
+    eventFieldsTableView(S, Event),
+    d("<br>"),
     retractEventButton( Event["entity"], A),
     newEventDropdown(S, A, Event)
 ])
@@ -157,6 +162,12 @@ let rejectedEventView = (S, Event , A) => d([
   retractEventButton( Event["entity"], A),
   newEventDropdown(S, A, Event)
 ])
+
+let eventFieldsTableView = (S, appliedEvent) => d([
+  h3("eventFields"),
+  d( S["eventTypes"][ appliedEvent["event/eventType"] ]["eventType/eventFields"].map( eventField =>  d(`${S["eventFields"][eventField]["eventField/label"]}: ${JSON.stringify(appliedEvent[eventField])}`) ) 
+  ),
+], {style: "background-color: #f1f0f0; padding: 1em;"})
 
 let attributesTableView = (S, appliedEvent, A) => d([
   h3("Attributter"),
@@ -232,6 +243,19 @@ let eventTypesPage = ( S, A ) => d([
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].concat( e.srcElement.value )  )   
       )  ) 
     ),
+    d( eventType["eventType/eventFields"].map( eventField => d([span(
+      S.eventFields[eventField]["eventField/label"] + "[X]", 
+      S.eventFields[eventField]["eventField/doc"])], 
+      {class: "textButton_narrow"}, 
+      "click", 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/eventFields", eventType["eventType/eventFields"].filter( f => f !== eventField )  ) 
+      ) 
+    ).concat( dropdown(
+      0, 
+      Object.values(S.eventFields).filter( eventField => !eventType["eventType/eventFields"].includes( eventField["eventField/name"] )  ).map( eventField => returnObject({value: eventField["eventField/name"], label: eventField["eventField/label"]})).concat({value: 0, label: "Legg til"}), 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/eventFields", eventType["eventType/eventFields"].concat( e.srcElement.value )  )   
+      )  ) 
+    ),
   ], {class: "eventTypeRow"} ) ) ),
   d([
     d("Opprett ny"),
@@ -259,6 +283,48 @@ let eventValidatorsPage = ( S, A ) => d([
     input({value: "eventValidator/[name]" }, "change", e => A.createEventValidator( e.srcElement.value ) )
   ], {class: "attributeRow"} ),
 ]) 
+
+let eventFieldsPage = ( S, A ) => d([
+  d([
+    d("entity"),
+    d("eventField/name"),
+    d("eventField/label"),
+    d("eventField/dep"),
+    d("eventField/doc")
+  ], {class: "attributeRow", style: "background-color: gray;"} ),
+  d( Object.values(S.eventFields).map( eventField => d([
+    d(String(eventField["entity"])),
+    input({value: eventField["eventField/name"]}, "change", e => A.updateEntityAttribute( eventField.entity, "eventField/name", e.srcElement.value ) ),
+    input({value: eventField["eventField/label"]}, "change", e => A.updateEntityAttribute( eventField.entity, "eventField/label", e.srcElement.value ) ),
+    d(""),
+    input({value: eventField["eventField/doc"]}, "change", e => A.updateEntityAttribute( eventField.entity, "eventField/doc", e.srcElement.value ) ),
+  ], {class: "attributeRow"} ) ) ),
+  d([
+    d("Opprett ny"),
+    input({value: "eventField/[name]" }, "change", e => A.createEventField( e.srcElement.value ) )
+  ], {class: "attributeRow"} ),
+]) 
+
+let companyFieldsPage = ( S, A ) => d([
+  d([
+    d("entity"),
+    d("companyField/name"),
+    d("companyField/label"),
+    d("companyField/errorMessage"),
+    d("companyField/doc")
+  ], {class: "attributeRow", style: "background-color: gray;"} ),
+  d( Object.values(S.companyFields).map( companyField => d([
+    d(String(companyField["entity"])),
+    input({value: companyField["companyField/name"]}, "change", e => A.updateEntityAttribute( companyField.entity, "companyField/name", e.srcElement.value ) ),
+    input({value: companyField["companyField/label"]}, "change", e => A.updateEntityAttribute( companyField.entity, "companyField/label", e.srcElement.value ) ),
+    input({value: companyField["companyField/doc"]}, "change", e => A.updateEntityAttribute( companyField.entity, "companyField/doc", e.srcElement.value ) ),
+  ], {class: "attributeRow"} ) ) ),
+  d([
+    d("Opprett ny"),
+    input({value: "companyField/[name]" }, "change", e => A.createCompanyField( e.srcElement.value ) )
+  ], {class: "attributeRow"} ),
+]) 
+
 
 let variableView = (companyDoc, key) => d([
   h3(key),
