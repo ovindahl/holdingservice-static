@@ -127,7 +127,9 @@ let getUserActions = (S) => returnObject({
             newDatom("newEventType", "eventType/name", eventTypeName),
             newDatom("newEventType", "eventType/label", "[label]"),
             newDatom("newEventType", "eventType/attributes", ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"] ),
+            newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
             newDatom("newEventType", "eventType/eventValidators", ["eventValidator/currencyIsNOK"] ),
+            newDatom("newEventType", "eventType/eventFields", [] ),
             newDatom("newEventType", "eventType/doc", "[doc]"),
         ]
 
@@ -189,33 +191,41 @@ let getUserActions = (S) => returnObject({
 let update = (S) => {
 
     const eventConstructors = {
-    "eventType/incorporation": ( Event, eventPrecedents ) => {
+    "eventType/incorporation": ( Event, companyFields_before ) => {
         let shareCapital = (typeof Event["event/incorporation/shareholders"] === "object") ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) : 0
         return {
             "eventField/:accountBalance": {"1576": shareCapital, "2000": -shareCapital, "2036": Event["event/incorporation/incorporationCost"], "2400": -Event["event/incorporation/incorporationCost"] },
-            "eventField/:shareholders": (typeof Event["event/incorporation/shareholders"] === "object") ? Object.keys(Event["event/incorporation/shareholders"]) : [],
+            "eventField/:newShareholders": Event["event/incorporation/shareholders"],
             "eventField/:supplier": Event["event/supplier"]
         }
     },
-    "eventType/operatingCost/supplierDebt": ( Event, eventPrecedents ) => mergerino(  
+    "eventType/operatingCost/supplierDebt": ( Event, companyFields_before ) => mergerino(  
         {"eventField/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} },
         {"eventField/:supplier": Event["event/supplier"]}
     ),
-    "eventType/operatingCost/shareholderDebt": ( Event, eventPrecedents ) => mergerino(
+    "eventType/operatingCost/shareholderDebt": ( Event, companyFields_before ) => mergerino(
         {"eventField/:accountBalance": {"7790": -Event["event/amount"], "2910": Event["event/amount"]}},
         {"eventField/:supplier": Event["event/supplier"]}
     ),
-    "eventType/operatingCost/bank": ( Event, eventPrecedents ) => mergerino(
+    "eventType/operatingCost/bank": ( Event, companyFields_before ) => mergerino(
         {"eventField/:accountBalance": {"7790": -Event["event/amount"], "1920": Event["event/amount"]}},
         {"eventField/:supplier": Event["event/supplier"]}
     ),
-    "eventType/payments/shareCapital": ( Event, eventPrecedents ) => returnObject({"eventField/:accountBalance": {"1576": -Event["event/amount"], "1920": Event["event/amount"]}}),
-    "eventType/payments/supplierDebt": ( Event, eventPrecedents ) => mergerino(
+    "eventType/payments/shareCapital": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": {"1576": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/payments/supplierDebt": ( Event, companyFields_before ) => mergerino(
             {"eventField/:accountBalance": {"2400": -Event["event/amount"], "1920": Event["event/amount"]}},
             {"eventField/:supplier": Event["event/supplier"]}
     ),
-    "eventType/shareholderLoan/increase": ( Event, eventPrecedents ) => returnObject({"eventField/:accountBalance": {"2250": -Event["event/amount"], "1920": Event["event/amount"]}}),
-    "eventType/investments/new/unlisted/bank": ( Event, eventPrecedents ) => returnObject({"eventField/:accountBalance": {"1350": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/shareholderLoan/increase": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": {"2250": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/investments/new/unlisted/bank": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": {"1350": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/interest/interestIncomeFromBank": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": {"8050": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/yearEnd": ( Event, companyFields_before ) => {
+
+        let annualResult = -Math.round( Object.entries(companyFields_before["companyField/:accountBalance"]).filter( entry => Number(entry[0] >= 3000 ) ).reduce( (sum, entry) => sum + entry[1], 0 ) )
+
+        return returnObject({"eventField/:accountBalance": {"8300": 0, "8800": annualResult, "2050": -annualResult }})
+    },
+    "eventType/newYear": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": mergeArray( Object.entries(companyFields_before["companyField/:accountBalance"]).filter( entry => Number(entry[0] >= 3000 ) ).map( entry => createObject( entry[0], -entry[1] )  ) )  }),
     }
 
     Object.keys(S.eventTypes).forEach( eventType => S.eventTypes[ eventType ]["eventType/eventConstructor"] = eventConstructors[ eventType ] )
@@ -243,6 +253,10 @@ let update = (S) => {
             v => typeof v === "object",
             v => Array.isArray(v),
         ].every( f => f(v) ),
+        "eventType/requiredCompanyFields":  v => [
+            v => typeof v === "object",
+            v => Array.isArray(v),
+        ].every( f => f(v) ),
         "eventValidator/name": v => [
         v => typeof v === "string",
         v => v.startsWith("eventValidator/")
@@ -266,6 +280,10 @@ let update = (S) => {
             ].every( f => f(v) ),
         "companyField/doc": v => typeof v === "string",
         "companyField/label": v => typeof v === "string",
+        "companyField/eventFields":  v => [
+            v => typeof v === "object",
+            v => Array.isArray(v),
+        ].every( f => f(v) ),
         "entity/type": v => [
         v => typeof v === "string",
         v => ["process", "event"].includes(v)
@@ -335,28 +353,28 @@ let update = (S) => {
 
     const eventValidators = {
         "eventValidator/test": {
-          validator: ( Event, eventPrecedents ) => Event["event/currency"] === "NOK" 
+          validator: ( Event, companyFields_before ) => Event["event/currency"] === "NOK" 
         },
         "eventValidator/currencyIsNOK": {
-          validator: ( Event, eventPrecedents ) => Event["event/currency"] === "NOK" 
+          validator: ( Event, companyFields_before ) => Event["event/currency"] === "NOK" 
         },
         "eventValidator/shareholderRequired": {
-          validator: ( Event, eventPrecedents ) => typeof Event === "object",
+          validator: ( Event, companyFields_before ) => typeof Event === "object",
         },
         "eventValidator/minimumShareCapital": {
-          validator: ( Event, eventPrecedents ) => Event["event/incorporation/shareholders"] ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000 : false,
+          validator: ( Event, companyFields_before ) => Event["event/incorporation/shareholders"] ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000 : false,
         },
         "eventValidator/negativeAmount": {
-          validator: ( Event, eventPrecedents ) => Event["event/amount"] < 0,
+          validator: ( Event, companyFields_before ) => Event["event/amount"] < 0,
         },
         "eventValidator/positiveAmount": {
-          validator: ( Event, eventPrecedents ) => Event["event/amount"] > 0,
+          validator: ( Event, companyFields_before ) => Event["event/amount"] > 0,
         },
         "eventValidator/isExistingSupplier": {
-          validator: ( Event, eventPrecedents ) => eventPrecedents["companyField/:suppliers"].includes( Event["event/supplier"] ),
+          validator: ( Event, companyFields_before ) => companyFields_before["companyField/:suppliers"].includes( Event["event/supplier"] ),
         },
         "eventValidator/isExistingShareholder": {
-          validator: ( Event, eventPrecedents ) => eventPrecedents["companyField/:shareholders"].includes( Event["event/shareholder"] ) ,
+          validator: ( Event, companyFields_before ) => typeof logThis(companyFields_before)["companyField/:shareholders"][ logThis(Event)["event/shareholder"] ] !== "undefined",
         }
       
     }
@@ -449,7 +467,7 @@ let update = (S) => {
 
     
     const companyFieldConstructors =  {
-        "companyField/:shareholders": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( calculatedEventAttributes["eventField/:shareholders"] ),
+        "companyField/:shareholders": (prevValue, Event, calculatedEventAttributes) => mergerino(prevValue, calculatedEventAttributes["eventField/:newShareholders"] ),
         "companyField/:accountBalance": (prevValue, Event, calculatedEventAttributes) => mergerino( prevValue, Object.entries( calculatedEventAttributes["eventField/:accountBalance"] ).map( entry => createObject(entry[0],  prevValue[ entry[0] ] ?   prevValue[ entry[0] ] + entry[1] : entry[1] )  ) ),
         "companyField/:suppliers": (prevValue, Event, calculatedEventAttributes) => prevValue.includes(calculatedEventAttributes["eventField/:supplier"]) ? prevValue : prevValue.concat( calculatedEventAttributes["eventField/:supplier"] ),
         "companyField/:appliedEvents": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( mergerino(Event, calculatedEventAttributes ) ),
@@ -458,8 +476,7 @@ let update = (S) => {
     Object.keys(S.companyFields).forEach( companyField => S.companyFields[ companyField ]["constructor"] = companyFieldConstructors[ companyField ] )
 
     S.companyDocVersions = [{
-        "companyField/:version": 0, 
-        "companyField/:shareholders": [], 
+        "companyField/:shareholders": {}, 
         "companyField/:suppliers": [],
         "companyField/:accountBalance": {}, 
     }]
@@ -468,57 +485,71 @@ let update = (S) => {
 
     S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ).forEach( (Event, index) => {
 
-            let eventType = Event["event/eventType"]
-            let companyDoc = S["companyDocVersions"][index]
+            if(S.rejectedEvents.length === 0){
 
-            //0: Validate attributes
+                let eventType = Event["event/eventType"]
+                let eventTypeObject = S["eventTypes"][ eventType ]
+                let companyDoc = S["companyDocVersions"][index]
 
-            let invalidAttributes = S["eventTypes"][ Event["event/eventType"] ]["eventType/attributes"].map( attribute => S["eventAttributes"][attribute]["validator"]( Event[ attribute ] ) ? null : attribute).filter( result => result !== null  )
 
-            if(invalidAttributes.length > 0){
+                //0: Validate attributes
 
-                S.rejectedEvents.push( mergerino( Event, {"event/:invalidAttributes": invalidAttributes} ) )
+                let invalidAttributes = eventTypeObject["eventType/attributes"].map( attribute => S["eventAttributes"][attribute]["validator"]( Event[ attribute ] ) ? null : attribute).filter( result => result !== null  )
 
-            }else{
+                if(invalidAttributes.length > 0){
+
+                    S.rejectedEvents.push( mergerino( Event, {"event/:invalidAttributes": invalidAttributes} ) )
+
+                }else{
 
 
                 //1: Get (and validate?) required historical variables
 
-            let requiredHistoricalVariables = (eventType === "eventType/operatingCost/shareholderDebt" || eventType ===  "eventType/payments/shareCapital") ? ["companyField/:shareholders"] : [] // S.eventTypes[ eventType ]["eventType/precedents"]
+                let companyFields_before = mergeArray( eventTypeObject["eventType/requiredCompanyFields"].map( variableName => createObject( variableName, companyDoc[ variableName ] )  ) ) 
 
-            let eventPrecedents = mergeArray( requiredHistoricalVariables.map( variableName => createObject( variableName, companyDoc[ variableName ] )  ) ) 
+                //validation TBD
 
-            //validation TBD
+                //2: Validate combined event
 
-            //2: Validate combined event
+                let eventValidators = S.eventTypes[ eventType ]["eventType/eventValidators"].map( validatorName => S.eventValidators[ validatorName ]  )
 
-            let eventValidators = S.eventTypes[ eventType ]["eventType/eventValidators"].map( validatorName => S.eventValidators[ validatorName ]  )
+                let eventErrors = eventValidators.reduce( (Errors, eventValidator) => eventValidator["validator"]( Event, companyFields_before ) ? Errors : Errors.concat(eventValidator["eventValidator/errorMessage"]), [] )
 
-            let eventErrors = eventValidators.reduce( (Errors, eventValidator) => eventValidator["validator"]( Event, eventPrecedents ) ? Errors : Errors.concat(eventValidator["eventValidator/errorMessage"]), [] )
 
-            //3: Calculate event output and generate new company patch
+                //3: Calculate event output and generate new company patch
 
-            if(eventErrors.length > 0){
+                if(eventErrors.length > 0){
 
-                S.rejectedEvents.push( mergerino( Event, {"event/:eventErrors": eventErrors} ) )
+                    S.rejectedEvents.push( mergerino( Event, {"event/:eventErrors": eventErrors} ) )
 
-            }else{
+                }else{
 
-                let calculatedFields = S.eventTypes[ eventType ]["eventType/eventConstructor"]( Event, eventPrecedents )
+                    let calculatedFields = eventTypeObject["eventType/eventConstructor"]( Event, companyFields_before )
 
-                let companyPatch = mergeArray( S.eventTypes[ eventType ]["eventType/eventFields"].map( eventField => S.eventFields[ eventField ][ "eventField/companyFields" ].reduce( (companyPatch, companyField) => mergerino( companyPatch, createObject(companyField, S.companyFields[ companyField ]["constructor"]( companyDoc[ companyField ]  , Event, calculatedFields) )   ), {} ) ) )
+                    let eventTypeEventFields = eventTypeObject["eventType/eventFields"]
 
-                let constructedEvent = mergerino(Event, calculatedFields, companyPatch)
+                    let companyFields = Object.keys(S.companyFields).filter( companyFieldName => S.companyFields[companyFieldName]["companyField/eventFields"].some( eventField => eventTypeEventFields.includes(eventField)  )  )
 
-                S.appliedEvents.push( constructedEvent )
 
-                let newCompanyDocVersion = mergerino(companyDoc, companyPatch)
+                    let companyPatch = companyFields.reduce( (companyPatch, companyField) => mergerino( companyPatch, createObject(companyField, S.companyFields[ companyField ]["constructor"]( companyDoc[ companyField ], Event, calculatedFields) ) ), {} )
 
-                S.companyDocVersions.push( newCompanyDocVersion )
+                    let constructedEvent = mergerino(Event, companyFields_before, calculatedFields)
+
+                    S.appliedEvents.push( constructedEvent )
+
+                    let newCompanyDocVersion = mergerino(companyDoc, companyPatch)
+
+                    S.companyDocVersions.push( newCompanyDocVersion )
+
+                }
 
             }
 
-        }
+            }else{
+                S.rejectedEvents.push( Event )
+            }
+
+            
     }  )
 
 
@@ -541,3 +572,178 @@ let Admin = {
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms)
 }
+
+
+//Archive
+
+const Reports = {
+    "rf_1028": {
+      accountMapping: {'406': ['1320' , '1340' , '1370' , '1375' , '1380' , '1399' , '1576' , '1579' , '1749'], '408': ['1920'], '440': ['2220' , '2250' , '2260' , '2290' , '2390' , '2400' , '2510' , '2910' , '2920' , '2990']},
+      prepare: ( accountBalance ) => mergeArray( 
+        Object.keys(Reports["rf_1028"]["accountMapping"]).map( reportKey => 
+          createObject(
+            reportKey, 
+            Reports["rf_1028"]["accountMapping"][ reportKey ].reduce( (sum, account) => sum + accountBalance[account] ? accountBalance[account] : 0, 0 ) 
+          ) 
+        )  
+      )
+    },
+    "rf_1167": {
+      accountMapping: {'8300': ['8300', '0620'], '8320': ['8320, 0620'], '8140': ['8179, 0621'], '8100': ['8100, 0631'], '8110': ['8115, 0632'], '8120': ['8115, 0632'], '8178': ['8174, 0633'], '6726': ['6700, 0640'], '7791': ['7700, 0640'], '8071': ['8090, 0815'], '8000': ['8005, 0830'], '8020': ['8005, 0830'], '8080': ['8080, 0831'], '8078': ['8074, 0833'], '1320': ['0440, 1320'], '1340': ['0440, 1340'], '1370': ['0440, 1370'], '1375': ['0440, 1370'], '1380': ['0440, 1380'], '1399': ['0440, 1390'], '1576': ['0440, 1565'], '1579': ['0440, 1570'], '1749': ['0440, 1570'], '1070': ['1070'], '1300': ['1313'], '1330': ['1332'], '1350': ['1350'], '1360': ['1360'], '1800': ['1800'], '1810': ['1810'], '1820': ['1800'], '1830': ['1830'], '1870': ['1880'], '1880': ['1880'], '1920': ['1920'], '2000': ['2000'], '2020': ['2020'], '2030': ['2030'], '2050': ['2059'], '2080': ['2080'], '2120': ['2120'], '2220': ['2220'], '2250': ['2250'], '2260': ['2260'], '2290': ['2290'], '2390': ['2380'], '2400': ['2400'], '2500': ['2500'], '2510': ['2510'], '2800': ['2800'], '2910': ['2910'], '2920': ['2920'], '2990': ['2990'], '6540': ['6500'], '6551': ['6500'], '6552': ['6500'], '6580': ['6500'], '6701': ['6700'], '6702': ['6700'], '6705': ['6700'], '6720': ['6700'], '6725': ['6700'], '6790': ['6700'], '6890': ['6995'], '6900': ['6995'], '7770': ['7700'], '7790': ['7700'], '8030': ['8030'], '8050': ['8050'], '8055': ['8050'], '8060': ['8060'], '8070': ['8079'], '8090': ['8090'], '8130': ['8130'], '8150': ['8150'], '8155': ['8150'], '8160': ['8160'], '8170': ['8179']},
+      prepare: ( accountBalance ) => mergeArray( 
+        Object.keys(Reports["rf_1167"]["accountMapping"]).map( reportKey => 
+          createObject(
+            reportKey, 
+            Reports["rf_1167"]["accountMapping"][ reportKey ].reduce( (sum, account) => sum + accountBalance[account] ? accountBalance[account] : 0, 0 ) 
+          ) 
+        )  
+      )
+    },
+    "rf_1086": {
+      prepare: ( accumulatedVariables ) => returnObject({TBD: "TBD"})
+    },
+    "annualReport": {
+      accountMapping: {"9000":[],"9010":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791"],"9050":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791"],"9060":["8000","8020","8030","8050","8055","8060","8070","8071","8078","8080","8090"],"9070":["8100","8110","8120","8130","8140","8150","8155","8160","8170","8178"],"9100":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791","8000","8020","8030","8050","8055","8060","8070","8071","8078","8080","8090","8100","8110","8120","8130","8140","8150","8155","8160","8170","8178"],"9150":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791","8000","8020","8030","8050","8055","8060","8070","8071","8078","8080","8090","8100","8110","8120","8130","8140","8150","8155","8160","8170","8178","8300","8320"],"9200":["6540","6551","6552","6580","6701","6702","6705","6720","6725","6726","6790","6890","6900","7770","7790","7791","8000","8020","8030","8050","8055","8060","8070","8071","8078","8080","8090","8100","8110","8120","8130","8140","8150","8155","8160","8170","8178","8300","8320"],"9300":["1070","1300","1320","1330","1340","1350","1360","1370","1375","1380","1399"],"9350":["1576","1579","1749","1800","1810","1820","1830","1870","1880","1920"],"9400":["1070","1300","1320","1330","1340","1350","1360","1370","1375","1380","1399","1576","1579","1749","1800","1810","1820","1830","1870","1880","1920"],"9450":["2000","2020","2030","2050","2080"],"9500":["2120","2220","2250","2260","2290"],"9550":["2390","2400","2500","2510","2800","2910","2920","2990"],"9650":["2000","2020","2030","2050","2080","2120","2220","2250","2260","2290","2390","2400","2500","2510","2800","2910","2920","2990"]},
+      prepare: ( accountBalance ) => mergeArray( 
+        Object.keys(Reports["annualReport"]["accountMapping"]).map( reportKey => 
+          createObject(
+            reportKey, 
+            Reports["annualReport"]["accountMapping"][ reportKey ].reduce( (sum, account) => sum + accountBalance[account] ? accountBalance[account] : 0, 0 ) 
+          ) 
+        )  
+      ),
+      virtualAccounts: [
+        {virtualAccount: '9000', label: 'Sum driftsinntekter', firstAccount: "3000", lastAccount: "3999"},
+        {virtualAccount: '9010', label: 'Sum driftskostnader', firstAccount: "4000", lastAccount: "7999"},
+        {virtualAccount: '9050', label: 'Driftsresultat', firstAccount: "3000", lastAccount: "7999"},
+        {virtualAccount: '9060', label: 'Sum finansinntekter', firstAccount: "8000", lastAccount: "8099"},
+        {virtualAccount: '9070', label: 'Sum finanskostnader', firstAccount: "8100", lastAccount: "8199"},
+        {virtualAccount: '9100', label: 'Ordinært resultat før skattekostnad', firstAccount: "3000", lastAccount: "8199"},
+        {virtualAccount: '9150', label: 'Ordinært resultat', firstAccount: "3000", lastAccount: "8399"},
+        {virtualAccount: '9200', label: 'Årsresultat', firstAccount: "3000", lastAccount: "8699"},
+        {virtualAccount: '9300', label: 'Sum anleggsmidler', firstAccount: "1000", lastAccount: "1399"},
+        {virtualAccount: '9350', label: 'Sum omløpsmidler', firstAccount: "1400", lastAccount: "1999"},
+        {virtualAccount: '9400', label: 'Sum eiendeler', firstAccount: "1000", lastAccount: "1999"},
+        {virtualAccount: '9450', label: 'Sum egenkapital', firstAccount: "2000", lastAccount: "2099"},
+        {virtualAccount: '9500', label: 'Sum langsiktig gjeld', firstAccount: "2100", lastAccount: "2299"},
+        {virtualAccount: '9550', label: 'Sum kortsiktig gjeld', firstAccount: "2300", lastAccount: "2999"},
+        {virtualAccount: '9650', label: 'Sum egenkapital og gjeld', firstAccount: "2000", lastAccount: "2999"}
+    ]
+    },
+    "notesText": {
+      prepare: ( companyDoc ) => {
+  
+        let openingBalance = companyDoc["company/:openingBalance"]
+        let accountBalance = companyDoc["company/:accountBalance"]
+      
+        let shareholders = companyDoc["company/:shareholders"]
+        let shareCount = companyDoc["company/:shareCount"]
+    
+        let nominalSharePrice = companyDoc["company/:nominalSharePrice"]
+    
+        let em = (content) => String('<span class="emphasizedText">' + content + '</span>')
+      
+        return `
+      <h4>Note 1: Regnskapsprinsipper</h4>
+      Regnskapet er utarbeidet i henhold til norske regnskapsregler/-standarder for små foretak.
+      <br>
+      <h5>Klassifisering og vurdering av balanseposter</h5>
+      Omløpsmidler og kortsiktig gjeld omfatter poster som forfaller til betaling innen ett år etter anskaffelsestidspunktet, samt poster som knytter seg til varekretsløpet. Øvrige poster er klassifisert som anleggsmiddel/langsiktig gjeld.
+      <br>
+      Omløpsmidler vurderes til laveste av anskaffelseskost og virkelig verdi. Kortsiktig gjeld balanseføres til nominelt beløp på opptakstidspunktet.
+      <br>
+      Anleggsmidler vurderes til anskaffelseskost, men nedskrives til gjenvinnbart beløp dersom dette er lavere enn balanseført verdi. Gjenvinnbart beløp er det høyeste av netto salgsverdi og verdi i bruk. Langsiktig gjeld balanseføres til nominelt beløp på etableringstidspunktet.
+      Markedsbaserte finansielle omløpsmidler som inngår i en handelsportefølje vurderes til virkelig verdi, mens andre markedsbaserte finansielle omløpsmidler vurderes til laveste av anskaffelseskost og virkelig verdi.
+      <br>
+      <h5>Skatt</h5>
+      Skattekostnaden i resultatregnskapet omfatter både betalbar skatt for perioden og endring i utsatt skatt. Utsatt skatt er beregnet med ${em("TBD")} på grunnlag av de midlertidige forskjeller som eksisterer mellom regnskapsmessige og skattemessige verdier, samt ligningsmessig underskudd til fremføring ved utgangen av regnskapsåret. Skatteøkende og skattereduserende midlertidige forskjeller som reverserer eller kan reversere i samme periode er utlignet og nettoført.
+      <br>
+      <h4>Note 2: Aksjekapital og aksjonærinformasjon</h4>
+      Foretaket har ${em( shareCount ) } aksjer, pålydende kr ${em(  nominalSharePrice )}, noe som gir en samlet aksjekapital på kr ${em( accountBalance["2000"] )}. Selskapet har én aksjeklasse.
+      <br><br>
+      Aksjene eies av: 
+      <br>
+      ${shareholders.map( (shareholder, index) => em(`${index}: ${shareholder} <br>`)).join("")}
+      
+      <h4>Note 3: Egenkapital</h4>
+      
+      <table>
+      <tbody>
+        <tr>
+          <td class="numberCell"></td>
+          <td class="numberCell">Aksjekapital</td>
+          <td class="numberCell">Overkurs</td>
+          <td class="numberCell">Annen egenkapital</td>
+          <td class="numberCell">Sum</td>
+        </tr>
+        <tr>
+          <td>Egenkapital 1.1 </td>
+          <td class="numberCell">${em( openingBalance["2000"] ) }</td>
+          <td class="numberCell">${em( openingBalance["2020"] ) }</td>
+          <td class="numberCell">${em( openingBalance["2030"] ) }</td>
+          <td class="numberCell">${em( openingBalance["2000"] + openingBalance["2020"] + openingBalance["2030"] ) }</td>
+        </tr>
+        <tr>
+          <td>Endring ila. året </td>
+          <td class="numberCell">${em( accountBalance["2000"] - openingBalance["2000"] ) }</td>
+          <td class="numberCell">${em( accountBalance["2020"] - openingBalance["2020"] ) }</td>
+          <td class="numberCell">${em( accountBalance["2030"] - openingBalance["2030"] ) }</td>
+          <td class="numberCell">${em( accountBalance["2000"] - openingBalance["2000"] + accountBalance["2020"] - openingBalance["2020"] + accountBalance["2030"] - openingBalance["2030"] ) }</td>
+        </tr>
+        <tr>
+          <td>Egenkapital 31.12 </td>
+          <td class="numberCell">${em( accountBalance["2000"] ) }</td>
+          <td class="numberCell">${em( accountBalance["2020"] ) }</td>
+          <td class="numberCell">${em( accountBalance["2030"] ) }</td>
+          <td class="numberCell">${em( accountBalance["2000"] + accountBalance["2020"] + accountBalance["2030"] ) }</td>
+        </tr>
+      </tbody>
+      </table>
+      <br>
+      <h4>Note 5: Skatt</h4>
+      ${"[TBD]" }
+      
+      <h4>Note 4: Lønnskostnader, antall ansatte, godtgjørelser, revisjonskostnader mm.</h4>
+      Selskapet har i ${em( companyDoc["company/:currentYear"] ) } ikke hatt noen ansatte og er således ikke pliktig til å ha tjenestepensjon for de ansatte etter Lov om obligatoriske tjenestepensjon. Det er ikke utdelt styrehonorar.
+      <br><br>
+      Kostnadsført revisjonshonorar for ${em( companyDoc["company/:currentYear"] ) } utgjør kr ${em( 0 ) }. Honorar for annen bistand fra revisor utgjør kr ${em( 0 ) }.
+      
+      
+      
+      <h4>Note 6: Bankinnskudd</h4>
+      Posten inneholder kun frie midler.
+      
+      <h4>Note 7: Gjeld til nærstående, ledelse og styre</h4>
+      Selskapet har gjeld til følgende nærstående personer: <br>
+      ${shareholders.map( (shareholder, index) => em(`${index}: ${shareholder} <br>`)).join("")}
+      
+      `}
+    } 
+  }
+  
+  let taxCostView = (financialYear) => {
+  
+    let taxCostRecord = financialYear.accounts["8300"].accountRecords[0]
+  
+  
+    return d([
+      d([ d( "Ordinært resultat før skattekostnad" ), d( format.amount( taxCostRecord.accountingResultBeforeTax ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+      "<br>",
+      d([ d( "Permanente forskjeller" ), d( format.amount( taxCostRecord.permanentDifferences ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+      d([ d( "Endring i midlertidige forskjeller" ), d( format.amount( taxCostRecord.temporaryDifferences ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+      d([ d( "Estimatavvik på feilberegnet skatt forrige år" ), d( format.amount( taxCostRecord.taxEstimateCorrection ), {class: "numberCell"})], {class: "financialStatementsRow"}),
+      d([ d( "Skattegrunnlag før bruk av fremførbart underskudd" ), d( format.amount( taxCostRecord.taxResultBeforeUtilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+      "<br>",
+      d([ d( "Inngående fremførbart underskudd" ), d( format.amount( taxCostRecord.accumulatedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+      d([ d( "Benyttet fremførbart underskudd" ), d( format.amount( taxCostRecord.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+      d([ d( "Utgående fremførbart underskudd" ), d( format.amount( taxCostRecord.accumulatedLosses + taxCostRecord.utilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+      "<br>",
+      d([ d( "Skattegrunnlag etter bruk av fremførbart underskudd" ), d( format.amount( taxCostRecord.taxResultAfterUtilizedLosses ) , {class: "numberCell"})], {class: "financialStatementsRow"}),
+      "<br>",
+      d([ d( "Årets skattekostnad" ), d( format.amount( taxCostRecord.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"})
+    ])
+  }
+  
+  //var func = new Function("prevCompany, Event", "return prevCompany['company/shareholders'];" )
+  //var func2 = new Function("prevCompany, Event", "console.log(prevCompany['company/shareholders']) ;" )
+  
