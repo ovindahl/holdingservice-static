@@ -160,36 +160,36 @@ let getUserActions = (S) => returnObject({
 let update = (S) => {
 
     const eventConstructors = {
-    "eventType/incorporation": Event => {
+    "eventType/incorporation": ( Event, eventPrecedents ) => {
         let shareCapital = (typeof Event["event/incorporation/shareholders"] === "object") ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) : 0
         return {
-            "event/:accountBalance": {"1576": shareCapital, "2000": -shareCapital, "2036": Event["event/incorporation/incorporationCost"], "2400": -Event["event/incorporation/incorporationCost"] },
-            "event/:shareholders": (typeof Event["event/incorporation/shareholders"] === "object") ? Object.keys(Event["event/incorporation/shareholders"]) : [],
-            "event/:supplier": Event["event/supplier"]
+            "eventField/:accountBalance": {"1576": shareCapital, "2000": -shareCapital, "2036": Event["event/incorporation/incorporationCost"], "2400": -Event["event/incorporation/incorporationCost"] },
+            "eventField/:shareholders": (typeof Event["event/incorporation/shareholders"] === "object") ? Object.keys(Event["event/incorporation/shareholders"]) : [],
+            "eventField/:supplier": Event["event/supplier"]
         }
     },
-    "eventType/operatingCost/supplierDebt": Event => mergerino(  
-        {"event/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} },
-        {"event/:supplier": Event["event/supplier"]}
+    "eventType/operatingCost/supplierDebt": ( Event, eventPrecedents ) => mergerino(  
+        {"eventField/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} },
+        {"eventField/:supplier": Event["event/supplier"]}
     ),
-    "eventType/operatingCost/shareholderDebt": Event => mergerino(
-        {"event/:accountBalance": {"7790": -Event["event/amount"], "2910": Event["event/amount"]}},
-        {"event/:supplier": Event["event/supplier"]}
+    "eventType/operatingCost/shareholderDebt": ( Event, eventPrecedents ) => mergerino(
+        {"eventField/:accountBalance": {"7790": -Event["event/amount"], "2910": Event["event/amount"]}},
+        {"eventField/:supplier": Event["event/supplier"]}
     ),
-    "eventType/operatingCost/bank": Event => mergerino(
-        {"event/:accountBalance": {"7790": -Event["event/amount"], "1920": Event["event/amount"]}},
-        {"event/:supplier": Event["event/supplier"]}
+    "eventType/operatingCost/bank": ( Event, eventPrecedents ) => mergerino(
+        {"eventField/:accountBalance": {"7790": -Event["event/amount"], "1920": Event["event/amount"]}},
+        {"eventField/:supplier": Event["event/supplier"]}
     ),
-    "eventType/payments/shareCapital": Event => returnObject({"event/:accountBalance": {"1576": -Event["event/amount"], "1920": Event["event/amount"]}}),
-    "eventType/payments/supplierDebt": Event => mergerino(
-            {"event/:accountBalance": {"2400": -Event["event/amount"], "1920": Event["event/amount"]}},
-            {"event/:supplier": Event["event/supplier"]}
+    "eventType/payments/shareCapital": ( Event, eventPrecedents ) => returnObject({"eventField/:accountBalance": {"1576": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/payments/supplierDebt": ( Event, eventPrecedents ) => mergerino(
+            {"eventField/:accountBalance": {"2400": -Event["event/amount"], "1920": Event["event/amount"]}},
+            {"eventField/:supplier": Event["event/supplier"]}
     ),
-    "eventType/shareholderLoan/increase": Event => returnObject({"event/:accountBalance": {"2250": -Event["event/amount"], "1920": Event["event/amount"]}}),
-    "eventType/investments/new/unlisted/bank": Event => returnObject({"event/:accountBalance": {"1350": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/shareholderLoan/increase": ( Event, eventPrecedents ) => returnObject({"eventField/:accountBalance": {"2250": -Event["event/amount"], "1920": Event["event/amount"]}}),
+    "eventType/investments/new/unlisted/bank": ( Event, eventPrecedents ) => returnObject({"eventField/:accountBalance": {"1350": -Event["event/amount"], "1920": Event["event/amount"]}}),
     }
 
-    Object.keys(S.eventTypes).forEach( eventType => S.eventTypes[ eventType ]["eventConstructor"] = eventConstructors[ eventType ] )
+    Object.keys(S.eventTypes).forEach( eventType => S.eventTypes[ eventType ]["eventType/eventConstructor"] = eventConstructors[ eventType ] )
 
     const attributeValidators = {
         "attr/doc": v => typeof v === "string",
@@ -286,28 +286,28 @@ let update = (S) => {
 
     const eventValidators = {
         "eventValidator/test": {
-          validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK" 
+          validator: ( Event, eventPrecedents ) => Event["event/currency"] === "NOK" 
         },
         "eventValidator/currencyIsNOK": {
-          validator: ( companyDoc, Event ) => Event["event/currency"] === "NOK" 
+          validator: ( Event, eventPrecedents ) => Event["event/currency"] === "NOK" 
         },
         "eventValidator/shareholderRequired": {
-          validator: ( companyDoc, Event ) => typeof Event === "object",
+          validator: ( Event, eventPrecedents ) => typeof Event === "object",
         },
         "eventValidator/minimumShareCapital": {
-          validator: ( companyDoc, Event ) => Event["event/incorporation/shareholders"] ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000 : false,
+          validator: ( Event, eventPrecedents ) => Event["event/incorporation/shareholders"] ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000 : false,
         },
         "eventValidator/negativeAmount": {
-          validator: ( companyDoc, Event ) => Event["event/amount"] < 0,
+          validator: ( Event, eventPrecedents ) => Event["event/amount"] < 0,
         },
         "eventValidator/positiveAmount": {
-          validator: ( companyDoc, Event ) => Event["event/amount"] > 0,
+          validator: ( Event, eventPrecedents ) => Event["event/amount"] > 0,
         },
         "eventValidator/isExistingSupplier": {
-          validator: ( companyDoc, Event ) => companyDoc["company/:suppliers"].includes( Event["event/supplier"] ),
+          validator: ( Event, eventPrecedents ) => eventPrecedents["company/:suppliers"].includes( Event["event/supplier"] ),
         },
         "eventValidator/isExistingShareholder": {
-          validator: ( companyDoc, Event ) => companyDoc["company/:shareholders"].includes( Event["event/shareholder"] ) ,
+          validator: ( Event, eventPrecedents ) => eventPrecedents["company/:shareholders"].includes( Event["event/shareholder"] ) ,
         }
       
     }
@@ -398,13 +398,115 @@ let update = (S) => {
 
     S.Accounts = Accounts
 
-    S.selectedEvents = S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  )
-    S.companyDoc = prepareCompanyDoc(S, S.selectedEvents)
-    console.log("companyDoc", S.companyDoc)
+    //Company output functions
+
+
+    const eventFields = {
+        "eventField/:accountBalance": {
+            "eventField/name": "eventField/:accountBalance",
+            "eventField/label": "Hendelsens saldobalanse",
+            "eventField/doc": "Netto saldobalanse for en hendelse",
+            "eventField/companyFields": ["company/:accountBalance"]
+        },
+        "eventField/:supplier": {
+            "eventField/name": "eventField/:supplier",
+            "eventField/label": "Ny leverandør?",
+            "eventField/doc": "TBD",
+            "eventField/companyFields": ["company/:suppliers"]
+        },
+        "eventField/:shareholders": {
+            "eventField/name": "eventField/:shareholders",
+            "eventField/label": "Nye aksjonærer?",
+            "eventField/doc": "TBD",
+            "eventField/companyFields": ["company/:shareholders"]
+        },
+    }
+
+    S.eventFields = eventFields
+    
+    const companyFields =  {
+        "company/:shareholders": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( calculatedEventAttributes["eventField/:shareholders"] ),
+        "company/:accountBalance": (prevValue, Event, calculatedEventAttributes) => mergerino( prevValue, Object.entries( calculatedEventAttributes["eventField/:accountBalance"] ).map( entry => createObject(entry[0],  prevValue[ entry[0] ] ?   prevValue[ entry[0] ] + entry[1] : entry[1] )  ) ),
+        "company/:suppliers": (prevValue, Event, calculatedEventAttributes) => prevValue.includes(calculatedEventAttributes["eventField/:supplier"]) ? prevValue : prevValue.concat( calculatedEventAttributes["eventField/:supplier"] ),
+        "company/:appliedEvents": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( mergerino(Event, calculatedEventAttributes ) ),
+    }
+
+    S.companyFields = companyFields
+
+    S.companyDocVersions = [{
+        "company/:version": 0, 
+        "company/:shareholders": [], 
+        "company/:suppliers": [],
+        "company/:accountBalance": {}, 
+    }]
+    S.appliedEvents = []
+    S.rejectedEvents = []
+    //S.validatedEvents = S.selectedEvents.reduce( (validatedEvents, Event) => getAttributeErrors(S, Event).length === 0 ? validatedEvents.concat(Event) : validatedEvents, [] )
+
+    S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ).forEach( (Event, index) => {
+
+            let eventType = Event["event/eventType"]
+            let companyDoc = S["companyDocVersions"][index]
+
+            //0: Validate attributes
+
+            let invalidAttributes = S["eventTypes"][ Event["event/eventType"] ]["eventType/attributes"].map( attribute => S["eventAttributes"][attribute]["validator"]( Event[ attribute ] ) ? null : attribute).filter( result => result !== null  )
+
+            if(invalidAttributes.length > 0){
+
+                S.rejectedEvents.push( mergerino( Event, {"event/:invalidAttributes": invalidAttributes} ) )
+
+            }else{
+
+
+                //1: Get (and validate?) required historical variables
+
+            let requiredHistoricalVariables = (eventType === "eventType/operatingCost/shareholderDebt" || eventType ===  "eventType/payments/shareCapital") ? ["company/:shareholders"] : [] // S.eventTypes[ eventType ]["eventType/precedents"]
+
+            let eventPrecedents = mergeArray( requiredHistoricalVariables.map( variableName => createObject( variableName, companyDoc[ variableName ] )  ) ) 
+
+            //validation TBD
+
+            //2: Validate combined event
+
+            let eventValidators = S.eventTypes[ eventType ]["eventType/eventValidators"].map( validatorName => S.eventValidators[ validatorName ]  )
+
+            let eventErrors = eventValidators.reduce( (Errors, eventValidator) => eventValidator["validator"]( Event, eventPrecedents ) ? Errors : Errors.concat(eventValidator["eventValidator/errorMessage"]), [] )
+
+            //3: Calculate event output and generate new company patch
+
+            if(eventErrors.length > 0){
+
+                S.rejectedEvents.push( mergerino( Event, {"event/:eventErrors": eventErrors} ) )
+
+            }else{
+
+                let calculatedFields = S.eventTypes[ eventType ]["eventType/eventConstructor"]( Event, eventPrecedents )
+
+                let companyPatch = mergeArray( S.eventTypes[ eventType ]["eventType/eventFields"].map( eventField => S.eventFields[ eventField ][ "eventField/companyFields" ].reduce( (companyPatch, companyField) => mergerino( companyPatch, createObject(companyField, companyFields[ companyField ]( companyDoc[ companyField ]  , Event, calculatedFields) )   ), {} ) ) )
+
+                let constructedEvent = mergerino(Event, calculatedFields, companyPatch)
+
+                S.appliedEvents.push( constructedEvent )
+
+                let newCompanyDocVersion = mergerino(companyDoc, companyPatch)
+
+                S.companyDocVersions.push( newCompanyDocVersion )
+
+            }
+
+        }
+    }  )
+
+
+    //S.companyDoc = prepareCompanyDoc(S, S.selectedEvents)
+    //console.log("companyDoc", S.companyDoc)
+
+    console.log("State: ", S)
 
     S.elementTree = generateHTMLBody(S, getUserActions(S) )
     
-    console.log("State: ", S)
+    
 
     sideEffects.updateDOM( S.elementTree )
 }

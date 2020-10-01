@@ -50,82 +50,7 @@ function split(array, isValid) {
 let ifError = (value, fallback) => value ? value : fallback
 let ifNot = (test, ifNot, then) => test ? then : ifNot
 
-// COMPANY DOCUMENT CREATION PIPELINE
 
-let getAttributeErrors = (S, Event)=> S["eventTypes"][ Event["event/eventType"] ]["eventType/attributes"].map( attribute => S["eventAttributes"][attribute]["validator"]( Event[ attribute ] ) ? false : `Attribute not valid: ${attribute}.` ).filter( result => result !== false  )
-let getEventTypeErrors = (S, companyDoc, constructedEvent) => S["eventTypes"][ constructedEvent["event/eventType"] ]["eventType/eventValidators"].map( validatorName => S["eventValidators"][validatorName]["validator"](companyDoc, constructedEvent ) ? false : S["eventValidators"][validatorName]["eventValidator/errorMessage"]).filter( result => result !== false  )
-
-let getEventErrors = (S, companyDoc, Event) => getAttributeErrors(S, Event).concat( getEventTypeErrors(S, companyDoc, mergerino(Event, constructEvent(S, Event) ) )  )
-
-let rejectEventWithErrors = (S, companyDoc, Event) => mergerino(
-  companyDoc,
-  {"company/:rejectedEvents": companyDoc["company/:rejectedEvents"].concat( mergerino(
-    Event,
-    {"event/:eventErrors": getEventErrors(S, companyDoc, Event) },
-  )  ) },
-  {"company/:isValid": false}
-)
-
-let constructEvent = (S, Event) => S.eventTypes[ Event["event/eventType"] ]["eventConstructor"](Event)
-
-let isValidEvent = (S, companyDoc, Event) => getEventErrors(S, companyDoc, Event).length === 0
-
-let constructCompanyPatch = (S, companyDoc, Event) => mergeArray( 
-  Object.keys( constructEvent(S, Event) ).map( calculatedEventField => 
-    calculatedEventFields[ calculatedEventField ]["dependencies"] ).flat().map( calculatedField => createObject(calculatedField, outputFunction.calculate(S, calculatedField, companyDoc, Event, constructEvent(S, Event) ) )  )
-)
-
-let applyEvent = (S, companyDoc, Event) => mergerino(
-  companyDoc,
-  constructCompanyPatch(S, companyDoc, Event)
-)
-
-let isValidEventType = (S, eventType) => Object.keys( S.eventTypes ).includes( eventType )
-
-let prepareCompanyDoc = (S, Events) => Events.reduce( (companyDoc, Event) => companyDoc["company/:isValid"]
-  ? isValidEventType( S, Event["event/eventType"] )
-    ?  isValidEvent( S, companyDoc, Event )
-      ? applyEvent(S, companyDoc, Event) 
-      : rejectEventWithErrors(S, companyDoc, Event)
-    : rejectEventWithErrors(S, companyDoc, Event)
-  : rejectEventWithErrors(S, companyDoc, Event),
-  getBlankCompanyDoc()
-)
-
-let getBlankCompanyDoc = () => returnObject({
-  "company/:shareholders": [], 
-  "company/:suppliers": [],
-  "company/:accountBalance": {"1920": 0}, 
-  "company/:appliedEvents": [],
-  "company/:rejectedEvents": [],
-  "company/:isValid": true
-})
-
-//Company output functions
-
-let updateAccountBalance = (accountBalance, patch) => mergerino( accountBalance, Object.entries( patch ).map( entry => createObject(entry[0],  accountBalance[ entry[0] ] ?   accountBalance[ entry[0] ] + entry[1] : entry[1] )  ) ) 
-
-const calculatedEventFields = {
-  "event/:accountBalance": {
-    "dependencies": ["company/:accountBalance"]
-  },
-  "event/:supplier": {
-    "dependencies": ["company/:suppliers"]
-  },
-  "event/:shareholders": {
-    "dependencies": ["company/:shareholders"]
-  },
-}
-
-const outputFunction = {
-  functions: {
-    "company/:shareholders": (S, companyDoc, Event, calculatedEventAttributes) => companyDoc["company/:shareholders"].concat( calculatedEventAttributes["event/:shareholders"] ),
-    "company/:accountBalance": (S, companyDoc, Event, calculatedEventAttributes) => updateAccountBalance( companyDoc["company/:accountBalance"], calculatedEventAttributes["event/:accountBalance"] ),
-    "company/:suppliers": (S, companyDoc, Event, calculatedEventAttributes) => companyDoc["company/:suppliers"].includes(calculatedEventAttributes["event/:supplier"]) ? companyDoc["company/:suppliers"] : companyDoc["company/:suppliers"].concat( calculatedEventAttributes["event/:supplier"] ),
-    "company/:appliedEvents": (S, companyDoc, Event, calculatedEventAttributes) => companyDoc["company/:appliedEvents"].concat( mergerino(Event, calculatedEventAttributes ) ),
-  },
-  calculate: (S, functionName, companyDoc, Event, calculatedEventAttributes) => outputFunction.functions[ functionName ](S, companyDoc, Event, calculatedEventAttributes),
-}
 
 //HTML element generation
 let IDcounter = [0];
@@ -207,25 +132,30 @@ let pageRouter = {
 //Event Cycle Views
 
 let timelineView = (S, companyDoc, A) => d([
-  d( companyDoc["company/:appliedEvents"].map( appliedEvent => feedContainer(  appliedEventView( S, appliedEvent, A ) , appliedEvent["event/date"], appliedEvent["entity"] )  ), {class: "pageContainer"}),
-  d( companyDoc["company/:rejectedEvents"].map( rejectedEvent => feedContainer(  rejectedEventView( S, rejectedEvent, A ) , rejectedEvent["event/date"], rejectedEvent["entity"] )  ), {class: "pageContainer"})
+  d( S.appliedEvents.map( Event => feedContainer(  appliedEventView( S, Event, A ) , Event["event/date"], Event["entity"] )  ), {class: "pageContainer"}),
+  d( S.rejectedEvents.map( Event => feedContainer(  rejectedEventView( S, Event, A ) , Event["event/date"], Event["entity"] )  ), {class: "pageContainer"})
 ])
 
-let appliedEventView = (S, appliedEvent , A) => d([
-    h3( S.eventTypes[ logThis(appliedEvent)["event/eventType"] ]["eventType/label"], {style: `background-color: #1073104f; padding: 1em;`} ),
-    attributesTableView(S, appliedEvent, A),
-    retractEventButton( appliedEvent["entity"], A),
-    newEventDropdown(S, A, appliedEvent)
+let appliedEventView = (S, Event , A) => d([
+    h3( S.eventTypes[ Event["event/eventType"] ]["eventType/label"], {style: `background-color: #1073104f; padding: 1em;`} ),
+    attributesTableView(S, Event, A),
+    retractEventButton( Event["entity"], A),
+    newEventDropdown(S, A, Event)
 ])
 
-let rejectedEventView = (S, rejectedEvent , A) => d([
-  h3( S.eventTypes[ rejectedEvent["event/eventType"] ]["eventType/label"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
-  d( rejectedEvent["event/:eventErrors"].map( error => d(error, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  )),
+let rejectedEventView = (S, Event , A) => d([
+  h3( S.eventTypes[ Event["event/eventType"] ]["eventType/label"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
+  d([
+    h3("Attributter"),
+    d( S["eventTypes"][ Event["event/eventType"] ]["eventType/attributes"].map( attribute =>  d([attributeView(S, A, attribute, Event[ attribute ], Event["entity"] )], Event["event/:invalidAttributes"] ? Event["event/:invalidAttributes"].includes(attribute) ?  {style: `background-color: #fb9e9e;`} : {} : {} )  ) 
+    ),
+    d("<br>")
+  ], {style: "background-color: #f1f0f0; padding: 1em;"}),
   d("<br>"),
-  attributesTableView(S, rejectedEvent, A),
+  Event["event/:eventErrors"] ? d( Event["event/:eventErrors"].map( error => d(error, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  )) : d(""),
   d("<br>"),
-  retractEventButton( rejectedEvent["entity"], A),
-  newEventDropdown(S, A, rejectedEvent)
+  retractEventButton( Event["entity"], A),
+  newEventDropdown(S, A, Event)
 ])
 
 let attributesTableView = (S, appliedEvent, A) => d([
