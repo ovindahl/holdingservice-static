@@ -42,6 +42,7 @@ const sideEffects = {
             let S = await sideEffects.APIRequest("GET", "userContent", null)
             S.currentPage = "timeline"
             S.selectedOrgnumber = "999999999"
+            S["companyDocPage/selectedVersion"] = 0
             update(S)
         }else{
             try{
@@ -55,137 +56,71 @@ const sideEffects = {
         }
         return true
     
-    }
+    },
+    submitDatoms: async Datoms => await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms ) ),
+    submitDatomsWithValidation: async (S, Datoms) => Datoms.every( datom => S.attributeValidators[ datom.attribute ]( datom.value ) ) 
+      ? update( mergerino( await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), {currentPage: S.currentPage, selectedOrgnumber: S.selectedOrgnumber}))
+      : update( logThis(S, "ERROR: Datoms not valid" ) )
 }
 
 let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
 
 let getUserActions = (S) => returnObject({
     updateLocalState: (patch) => update( mergerino(S, patch) ),
-    updateEntityAttribute: async (entityID, attribute, value) => {
-
-        let datoms = [newDatom(entityID, attribute, value)]
-
-        console.log(datoms)
-
-        let apiResponse = S.attributeValidators[attribute](value)
-        ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( [newDatom(entityID, attribute, value)] ) )
-        : null
-
-        let isInvalid = (apiResponse === null)
-
-        if(isInvalid){console.log("ERROR: Attribute value is not valid: ", entityID, attribute, value)}
-
-        let newS = isInvalid ? S : mergerino(S, apiResponse)
-
-        update( newS )
-    },
-    createEvent: async ( appliedEvent, newEventType ) => {
-
-
-
-
-        let datoms = [
-            newDatom("newEvent", "type", "process"),
-            newDatom("newEvent", "entity/type", "event"),
-            newDatom("newEvent", "event/eventType", newEventType),
-            newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
-            newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
-            newDatom("newEvent", "event/date", appliedEvent["event/date"] ),
-            newDatom("newEvent", "event/currency", "NOK")
-        ]
-        
-
-        let apiResponse = await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms ))
-        let newS = mergerino(S, apiResponse)
-        update( newS )
-    },
-    retractEvent: async entityID => {
-        let storedEntity = S.Events.filter( e => e.entity === entityID  )[0]
-        let retractionDatoms = getRetractionDatomsWithoutChildren([storedEntity])
-        let apiResponse = retractionDatoms.length < 20 ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( retractionDatoms )) : console.log("ERROR: >20 retraction datoms submitted: ", retractionDatoms)
-        let newS = mergerino(S, apiResponse)
-        update( newS )
-    },
-    createAttribute: async attributeName => {
-
-        let datoms = [
-            newDatom("newAttr", "attr/name", attributeName),
-            newDatom("newAttr", "attr/label", "[attributeName]")
-        ]
-
-        let apiResponse = attributeName.startsWith("event/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new Attribtue not valid", attributeName)
-
-        let newS = mergerino(S, apiResponse)
-        update( newS )
-
-    },
-    createEventType: async eventTypeName => {
-
-        let datoms = [
-            newDatom("newEventType", "type", "eventType"),
-            newDatom("newEventType", "eventType/name", eventTypeName),
-            newDatom("newEventType", "eventType/label", "[label]"),
-            newDatom("newEventType", "eventType/attributes", ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"] ),
-            newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
-            newDatom("newEventType", "eventType/eventValidators", ["eventValidator/currencyIsNOK"] ),
-            newDatom("newEventType", "eventType/eventFields", [] ),
-            newDatom("newEventType", "eventType/doc", "[doc]"),
-        ]
-
-        let apiResponse = eventTypeName.startsWith("eventType/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new eventType not valid", eventTypeName)
-
-        let newS = mergerino(S, apiResponse)
-        update( newS )
-
-    },
-    createEventValidator: async eventValidatorName => {
-
-        let datoms = [
-            newDatom("newEventType", "type", "eventValidator"),
-            newDatom("newEventType", "eventValidator/name", eventValidatorName),
-            newDatom("newEventType", "eventValidator/label", "[label]"),
-            newDatom("newEventType", "eventValidator/errorMessage", "[errorMessage]" ),
-            newDatom("newEventType", "eventValidator/doc", "[doc]"),
-        ]
-
-        let apiResponse = eventValidatorName.startsWith("eventValidator/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new eventValidator not valid", eventValidatorName)
-
-        let newS = mergerino(S, apiResponse)
-        update( newS )
-
-    },
-    createEventField: async eventFieldName => {
-
-        let datoms = [
-            newDatom("newEventType", "type", "eventField"),
-            newDatom("newEventType", "eventField/name", eventFieldName),
-            newDatom("newEventType", "eventField/label", "[label]"),
-            newDatom("newEventType", "eventField/companyFields", ["companyField/:accountBalance"] ),
-            newDatom("newEventType", "eventField/doc", "[doc]"),
-        ]
-
-        let apiResponse = eventFieldName.startsWith("eventField/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new eventFieldName not valid", eventFieldName)
-
-        let newS = mergerino(S, apiResponse)
-        update( newS )
-
-    },
-    createCompanyField: async companyFieldName => {
-
-        let datoms = [
-            newDatom("newEventType", "type", "companyField"),
-            newDatom("newEventType", "companyField/name", companyFieldName),
-            newDatom("newEventType", "companyField/label", "[label]"),
-            newDatom("newEventType", "companyField/doc", "[doc]"),
-        ]
-
-        let apiResponse = companyFieldName.startsWith("companyField/") ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( datoms )) : console.log("ERROR: new companyFieldName not valid", companyFieldName)
-
-        let newS = mergerino(S, apiResponse)
-        update( newS )
-
-    },
+    updateEntityAttribute: async (entityID, attribute, value) => await sideEffects.submitDatomsWithValidation(S, [newDatom(entityID, attribute, value)] ),
+    createEvent: async ( appliedEvent, newEventType ) => await sideEffects.submitDatomsWithValidation(S, [
+      newDatom("newEvent", "type", "process"),
+      newDatom("newEvent", "entity/type", "event"),
+      newDatom("newEvent", "event/eventType", newEventType),
+      newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
+      newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
+      newDatom("newEvent", "event/date", appliedEvent["event/date"] ),
+      newDatom("newEvent", "event/currency", "NOK")
+    ] ),
+    retractEvent: async entityID => S.Events.filter( e => e.entity === entityID  )[0]["entity/type"] === "event" ? await sideEffects.submitDatomsWithValidation(S, getRetractionDatomsWithoutChildren([S.Events.filter( e => e.entity === entityID  )[0]]) ) : logThis(null, "ERROR: Not event"),
+    createAttribute: async attributeName => attributeName.startsWith("event/") ? await sideEffects.submitDatomsWithValidation(S, [
+      newDatom("newAttr", "attr/name", attributeName),
+      newDatom("newAttr", "attr/label", "[attributeName]"),
+      newDatom("newAttr", "attr/doc", "[doc]"),
+    ] ) : console.log("ERROR: new Attribtue not valid", attributeName),
+    createEventType: async eventTypeName => eventTypeName.startsWith("eventType/") 
+      ? await sideEffects.submitDatomsWithValidation(S, [
+        newDatom("newEventType", "type", "eventType"),
+        newDatom("newEventType", "entity/type", "eventType"),
+        newDatom("newEventType", "eventType/name", eventTypeName),
+        newDatom("newEventType", "eventType/label", "[label]"),
+        newDatom("newEventType", "eventType/attributes", ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"] ),
+        newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
+        newDatom("newEventType", "eventType/eventValidators", ["eventValidator/currencyIsNOK"] ),
+        newDatom("newEventType", "eventType/eventFields", [] ),
+        newDatom("newEventType", "eventType/doc", "[doc]"),
+        ]) 
+      : console.log("ERROR: new eventType not valid", eventTypeName),
+    createEventValidator: async eventValidatorName => eventValidatorName.startsWith("eventValidator/") 
+      ? await sideEffects.submitDatomsWithValidation(S, [
+        newDatom("newEventType", "type", "eventValidator"),
+        newDatom("newEventType", "entity/type", "eventValidator"),
+        newDatom("newEventType", "eventValidator/name", eventValidatorName),
+        newDatom("newEventType", "eventValidator/label", "[label]"),
+        newDatom("newEventType", "eventValidator/errorMessage", "[errorMessage]" ),
+        newDatom("newEventType", "eventValidator/doc", "[doc]"),
+      ]) : console.log("ERROR: new eventValidator not valid", eventValidatorName),
+    createEventField: async eventFieldName => eventValidatorName.startsWith("eventField/") 
+      ? await sideEffects.submitDatomsWithValidation(S, [
+            newDatom("eventField", "type", "eventField"),
+            newDatom("eventField", "entity/type", "eventField"),
+            newDatom("eventField", "eventField/name", eventFieldName),
+            newDatom("eventField", "eventField/label", "[label]"),
+            newDatom("eventField", "eventField/companyFields", ["companyField/:accountBalance"] ),
+            newDatom("eventField", "eventField/doc", "[doc]"),
+      ]) : console.log("ERROR: new eventFieldName not valid", eventFieldName),
+    createCompanyField: async companyFieldName => companyFieldName.startsWith("companyField/") ? await sideEffects.submitDatomsWithValidation(S, [
+        newDatom("companyField", "type", "companyField"),
+        newDatom("companyField", "entity/type", "companyField"),
+        newDatom("companyField", "companyField/name", companyFieldName),
+        newDatom("companyField", "companyField/label", "[label]"),
+        newDatom("companyField", "companyField/doc", "[doc]"),
+      ]) : console.log("ERROR: new companyFieldName not valid", companyFieldName)
 })
 
 let update = (S) => {
@@ -194,7 +129,7 @@ let update = (S) => {
     "eventType/incorporation": ( Event, companyFields_before ) => {
         let shareCapital = (typeof Event["event/incorporation/shareholders"] === "object") ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) : 0
         return {
-            "eventField/:accountBalance": {"1576": shareCapital, "2000": -shareCapital, "2036": Event["event/incorporation/incorporationCost"], "2400": -Event["event/incorporation/incorporationCost"] },
+            "eventField/:accountBalance": {"1576": shareCapital, "2000": -shareCapital, "2030": Event["event/incorporation/incorporationCost"], "2400": -Event["event/incorporation/incorporationCost"] },
             "eventField/:newShareholders": Event["event/incorporation/shareholders"],
             "eventField/:supplier": Event["event/supplier"]
         }
@@ -231,6 +166,7 @@ let update = (S) => {
     Object.keys(S.eventTypes).forEach( eventType => S.eventTypes[ eventType ]["eventType/eventConstructor"] = eventConstructors[ eventType ] )
 
     const attributeValidators = {
+        "type": v => typeof v === "string",
         "attr/doc": v => typeof v === "string",
         "attr/label": v => typeof v === "string",
         "attr/valueType": v => ["string", "number", "object"].includes(v),
@@ -290,7 +226,7 @@ let update = (S) => {
         ].every( f => f(v) ),
         "event/eventType": v => [
             v => typeof v === "string", 
-            v => Object.keys(eventTypes).includes(v)
+            v => Object.keys(S.eventTypes).includes(v)
         ].every( f => f(v) ),
         "event/index": v => [ 
             v => typeof v === "number",
@@ -349,6 +285,7 @@ let update = (S) => {
 
     S.attributeValidators = attributeValidators
 
+    Object.keys(S.attributes).forEach( attribute => S.attributes[ attribute ]["validator"] = attributeValidators[ attribute ] )
     Object.keys(S.eventAttributes).forEach( eventAttributeName => S.eventAttributes[ eventAttributeName ]["validator"] = attributeValidators[ eventAttributeName ] )
 
     const eventValidators = {
@@ -374,7 +311,7 @@ let update = (S) => {
           validator: ( Event, companyFields_before ) => companyFields_before["companyField/:suppliers"].includes( Event["event/supplier"] ),
         },
         "eventValidator/isExistingShareholder": {
-          validator: ( Event, companyFields_before ) => typeof logThis(companyFields_before)["companyField/:shareholders"][ logThis(Event)["event/shareholder"] ] !== "undefined",
+          validator: ( Event, companyFields_before ) => typeof companyFields_before["companyField/:shareholders"][ Event["event/shareholder"] ] !== "undefined",
         }
       
     }
@@ -464,7 +401,6 @@ let update = (S) => {
     }
 
     S.Accounts = Accounts
-
     
     const companyFieldConstructors =  {
         "companyField/:shareholders": (prevValue, Event, calculatedEventAttributes) => mergerino(prevValue, calculatedEventAttributes["eventField/:newShareholders"] ),
@@ -551,8 +487,6 @@ let update = (S) => {
 
             
     }  )
-
-
 
     console.log("State: ", S)
 
@@ -719,8 +653,135 @@ const Reports = {
       
       `}
     } 
-  }
+}
   
+
+//WIP
+
+let getTaxRecords = (accounts, taxRate) => {
+
+  let accountingResultBeforeTax = Object.entries(accounts).filter( entry => Number(entry[0]) >= 3000 ).reduce( (sum, entry) => sum + entry[1].closingBalance.amount - entry[1].openingBalance.amount, 0 )
+
+  let nonDeductibleAccounts = ['2030' , '5901' , '6726' , '7360' , '7410' , '7430' , '7791' , '8000' , '8002' , '8005' , '8006' , '8010' , '8020' , '8040' , '8071' , '8078' , '8080' , '8100' , '8110' , '8120' , '8140' , '8178'] //NB: changed 2036 to 2030. Which to  use for Stiftelseskost?
+
+  let permanentDifferences = Object.entries(accounts).filter( entry => nonDeductibleAccounts.includes( entry[0] ) ).reduce( (sum, entry) => sum + entry[1].closingBalance.amount - entry[1].openingBalance.amount, 0 )
+
+  let temporaryDifferences = 0
+
+  let taxEstimateCorrection = accounts["8300"] ? accounts["8300"].closingBalance.amount : 0
+
+  let taxResultBeforeUtilizedLosses = accountingResultBeforeTax + permanentDifferences + temporaryDifferences + taxEstimateCorrection
+
+  let accumulatedLosses = accounts["2510"] ? accounts["2510"].closingBalance.amount : 0 //Må velge riktig konto
+
+  let utilizedLosses = taxResultBeforeUtilizedLosses < 0 ? Math.max( taxResultBeforeUtilizedLosses * taxRate, accumulatedLosses ) : 0
+
+  let taxResultAfterUtilizedLosses = taxResultBeforeUtilizedLosses + utilizedLosses
+
+  let taxCost = taxResultAfterUtilizedLosses * - taxRate
+
+  let taxRecords = [
+      {"transaction/generic/account": "8300", "transaction/amount": taxCost, accountingResultBeforeTax, permanentDifferences, temporaryDifferences, taxEstimateCorrection, taxResultBeforeUtilizedLosses, accumulatedLosses, utilizedLosses, taxRate, taxCost, taxResultAfterUtilizedLosses},
+      {"transaction/generic/account": "2500", "transaction/amount": -taxCost}, //Burde være eiendel hvis negativ
+      {"transaction/generic/account": "2510", "transaction/amount": utilizedLosses}
+  ]
+
+  let taxTransaction = {
+      type: "transactions",
+      records: taxRecords
+  }
+
+  
+
+  return taxTransaction
+}
+
+let getYearEndRecords = (accountsPostTax) => {
+
+  let accountingResultAfterTax = Object.entries(accountsPostTax).filter( entry => Number(entry[0]) >= 3000 ).reduce( (sum, entry) => sum + entry[1].closingBalance.amount - entry[1].openingBalance.amount, 0 )
+
+  let uncoveredLosses_before = accountsPostTax["2080"] ? accountsPostTax["2080"].openingBalance.amount : 0
+  let otherEquity_before = accountsPostTax["2050"] ? accountsPostTax["2050"].openingBalance.amount : 0
+  let sharePremium_before = accountsPostTax["2020"] ? accountsPostTax["2020"].openingBalance.amount : 0
+
+  let uncoveredLosses = 0
+  let otherEquity = 0
+  let sharePremium = 0
+
+  if( accountingResultAfterTax < 0 ){
+      //Overskudd
+
+      if( uncoveredLosses_before === 0 ){
+          
+          otherEquity = accountingResultAfterTax
+          
+  
+      }else{
+          
+          if( uncoveredLosses_before > -accountingResultAfterTax ){
+
+              uncoveredLosses = accountingResultAfterTax
+
+
+          }else{
+
+              uncoveredLosses = -uncoveredLosses_before
+              otherEquity = accountingResultAfterTax + uncoveredLosses_before
+
+          }
+
+          
+          
+      }
+
+      
+
+  }else{
+      //Underskudd
+
+      if( otherEquity_before === 0 ){
+          
+          uncoveredLosses = accountingResultAfterTax //Overkurs bør også være med
+          
+  
+      }else{
+          
+          if( otherEquity_before < -accountingResultAfterTax ){
+
+              otherEquity = accountingResultAfterTax
+
+
+          }else{
+
+              otherEquity = -otherEquity_before
+              uncoveredLosses = accountingResultAfterTax + otherEquity_before
+
+          }
+
+          
+          
+      }
+
+
+  }
+
+
+  let yearEndRecords = [
+      {"transaction/generic/account": "8800", "transaction/amount": -accountingResultAfterTax},
+      {"transaction/generic/account": "2050", "transaction/amount": otherEquity},
+      {"transaction/generic/account": "2080", "transaction/amount": uncoveredLosses},
+  ]
+
+  let yearEndTransaction = {
+      type: "transactions",
+      records: yearEndRecords
+  }
+
+  
+
+  return yearEndTransaction
+}
+
   let taxCostView = (financialYear) => {
   
     let taxCostRecord = financialYear.accounts["8300"].accountRecords[0]

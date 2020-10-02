@@ -50,6 +50,9 @@ function split(array, isValid) {
 let ifError = (value, fallback) => value ? value : fallback
 let ifNot = (test, ifNot, then) => test ? then : ifNot
 
+
+
+
 //HTML element generation
 let IDcounter = [0];
 let getNewElementID = () => String( IDcounter.push( IDcounter.length  ) )
@@ -183,7 +186,37 @@ let attributesTableView = (S, appliedEvent, A) => d([
   d("<br>")
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
 
-let companyDocPage = (S, A) => d( JSON.stringify(S["companyDocVersions"][ S["companyDocVersions"].length - 1 ]), {class: "pageContainer"} )
+
+
+let slider = (value, min, max, onChange) => input({type: "range", min, max, value}, "change", onChange )
+
+let companyDocPage = (S, A) => d([
+  input({value: S["companyDocPage/selectedVersion"], disabled: "disabled"}, "change", e => A.updateLocalState({"companyDocPage/selectedVersion": e.srcElement.value})),
+  d([
+    d("<", {class: "textButton"}, "click", e => A.updateLocalState({"companyDocPage/selectedVersion": Math.max(0, S["companyDocPage/selectedVersion"] - 1 )  })),
+    d(">", {class: "textButton"}, "click", e => A.updateLocalState({"companyDocPage/selectedVersion": Math.min(S["companyDocVersions"].length - 1, S["companyDocPage/selectedVersion"] + 1 ) })),
+  ], {class: "shareholderRow"}),
+  d([
+    h3(`Hendelsesrapport for hendelse ${S["companyDocPage/selectedVersion"]}`),
+    d( S["companyDocPage/selectedVersion"] >= 1 ? `${ S["eventTypes"][ logThis(S["appliedEvents"][ S["companyDocPage/selectedVersion"] - 1 ])["event/eventType"] ]["eventType/label"]  }` : "" ),
+    S["companyDocPage/selectedVersion"] >= 1 
+      ? d( Object.entries(S["appliedEvents"][ S["companyDocPage/selectedVersion"] - 1 ] ).filter( entry => entry[0].startsWith( "eventField/:" )  ).map( entry => d([
+        d( `${ S["eventFields"][ entry[0] ]["eventField/label"] }`  ),
+        d( `${ JSON.stringify(entry[1]) }`  )
+        ], {class: "shareholderRow"})  ) ) 
+      : d(""),
+  ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+  d("<br>"),
+  d([
+    h3(`Selskapets saldobalanse etter hendelse ${S["companyDocPage/selectedVersion"]}`),
+    accountBalanceView(S, S["companyDocVersions"][ S["companyDocPage/selectedVersion"] ]["companyField/:accountBalance"]),
+  ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+] , {class: "pageContainer"} )
+
+let accountBalanceView = (S, accountBalance) => d( Object.entries( accountBalance ).map( entry => d([
+  d( `[${ entry[0] }] ${ S.Accounts[ entry[0] ].label }`  ),
+  d( `${entry[1] }`,  {style: Object.keys( S["appliedEvents"][ S["companyDocPage/selectedVersion"] - 1 ]["eventField/:accountBalance"] ).includes( entry[0] ) ? "color: red;" : ""} )
+], {class: "shareholderRow"}) ) )
 
 let attributesPage = ( S, A ) => d([
   d([
@@ -397,42 +430,44 @@ let recordsView = (S, A, attribute, value, entityID) => d([
 let foundersView = (S, A, attribute, value, entityID) => d([
   span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
   d([d("AksjonærID"), d("Antall aksjer"), d("Pris per aksje")], {class: "shareholderRow"}),
-  d( Object.values( value).map( shareholder => d([
-    input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( shareholder["shareholder"], undefined ),
-        createObject( e.srcElement.value, mergerino(
-          value[shareholder["shareholder"]],
-          createObject( "shareholder" , e.srcElement.value ),
+  Object.keys(value).length === 0
+  ? d("Ingen stiftere")
+  : d( Object.values( value ).map( shareholder => d([
+      input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
+        entityID, 
+        attribute, 
+        mergerino(
+          value,
+          createObject( shareholder["shareholder"], undefined ),
+          createObject( e.srcElement.value, mergerino(
+            value[shareholder["shareholder"]],
+            createObject( "shareholder" , e.srcElement.value ),
+            )
           )
-        )
-    ) )),
-    input({value: shareholder["shareCount"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( shareholder["shareholder"] , createObject("shareCount", Number( e.srcElement.value ) ) ),
-    ) )),
-    input({value: shareholder["sharePrice"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( shareholder["shareholder"] , createObject("sharePrice", Number( e.srcElement.value ) ) ),
-    ) )),
-    d("X", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
-      entityID, 
-      attribute, 
-      mergerino(
-        value,
-        createObject( shareholder["shareholder"] , undefined ) ) 
-    ) )
-    ], {class: "shareholderRow"}),
-  ) ),
+      ) )),
+      input({value: shareholder["shareCount"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
+        entityID, 
+        attribute, 
+        mergerino(
+          value,
+          createObject( shareholder["shareholder"] , createObject("shareCount", Number( e.srcElement.value ) ) ),
+      ) )),
+      input({value: shareholder["sharePrice"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
+        entityID, 
+        attribute, 
+        mergerino(
+          value,
+          createObject( shareholder["shareholder"] , createObject("sharePrice", Number( e.srcElement.value ) ) ),
+      ) )),
+      d("X", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
+        entityID, 
+        attribute, 
+        mergerino(
+          value,
+          createObject( shareholder["shareholder"] , undefined ) ) 
+      ) )
+      ], {class: "shareholderRow"}),
+      ) ),
   d("Legg til stifter", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
     entityID, 
     attribute, 
