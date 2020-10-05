@@ -186,7 +186,7 @@ let attributesTableView = (S, appliedEvent, A) => d([
   d("<br>")
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
 
-
+let entitySpan = (S, id) => span(S.get(id)["entity/label"], S.get(id)["entity/doc"] )
 
 let slider = (value, min, max, onChange) => input({type: "range", min, max, value}, "change", onChange )
 
@@ -242,7 +242,7 @@ let attributesPage = ( S, A ) => d([
 let eventTypesPage = ( S, A ) => d([
   d([
     d("entity"),
-    d("name, label, doc"),
+    d("Label, doc"),
     d("eventType/attributes"),
     d("eventType/requiredCompanyFields"),
     d("eventType/eventValidators"),
@@ -251,59 +251,58 @@ let eventTypesPage = ( S, A ) => d([
   d( Object.values(S.eventTypes).map( eventType => d([
     d(String(eventType["entity"])),
     d([
-      input({value: eventType["eventType/name"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/name", e.srcElement.value ) ),
-      input({value: eventType["eventType/label"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/label", e.srcElement.value ) ),
-      input({value: eventType["eventType/doc"]}, "change", e => A.updateEntityAttribute( eventType.entity, "eventType/doc", e.srcElement.value ) )
+      input({value: eventType["entity/label"]}, "change", e => A.updateEntityAttribute( eventType.entity, "entity/label", e.srcElement.value ) ),
+      input({value: eventType["entity/doc"]}, "change", e => A.updateEntityAttribute( eventType.entity, "entity/doc", e.srcElement.value ) )
     ], {style: "display: grid;"}),
-    d( eventType["eventType/attributes"].map( attribute => d([span(
-      S.eventAttributes[attribute]["attr/label"] + "[X]", 
-      S.eventAttributes[attribute]["attr/doc"])], 
+    d( eventType["eventType/eventAttributes"].map( attributeID => d([
+      entitySpan(S, attributeID)
+      ],
       {class: "textButton_narrow"}, 
       "click", 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/attributes", eventType["eventType/attributes"].filter( attr => attr !== attribute )  ) 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/eventAttributes", eventType["eventType/eventAttributes"].filter( attr => attr !== attributeID )  ) 
       ) 
     ).concat( dropdown(
-      0, 
-      Object.values(S.eventAttributes).filter( eventAttribute => !eventType["eventType/attributes"].includes( eventAttribute["attr/name"] )  ).map( eventAttribute => returnObject({value: eventAttribute["attr/name"], label: eventAttribute["attr/label"]})).concat({value: 0, label: "Legg til"}), 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/attributes", eventType["eventType/attributes"].concat( e.srcElement.value )  )   
+      0,
+      Object.values(S.eventAttributes).filter( eventAttribute => !eventType["eventType/eventAttributes"].includes( eventAttribute["entity"] )  ).map( eventAttribute => returnObject({value: eventAttribute["entity"], label: eventAttribute["entity/label"]})).concat({value: 0, label: "Legg til"}), 
+      e => A.updateEntityAttribute( eventType.entity, "eventType/eventAttributes", eventType["eventType/eventAttributes"].concat( Number(e.srcElement.value) )  )   
       )  ) 
     ),
     d( eventType["eventType/requiredCompanyFields"].map( companyField => d([span(
-      S.companyFields[companyField]["companyField/label"] + "[X]", 
-      S.companyFields[companyField]["companyField/doc"])], 
+      S.companyFields[companyField]["entity/label"] + "[X]", 
+      S.companyFields[companyField]["entity/doc"])], 
       {class: "textButton_narrow"}, 
       "click", 
       e => A.updateEntityAttribute( eventType.entity, "eventType/requiredCompanyFields", eventType["eventType/requiredCompanyFields"].filter( cf => cf !== companyField )  ) 
       ) 
     ).concat( dropdown(
       0, 
-      Object.values(S.companyFields).filter( companyField => !eventType["eventType/requiredCompanyFields"].includes( companyField["companyField/name"] )  ).map( companyField => returnObject({value: companyField["companyField/name"], label: companyField["companyField/label"]})).concat({value: 0, label: "Legg til"}), 
+      Object.values(S.companyFields).filter( companyField => !eventType["eventType/requiredCompanyFields"].includes( companyField["companyField/name"] )  ).map( companyField => returnObject({value: companyField["companyField/name"], label: companyField["entity/label"]})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( eventType.entity, "eventType/requiredCompanyFields", eventType["eventType/requiredCompanyFields"].concat( e.srcElement.value )  )   
       )  ) 
     ),
     d( eventType["eventType/eventValidators"].map( validatorName => d([span(
-      S.eventValidators[validatorName]["eventValidator/label"] + "[X]", 
-      S.eventValidators[validatorName]["eventValidator/doc"])], 
+      S.eventValidators[validatorName]["entity/label"] + "[X]", 
+      S.eventValidators[validatorName]["entity/doc"])], 
       {class: "textButton_narrow"}, 
       "click", 
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].filter( validator => validator !== validatorName )  ) 
       ) 
     ).concat( dropdown(
       0, 
-      Object.values(S.eventValidators).filter( eventValidator => !eventType["eventType/eventValidators"].includes( eventValidator["eventValidator/name"] )  ).map( eventValidator => returnObject({value: eventValidator["eventValidator/name"], label: eventValidator["eventValidator/label"]})).concat({value: 0, label: "Legg til"}), 
+      Object.values(S.eventValidators).filter( eventValidator => !eventType["eventType/eventValidators"].includes( eventValidator["eventValidator/name"] )  ).map( eventValidator => returnObject({value: eventValidator["eventValidator/name"], label: eventValidator["entity/label"]})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].concat( e.srcElement.value )  )   
       )  ) 
     ),
     d( eventType["eventType/eventFields"].map( eventField => d([span(
-      S.eventFields[eventField]["eventField/label"] + "[X]", 
-      S.eventFields[eventField]["eventField/doc"])], 
+      S.eventFields[eventField]["entity/label"] + "[X]", 
+      S.eventFields[eventField]["entity/doc"])], 
       {class: "textButton_narrow"}, 
       "click", 
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventFields", eventType["eventType/eventFields"].filter( f => f !== eventField )  ) 
       ) 
     ).concat( dropdown(
       0, 
-      Object.values(S.eventFields).filter( eventField => !eventType["eventType/eventFields"].includes( eventField["eventField/name"] )  ).map( eventField => returnObject({value: eventField["eventField/name"], label: eventField["eventField/label"]})).concat({value: 0, label: "Legg til"}), 
+      Object.values(S.eventFields).filter( eventField => !eventType["eventType/eventFields"].includes( eventField["eventField/name"] )  ).map( eventField => returnObject({value: eventField["eventField/name"], label: eventField["entity/label"]})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventFields", eventType["eventType/eventFields"].concat( e.srcElement.value )  )   
       )  ) 
     ),
@@ -318,16 +317,16 @@ let eventValidatorsPage = ( S, A ) => d([
   d([
     d("entity"),
     d("eventValidator/name"),
-    d("eventValidator/label"),
+    d("entity/label"),
     d("eventValidator/errorMessage"),
     d("eventValidator/doc")
   ], {class: "attributeRow", style: "background-color: gray;"} ),
   d( Object.values(S.eventValidators).map( eventValidator => d([
     d(String(eventValidator["entity"])),
     input({value: eventValidator["eventValidator/name"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/name", e.srcElement.value ) ),
-    input({value: eventValidator["eventValidator/label"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/label", e.srcElement.value ) ),
+    input({value: eventValidator["entity/label"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "entity/label", e.srcElement.value ) ),
     input({value: eventValidator["eventValidator/errorMessage"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/errorMessage", e.srcElement.value ) ),
-    input({value: eventValidator["eventValidator/doc"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "eventValidator/doc", e.srcElement.value ) ),
+    input({value: eventValidator["entity/doc"]}, "change", e => A.updateEntityAttribute( eventValidator.entity, "entity/doc", e.srcElement.value ) ),
   ], {class: "attributeRow"} ) ) ),
   d([
     d("Opprett ny"),
@@ -339,16 +338,16 @@ let eventFieldsPage = ( S, A ) => d([
   d([
     d("entity"),
     d("eventField/name"),
-    d("eventField/label"),
+    d("entity/label"),
     d("eventField/dep"),
-    d("eventField/doc")
+    d("entity/doc")
   ], {class: "attributeRow", style: "background-color: gray;"} ),
   d( Object.values(S.eventFields).map( eventField => d([
     d(String(eventField["entity"])),
     input({value: eventField["eventField/name"]}, "change", e => A.updateEntityAttribute( eventField.entity, "eventField/name", e.srcElement.value ) ),
-    input({value: eventField["eventField/label"]}, "change", e => A.updateEntityAttribute( eventField.entity, "eventField/label", e.srcElement.value ) ),
+    input({value: eventField["entity/label"]}, "change", e => A.updateEntityAttribute( eventField.entity, "entity/label", e.srcElement.value ) ),
     d(""),
-    input({value: eventField["eventField/doc"]}, "change", e => A.updateEntityAttribute( eventField.entity, "eventField/doc", e.srcElement.value ) ),
+    input({value: eventField["entity/doc"]}, "change", e => A.updateEntityAttribute( eventField.entity, "entity/doc", e.srcElement.value ) ),
   ], {class: "attributeRow"} ) ) ),
   d([
     d("Opprett ny"),
@@ -360,7 +359,7 @@ let companyFieldsPage = ( S, A ) => d([
   d([
     d("entity"),
     d("companyField/name"),
-    d("companyField/label"),
+    d("entity/label"),
     d("companyField/errorMessage"),
     d("companyField/doc")
   ], {class: "attributeRow", style: "background-color: gray;"} ),
@@ -499,5 +498,3 @@ let specialAttributeViews = {
   "transaction/records": recordsView,
   "event/incorporation/shareholders": foundersView
 }
-
-
