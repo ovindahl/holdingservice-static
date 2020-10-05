@@ -58,7 +58,7 @@ const sideEffects = {
     
     },
     submitDatoms: async Datoms => await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms ) ),
-    submitDatomsWithValidation: async (S, Datoms) => Datoms.every( datom => S.attributeValidators[ logThis(datom).attribute ]( datom.value ) ) 
+    submitDatomsWithValidation: async (S, Datoms) => Datoms.every( datom => S.attributeValidators[ datom.attribute ]( datom.value ) ) 
       ? update( mergerino( await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), {currentPage: S.currentPage, selectedOrgnumber: S.selectedOrgnumber}))
       : update( logThis(S, "ERROR: Datoms not valid" ) )
 }
@@ -66,11 +66,11 @@ const sideEffects = {
 let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
 
 let getUserActions = (S) => returnObject({
-    updateLocalState: (patch) => update( mergerino(S, patch) ),
+    updateLocalState: (patch) => update( mergerino(S, patch ) ),
     updateEntityAttribute: async (entityID, attribute, value) => await sideEffects.submitDatomsWithValidation(S, [newDatom(entityID, attribute, value)] ),
-    createEvent: async ( appliedEvent, newEventType ) => await sideEffects.submitDatomsWithValidation(S, [
+    createEvent: async ( appliedEvent, newEventTypeEntity ) => await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newEvent", "entity/type", "event"),
-      newDatom("newEvent", "event/eventType", newEventType),
+      newDatom("newEvent", "event/eventTypeEntity", newEventTypeEntity),
       newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
       newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
       newDatom("newEvent", "event/date", appliedEvent["event/date"] ),
@@ -113,11 +113,12 @@ let getUserActions = (S) => returnObject({
 
 let update = (S) => {
 
-    S.Entities = Array.isArray(S.Entities) ? mergeArray( S.Entities ) : S.Entities
+    S.E = Array.isArray(S.E) ?  mergeArray( S.E ) : S.E
+
+    S["Entities"] = S.E
 
     const eventConstructors = {
     "eventType/incorporation": ( Event, companyFields_before ) => {
-        console.log(Event, companyFields_before)
         let shareCapital = (typeof Event["event/incorporation/shareholders"] === "object") ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) : 0
         return {
             "eventField/:accountBalance": {"1576": shareCapital, "2000": -shareCapital, "2030": Event["event/incorporation/incorporationCost"], "2400": -Event["event/incorporation/incorporationCost"] },
@@ -156,7 +157,7 @@ let update = (S) => {
 
     Object.keys(S.eventTypes).forEach( eventType => S.eventTypes[ eventType ]["eventType/eventConstructor"] = eventConstructors[ eventType ] )
 
-    Object.keys(eventConstructors).forEach( eventType => S["Entities"][ S["eventTypes"][eventType].entity ]["eventType/eventConstructor"] = eventConstructors[ eventType ] )
+    S["eventTypes"].forEach( eventType => S["E"][ eventType.entity ]["eventType/eventConstructor"] = eventConstructors[ eventType["eventType/name"] ] )
 
     const attributeValidators = {
         "entity/type": v => [
@@ -235,6 +236,9 @@ let update = (S) => {
             v => typeof v === "string", 
             v => Object.keys(S.eventTypes).includes(v)
         ].every( f => f(v) ),
+        "event/eventTypeEntity": v => [
+          v => typeof v === "number", 
+        ].every( f => f(v) ),
         "event/index": v => [ 
             v => typeof v === "number",
             v => v >= 1
@@ -292,9 +296,8 @@ let update = (S) => {
 
     S.attributeValidators = attributeValidators
 
-    Object.keys(S.attributes).forEach( attribute => S.attributes[ attribute ]["validator"] = attributeValidators[ attribute ] )
-    Object.keys(S.eventAttributes).forEach( eventAttributeName => S.eventAttributes[ eventAttributeName ]["validator"] = attributeValidators[ eventAttributeName ] )
-
+    S.attributes.forEach( attribute => S["E"][ attribute.entity ]["validator"] = attributeValidators[ attribute["attr/name"] ] )
+    
     const eventValidators = {
         "eventValidator/test": {
           validator: ( Event, companyFields_before ) => Event["event/currency"] === "NOK" 
@@ -323,7 +326,7 @@ let update = (S) => {
       
     }
 
-    Object.keys(eventValidators).forEach( validatorName => S["Entities"][ S["eventValidators"][validatorName].entity ]["validator"] = eventValidators[ validatorName ]["validator"] )
+    S["eventValidators"].forEach( eventValidator => S["E"][ eventValidator.entity ]["validator"] = eventValidators[ eventValidator["eventValidator/name"] ] )
 
     const Accounts = {
         '1070': {label: 'Utsatt skattefordel'}, 
@@ -416,9 +419,7 @@ let update = (S) => {
         "companyField/:appliedEvents": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( mergerino(Event, calculatedEventAttributes ) ),
     }
 
-    
-
-    Object.keys(S.companyFields).forEach( companyField => S.companyFields[ companyField ]["constructor"] = companyFieldConstructors[ companyField ] )
+    S["companyFields"].forEach( companyField => S["E"][ companyField.entity ]["constructor"] = companyFieldConstructors[ companyField["companyField/name"] ] )
 
     S.companyDocVersions = [{
         "companyField/:shareholders": {}, 
@@ -428,17 +429,17 @@ let update = (S) => {
     S.appliedEvents = []
     S.rejectedEvents = []
 
+
     S.Events.filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ).forEach( (Event, index) => {
 
             if(S.rejectedEvents.length === 0){
 
-                let eventType = S["Entities"][ S["eventTypes"][ Event["event/eventType"] ].entity ]
+                let eventType = S["E"][ Event["event/eventTypeEntity"] ]
                 let companyDoc = S["companyDocVersions"][index]
-
 
                 //0: Validate attributes
 
-                let invalidAttributes = eventType["eventType/eventAttributes"].map( attributeID => S["attributeValidators"][ S.Entities[attributeID]["attr/name"] ]( Event[ S.Entities[attributeID]["attr/name"] ] ) ? null : attributeID).filter( result => result !== null  )
+                let invalidAttributes = eventType["eventType/eventAttributes"].map( attributeID => S["attributeValidators"][ S["E"][attributeID]["attr/name"] ]( Event[ S["E"][attributeID]["attr/name"] ] ) ? null : attributeID).filter( result => result !== null  )
 
                 if(invalidAttributes.length > 0){
 
@@ -455,7 +456,7 @@ let update = (S) => {
 
                 //2: Validate combined event
 
-                let eventValidators = eventType["eventType/eventValidators"].map( validatorEntityID => S["Entities"][validatorEntityID]  )
+                let eventValidators = logThis( eventType["eventType/eventValidators"]).map( validatorEntityID => S["E"][validatorEntityID]  )
 
                 let eventErrors = eventValidators.reduce( (Errors, eventValidator) => eventValidator["validator"]( Event, companyFields_before ) ? Errors : Errors.concat(eventValidator["eventValidator/errorMessage"]), [] )
 

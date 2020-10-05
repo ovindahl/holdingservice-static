@@ -141,7 +141,7 @@ let timelineView = (S, A) => d([
 ])
 
 let appliedEventView = (S, Event , A) => d([
-    h3( S.eventTypes[ Event["event/eventType"] ]["eventType/label"], {style: `background-color: #1073104f; padding: 1em;`} ),
+    h3( S["E"][ Event["event/eventTypeEntity"] ]["entity/label"], {style: `background-color: #1073104f; padding: 1em;`} ),
     attributesTableView(S, Event, A),
     d("<br>"),
     historicalCompanyFieldsView(S, Event),
@@ -153,10 +153,10 @@ let appliedEventView = (S, Event , A) => d([
 ])
 
 let rejectedEventView = (S, Event , A) => d([
-  h3( S.eventTypes[ Event["event/eventType"] ]["eventType/label"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
+  h3( S["E"][ Event["event/eventTypeEntity"] ]["entity/label"], {style: `background-color: #fb9e9e; padding: 1em;`} ),
   d([
     h3("Attributter"),
-    d( S["eventTypes"][ Event["event/eventType"] ]["eventType/attributes"].map( attribute =>  d([attributeView(S, A, attribute, Event[ attribute ], Event["entity"] )], Event["event/:invalidAttributes"] ? Event["event/:invalidAttributes"].includes(attribute) ?  {style: `background-color: #fb9e9e;`} : {} : {} )  ) 
+    d( S["E"][ Event["event/eventTypeEntity"] ]["eventType/attributes"].map( attribute =>  d([attributeView(S, A, attribute, Event[ attribute ], Event["entity"] )], Event["event/:invalidAttributes"] ? Event["event/:invalidAttributes"].includes(attribute) ?  {style: `background-color: #fb9e9e;`} : {} : {} )  ) 
     ),
     d("<br>")
   ], {style: "background-color: #f1f0f0; padding: 1em;"}),
@@ -167,26 +167,36 @@ let rejectedEventView = (S, Event , A) => d([
   newEventDropdown(S, A, Event)
 ])
 
-let historicalCompanyFieldsView = (S, appliedEvent) => d([
+let historicalCompanyFieldsView = (S, Event) => d([
   h3("Benyttede historiske verdier"),
-  d( S["eventTypes"][ appliedEvent["event/eventType"] ]["eventType/requiredCompanyFields"].map( entityID =>  d(`${S["Entities"][entityID]["companyField/label"]}: ${JSON.stringify(appliedEvent[entityID])}`) ) 
+  d( S["E"][ Event["event/eventTypeEntity"] ]["eventType/requiredCompanyFields"].map( entityID =>  d(`${S["E"][entityID]["companyField/label"]}: ${JSON.stringify(Event[entityID])}`) ) 
   ),
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
 
-let eventFieldsTableView = (S, appliedEvent) => d([
+let eventFieldsTableView = (S, Event) => d([
   h3("eventFields"),
-  d( S["eventTypes"][ appliedEvent["event/eventType"] ]["eventType/eventFields"].map( entityID =>  d(`${S["Entities"][entityID]["eventField/label"]}: ${JSON.stringify(appliedEvent[entityID])}`) ) 
+  d( S["E"][ Event["event/eventTypeEntity"] ]["eventType/eventFields"].map( entityID =>  d(`${S["E"][entityID]["eventField/label"]}: ${JSON.stringify(Event[entityID])}`) ) 
   ),
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
 
-let attributesTableView = (S, appliedEvent, A) => d([
+let attributesTableView = (S, Event, A) => d([
   h3("Attributter"),
-  d( S["eventTypes"][ appliedEvent["event/eventType"] ]["eventType/attributes"].map( attribute =>  attributeView(S, A, attribute, appliedEvent[ attribute ], appliedEvent["entity"] ) ) 
+  d( S["E"][ Event["event/eventTypeEntity"] ]["eventType/attributes"].map( attribute =>  attributeView(S, A, attribute, Event[ attribute ], Event["entity"] ) ) 
   ),
   d("<br>")
 ], {style: "background-color: #f1f0f0; padding: 1em;"})
 
-let entitySpan = (S, id) => span( S["Entities"][id]["entity/label"], S["Entities"][id]["entity/doc"] )
+let attributeView = (S, A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](S, A, attribute, value, entityID) : genericAttributeView( S, attribute, value, e => A.updateEntityAttribute( entityID, attribute, S.eventAttributes[attribute]["attr/valueType"] === "number" ? Number(e.srcElement.value) : e.srcElement.value) )
+
+
+let genericAttributeView = (S, attribute, value, onChange) => d([
+  d([
+    span( attribute , attribute ),
+    input({value: value, style: `text-align: right;`}, "change", onChange ),
+    ], {class: "eventInspectorRow"}),
+])
+
+let entitySpan = (S, id) => span( S["E"][id]["entity/label"], S["E"][id]["entity/doc"] )
 
 let slider = (value, min, max, onChange) => input({type: "range", min, max, value}, "change", onChange )
 
@@ -248,7 +258,7 @@ let eventTypesPage = ( S, A ) => d([
     d("eventType/eventValidators"),
     d("eventType/eventFields"),
   ], {class: "eventTypeRow", style: "background-color: gray;"} ),
-  d( Object.values(S.eventTypes).map( eventType => d([
+  d( S.eventTypes.map( eventType => d([
     d(String(eventType["entity"])),
     d([
       input({value: eventType["entity/label"]}, "change", e => A.updateEntityAttribute( eventType.entity, "entity/label", e.srcElement.value ) ),
@@ -263,7 +273,7 @@ let eventTypesPage = ( S, A ) => d([
       ) 
     ).concat( dropdown(
       0,
-      Object.values(S.eventAttributes).filter( eventAttribute => !eventType["eventType/eventAttributes"].includes( eventAttribute["entity"] )  ).map( eventAttribute => returnObject({value: eventAttribute["entity"], label: eventAttribute["entity/label"]})).concat({value: 0, label: "Legg til"}), 
+      S.eventAttributes.filter( eventAttribute => !eventType["eventType/eventAttributes"].includes( eventAttribute["entity"] )  ).map( eventAttribute => returnObject({value: eventAttribute["entity"], label: eventAttribute["entity/label"]})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventAttributes", eventType["eventType/eventAttributes"].concat( Number(e.srcElement.value) )  )   
       )  ) 
     ),
@@ -276,7 +286,7 @@ let eventTypesPage = ( S, A ) => d([
       ) 
     ).concat( dropdown(
       0, 
-      Object.values(S.companyFields).filter( companyField => !eventType["eventType/requiredCompanyFields"].includes( companyField["entity"] )  ).map( companyField => returnObject({value: companyField["entity"], label: companyField["entity/label"]})).concat({value: 0, label: "Legg til"}), 
+      S.companyFields.filter( companyField => !eventType["eventType/requiredCompanyFields"].includes( companyField["entity"] )  ).map( companyField => returnObject({value: companyField["entity"], label: companyField["entity/label"]})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( eventType.entity, "eventType/requiredCompanyFields", eventType["eventType/requiredCompanyFields"].concat( Number(e.srcElement.value) )  )   
       )  ) 
     ),
@@ -289,7 +299,7 @@ let eventTypesPage = ( S, A ) => d([
       ) 
     ).concat( dropdown(
       0, 
-      Object.values(S.eventValidators).filter( eventValidator => !eventType["eventType/eventValidators"].includes( eventValidator["entity"] )  ).map( eventValidator => returnObject({value: eventValidator["entity"], label: eventValidator["entity/label"]})).concat({value: 0, label: "Legg til"}), 
+      S.eventValidators.filter( eventValidator => !eventType["eventType/eventValidators"].includes( eventValidator["entity"] )  ).map( eventValidator => returnObject({value: eventValidator["entity"], label: eventValidator["entity/label"]})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].concat( Number(e.srcElement.value) )  )   
       )  ) 
     ),
@@ -302,7 +312,7 @@ let eventTypesPage = ( S, A ) => d([
       ) 
     ).concat( dropdown(
       0, 
-      Object.values(S.eventFields).filter( eventField => !eventType["eventType/eventFields"].includes( eventField["entity"] )  ).map( eventField => returnObject({value: eventField["entity"], label: eventField["entity/label"]})).concat({value: 0, label: "Legg til"}), 
+      S.eventFields.filter( eventField => !eventType["eventType/eventFields"].includes( eventField["entity"] )  ).map( eventField => returnObject({value: eventField["entity"], label: eventField["entity/label"]})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventFields", eventType["eventType/eventFields"].concat( Number(e.srcElement.value) )  )   
       )  ) 
     ),
@@ -312,6 +322,14 @@ let eventTypesPage = ( S, A ) => d([
     input({value: "eventType/[newEventType]" }, "change", e => A.createEventType( e.srcElement.value ) )
   ], {class: "eventTypeRow"} ),
 ]) 
+
+
+
+let entityAdminPage = ( S, A, entityType ) => d([
+  Object.values(S[ entityType ]).map( entity => d([
+    d(JSON.stringify(entity))
+  ]), {class: "attributeRow"} )
+])
 
 let eventValidatorsPage = ( S, A ) => d([
   d([
@@ -331,7 +349,7 @@ let eventValidatorsPage = ( S, A ) => d([
     input({value: "eventValidator/label" }, "change", e => A.createEventValidator( e.srcElement.value ) )
   ], {class: "attributeRow"} ),
 ]) 
-
+/* 
 let eventFieldsPage = ( S, A ) => d([
   d([
     d("entity"),
@@ -381,7 +399,7 @@ let companyFieldsPage = ( S, A ) => d([
     input({value: "companyField/[name]" }, "change", e => A.createCompanyField( e.srcElement.value ) )
   ], {class: "attributeRow"} ),
 ]) 
-
+ */
 //Tailor-made complex views
 
 let recordsView = (S, A, attribute, value, entityID) => d([
@@ -421,7 +439,7 @@ let recordsView = (S, A, attribute, value, entityID) => d([
 ], {style: "border: solid 1px black;"})
 
 let foundersView = (S, A, attribute, value, entityID) => d([
-  span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
+  span(attribute, attribute ),
   d([d("AksjonærID"), d("Antall aksjer"), d("Pris per aksje")], {class: "shareholderRow"}),
   Object.keys(value).length === 0
   ? d("Ingen stiftere")
@@ -470,18 +488,12 @@ let foundersView = (S, A, attribute, value, entityID) => d([
   ) ) )
 ], {style: "border: solid 1px black;"})
 
-let attributeView = (S, A, attribute, value, entityID) => Object.keys(specialAttributeViews).includes(attribute) ? specialAttributeViews[ attribute ](S, A, attribute, value, entityID) : genericAttributeView( S, attribute, value, e => A.updateEntityAttribute( entityID, attribute, S.eventAttributes[attribute]["attr/valueType"] === "number" ? Number(e.srcElement.value) : e.srcElement.value) )
 
-let genericAttributeView = (S, attribute, value, onChange) => d([
-  d([
-    span(S.eventAttributes[attribute]["attr/label"], S.eventAttributes[attribute]["attr/doc"] ),
-    input({value: value, style: `text-align: right;`}, "change", onChange ),
-    ], {class: "eventInspectorRow"}),
-])
+
 
 let newEventDropdown = (S, A, Event) => dropdown( "", 
-  Object.keys(S.eventTypes).map( newEventType => returnObject({value: newEventType, label: S.eventTypes[newEventType]["eventType/label"] }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
-  e => A.createEvent(Event, e.srcElement.value )
+  S.eventTypes.map( newEventType => returnObject({value: newEventType.entity, label: newEventType["entity/label"] }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
+  e => A.createEvent(Event, Number(e.srcElement.value) )
 )
   
 let specialAttributeViews = {
