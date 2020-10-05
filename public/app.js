@@ -58,7 +58,7 @@ const sideEffects = {
     
     },
     submitDatoms: async Datoms => await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms ) ),
-    submitDatomsWithValidation: async (S, Datoms) => Datoms.every( datom => S.attributeValidators[ datom.attribute ]( datom.value ) ) 
+    submitDatomsWithValidation: async (S, Datoms) => Datoms.every( datom => S.attributeValidators[ logThis(datom).attribute ]( datom.value ) ) 
       ? update( mergerino( await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), {currentPage: S.currentPage, selectedOrgnumber: S.selectedOrgnumber}))
       : update( logThis(S, "ERROR: Datoms not valid" ) )
 }
@@ -69,7 +69,6 @@ let getUserActions = (S) => returnObject({
     updateLocalState: (patch) => update( mergerino(S, patch) ),
     updateEntityAttribute: async (entityID, attribute, value) => await sideEffects.submitDatomsWithValidation(S, [newDatom(entityID, attribute, value)] ),
     createEvent: async ( appliedEvent, newEventType ) => await sideEffects.submitDatomsWithValidation(S, [
-      newDatom("newEvent", "type", "process"),
       newDatom("newEvent", "entity/type", "event"),
       newDatom("newEvent", "event/eventType", newEventType),
       newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
@@ -79,47 +78,42 @@ let getUserActions = (S) => returnObject({
     ] ),
     retractEvent: async entityID => S.Events.filter( e => e.entity === entityID  )[0]["entity/type"] === "event" ? await sideEffects.submitDatomsWithValidation(S, getRetractionDatomsWithoutChildren([S.Events.filter( e => e.entity === entityID  )[0]]) ) : logThis(null, "ERROR: Not event"),
     createAttribute: async attributeName => attributeName.startsWith("event/") ? await sideEffects.submitDatomsWithValidation(S, [
+      newDatom("newAttr", "entity/type", "attribute"),
       newDatom("newAttr", "attr/name", attributeName),
       newDatom("newAttr", "entity/label", "[attributeName]"),
       newDatom("newAttr", "entity/doc", "[doc]"),
-    ] ) : console.log("ERROR: new Attribtue not valid", attributeName),
-    createEventType: async eventTypeName => eventTypeName.startsWith("eventType/") 
-      ? await sideEffects.submitDatomsWithValidation(S, [
-        newDatom("newEventType", "type", "eventType"),
-        newDatom("newEventType", "entity/type", "eventType"),
-        newDatom("newEventType", "entity/label", "[label]"),
-        newDatom("newEventType", "eventType/eventAttributes", ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"] ),
-        newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
-        newDatom("newEventType", "eventType/eventValidators", ["eventValidator/currencyIsNOK"] ),
-        newDatom("newEventType", "eventType/eventFields", [] ),
-        newDatom("newEventType", "entity/doc", "[doc]"),
-        ]) 
-      : console.log("ERROR: new eventType not valid", eventTypeName),
-    createEventValidator: async eventValidatorName => eventValidatorName.startsWith("eventValidator/") 
-      ? await sideEffects.submitDatomsWithValidation(S, [
-        newDatom("newEventType", "type", "eventValidator"),
+    ] ) : console.log("ERROR: new attribute not valid", attributeName),
+    createEventType: async label => await sideEffects.submitDatomsWithValidation(S, [
+      newDatom("newEventType", "entity/type", "eventType"),
+      newDatom("newEventType", "entity/label", label),
+      newDatom("newEventType", "entity/doc", "[doc]"),
+      newDatom("newEventType", "eventType/eventAttributes", ["event/index", "event/date", "event/currency", "event/description", "event/incorporation/orgnumber"] ),
+      newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
+      newDatom("newEventType", "eventType/eventValidators", [] ),
+      newDatom("newEventType", "eventType/eventFields", [] ),
+    ]),
+    createEventValidator: async label => await sideEffects.submitDatomsWithValidation(S, [
         newDatom("newEventType", "entity/type", "eventValidator"),
-        newDatom("newEventType", "entity/label", "[label]"),
-        newDatom("newEventType", "eventValidator/errorMessage", "[errorMessage]" ),
+        newDatom("newEventType", "entity/label", label),
         newDatom("newEventType", "entity/doc", "[doc]"),
-      ]) : console.log("ERROR: new eventValidator not valid", eventValidatorName),
-    createEventField: async eventFieldName => eventValidatorName.startsWith("eventField/") 
-      ? await sideEffects.submitDatomsWithValidation(S, [
-            newDatom("eventField", "type", "eventField"),
+        newDatom("newEventType", "eventValidator/errorMessage", "[errorMessage]" ),
+    ]),
+    createEventField: async label => await sideEffects.submitDatomsWithValidation(S, [
             newDatom("eventField", "entity/type", "eventField"),
-            newDatom("eventField", "entity/label", "[label]"),
-            newDatom("eventField", "eventField/companyFields", ["companyField/:accountBalance"] ),
+            newDatom("eventField", "entity/label", label),
             newDatom("eventField", "entity/doc", "[doc]"),
-      ]) : console.log("ERROR: new eventFieldName not valid", eventFieldName),
-    createCompanyField: async companyFieldName => companyFieldName.startsWith("companyField/") ? await sideEffects.submitDatomsWithValidation(S, [
-        newDatom("companyField", "type", "companyField"),
+            newDatom("eventField", "eventField/companyFields", [] ),
+    ]),
+    createCompanyField: async label => await sideEffects.submitDatomsWithValidation(S, [
         newDatom("companyField", "entity/type", "companyField"),
-        newDatom("companyField", "entity/label", "[label]"),
+        newDatom("companyField", "entity/label", label ),
         newDatom("companyField", "entity/doc", "[doc]"),
-      ]) : console.log("ERROR: new companyFieldName not valid", companyFieldName)
+    ]),
 })
 
 let update = (S) => {
+
+    S.Entities = Array.isArray(S.Entities) ? mergeArray( S.Entities ) : S.Entities
 
     const eventConstructors = {
     "eventType/incorporation": ( Event, companyFields_before ) => {
@@ -162,10 +156,12 @@ let update = (S) => {
 
     Object.keys(S.eventTypes).forEach( eventType => S.eventTypes[ eventType ]["eventType/eventConstructor"] = eventConstructors[ eventType ] )
 
+    Object.keys(eventConstructors).forEach( eventType => S["Entities"][ S["eventTypes"][eventType].entity ]["eventType/eventConstructor"] = eventConstructors[ eventType ] )
+
     const attributeValidators = {
         "entity/type": v => [
           v => typeof v === "string",
-          v => ["process", "event"].includes(v)
+          v => ["eventType", "attribute", "eventValidator", "eventField", "companyField", "event"].includes(v)
         ].every( f => f(v) ),
         "entity/label": v => [
           v => typeof v === "string"
@@ -327,7 +323,7 @@ let update = (S) => {
       
     }
 
-    Object.keys(S.eventValidators).forEach( validatorName => S.eventValidators[ validatorName ]["validator"] = eventValidators[ validatorName ]["validator"] )
+    Object.keys(eventValidators).forEach( validatorName => S["Entities"][ S["eventValidators"][validatorName].entity ]["validator"] = eventValidators[ validatorName ]["validator"] )
 
     const Accounts = {
         '1070': {label: 'Utsatt skattefordel'}, 
@@ -420,11 +416,7 @@ let update = (S) => {
         "companyField/:appliedEvents": (prevValue, Event, calculatedEventAttributes) => prevValue.concat( mergerino(Event, calculatedEventAttributes ) ),
     }
 
-    S.Entities = mergeArray( Object.values(S.attributes).map( e => createObject(e.entity, e)  ) ) 
-
-    S.get = (id) => Array.isArray(id) 
-      ? Object.values(S.Entities).filter( e => id.includes(e.entity)  )
-      : S.Entities[id]
+    
 
     Object.keys(S.companyFields).forEach( companyField => S.companyFields[ companyField ]["constructor"] = companyFieldConstructors[ companyField ] )
 
@@ -440,14 +432,13 @@ let update = (S) => {
 
             if(S.rejectedEvents.length === 0){
 
-                let eventType = Event["event/eventType"]
-                let eventTypeObject = S["eventTypes"][ eventType ]
+                let eventType = S["Entities"][ S["eventTypes"][ Event["event/eventType"] ].entity ]
                 let companyDoc = S["companyDocVersions"][index]
 
 
                 //0: Validate attributes
 
-                let invalidAttributes = eventTypeObject["eventType/eventAttributes"].map( attributeID => S["attributeValidators"][ S.get(attributeID)["attr/name"]]( Event[ S.get(attributeID)["attr/name"] ] ) ? null : attributeID).filter( result => result !== null  )
+                let invalidAttributes = eventType["eventType/eventAttributes"].map( attributeID => S["attributeValidators"][ S.Entities[attributeID]["attr/name"] ]( Event[ S.Entities[attributeID]["attr/name"] ] ) ? null : attributeID).filter( result => result !== null  )
 
                 if(invalidAttributes.length > 0){
 
@@ -458,13 +449,13 @@ let update = (S) => {
 
                 //1: Get (and validate?) required historical variables
 
-                let companyFields_before = mergeArray( eventTypeObject["eventType/requiredCompanyFields"].map( variableName => createObject( variableName, companyDoc[ variableName ] )  ) ) 
+                let companyFields_before = mergeArray( eventType["eventType/requiredCompanyFields"].map( variableName => createObject( variableName, companyDoc[ variableName ] )  ) ) 
 
                 //validation TBD
 
                 //2: Validate combined event
 
-                let eventValidators = S.eventTypes[ eventType ]["eventType/eventValidators"].map( validatorName => S.eventValidators[ validatorName ]  )
+                let eventValidators = eventType["eventType/eventValidators"].map( validatorEntityID => S["Entities"][validatorEntityID]  )
 
                 let eventErrors = eventValidators.reduce( (Errors, eventValidator) => eventValidator["validator"]( Event, companyFields_before ) ? Errors : Errors.concat(eventValidator["eventValidator/errorMessage"]), [] )
 
@@ -477,9 +468,9 @@ let update = (S) => {
 
                 }else{
 
-                    let calculatedFields = eventTypeObject["eventType/eventConstructor"]( Event, companyFields_before )
+                    let calculatedFields = eventType["eventType/eventConstructor"]( Event, companyFields_before )
 
-                    let eventTypeEventFields = eventTypeObject["eventType/eventFields"]
+                    let eventTypeEventFields = eventType["eventType/eventFields"]
 
                     let companyFields = Object.keys(S.companyFields).filter( companyFieldName => S.companyFields[companyFieldName]["companyField/eventFields"].some( eventField => eventTypeEventFields.includes(eventField)  )  )
 
