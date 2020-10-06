@@ -50,12 +50,16 @@ const sideEffects = {
             console.log("Authenticated");
             
             let S = await sideEffects.APIRequest("GET", "userContent", null)
-            S.currentPage = "timeline"
-            S.selectedOrgnumber = "999999999"
-            S["companyDocPage/selectedVersion"] = 0
-            S["attributesPage/selectedAttribute"] = 3172
-            S["attributesPage/selectedAttributeCategory"] = ""
-            update(S)
+            if( S === null){console.log("Received null")}
+            else{
+              S.currentPage = "timeline"
+              S.selectedOrgnumber = "999999999"
+              S["companyDocPage/selectedVersion"] = 0
+              S["attributesPage/selectedAttribute"] = 3172
+              S["attributesPage/selectedAttributeCategory"] = ""
+              update(S)
+            }
+            
         }else{
             try{
                 await sideEffects.auth0.handleRedirectCallback();
@@ -186,6 +190,9 @@ let attachFunctionsToState = (S) => {
           v => typeof v === "string"
         ].every( f => f(v) ),
         "entity/doc": v => [
+          v => typeof v === "string"
+        ].every( f => f(v) ),
+        "entity/note": v => [
           v => typeof v === "string"
         ].every( f => f(v) ),
         "type": v => typeof v === "string",

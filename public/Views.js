@@ -91,6 +91,7 @@ let submitInputValue = e => {
   return e.srcElement.value
 }
 let span = (text, tooltip, attributesObject, eventType, action) => htmlElementObject("span", mergerino({"title": tooltip}, attributesObject), text, eventType, action)
+let textArea = (content, onChange) => htmlElementObject("textarea", {}, content, "change", onChange )
 
 let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", updateFunction  )
 
@@ -201,10 +202,9 @@ let accountBalanceView = (S, accountBalance) => d( Object.entries( accountBalanc
 
 let attributesPage = ( S, A ) => {
   let selectedAttribute = S["E"][ S["attributesPage/selectedAttribute"] ]
+  let attributeCategories = Object.values(S.attributes).map( attribute => attribute["attribute/category"]).filter(filterUniqueValues)
 
-  let attributeCategories = Object.values(S.eventAttributes).map( attribute => attribute["attribute/category"]).filter(filterUniqueValues)
-
-  let visibleAttributes = Object.values(S.eventAttributes).filter( attribute => attribute["attribute/category"] === S["attributesPage/selectedAttributeCategory"] )
+  let visibleAttributes = Object.values(S.attributes).filter( attribute => attribute["attribute/category"] === S["attributesPage/selectedAttributeCategory"] )
 
   return d([
     d( attributeCategories.map( category => d( (typeof category === "string") ? category : "Mangler kategori", {class: category === S["attributesPage/selectedAttributeCategory"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"attributesPage/selectedAttributeCategory" : category} ) )).concat(d("Ny attributt", {class: "textButton"}, "click", e => A.createAttribute() )) ),
@@ -217,11 +217,11 @@ let attributesPage = ( S, A ) => {
       ], {class: "eventAttributeRow"}),
       d([
         d("Systemnavn:"),
-        d( selectedAttribute["attr/name"] )
+        input({value: selectedAttribute["attr/name"]}, "change", e => A.updateEntityAttribute( selectedAttribute.entity, "attr/name", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Verditype:"),
-        d( selectedAttribute["attr/valueType"] )
+        dropdown(selectedAttribute["attr/valueType"], [{value: "string", label: "Tekstfelt"}, {value: "number", label: "Tall"}, {value: "object", label: "Objekt"}], e => A.updateEntityAttribute( selectedAttribute.entity, "attr/valueType", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Attributtnavn:"),
@@ -236,8 +236,17 @@ let attributesPage = ( S, A ) => {
         input({value: selectedAttribute["entity/doc"]}, "change", e => A.updateEntityAttribute( selectedAttribute.entity, "entity/doc", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
       d([
+        d("Internt notat:"),
+        textArea( selectedAttribute["entity/note"], e => A.updateEntityAttribute( selectedAttribute.entity, "entity/note", submitInputValue(e) ) )
+        //input({value: selectedAttribute["entity/note"]}, "change", e => A.updateEntityAttribute( selectedAttribute.entity, "entity/note", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
         d("Antall hendelser som bruker denne attributten:"),
         d( String( S["Events"].reduce( (sum, Event) => Object.keys(Event).includes( selectedAttribute["attr/name"] ) ? sum + 1 : sum, 0 ) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Global attributtvalidering utover verditype:"),
+        d( String(selectedAttribute["attribute/validator"]) )
       ], {class: "eventAttributeRow"}),
     ],{class: "feedContainer"}),
   ], {style: "display: flex;"})
@@ -267,7 +276,7 @@ let eventTypesPage = ( S, A ) => d([
       ) 
     ).concat( dropdown(
       0,
-      S.eventAttributes.filter( eventAttribute => !eventType["eventType/eventAttributes"].includes( eventAttribute["entity"] )  ).map( eventAttribute => returnObject({value: eventAttribute["entity"], label: eventAttribute["entity/label"]})).concat({value: 0, label: "Legg til"}), 
+      S.attributes.filter( eventAttribute => !eventType["eventType/eventAttributes"].includes( eventAttribute["entity"] )  ).map( eventAttribute => returnObject({value: eventAttribute["entity"], label: eventAttribute["entity/label"]})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( eventType.entity, "eventType/eventAttributes", eventType["eventType/eventAttributes"].concat( Number(submitInputValue(e)) )  )   
       )  ) 
     ),
