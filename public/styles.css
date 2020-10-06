@@ -1,5 +1,13 @@
 body {background-color: #F2F3F5;}
 
+.feedContainer {
+    width: 800px;
+    padding:1em;
+    margin-left:1em; 
+    background-color: white;
+    border: solid 1px lightgray;
+}
+
 .textButton {
     padding: 1em;
 }
@@ -27,6 +35,16 @@ body {background-color: #F2F3F5;}
 }
 
 .eventInspectorRow:hover {
+    background-color: lightgray;
+}
+
+.eventAttributeRow {
+    display:grid;
+    grid-template-columns: 2fr 2fr;
+    padding: 1px; 
+}
+
+.eventAttributeRow:hover {
     background-color: lightgray;
 }
 
