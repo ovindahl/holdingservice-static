@@ -202,13 +202,17 @@ let accountBalanceView = (S, accountBalance) => d( Object.entries( accountBalanc
 
 let attributesPage = ( S, A ) => {
   let selectedAttribute = S["E"][ S["attributesPage/selectedAttribute"] ]
-  let attributeCategories = Object.values(S.attributes).map( attribute => attribute["attribute/category"]).filter(filterUniqueValues)
 
-  let visibleAttributes = Object.values(S.attributes).filter( attribute => attribute["attribute/category"] === S["attributesPage/selectedAttributeCategory"] )
+  let eventAttributes = S["eventAttributes"].map( attributeName => S["E"][ getAttributeEntityFromName(S, attributeName)] )
+
+  let attributeCategories = eventAttributes.map( attribute => attribute["attribute/category"]).filter(filterUniqueValues)
+  let usageFreq = S["Events"].reduce( (sum, Event) => Object.keys(Event).includes( selectedAttribute["attr/name"] ) ? sum + 1 : sum, 0 )
+
+  let visibleAttributes = eventAttributes.filter( attribute => attribute["attribute/category"] === S["attributesPage/selectedAttributeCategory"] )
 
   return d([
-    d( attributeCategories.map( category => d( (typeof category === "string") ? category : "Mangler kategori", {class: category === S["attributesPage/selectedAttributeCategory"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"attributesPage/selectedAttributeCategory" : category} ) )).concat(d("Ny attributt", {class: "textButton"}, "click", e => A.createAttribute() )) ),
-    d( visibleAttributes.map( attribute => d( attribute["entity/label"], {class: attribute.entity === S["attributesPage/selectedAttribute"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"attributesPage/selectedAttribute" : attribute.entity} ) )) ),
+    d( [h3("Kategori")].concat(attributeCategories.map( category => d( (typeof category === "string") ? category : "Mangler kategori", {class: category === S["attributesPage/selectedAttributeCategory"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"attributesPage/selectedAttributeCategory" : category} ) )).concat(d("Ny attributt", {class: "textButton"}, "click", e => A.createAttribute() ))) ),
+    d( [h3("Attributt")].concat(visibleAttributes.map( attribute => d( attribute["entity/label"], {class: attribute.entity === S["attributesPage/selectedAttribute"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"attributesPage/selectedAttribute" : attribute.entity} ) ))) ),
     d([
       h3( `${selectedAttribute["attribute/category"]} /  ${selectedAttribute["entity/label"]}`  ),
       d([
@@ -217,11 +221,15 @@ let attributesPage = ( S, A ) => {
       ], {class: "eventAttributeRow"}),
       d([
         d("Systemnavn:"),
-        input({value: selectedAttribute["attr/name"]}, "change", e => A.updateEntityAttribute( selectedAttribute.entity, "attr/name", submitInputValue(e) ) )
+        usageFreq === 0
+          ? input({value: selectedAttribute["attr/name"]}, "change", e => A.updateEntityAttribute( selectedAttribute.entity, "attr/name", submitInputValue(e) ) )
+          : d(selectedAttribute["attr/name"])
       ], {class: "eventAttributeRow"}),
       d([
         d("Verditype:"),
-        dropdown(selectedAttribute["attr/valueType"], [{value: "string", label: "Tekstfelt"}, {value: "number", label: "Tall"}, {value: "object", label: "Objekt"}], e => A.updateEntityAttribute( selectedAttribute.entity, "attr/valueType", submitInputValue(e) ) )
+        usageFreq === 0
+          ? dropdown(selectedAttribute["attr/valueType"], [{value: "string", label: "Tekstfelt"}, {value: "number", label: "Tall"}, {value: "object", label: "Objekt"}], e => A.updateEntityAttribute( selectedAttribute.entity, "attr/valueType", submitInputValue(e) ) )
+          : d(selectedAttribute["attr/valueType"])
       ], {class: "eventAttributeRow"}),
       d([
         d("Attributtnavn:"),
@@ -237,12 +245,11 @@ let attributesPage = ( S, A ) => {
       ], {class: "eventAttributeRow"}),
       d([
         d("Internt notat:"),
-        textArea( selectedAttribute["entity/note"], e => A.updateEntityAttribute( selectedAttribute.entity, "entity/note", submitInputValue(e) ) )
-        //input({value: selectedAttribute["entity/note"]}, "change", e => A.updateEntityAttribute( selectedAttribute.entity, "entity/note", submitInputValue(e) ) )
+        textArea( String(selectedAttribute["entity/note"]), e => A.updateEntityAttribute( selectedAttribute.entity, "entity/note", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Antall hendelser som bruker denne attributten:"),
-        d( String( S["Events"].reduce( (sum, Event) => Object.keys(Event).includes( selectedAttribute["attr/name"] ) ? sum + 1 : sum, 0 ) ) )
+        d( String( usageFreq ) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Global attributtvalidering utover verditype:"),
@@ -252,79 +259,71 @@ let attributesPage = ( S, A ) => {
   ], {style: "display: flex;"})
 } 
 
-let eventTypesPage = ( S, A ) => d([
-  d([
-    d("entity"),
-    d("Label, doc"),
-    d("eventType/eventAttributes"),
-    d("eventType/requiredCompanyFields"),
-    d("eventType/eventValidators"),
-    d("eventType/eventFields"),
-  ], {class: "eventTypeRow", style: "background-color: gray;"} ),
-  d( S.eventTypes.map( eventType => d([
-    d(String(eventType["entity"])),
+let eventTypesPage = ( S, A ) => {
+  let selectedEventType = S["E"][ S["eventTypesPage/selectedEventType"] ]
+
+  let eventTypeObjects = S["eventTypes"].map( eventType => S["E"][ eventType.entity] )
+
+  let eventAttributes = S["eventAttributes"].map( attributeName => S["E"][ getAttributeEntityFromName(S, attributeName)] )
+  let eventValidators = S["eventValidators"].map( validator => S["E"][ validator.entity] )
+
+  return d([
+    d( [h3("Hendelsestype")].concat(eventTypeObjects.map( eventTypeObject => d( eventTypeObject["entity/label"], {class: eventTypeObject.entity === S["eventTypesPage/selectedEventType"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"eventTypesPage/selectedEventType" : eventTypeObject.entity} ) )).concat(d("Opprett ny", {class: "textButton"}, "click", e => A.createEventType() ))) ),
     d([
-      input({value: eventType["entity/label"]}, "change", e => A.updateEntityAttribute( eventType.entity, "entity/label", submitInputValue(e) ) ),
-      input({value: eventType["entity/doc"]}, "change", e => A.updateEntityAttribute( eventType.entity, "entity/doc", submitInputValue(e) ) )
-    ], {style: "display: grid;"}),
-    d( eventType["eventType/eventAttributes"].map( attributeID => d([
-      entitySpan(S, attributeID)
-      ],
-      {class: "textButton_narrow"}, 
-      "click", 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/eventAttributes", eventType["eventType/eventAttributes"].filter( attr => attr !== attributeID )  ) 
-      ) 
-    ).concat( dropdown(
-      0,
-      S.attributes.filter( eventAttribute => !eventType["eventType/eventAttributes"].includes( eventAttribute["entity"] )  ).map( eventAttribute => returnObject({value: eventAttribute["entity"], label: eventAttribute["entity/label"]})).concat({value: 0, label: "Legg til"}), 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/eventAttributes", eventType["eventType/eventAttributes"].concat( Number(submitInputValue(e)) )  )   
-      )  ) 
-    ),
-    d( eventType["eventType/requiredCompanyFields"].map( entityID => d([
-      entitySpan(S, entityID),
-      ],
-      {class: "textButton_narrow"}, 
-      "click", 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/requiredCompanyFields", eventType["eventType/requiredCompanyFields"].filter( companyField => companyField !== entityID )  ) 
-      ) 
-    ).concat( dropdown(
-      0, 
-      S.companyFields.filter( companyField => !eventType["eventType/requiredCompanyFields"].includes( companyField["entity"] )  ).map( companyField => returnObject({value: companyField["entity"], label: companyField["entity/label"]})).concat({value: 0, label: "Legg til"}), 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/requiredCompanyFields", eventType["eventType/requiredCompanyFields"].concat( Number(submitInputValue(e)) )  )   
-      )  ) 
-    ),
-    d( eventType["eventType/eventValidators"].map( entityID => d([
-      entitySpan(S, entityID)
-      ], 
-      {class: "textButton_narrow"}, 
-      "click", 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].filter( validator => validator !== entityID )  ) 
-      ) 
-    ).concat( dropdown(
-      0, 
-      S.eventValidators.filter( eventValidator => !eventType["eventType/eventValidators"].includes( eventValidator["entity"] )  ).map( eventValidator => returnObject({value: eventValidator["entity"], label: eventValidator["entity/label"]})).concat({value: 0, label: "Legg til"}), 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/eventValidators", eventType["eventType/eventValidators"].concat( Number(submitInputValue(e)) )  )   
-      )  ) 
-    ),
-    d( eventType["eventType/eventFields"].map( entityID => d([
-      entitySpan(S, entityID),
-      ], 
-      {class: "textButton_narrow"}, 
-      "click", 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/eventFields", eventType["eventType/eventFields"].filter( f => f !== entityID )  ) 
-      ) 
-    ).concat( dropdown(
-      0, 
-      S.eventFields.filter( eventField => !eventType["eventType/eventFields"].includes( eventField["entity"] )  ).map( eventField => returnObject({value: eventField["entity"], label: eventField["entity/label"]})).concat({value: 0, label: "Legg til"}), 
-      e => A.updateEntityAttribute( eventType.entity, "eventType/eventFields", eventType["eventType/eventFields"].concat( Number(submitInputValue(e)) )  )   
-      )  ) 
-    ),
-    d( "[X]", {class: "textButton"}, "click", e => A.retractEntity(eventType["entity"])  ),
-  ], {class: "eventTypeRow"} ) ) ),
-  d([
-    d("Opprett ny", {class: "textButton"}, "click", e => A.createEventType() ),
-  ], {class: "eventTypeRow"} ),
-]) 
+      h3( `${selectedEventType["entity/label"]}`  ),
+      d([
+        d("EntitetsID:"),
+        d( String(selectedEventType["entity"]) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Navn:"),
+        input({value: selectedEventType["entity/label"]}, "change", e => A.updateEntityAttribute( selectedEventType.entity, "entity/label", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Beskrivelse:"),
+        input({value: selectedEventType["entity/doc"]}, "change", e => A.updateEntityAttribute( selectedEventType.entity, "entity/doc", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Internt notat:"),
+        textArea( String(selectedEventType["entity/note"]), e => A.updateEntityAttribute( selectedEventType.entity, "entity/note", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Attributter:"),
+        d( selectedEventType["eventType/eventAttributes"].map( attributeID => d([
+          entitySpan(S, attributeID), 
+          span(" [ Fjern ] ", "Fjerner attributten fra denne hendelsestypen", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventAttributes", selectedEventType["eventType/eventAttributes"].filter( attr => attr !== attributeID )  )  )
+          ]) 
+        ).concat( dropdown(
+          0,
+          eventAttributes.filter( eventAttribute => !selectedEventType["eventType/eventAttributes"].includes( eventAttribute["entity"] )  ).map( eventAttribute => returnObject({value: eventAttribute["entity"], label: `${eventAttribute["attribute/category"]} /  ${eventAttribute["entity/label"]}`})).concat({value: 0, label: "Legg til"}), 
+          e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventAttributes", selectedEventType["eventType/eventAttributes"].concat( Number(submitInputValue(e)) )  )   
+          )  ) 
+        )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Selskapsvariabler som benyttes:"),
+        d("TBD")
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Validering på hendelsesnivå:"),
+        d( selectedEventType["eventType/eventValidators"].map( validatorID => d([
+          entitySpan(S, validatorID), 
+          span(" [ Fjern ] ", "Fjerner valideringsregelen fra denne hendelsestypen", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventValidators", selectedEventType["eventType/eventValidators"].filter( v => v !== validatorID )  )  )
+          ]) 
+        ).concat( dropdown(
+          0,
+          eventValidators.filter( eventValidator => !selectedEventType["eventType/eventValidators"].includes( eventValidator["entity"] )  ).map( eventValidator => returnObject({value: eventValidator["entity"], label: `${eventValidator["entity/label"]}`})).concat({value: 0, label: "Legg til"}), 
+          e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventValidators", selectedEventType["eventType/eventValidators"].concat( Number(submitInputValue(e)) )  )   
+          )  ) 
+        )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Hendelsens outputgenerator"),
+        textArea( String(selectedEventType["eventType/eventConstructor"]) )
+      ], {class: "eventAttributeRow"}),
+    ],{class: "feedContainer"}),
+  ], {style: "display: flex;"})
+} 
 
 let newEntityRouter = {
   "eventValidators": (A) => A.createEventValidator(),

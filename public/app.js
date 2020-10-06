@@ -57,6 +57,7 @@ const sideEffects = {
               S["companyDocPage/selectedVersion"] = 0
               S["attributesPage/selectedAttribute"] = 3172
               S["attributesPage/selectedAttributeCategory"] = ""
+              S["eventTypesPage/selectedEventType"] = 4113
               update(S)
             }
             
@@ -75,7 +76,7 @@ const sideEffects = {
     },
     submitDatomsWithValidation: async (S, Datoms) => sideEffects.isIdle 
       ? Datoms.every( datom => validateAttributeValue(S, datom.attribute, datom.value) ) 
-        ? update( mergerino( await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), {currentPage: S.currentPage, selectedOrgnumber: S.selectedOrgnumber, "attributesPage/selectedAttribute": S["attributesPage/selectedAttribute"], "attributesPage/selectedAttributeCategory": S["attributesPage/selectedAttributeCategory"] }))
+        ? update( mergerino( await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), {currentPage: S.currentPage, selectedOrgnumber: S.selectedOrgnumber, "attributesPage/selectedAttribute": S["attributesPage/selectedAttribute"], "attributesPage/selectedAttributeCategory": S["attributesPage/selectedAttributeCategory"], "eventTypesPage/selectedEventType": S["eventTypesPage/selectedEventType"] }))
         : update( logThis(S, "ERROR: Datoms not valid" ) ) 
       : update( logThis(S, "ERROR: HTTP request already in progress" ) ) 
 }
@@ -130,6 +131,7 @@ let getUserActions = (S) => returnObject({
 })
 
 let getAttributeEntityFromName = (S, attributeName) => S["attributes"].filter( a => a["attr/name"] === attributeName )[0]["entity"]
+let getAttributeObjectFromName = (S, attributeName) => logThis(S["attributes"]).filter( a => a["attr/name"] === logThis(attributeName) )[0]
 
 
 let validateAttributeValue = (S, attributeName, value) => (typeof attributeName === "string")
@@ -326,6 +328,8 @@ let attachFunctionsToState = (S) => {
     S["attributeValidators"] = attributeValidators
 
     Object.keys(attributeValidators).forEach( attributeName => S["E"][ getAttributeEntityFromName(S, attributeName) ]["attribute/validator"] = attributeValidators[ attributeName ] )
+
+    S["eventAttributes"] = S["attributes"].filter( a => typeof a["attr/name"] === "string").map( a => a["attr/name"] ).filter( attributeName => attributeName.startsWith("event/")  )
     
     const eventValidators = {
       "4194": ( Event, companyFields_before ) => Event["event/currency"] === "NOK",
