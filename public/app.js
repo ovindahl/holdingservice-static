@@ -49,15 +49,21 @@ const sideEffects = {
         if(isAuthenticated){
             console.log("Authenticated");
             
-            let S = await sideEffects.APIRequest("GET", "userContent", null)
-            if( S === null){console.log("Received null")}
+            let serverResponse = await sideEffects.APIRequest("GET", "userContent", null)
+            if( serverResponse === null){console.log("Received null")}
             else{
-              S.currentPage = "timeline"
-              S.selectedOrgnumber = "999999999"
-              S["companyDocPage/selectedVersion"] = 0
-              S["attributesPage/selectedAttribute"] = 3172
-              S["attributesPage/selectedAttributeCategory"] = ""
-              S["eventTypesPage/selectedEventType"] = 4113
+
+              let initialUIstate = {
+                "currentPage": "timeline",
+                "selectedOrgnumber": "999999999",
+                "companyDocPage/selectedVersion": 0,
+                "attributesPage/selectedAttribute": 3172,
+                "attributesPage/selectedAttributeCategory": "",
+                "eventTypesPage/selectedEventType": 4113
+              }
+
+              let S = updateS({}, serverResponse, initialUIstate)
+
               update(S)
             }
             
@@ -75,16 +81,37 @@ const sideEffects = {
     
     },
     submitDatomsWithValidation: async (S, Datoms) => sideEffects.isIdle 
-      ? Datoms.every( datom => validateAttributeValue(S, datom.attribute, datom.value) ) 
-        ? update( mergerino( await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), {currentPage: S.currentPage, selectedOrgnumber: S.selectedOrgnumber, "attributesPage/selectedAttribute": S["attributesPage/selectedAttribute"], "attributesPage/selectedAttributeCategory": S["attributesPage/selectedAttributeCategory"], "eventTypesPage/selectedEventType": S["eventTypesPage/selectedEventType"] }))
-        : update( logThis(S, "ERROR: Datoms not valid" ) ) 
-      : update( logThis(S, "ERROR: HTTP request already in progress" ) ) 
+      ? Datoms.every( datom => validateAttributeValue(S, getAttributeEntityFromName(S, datom.attribute), datom.value) ) 
+        ? update( updateS(S, await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), null ) )
+        : update( logThis( updateS(S, null, null ), "ERROR: Datoms not valid" ) ) 
+      : update( logThis(updateS(S, null, null ), "ERROR: HTTP request already in progress" ) ),
+    submitNewAttributeDatoms: async (S, Datoms) => sideEffects.isIdle 
+    ? Datoms.filter( datom => datom.attribute === "attr/name" && datom.value.startsWith("event/") ).length > 0
+      ? update( updateS(S, await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), null ) )
+      : update( logThis( updateS(S, null, null ), "ERROR: Datoms not valid" ) ) 
+    : update( logThis( updateS(S, null, null ), "ERROR: HTTP request already in progress" ) ),
 }
+
+
+let updateS = (S, serverResponse, UIstatePatch) => mergerino( S, 
+  serverResponse === null ? {} : {"sharedData": {
+    "E": serverResponse["E"],
+    attributes: serverResponse["attributes"],
+    allCompanyFields: serverResponse["companyFields"].map( e => e.entity ),
+    "allEventTypes": serverResponse["eventTypes"].map( e => e.entity ),
+    "allEventAttributes": serverResponse["attributes"].filter( attr => attr["attr/name"] ).filter( attr => attr["attr/name"].startsWith("event/")  ).map( attribute => attribute.entity ),
+    "allEventValidators": serverResponse["eventValidators"].map( e => e.entity ),
+    "allEventFields": serverResponse["eventFields"].map( e => e.entity ),
+    "Accounts": getAccounts(),
+    "userEvents": serverResponse["Events"]
+  }},
+  UIstatePatch === null ? {} : {"UIstate": mergerino(S["UIstate"], UIstatePatch)}
+)
 
 let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
 
 let getUserActions = (S) => returnObject({
-    updateLocalState: (patch) => update( mergerino(S, patch ) ),
+    updateLocalState: (patch) => update( updateS(S, null, patch ) ),
     updateEntityAttribute: async (entityID, attribute, value) => await sideEffects.submitDatomsWithValidation(S, [newDatom(entityID, attribute, value)] ),
     createEvent: async ( appliedEvent, newEventTypeEntity ) => await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newEvent", "entity/type", "event"),
@@ -96,11 +123,12 @@ let getUserActions = (S) => returnObject({
     ] ),
     retractEvent: async entityID => S.Events.filter( e => e.entity === entityID  )[0]["entity/type"] === "event" ? await sideEffects.submitDatomsWithValidation(S, getRetractionDatomsWithoutChildren([S.Events.filter( e => e.entity === entityID  )[0]]) ) : logThis(null, "ERROR: Not event"),
     retractEntity: async entityID => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S["E"][entityID] ])
-      .filter( datom => datom["attribute"] !== "eventValidator/validator" ) 
-      .filter( datom => datom["attribute"] !== "eventType/eventConstructor" ) 
     ),
-    createAttribute: async () => await sideEffects.submitDatomsWithValidation(S, [
-      newDatom("newAttr", "entity/type", "attribute")
+    createAttribute: async () => await sideEffects.submitNewAttributeDatoms(S, [
+      newDatom("newAttr", "entity/type", "attribute"),
+      newDatom("newAttr", "attr/name", "event/attribute" + S["attributes"].length ),
+      newDatom("newAttr", "entity/label", "Ny attributt"),
+      newDatom("newAttr", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined") && (typeof inputValue !== "null") ;`),
     ] ),
     createEventType: async () => await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newEventType", "entity/type", "eventType"),
@@ -109,7 +137,7 @@ let getUserActions = (S) => returnObject({
       newDatom("newEventType", "eventType/eventAttributes", [] ),
       newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
       newDatom("newEventType", "eventType/eventValidators", [] ),
-      newDatom("newEventType", "eventType/eventFields", [] ),
+      newDatom("newEventType", "eventType/eventFields", [] ), //eventFieldConstructors instead?
     ]),
     createEventValidator: async () => await sideEffects.submitDatomsWithValidation(S, [
         newDatom("newEventType", "entity/type", "eventValidator"),
@@ -130,357 +158,170 @@ let getUserActions = (S) => returnObject({
     ]),
 })
 
-let getAttributeEntityFromName = (S, attributeName) => S["attributes"].filter( a => a["attr/name"] === attributeName )[0]["entity"]
-let getAttributeObjectFromName = (S, attributeName) => logThis(S["attributes"]).filter( a => a["attr/name"] === logThis(attributeName) )[0]
+let getAttributeEntityFromName = (S, attributeName) => S["sharedData"]["attributes"].filter( a => a["attr/name"] === logThis(attributeName) )[0]["entity"]
+
+let getAccounts = (S) => returnObject({
+  '1070': {label: 'Utsatt skattefordel'}, 
+  '1300': {label: 'Investeringer i datterselskap'}, 
+  '1320': {label: 'Lån til foretak i samme konsern'}, 
+  '1330': {label: 'Investeringer i tilknyttet selskap'}, 
+  '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
+  '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
+  '1360': {label: 'Obligasjoner'}, 
+  '1370': {label: 'Fordringer på eiere'}, 
+  '1375': {label: 'Fordringer på styremedlemmer'}, 
+  '1380': {label: 'Fordringer på ansatte'}, 
+  '1399': {label: 'Andre fordringer'}, 
+  '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
+  '1579': {label: 'Andre kortsiktige fordringer'}, 
+  '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
+  '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
+  '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
+  '1820': {label: 'Andre aksjer'}, 
+  '1830': {label: 'Markedsbaserte obligasjoner'}, 
+  '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
+  '1880': {label: 'Andre finansielle instrumenter'}, 
+  '1920': {label: 'Bankinnskudd'}, 
+  '2000': {label: 'Aksjekapital'}, 
+  '2020': {label: 'Overkurs'}, 
+  '2030': {label: 'Annen innskutt egenkapital'}, 
+  '2050': {label: 'Annen egenkapital'}, 
+  '2080': {label: 'Udekket tap'}, 
+  '2120': {label: 'Utsatt skatt'}, 
+  '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
+  '2250': {label: 'Gjeld til ansatte og eiere'}, 
+  '2260': {label: 'Gjeld til selskap i samme konsern'}, 
+  '2290': {label: 'Annen langsiktig gjeld'}, 
+  '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
+  '2400': {label: 'Leverandørgjeld'}, 
+  '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
+  '2510': {label: 'Betalbar skatt, fastsatt'}, 
+  '2800': {label: 'Avsatt utbytte'}, 
+  '2910': {label: 'Gjeld til ansatte og eiere'}, 
+  '2920': {label: 'Gjeld til selskap i samme konsern'}, 
+  '2990': {label: 'Annen kortsiktig gjeld'}, 
+  '6540': {label: 'Inventar'}, 
+  '6551': {label: 'Datautstyr (hardware)'}, 
+  '6552': {label: 'Programvare (software)'}, 
+  '6580': {label: 'Andre driftsmidler'}, 
+  '6701': {label: 'Honorar revisjon'}, 
+  '6702': {label: 'Honorar rådgivning revisjon'}, 
+  '6705': {label: 'Honorar regnskap'}, 
+  '6720': {label: 'Honorar for økonomisk rådgivning'}, 
+  '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
+  '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
+  '6790': {label: 'Annen fremmed tjeneste'}, 
+  '6890': {label: 'Annen kontorkostnad'}, 
+  '6900': {label: 'Elektronisk kommunikasjon'}, 
+  '7770': {label: 'Bank og kortgebyrer'}, 
+  '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
+  '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
+  '8000': {label: 'Inntekt på investering i datterselskap'}, 
+  '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
+  '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
+  '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
+  '8055': {label: 'Andre renteinntekter'}, 
+  '8060': {label: 'Valutagevinst (agio)'}, 
+  '8070': {label: 'Annen finansinntekt'}, 
+  '8071': {label: 'Aksjeutbytte'}, 
+  '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
+  '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
+  '8090': {label: 'Inntekt på andre investeringer'}, 
+  '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
+  '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
+  '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
+  '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
+  '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
+  '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
+  '8155': {label: 'Andre rentekostnader'}, 
+  '8160': {label: 'Valutatap (disagio)'}, 
+  '8170': {label: 'Annen finanskostnad'}, 
+  '8178': {label: 'Tap ved realisasjon av aksjer'}, 
+  '8300': {label: 'Betalbar skatt'}, 
+  '8320': {label: 'Endring utsatt skatt'},
+  '8800': {label: 'Årsresultat'}
+})
+
+let validateAttributeValue = (S, attributeEntity, value) =>  new Function(`inputValue`, S["sharedData"]["E"][ attributeEntity ]["attribute/validatorFunctionString"] )( value )
 
 
-let validateAttributeValue = (S, attributeName, value) => (typeof attributeName === "string")
-  ? S["E"][ getAttributeEntityFromName(S, attributeName) ]["attribute/validator"](value)
-  : S["E"][ attributeName ]["attribute/validator"](value)
+let eventAttributesAreValid = (S, eventAttributes) => S["sharedData"]["E"][ eventAttributes["event/eventTypeEntity"] ]["eventType/eventAttributes"]
+  .every( attributeEntity =>  
+    validateAttributeValue(S, attributeEntity, eventAttributes[ S["sharedData"]["E"][ attributeEntity ]["attr/name"] ] )
+  )
 
+let combinedEventIsValid = (S, eventAttributes, companyVariables) => S["sharedData"]["E"][ eventAttributes["event/eventTypeEntity"] ]["eventType/eventValidators"]
+  .every( entity =>  
+    new Function([`eventAttributes`, `companyFields`], S["sharedData"]["E"][entity]["eventValidator/validatorFunctionString"])( eventAttributes, companyVariables )
+  )
+    
+    
 
-let attachFunctionsToState = (S) => {
+let constructCompanyDoc = (S, storedEvents) => {
 
-  S["E"] = Array.isArray(S["E"]) ?  mergeArray( S["E"] ) : S["E"]
+  let allCompanyFields = S["sharedData"]["allCompanyFields"]
 
-    const eventConstructors = {
-    "eventType/incorporation": ( Event, companyFields_before ) => {
-        let shareCapital = (typeof Event["event/incorporation/shareholders"] === "object") ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) : 0
-        return {
-            "eventField/:accountBalance": {"1576": shareCapital, "2000": -shareCapital, "2030": Event["event/incorporation/incorporationCost"], "2400": -Event["event/incorporation/incorporationCost"] },
-            "eventField/:newShareholders": Event["event/incorporation/shareholders"],
-            "eventField/:supplier": Event["event/supplier"]
+  let initialCompanyDoc = mergeArray( allCompanyFields.map( companyField => createObject(companyField, {})  ) ) 
+
+  let docVersions = [initialCompanyDoc]
+
+  let appliedEvents = []
+  let rejectedEvents = []
+
+  storedEvents.forEach( (eventAttributes, index) => {
+    let Event = {eventAttributes}
+    if(rejectedEvents.length > 0){ rejectedEvents.push( Event ) }
+    else{
+      let eventType = S["sharedData"]["E"][ eventAttributes["event/eventTypeEntity"] ]
+      let attributesAreValid = eventAttributesAreValid(S, eventAttributes)
+      if(!attributesAreValid){rejectedEvents.push( Event ) }
+      else{
+        let companyDoc = docVersions[index]
+        let companyVariables = mergeArray( eventType["eventType/requiredCompanyFields"].map( entity => createObject( entity, companyDoc[ entity ] )  ) )  //validation TBD
+        Event.companyVariables = companyVariables
+        let eventIsValid = combinedEventIsValid(S, eventAttributes, companyVariables)
+        if(!eventIsValid){rejectedEvents.push( Event )}
+        else{
+            let accountBalance = new Function( [`eventAttributes`, `companyFields`], eventType["eventType/accountBalanceConstructorFunctionString"])( eventAttributes, companyVariables ) //Other fields TBD
+            Event.eventFields = accountBalance
+            appliedEvents.push( Event )
+
+            let [companyFieldsToUpdate, companyFieldsToKeep] = split( allCompanyFields, companyFieldEntity => eventType["eventType/eventFields"].map( eventFieldEntity => S["sharedData"]["E"][eventFieldEntity]["eventField/companyFields"]  ).flat().includes(companyFieldEntity)   )
+            let updatedFields = companyFieldsToUpdate.map( entity =>  createObject(entity, new Function([`prevValue` , `calculatedEventAttributes`], S["sharedData"]["E"][entity]["companyField/constructorFunctionString"])( companyDoc[entity], Event.eventFields ) ) )
+            let newDocVersion =  mergeArray( companyFieldsToKeep.map( entity => createObject(entity, companyDoc[entity] ) ).concat( updatedFields ) )
+            docVersions.push(newDocVersion)
         }
-    },
-    "eventType/operatingCost/supplierDebt": ( Event, companyFields_before ) => mergerino(  
-        {"eventField/:accountBalance": {"7790": -Event["event/amount"], "2400": Event["event/amount"]} },
-        {"eventField/:supplier": Event["event/supplier"]}
-    ),
-    "eventType/operatingCost/shareholderDebt": ( Event, companyFields_before ) => mergerino(
-        {"eventField/:accountBalance": {"7790": -Event["event/amount"], "2910": Event["event/amount"]}},
-        {"eventField/:supplier": Event["event/supplier"]}
-    ),
-    "eventType/operatingCost/bank": ( Event, companyFields_before ) => mergerino(
-        {"eventField/:accountBalance": {"7790": -Event["event/amount"], "1920": Event["event/amount"]}},
-        {"eventField/:supplier": Event["event/supplier"]}
-    ),
-    "eventType/payments/shareCapital": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": {"1576": -Event["event/amount"], "1920": Event["event/amount"]}}),
-    "eventType/payments/supplierDebt": ( Event, companyFields_before ) => mergerino(
-            {"eventField/:accountBalance": {"2400": -Event["event/amount"], "1920": Event["event/amount"]}},
-            {"eventField/:supplier": Event["event/supplier"]}
-    ),
-    "eventType/shareholderLoan/increase": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": {"2250": -Event["event/amount"], "1920": Event["event/amount"]}}),
-    "eventType/investments/new/unlisted/bank": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": {"1350": -Event["event/amount"], "1920": Event["event/amount"]}}),
-    "eventType/interest/interestIncomeFromBank": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": {"8050": -Event["event/amount"], "1920": Event["event/amount"]}}),
-    "eventType/yearEnd": ( Event, companyFields_before ) => {
-
-        let annualResult = -Math.round( Object.entries(companyFields_before["companyField/:accountBalance"]).filter( entry => Number(entry[0] >= 3000 ) ).reduce( (sum, entry) => sum + entry[1], 0 ) )
-
-        return returnObject({"eventField/:accountBalance": {"8300": 0, "8800": annualResult, "2050": -annualResult }})
-    },
-    "eventType/newYear": ( Event, companyFields_before ) => returnObject({"eventField/:accountBalance": mergeArray( Object.entries(companyFields_before["companyField/:accountBalance"]).filter( entry => Number(entry[0] >= 3000 ) ).map( entry => createObject( entry[0], -entry[1] )  ) )  }),
+      }
     }
+  })
 
-    S["eventTypes"].forEach( eventType => S["E"][ eventType.entity ]["eventType/eventConstructor"] = eventConstructors[ eventType["eventType/name"] ] )
+  let Company = {
+    orgnumber: storedEvents[0]["event/incorporation/orgnumber"],
+    name: storedEvents[0]["event/attribute83"],
+    appliedEvents,
+    companyFields: docVersions,
+    rejectedEvents
+  }
 
-    const attributeValidators = {
-        "entity/type": v => [
-          v => typeof v === "string",
-          v => ["eventType", "attribute", "eventValidator", "eventField", "companyField", "event"].includes(v)
-        ].every( f => f(v) ),
-        "entity/label": v => [
-          v => typeof v === "string"
-        ].every( f => f(v) ),
-        "entity/doc": v => [
-          v => typeof v === "string"
-        ].every( f => f(v) ),
-        "entity/note": v => [
-          v => typeof v === "string"
-        ].every( f => f(v) ),
-        "type": v => typeof v === "string",
-        "attr/doc": v => typeof v === "string",
-        "attr/label": v => typeof v === "string",
-        "attribute/category": v => typeof v === "string",
-        "attr/valueType": v => ["string", "number", "object"].includes(v),
-        "eventType/name": v => [
-        v => typeof v === "string",
-        v => v.startsWith("eventType/")
-        ].every( f => f(v) ),
-        "eventType/doc": v => typeof v === "string",
-        "eventType/label": v => typeof v === "string",
-        "eventType/attributes":  v => [
-        v => typeof v === "object",
-        v => Array.isArray(v),
-        v => v.every( attr => Object.keys( attributeValidators ).includes(attr) )
-        ].every( f => f(v) ),
-        "eventType/eventAttributes":  v => [
-          v => typeof v === "object",
-          v => Array.isArray(v),
-          v => v.every( attr => typeof attr === "number" )
-        ].every( f => f(v) ),
-        "eventType/eventValidators":  v => [
-          v => typeof v === "object",
-          v => Array.isArray(v),
-          v => v.every( attr => typeof attr === "number" )
-        ].every( f => f(v) ),
-        "eventType/eventFields":  v => [
-          v => typeof v === "object",
-          v => Array.isArray(v),
-          v => v.every( attr => typeof attr === "number" )
-        ].every( f => f(v) ),
-        "eventType/requiredCompanyFields":  v => [
-            v => typeof v === "object",
-            v => Array.isArray(v),
-            v => v.every( attr => typeof attr === "number" )
-        ].every( f => f(v) ),
-        "eventValidator/name": v => [
-        v => typeof v === "string",
-        v => v.startsWith("eventValidator/")
-        ].every( f => f(v) ),
-        "eventValidator/doc": v => typeof v === "string",
-        "eventValidator/label": v => typeof v === "string",
-        "eventValidator/errorMessage": v => typeof v === "string",
-        "eventField/name": v => [
-            v => typeof v === "string",
-            v => v.startsWith("eventField/")
-            ].every( f => f(v) ),
-        "eventField/doc": v => typeof v === "string",
-        "eventField/label": v => typeof v === "string",
-        "eventField/companyFields":  v => [
-            v => typeof v === "object",
-            v => Array.isArray(v),
-            ].every( f => f(v) ),
-        "companyField/name": v => [
-            v => typeof v === "string",
-            v => v.startsWith("eventField/")
-            ].every( f => f(v) ),
-        "companyField/doc": v => typeof v === "string",
-        "companyField/label": v => typeof v === "string",
-        "companyField/eventFields":  v => [
-            v => typeof v === "object",
-            v => Array.isArray(v),
-        ].every( f => f(v) ),
-        "event/eventType": v => [
-            v => typeof v === "string", 
-            v => typeof S[v] !== "undefined"
-        ].every( f => f(v) ),
-        "event/eventTypeEntity": v => [
-          v => typeof v === "number", 
-        ].every( f => f(v) ),
-        "event/index": v => [ 
-            v => typeof v === "number",
-            v => v >= 1
-        ].every( f => f(v) ),
-        "event/description": v => [
-            v => typeof v === "string",
-        ].every( f => f(v) ),
-        "event/currency": v => [
-            v => typeof v === "string",
-        ].every( f => f(v) ),
-        "event/incorporation/orgnumber": v => [
-        v => typeof v === "string", 
-        v => v.length === 9,
-        ].every( f => f(v) ),
-        "event/incorporation/shareholders": v => [
-        v => typeof v === "object", 
-        v => Object.values( v ).every( shareholder => (typeof shareholder["shareholder"] === "string" && typeof shareholder["shareCount"] === "number" && typeof shareholder["sharePrice"] === "number" )  ),
-        ].every( f => f(v) ),
-        "event/date": v => [
-        v => typeof v === "string", 
-        v => v.length === 10
-        ].every( f => f( v ) ),
-        "event/incorporation/nominalSharePrice": v => [
-        v => typeof v === "number", 
-        v => v > 0
-        ].every( f => f(v) ),
-        "event/incorporation/incorporationCost": v => [
-        v => typeof v === "number", 
-        ].every( f => f(v) ),
-        "event/account": v => [
-        v => typeof v === "string", 
-        v => v.length === 4,
-        v => Number(v) >= 1000,
-        v => Number(v) < 10000,
-        ].every( f => f(v) ),
-        "event/amount": v => [
-        v => typeof v === "number",
-        ].every( f => f(v) ),
-        "event/bankTransactionReference": v => [
-        v => typeof v === "string",
-        ].every( f => f(v) ),
-        "transaction/records": v => [
-        v => typeof v === "object"
-        ].every( f => f(v) ),
-        "event/supplier": v => [
-        v => typeof v === "string"
-        ].every( f => f(v) ),
-        "event/shareholder": v => [
-        v => typeof v === "string"
-        ].every( f => f(v) ),
-        "event/shareholderID": v => [
-          v => typeof v === "string"
-          ].every( f => f(v) ),
-        "event/investment/orgnumber": v => [
-        v => typeof v === "string"
-        ].every( f => f(v) ),
-    }
-
-    S["attributeValidators"] = attributeValidators
-
-    Object.keys(attributeValidators).forEach( attributeName => S["E"][ getAttributeEntityFromName(S, attributeName) ]["attribute/validator"] = attributeValidators[ attributeName ] )
-
-    S["eventAttributes"] = S["attributes"].filter( a => typeof a["attr/name"] === "string").map( a => a["attr/name"] ).filter( attributeName => attributeName.startsWith("event/")  )
-    
-    const eventValidators = {
-      "4194": ( Event, companyFields_before ) => Event["event/currency"] === "NOK",
-      "4199": ( Event, companyFields_before ) => typeof Event === "object",
-      "4203": ( Event, companyFields_before ) => Event["event/incorporation/shareholders"] ? Object.values( Event["event/incorporation/shareholders"] ).reduce( (shareCapital, shareholder) => shareCapital + shareholder["shareCount"] * shareholder["sharePrice"]  , 0) >= 30000 : false,
-      "4206": ( Event, companyFields_before ) => Event["event/amount"] < 0,
-      "4209": ( Event, companyFields_before ) => Event["event/amount"] > 0,
-      "4215": ( Event, companyFields_before ) => typeof companyFields_before["companyField/:shareholders"][ Event["event/shareholder"] ] !== "undefined",
-    }
-
-    Object.keys(eventValidators).forEach( entityID => S["E"][ entityID ]["eventValidator/validator"] = eventValidators[ entityID  ] )
-
-    const Accounts = {
-        '1070': {label: 'Utsatt skattefordel'}, 
-        '1300': {label: 'Investeringer i datterselskap'}, 
-        '1320': {label: 'Lån til foretak i samme konsern'}, 
-        '1330': {label: 'Investeringer i tilknyttet selskap'}, 
-        '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
-        '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
-        '1360': {label: 'Obligasjoner'}, 
-        '1370': {label: 'Fordringer på eiere'}, 
-        '1375': {label: 'Fordringer på styremedlemmer'}, 
-        '1380': {label: 'Fordringer på ansatte'}, 
-        '1399': {label: 'Andre fordringer'}, 
-        '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
-        '1579': {label: 'Andre kortsiktige fordringer'}, 
-        '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
-        '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
-        '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
-        '1820': {label: 'Andre aksjer'}, 
-        '1830': {label: 'Markedsbaserte obligasjoner'}, 
-        '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
-        '1880': {label: 'Andre finansielle instrumenter'}, 
-        '1920': {label: 'Bankinnskudd'}, 
-        '2000': {label: 'Aksjekapital'}, 
-        '2020': {label: 'Overkurs'}, 
-        '2030': {label: 'Annen innskutt egenkapital'}, 
-        '2050': {label: 'Annen egenkapital'}, 
-        '2080': {label: 'Udekket tap'}, 
-        '2120': {label: 'Utsatt skatt'}, 
-        '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
-        '2250': {label: 'Gjeld til ansatte og eiere'}, 
-        '2260': {label: 'Gjeld til selskap i samme konsern'}, 
-        '2290': {label: 'Annen langsiktig gjeld'}, 
-        '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
-        '2400': {label: 'Leverandørgjeld'}, 
-        '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
-        '2510': {label: 'Betalbar skatt, fastsatt'}, 
-        '2800': {label: 'Avsatt utbytte'}, 
-        '2910': {label: 'Gjeld til ansatte og eiere'}, 
-        '2920': {label: 'Gjeld til selskap i samme konsern'}, 
-        '2990': {label: 'Annen kortsiktig gjeld'}, 
-        '6540': {label: 'Inventar'}, 
-        '6551': {label: 'Datautstyr (hardware)'}, 
-        '6552': {label: 'Programvare (software)'}, 
-        '6580': {label: 'Andre driftsmidler'}, 
-        '6701': {label: 'Honorar revisjon'}, 
-        '6702': {label: 'Honorar rådgivning revisjon'}, 
-        '6705': {label: 'Honorar regnskap'}, 
-        '6720': {label: 'Honorar for økonomisk rådgivning'}, 
-        '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
-        '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
-        '6790': {label: 'Annen fremmed tjeneste'}, 
-        '6890': {label: 'Annen kontorkostnad'}, 
-        '6900': {label: 'Elektronisk kommunikasjon'}, 
-        '7770': {label: 'Bank og kortgebyrer'}, 
-        '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
-        '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
-        '8000': {label: 'Inntekt på investering i datterselskap'}, 
-        '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
-        '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
-        '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
-        '8055': {label: 'Andre renteinntekter'}, 
-        '8060': {label: 'Valutagevinst (agio)'}, 
-        '8070': {label: 'Annen finansinntekt'}, 
-        '8071': {label: 'Aksjeutbytte'}, 
-        '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
-        '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
-        '8090': {label: 'Inntekt på andre investeringer'}, 
-        '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
-        '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
-        '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
-        '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
-        '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
-        '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
-        '8155': {label: 'Andre rentekostnader'}, 
-        '8160': {label: 'Valutatap (disagio)'}, 
-        '8170': {label: 'Annen finanskostnad'}, 
-        '8178': {label: 'Tap ved realisasjon av aksjer'}, 
-        '8300': {label: 'Betalbar skatt'}, 
-        '8320': {label: 'Endring utsatt skatt'},
-        '8800': {label: 'Årsresultat'}
-    }
-
-    S.Accounts = Accounts
-    
-    const companyFieldConstructors =  {
-        "4388": (prevValue, Event, calculatedEventAttributes) => mergerino(prevValue, calculatedEventAttributes["eventField/:newShareholders"] ),
-        "4380": (prevValue, Event, calculatedEventAttributes) => mergerino( prevValue, Object.entries( calculatedEventAttributes["eventField/:accountBalance"] ).map( entry => createObject(entry[0],  prevValue[ entry[0] ] ?   prevValue[ entry[0] ] + entry[1] : entry[1] )  ) ),
-        "4391": (prevValue, Event, calculatedEventAttributes) => prevValue.includes(calculatedEventAttributes["eventField/:supplier"]) ? prevValue : prevValue.concat( calculatedEventAttributes["eventField/:supplier"] ),
-    }
-
-    Object.keys(companyFieldConstructors).forEach( companyFieldEntity => S["E"][ companyFieldEntity ]["companyField/constructor"] = companyFieldConstructors[ companyFieldEntity ] )
+  return Company
 
 }
 
 let update = (S) => {
 
-    attachFunctionsToState(S)
+    //To be fixed...
+    S["sharedData"]["E"] = Array.isArray(S["sharedData"]["E"]) ?  mergeArray( S["sharedData"]["E"] ) : S["sharedData"]["E"] 
+    S["userEvents"] = S["sharedData"]["userEvents"]
 
-    S.companyDocVersions = [{
-        "companyField/:shareholders": {}, 
-        "companyField/:suppliers": [],
-        "companyField/:accountBalance": {}, 
-    }]
-    S.appliedEvents = []
-    S.rejectedEvents = []
+    S["selectedCompany"] = constructCompanyDoc(S, S.userEvents
+      .filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber )
+      .sort( (a, b) => a["event/index"] - b["event/index"]  ) )
 
-    S.Events
-      .filter( Event => Event["event/incorporation/orgnumber"] === S.selectedOrgnumber )
-      .sort( (a, b) => a["event/index"] - b["event/index"]  )
-      .forEach( (Event, index) => {
-        if(S.rejectedEvents.length > 0){ S.rejectedEvents.push( Event ) }
-        else{
-          let eventType = S["E"][ Event["event/eventTypeEntity"] ]
-          let companyDoc = S["companyDocVersions"][index]
-          let invalidAttributes = eventType["eventType/eventAttributes"]
-              .map( attributeID =>  validateAttributeValue(S, attributeID, Event[ S["E"][attributeID]["attr/name"] ] ) )
-              .filter( result => result === false  )
-          if(invalidAttributes.length > 0){S.rejectedEvents.push( mergerino( Event, {"event/:invalidAttributes": invalidAttributes} ) )}
-          else{
-            let companyFields_before = mergeArray( eventType["eventType/requiredCompanyFields"].map( variableName => createObject( variableName, companyDoc[ variableName ] )  ) )  //validation TBD
-            let eventErrors = eventType["eventType/eventValidators"]
-              .map( entity => S["E"][ entity ]  )
-              .reduce( (Errors, eventValidator) => eventValidator["eventValidator/validator"]( Event, companyFields_before ) ? Errors : Errors.concat( eventValidator["eventValidator/errorMessage"]), [] )
-            if(eventErrors.length > 0){S.rejectedEvents.push( mergerino( Event, {"event/:eventErrors": eventErrors} ) )}
-            else{
-                let calculatedFields = eventType["eventType/eventConstructor"]( Event, companyFields_before )
-                let companyFields = Object.keys(S.companyFields).filter( companyFieldName => S.companyFields[companyFieldName]["companyField/eventFields"].some( eventField => eventType["eventType/eventFields"].includes(eventField)  )  )
-                let companyPatch = companyFields.reduce( (companyPatch, companyField) => mergerino( companyPatch, createObject(companyField, S.companyFields[ companyField ]["companyField/constructor"]( companyDoc[ companyField ], Event, calculatedFields) ) ), {} )
-                let constructedEvent = mergerino(Event, companyFields_before, calculatedFields)
-                let newCompanyDocVersion = mergerino(companyDoc, companyPatch)
-                S.appliedEvents.push( constructedEvent )
-                S.companyDocVersions.push( newCompanyDocVersion )
+    console.log(S["selectedCompany"])
 
-            }
-          }
-        }
-      })
     console.log("State: ", S)
-    S.elementTree = generateHTMLBody(S, getUserActions(S) )
+    let A = getUserActions(S)
+    S.elementTree = generateHTMLBody(S, A )
     sideEffects.updateDOM( S.elementTree )
 }
 
@@ -789,6 +630,3 @@ let taxCostView = (financialYear) => {
     d([ d( "Årets skattekostnad" ), d( format.amount( taxCostRecord.taxCost ) , {class: "numberCell"})], {class: "financialStatementsRow"})
   ])
 }
-  
-//var func = new Function("prevCompany, Event", "return prevCompany['company/shareholders'];" )
-//var func2 = new Function("prevCompany, Event", "console.log(prevCompany['company/shareholders']) ;" )
