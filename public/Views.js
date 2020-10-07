@@ -179,7 +179,7 @@ let companyDocPage = (S, A) => d([
   ], {class: "shareholderRow"}),
   d([
     h3(`Hendelsesrapport for hendelse ${S["UIstate"]["companyDocPage/selectedVersion"]}`),
-    d( S["UIstate"]["companyDocPage/selectedVersion"] >= 1 ? `${ S["eventTypes"][ logThis(S["appliedEvents"][ S["companyDocPage/selectedVersion"] - 1 ])["event/eventType"] ]["eventType/label"]  }` : "" ),
+    d( S["UIstate"]["companyDocPage/selectedVersion"] >= 1 ? `${ S["eventTypes"][ S["appliedEvents"][ S["companyDocPage/selectedVersion"] - 1 ]["event/eventType"] ]["eventType/label"]  }` : "" ),
     S["companyDocPage/selectedVersion"] >= 1 
       ? d( Object.entries(S["appliedEvents"][ S["companyDocPage/selectedVersion"] - 1 ] ).filter( entry => entry[0].startsWith( "eventField/:" )  ).map( entry => d([
         d( `${ S["eventFields"][ entry[0] ]["eventField/label"] }`  ),
@@ -201,18 +201,15 @@ let accountBalanceView = (S, accountBalance) => d( Object.entries( accountBalanc
 
 let attributesPage = ( S, A ) => {
   let selectedAttribute = S["sharedData"]["E"][ S["UIstate"]["attributesPage/selectedAttribute"] ]
+  let attributes = S["sharedData"]["attributes"].map( a => a.entity )
 
-  console.log(selectedAttribute)
+  let attributeCategories = attributes.map( attribute => S["sharedData"]["E"][attribute]["attribute/category"]).filter(filterUniqueValues)
 
-  let eventAttributes = S["sharedData"]["attributes"].map( a => a.entity )
-
-  let attributeCategories = eventAttributes.map( attribute => S["sharedData"]["E"][attribute]["attribute/category"]).filter(filterUniqueValues).concat("Mangler kategori")
-
-  let visibleAttributes = eventAttributes.map( entity => S["sharedData"]["E"][entity] ).filter( attribute => attribute["attribute/category"] === S["UIstate"]["attributesPage/selectedAttributeCategory"] )
+  let visibleAttributes = attributes.map( entity => S["sharedData"]["E"][entity] ).filter( attribute => attribute["attribute/category"] === S["UIstate"]["attributesPage/selectedAttributeCategory"] )
 
   return d([
     d( [h3("Kategori")].concat(attributeCategories.map( category => d( category, {class: category === S["UIstate"]["attributesPage/selectedAttributeCategory"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"attributesPage/selectedAttributeCategory" : category} ) )).concat(d("Ny attributt", {class: "textButton"}, "click", e => A.createAttribute() ))) ),
-    d( [h3("Attributt")].concat(visibleAttributes.map( attribute => d( String(attribute.entity), {class: attribute.entity === S["UIstate"]["attributesPage/selectedAttribute"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"attributesPage/selectedAttribute" : attribute.entity} ) ))) ),
+    d( [h3("Attributt")].concat(visibleAttributes.map( attribute => d( attribute["entity/label"], {class: attribute.entity === S["UIstate"]["attributesPage/selectedAttribute"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"attributesPage/selectedAttribute" : attribute.entity} ) ))) ),
     d([
       h3( `${selectedAttribute["attribute/category"]} /  ${selectedAttribute["entity/label"]}`  ),
       d([
