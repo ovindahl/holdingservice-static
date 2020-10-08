@@ -178,12 +178,7 @@ let eventFieldViews = {
     d( S["sharedData"]["E"][ eventFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
     accountBalanceView(S, selectedEvent["eventFields"][eventFieldEntity]),
     d("<br>")
-    ]),
-  "5414": (S, selectedEvent, eventFieldEntity) => d(Object.entries(selectedEvent["eventFields"][eventFieldEntity]).map( entry => d([
-    d(entry[0]),
-    d(String(entry[1])),
-    d("<br>")
-  ], {class: "eventInspectorRow"}) )  )
+    ])
 }
 
 
@@ -211,7 +206,6 @@ let companyFieldView = (S, companyFieldEntity) => companyFieldEntity === 4380 ? 
   d( S["sharedData"]["E"][ companyFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
   accountBalanceWithHistoryView(S, S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity], S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] - 1 ][companyFieldEntity]),
 ]) : d([ 
-  d( S["sharedData"]["E"][ companyFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ), 
   d(`${JSON.stringify(S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity])}`, {class: "rightAlignText"})
 ])
 
@@ -406,6 +400,10 @@ let companyFieldsPage = ( S, A ) => {
         d("Navn:"),
         input({value: selectedCompanyField["entity/label"]}, "change", e => A.updateEntityAttribute( selectedCompanyField.entity, "entity/label", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
+      /* d([
+        d("Kategori:"),
+        input({value: selectedCompanyField["entity/category"]}, "change", e => A.updateEntityAttribute( selectedCompanyField.entity, "attribute/category", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}), */
       d([
         d("Beskrivelse:"),
         input({value: selectedCompanyField["entity/doc"]}, "change", e => A.updateEntityAttribute( selectedCompanyField.entity, "entity/doc", submitInputValue(e) ) )

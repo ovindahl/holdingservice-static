@@ -320,58 +320,72 @@ let constructCompanyDoc = (S, storedEvents) => {
                 }
 
                 //3% dividendtax TBD
-                return mergeArray( [createObject("2030", companyFields[5434])].concat(Object.keys(nonDeductibleAccounts).map( account => createObject(`${account}: ${nonDeductibleAccounts[account]}`, companyFields[4380][account] ? companyFields[4380][account] : 0 ) )) );
+                return [returnObject({account: "2030", label: nonDeductibleAccounts["2030"], value: companyFields[5434]})].concat(Object.keys(nonDeductibleAccounts).map( account => returnObject({account: account, label: nonDeductibleAccounts[account], value: companyFields[4380][account] ? companyFields[4380][account] : 0}) ));
               },
               "5459": (eventAttributes, companyFields) => {
 
-
-                let report = {
-                  "Regnskapsmessig verdi finansielle instrumenter": {
-                    lastYear: "TBD",
-                    thisYear: companyFields[4380][1880]
-                  },
-                  "Skattemessig verdi finansielle instrumenter": {
-                    lastYear: "TBD",
-                    thisYear: companyFields[4380][1880] + companyFields[4380][1881]
-                  },
-                  "Forskjeller": {
-                    lastYear: "TBD",
-                    thisYear: companyFields[4380][1881]
-                  },
-                  "Endring midlertidige forskjeller": {
-                    thisYear: companyFields[4380][1881] // TBD
-                  },
-                  "Framført ubenyttet underskudd etter fastsettingen": {
-                    lastYear: eventAttributes["event/attribute91"],
-                    thisYear: companyFields[4380][1880]
-                  },
-                  "Anvendelse av framført underskudd": {
-                    lastYear: "TBD",
-                    thisYear: eventAttributes["event/attribute92"]
-                  },
-                  "Årets underskudd": {
-                    thisYear: Object.keys(companyFields[4380]).filter( acc => Number(acc) >= 3000 ).reduce( (sum, acc) => sum + companyFields[4380][acc], 0 )
-                  },
-                  "Akkumulert fremførbart skattemessig underskudd": {
-                    lastYear: "TBD",
-                    thisYear: companyFields[4380][1880] - eventAttributes["event/attribute92"]
-                  }
+                let nonDeductibleAccounts = {
+                  2030: 'Stiftelesutgifter', //NB: skal kun gjelde i stiftelsesåret
+                  5901: 'Gave til ansatte, ikke fradragsberettiget (t.o.m. 2018)',
+                  6726: 'Honorar for juridisk bistand, ikke fradragsberettiget',
+                  7360: 'Representasjon, ikke fradragsberettiget',
+                  7410: 'Kontingent, ikke fradragsberettiget',
+                  7430: 'Gave, ikke fradragsberettiget',
+                  7791: 'Annen kostnad, ikke fradragsberettiget',
+                  8000: 'Inntekt på investering i datterselskap',
+                  8002: 'Konsernbidrag fra datter',
+                  8005: 'Netto positiv resultatandel vedr. investering i DS, TS og FKV',
+                  8006: 'Netto negativ resultatandel vedr. investering i DS, TS og FKV',
+                  8010: 'Inntekt på investering i annet foretak i samme konsern',
+                  8020: 'Inntekt på investering i tilknyttet selskap',
+                  8040: 'Renteinntekt, skattefri',
+                  8071: 'Aksjeutbytte',
+                  8078: 'Gevinst ved realisasjon av aksjer',
+                  8080: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi',
+                  8100: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi',
+                  8110: 'Nedskrivning av andre finansielle omløpsmidler',
+                  8120: 'Nedskrivning av finansielle anleggsmidler',
+                  8140: 'Rentekostnad, ikke fradragsberettiget',
+                  8178: 'Tap ved realisasjon av aksjer'
                 }
 
-                console.log(report)
+                let permanentDifferencesReport = [returnObject({account: "2030", label: nonDeductibleAccounts["2030"], value: companyFields[5434]})].concat(Object.keys(nonDeductibleAccounts).map( account => returnObject({account: account, label: nonDeductibleAccounts[account], value: companyFields[4380][account] ? companyFields[4380][account] : 0}) ));
 
-                //3% dividendtax TBD
-                return report;
+                let EBT = Object.keys(companyFields[4380]).filter( acc => Number(acc) >= 3000 ).reduce( (sum, acc) => sum + companyFields[4380][acc] ? companyFields[4380][acc] : 0 , 0 )
+
+                let taxEarnings = EBT + permanentDifferencesReport.reduce( (sum, acc) => sum + companyFields[4380][acc], 0 ) + companyFields[4380][1881]
+                let utilizedLosses = 0 // TBD
+                let taxPayable = (taxEarnings + utilizedLosses) * 0.22
+                let changeInDelayedTaxes = companyFields[4380][1881]
+                let taxCost = taxPayable + changeInDelayedTaxes
+
+
+                let tempDifferencesReport = [
+                  {label: "Regnskapsmessig verdi finansielle instrumenter (i fjor)", value: 0}, //Åpningsbalanse
+                  {label: "Regnskapsmessig verdi finansielle instrumenter (i år)", value: companyFields[4380][1880] + companyFields[4380][1881] },
+                  {label: "Skattemessig verdi finansielle instrumenter (i fjor)", value: 0}, //Åpningsbalanse
+                  {label: "Skattemessig verdi finansielle instrumenter (i år)", value: companyFields[4380][1880] },
+                  {label: "Forskjeller (i fjor)", value: 0},  //Åpningsbalanse
+                  {label: "Forskjeller (i år)", value: companyFields[4380][1881]},
+                  {label: "Endring midlertidige forskjeller", value: companyFields[4380][1881]}, //til skattekost
+                  {label: "Framført ubenyttet underskudd etter fastsettingen (i fjor)", value: 0},
+                  {label: "Framført ubenyttet underskudd etter fastsettingen (i år)", value: eventAttributes["event/attribute91"]},
+                  {label: "Anvendelse av framført underskudd", value: eventAttributes["event/attribute92"]},
+                  {label: "Årets underskudd (før skatt)", value: EBT},
+                  {label: "Akkumulert fremførbart skattemessig underskudd (i fjor)", value: 0},
+                  {label: "Akkumulert fremførbart skattemessig underskudd (i år)", value: companyFields[4380][1881]},
+                  {label: "Regnskapsmessig resultat før skatt", value: EBT },
+                  {label: "Næringsinntekt", value: taxEarnings },
+                  {label: "Betalbar skatt", value: taxPayable },
+                  {label: "Skattekostnad", value: taxCost },
+                ]
+
+                return tempDifferencesReport;
               }
             }
 
-            
-            
             let updatedEventFields = eventType["eventType/eventFields"].map( entity => createObject(entity, eventFieldConstructors[entity]( eventAttributes, companyVariables ) ) )
             Event.eventFields = mergeArray(updatedEventFields) 
-
-            console.log(Event)
-
             appliedEvents.push( Event )
 
             let [companyFieldsToUpdate, companyFieldsToKeep] = split( allCompanyFields, companyFieldEntity => eventType["eventType/eventFields"].map( eventFieldEntity => S["sharedData"]["E"][eventFieldEntity]["eventField/companyFields"]  ).flat().includes(companyFieldEntity)   )
