@@ -93,6 +93,12 @@ body {background-color: #F2F3F5;}
 
 }
 
+.accountBalanceWithHistoryRow {
+    display:grid;
+    grid-template-columns: 3fr 1fr 1fr;
+    padding: 1px; 
+}
+
 
 .textButton_narrow {
     padding: 2px;
@@ -101,4 +107,8 @@ body {background-color: #F2F3F5;}
 
 .textButton_narrow:hover {
     background-color: lightgray;
+}
+
+.rightAlignText {
+    text-align: right;
 }

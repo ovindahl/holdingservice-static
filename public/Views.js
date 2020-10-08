@@ -120,7 +120,7 @@ let feedContainer = (content, date, entityID) => d([
 let companySelectionMenuRow = (S, A) => d([
   d( S["userEvents"].filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => console.log("TBD...") )), {style: "display:flex;"}),
 ]) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "admin/eventAttributes", "admin/eventTypes", "admin/eventValidators", "admin/eventFields", "admin/companyFields"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin/Attributter", "Admin/Hendelsestyper"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -132,16 +132,16 @@ let generateHTMLBody = (S, A) => [
 let pageRouter = {
   "timeline": (S, A) => timelineView(S, A),
   "companyDoc": (S, A) => companyDocPage( S, A ),
-  "admin/eventAttributes": (S, A) => d( [attributesPage( S, A )], {class: "pageContainer"}),
-  "admin/eventTypes": (S, A) => eventTypesPage( S, A ),
+  "Admin/Attributter": (S, A) => d( [attributesPage( S, A )], {class: "pageContainer"}),
+  "Admin/Hendelsestyper": (S, A) => eventTypesPage( S, A ),
   "admin/eventFields": (S, A) => eventFieldsPage( S, A ),
   "admin/companyFields": (S, A) => companyFieldsPage( S, A ),
   "admin/eventValidators": (S, A) => eventValidatorsPage( S, A )
 }
 
 let timelineView = (S, A) => d([
-  d( S["selectedCompany"]["appliedEvents"].map( Event => feedContainer(  eventView( S, Event, A ) , Event["event/date"], Event["entity"] )  ), {class: "pageContainer"}),
-  d( S["selectedCompany"]["rejectedEvents"].map( Event => feedContainer(  eventView( S, Event, A ) , Event["event/date"], Event["entity"] )  ), {class: "pageContainer"})
+  d( S["selectedCompany"]["appliedEvents"].map( Event => feedContainer(  eventView( S, Event, A ) , Event["eventAttributes"]["event/date"], Event["eventAttributes"]["entity"] )  ), {class: "pageContainer"}),
+  d( S["selectedCompany"]["rejectedEvents"].map( Event => feedContainer(  eventView( S, Event, A ) , Event["eventAttributes"]["event/date"], Event["eventAttributes"]["entity"] )  ), {class: "pageContainer"})
 ])
 
 let eventView = (S, Event , A) => d([
@@ -149,7 +149,7 @@ let eventView = (S, Event , A) => d([
     attributesTableView(S, Event["eventAttributes"], A),
     d("<br>"),
     //d( Event["event/:eventErrors"] ? Event["event/:eventErrors"].map( error => d(error, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  )  : [d("")] ),
-    retractEventButton( Event["entity"], A),
+    retractEventButton( Event["eventAttributes"]["entity"], A),
     newEventDropdown(S, A, Event)
 ])
 
@@ -171,33 +171,56 @@ let entitySpan = (S, id) => span( S["sharedData"]["E"][id]["entity/label"], S["s
 
 let slider = (value, min, max, onChange) => input({type: "range", min, max, value}, "change", onChange )
 
-let companyDocPage = (S, A) => d([
-  input({value: S["UIstate"]["companyDocPage/selectedVersion"], disabled: "disabled"}, "change", e => A.updateLocalState({"companyDocPage/selectedVersion": submitInputValue(e)})),
-  d([
-    d("<", {class: "textButton"}, "click", e => A.updateLocalState({"companyDocPage/selectedVersion": Math.max(0, S["UIstate"]["companyDocPage/selectedVersion"] - 1 )  })),
-    d(">", {class: "textButton"}, "click", e => A.updateLocalState({"companyDocPage/selectedVersion": Math.min(S["UIstate"]["companyDocVersions"].length - 1, S["UIstate"]["companyDocPage/selectedVersion"] + 1 ) })),
-  ], {class: "shareholderRow"}),
-  d([
-    h3(`Hendelsesrapport for hendelse ${S["UIstate"]["companyDocPage/selectedVersion"]}`),
-    d( S["UIstate"]["companyDocPage/selectedVersion"] >= 1 ? `${ S["eventTypes"][ S["appliedEvents"][ S["companyDocPage/selectedVersion"] - 1 ]["event/eventType"] ]["eventType/label"]  }` : "" ),
-    S["companyDocPage/selectedVersion"] >= 1 
-      ? d( Object.entries(S["appliedEvents"][ S["companyDocPage/selectedVersion"] - 1 ] ).filter( entry => entry[0].startsWith( "eventField/:" )  ).map( entry => d([
-        d( `${ S["eventFields"][ entry[0] ]["eventField/label"] }`  ),
-        d( `${ JSON.stringify(entry[1]) }`  )
-        ], {class: "shareholderRow"})  ) ) 
-      : d(""),
-  ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-  d("<br>"),
-  d([
-    h3(`Selskapets saldobalanse etter hendelse ${S["companyDocPage/selectedVersion"]}`),
-    accountBalanceView(S, S["companyDocVersions"][ S["companyDocPage/selectedVersion"] ]["companyField/:accountBalance"]),
-  ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-] , {class: "pageContainer"} )
+let companyDocPage = (S, A) => {
+
+  let selectedVersion = S["UIstate"]["companyDocPage/selectedVersion"];
+  let selectedEvent =  S["selectedCompany"]["appliedEvents"][selectedVersion - 1 ]
+  let eventType = S["sharedData"]["E"][ selectedEvent["eventAttributes"]["event/eventTypeEntity"] ]
+
+  return d([
+    input({value: selectedVersion, disabled: "disabled"}, "change", e => A.updateLocalState({"companyDocPage/selectedVersion": submitInputValue(e)})),
+    d([
+      d("<", {class: "textButton"}, "click", e => A.updateLocalState({"companyDocPage/selectedVersion": Math.max(1, selectedVersion - 1 )  })),
+      d(">", {class: "textButton"}, "click", e => A.updateLocalState({"companyDocPage/selectedVersion": Math.min(S["selectedCompany"]["appliedEvents"].length, selectedVersion + 1 ) })),
+    ], {class: "shareholderRow"}),
+    d([
+      h3(`Attributter for hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
+      attributesTableView(S, selectedEvent["eventAttributes"], A ),
+    ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d("<br>"),
+    d([
+      h3(`Hendelsesrapport for hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
+      d(eventType["eventType/eventFields"].map( eventFieldEntity => d([
+          d( S["sharedData"]["E"][ eventFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
+          accountBalanceView(S, logThis(selectedEvent)["eventFields"][eventFieldEntity])
+          ])
+        ))
+    ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d("<br>"),
+    d([
+      h3(`Selskapets saldobalanse etter hendelse ${selectedVersion}`),
+      d(S["sharedData"]["allCompanyFields"].map( companyFieldEntity => d([
+        d( S["sharedData"]["E"][ companyFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
+        accountBalanceWithHistoryView(S, S["selectedCompany"]["companyFields"][ selectedVersion ][companyFieldEntity], S["selectedCompany"]["companyFields"][ selectedVersion - 1 ][companyFieldEntity]),
+      ]) ))
+    ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+  ] , {class: "pageContainer"} )
+} 
 
 let accountBalanceView = (S, accountBalance) => d( Object.entries( accountBalance ).map( entry => d([
-  d( `[${ entry[0] }] ${ S.Accounts[ entry[0] ].label }`  ),
-  d( `${entry[1] }`,  {style: Object.keys( S["appliedEvents"][ S["companyDocPage/selectedVersion"] - 1 ]["eventField/:accountBalance"] ).includes( entry[0] ) ? "color: red;" : ""} )
-], {class: "shareholderRow"}) ) )
+  d( `[${ entry[0] }] ${ S["sharedData"]["Accounts"][ entry[0] ].label }` ),
+  d( `${entry[1] }`, {class: "rightAlignText"} )
+], {class: "eventInspectorRow"}) ) )
+
+let accountBalanceWithHistoryView = (S, accountBalance, prevAccountBalance) => d( [d([
+  d("Konto"),
+  d("Før", {class: "rightAlignText"}),
+  d("Etter", {class: "rightAlignText"}),
+], {class: "accountBalanceWithHistoryRow"})].concat(Object.keys( mergerino(accountBalance, prevAccountBalance) ).map( account => d([
+  d( `[${ account }] ${ S["sharedData"]["Accounts"][ account ].label }`  ),
+  d( `${ prevAccountBalance[account] ? prevAccountBalance[account] : 0 }`, {class: "rightAlignText"} ),
+  d( `${ accountBalance[account] }`, {class: "rightAlignText", style: `color: ${accountBalance[account] === prevAccountBalance[account] ? "black" : "red" };` })
+], {class: "accountBalanceWithHistoryRow"}) )) )
 
 let attributesPage = ( S, A ) => {
   let selectedAttribute = S["sharedData"]["E"][ S["UIstate"]["attributesPage/selectedAttribute"] ]
@@ -251,7 +274,7 @@ let attributesPage = ( S, A ) => {
 let eventTypesPage = ( S, A ) => {
   let selectedEventType = S["sharedData"]["E"][ S["UIstate"]["eventTypesPage/selectedEventType"] ]
 
-  let eventTypeObjects = S["eventTypes"].map( eventType => S["sharedData"]["E"][ eventType.entity] )
+  let eventTypeObjects = S["sharedData"]["allEventTypes"].map( entity => S["sharedData"]["E"][entity] )
 
   let eventAttributes = S["sharedData"]["allEventAttributes"]
   let eventValidators = S["sharedData"]["allEventValidators"]

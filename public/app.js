@@ -56,7 +56,7 @@ const sideEffects = {
               let initialUIstate = {
                 "currentPage": "timeline",
                 "selectedOrgnumber": "999999999",
-                "companyDocPage/selectedVersion": 0,
+                "companyDocPage/selectedVersion": 1,
                 "attributesPage/selectedAttribute": 3172,
                 "attributesPage/selectedAttributeCategory": "",
                 "eventTypesPage/selectedEventType": 4113
@@ -113,16 +113,18 @@ let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  
 let getUserActions = (S) => returnObject({
     updateLocalState: (patch) => update( updateS(S, null, patch ) ),
     updateEntityAttribute: async (entityID, attribute, value) => await sideEffects.submitDatomsWithValidation(S, [newDatom(entityID, attribute, value)] ),
-    createEvent: async ( appliedEvent, newEventTypeEntity ) => await sideEffects.submitDatomsWithValidation(S, [
+    createEvent: async ( prevEvent, newEventTypeEntity ) => await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newEvent", "entity/type", "event"),
       newDatom("newEvent", "event/eventTypeEntity", newEventTypeEntity),
-      newDatom("newEvent", "event/incorporation/orgnumber", appliedEvent["event/incorporation/orgnumber"] ), //TBU..
-      newDatom("newEvent", "event/index", appliedEvent["event/index"] + 1 ),
-      newDatom("newEvent", "event/date", appliedEvent["event/date"] ),
+      newDatom("newEvent", "event/incorporation/orgnumber", prevEvent["eventAttributes"]["event/incorporation/orgnumber"] ),
+      newDatom("newEvent", "event/index", prevEvent["eventAttributes"]["event/index"] + 1 ),
+      newDatom("newEvent", "event/date", prevEvent["eventAttributes"]["event/date"] ),
       newDatom("newEvent", "event/currency", "NOK")
     ] ),
-    retractEvent: async entityID => S.Events.filter( e => e.entity === entityID  )[0]["entity/type"] === "event" ? await sideEffects.submitDatomsWithValidation(S, getRetractionDatomsWithoutChildren([S.Events.filter( e => e.entity === entityID  )[0]]) ) : logThis(null, "ERROR: Not event"),
-    retractEntity: async entityID => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S["E"][entityID] ])
+    retractEvent: async entity => S["sharedData"]["E"][entity]["entity/type"] === "event" 
+      ? await sideEffects.submitDatomsWithValidation(S, getRetractionDatomsWithoutChildren([ S["sharedData"]["E"][entity] ]) ) 
+      : logThis(null, "ERROR: Not event"),
+    retractEntity: async entity => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S["sharedData"]["E"][entity] ])
     ),
     createAttribute: async () => await sideEffects.submitNewAttributeDatoms(S, [
       newDatom("newAttr", "entity/type", "attribute"),
@@ -158,7 +160,7 @@ let getUserActions = (S) => returnObject({
     ]),
 })
 
-let getAttributeEntityFromName = (S, attributeName) => S["sharedData"]["attributes"].filter( a => a["attr/name"] === logThis(attributeName) )[0]["entity"]
+let getAttributeEntityFromName = (S, attributeName) => S["sharedData"]["attributes"].filter( a => a["attr/name"] === attributeName )[0]["entity"]
 
 let getAccounts = (S) => returnObject({
   '1070': {label: 'Utsatt skattefordel'}, 
@@ -282,18 +284,21 @@ let constructCompanyDoc = (S, storedEvents) => {
         let eventIsValid = combinedEventIsValid(S, eventAttributes, companyVariables)
         if(!eventIsValid){rejectedEvents.push( Event )}
         else{
-            let accountBalance = new Function( [`eventAttributes`, `companyFields`], eventType["eventType/accountBalanceConstructorFunctionString"])( eventAttributes, companyVariables ) //Other fields TBD
+            let accountBalance = createObject("4372", new Function( [`eventAttributes`, `companyFields`], eventType["eventType/accountBalanceConstructorFunctionString"])( eventAttributes, companyVariables ) )  //Other fields TBD
             Event.eventFields = accountBalance
             appliedEvents.push( Event )
 
             let [companyFieldsToUpdate, companyFieldsToKeep] = split( allCompanyFields, companyFieldEntity => eventType["eventType/eventFields"].map( eventFieldEntity => S["sharedData"]["E"][eventFieldEntity]["eventField/companyFields"]  ).flat().includes(companyFieldEntity)   )
             let updatedFields = companyFieldsToUpdate.map( entity =>  createObject(entity, new Function([`prevValue` , `calculatedEventAttributes`], S["sharedData"]["E"][entity]["companyField/constructorFunctionString"])( companyDoc[entity], Event.eventFields ) ) )
+            
             let newDocVersion =  mergeArray( companyFieldsToKeep.map( entity => createObject(entity, companyDoc[entity] ) ).concat( updatedFields ) )
             docVersions.push(newDocVersion)
         }
       }
     }
   })
+
+  //Change to user-friendly labels?
 
   let Company = {
     orgnumber: storedEvents[0]["event/incorporation/orgnumber"],
@@ -307,6 +312,7 @@ let constructCompanyDoc = (S, storedEvents) => {
 
 }
 
+
 let update = (S) => {
 
     //To be fixed...
@@ -319,8 +325,11 @@ let update = (S) => {
 
     console.log(S["selectedCompany"])
 
+    
+
     console.log("State: ", S)
     let A = getUserActions(S)
+    //A.retractEntity(4168)
     S.elementTree = generateHTMLBody(S, A )
     sideEffects.updateDOM( S.elementTree )
 }
@@ -332,8 +341,30 @@ let Admin = {
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
     submitDatoms: async (datoms) => datoms.length < 2000
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
-    : console.log("ERROR: Too many datoms: ", datoms)
+    : console.log("ERROR: Too many datoms: ", datoms),
+    //retractEntity: async entityAttributes => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( entityAttributes )
+    //)
 }
+
+
+let accBalConstructor = (eventAttributes, companyFields ) => {
+
+  console.log("args", eventAttributes, companyFields)
+  let accounts = Object.keys(companyFields[4380]).filter( acc => Number(acc) >= 3000 )
+  console.log("accounts", accounts)
+  let changes = accounts.map( acc => createObject(acc, -companyFields[4380][acc] ) )
+  console.log("changes", changes)
+  let patch = mergeArray( changes )
+  console.log("patch", patch)
+
+
+  return  patch;
+} 
+
+
+
+
+
 
 //Archive
 
