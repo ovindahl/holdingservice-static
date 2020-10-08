@@ -59,7 +59,9 @@ const sideEffects = {
                 "companyDocPage/selectedVersion": 1,
                 "attributesPage/selectedAttribute": 3172,
                 "attributesPage/selectedAttributeCategory": "",
-                "eventTypesPage/selectedEventType": 4113
+                "eventTypesPage/selectedEventType": 4113,
+                "eventFieldsPage/selectedEventField": 4372,
+                "companyFieldsPage/selectedCompanyField": 4380
               }
 
               let S = updateS({}, serverResponse, initialUIstate)
@@ -128,9 +130,10 @@ let getUserActions = (S) => returnObject({
     ),
     createAttribute: async () => await sideEffects.submitNewAttributeDatoms(S, [
       newDatom("newAttr", "entity/type", "attribute"),
-      newDatom("newAttr", "attr/name", "event/attribute" + S["attributes"].length ),
-      newDatom("newAttr", "entity/label", "Ny attributt"),
-      newDatom("newAttr", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined") && (typeof inputValue !== "null") ;`),
+      newDatom("newAttr", "attr/name", "event/attribute" + S["sharedData"]["attributes"].length ),
+      newDatom("newAttr", "attribute/category", "Mangler kategori"),
+      newDatom("newAttr", "entity/label", "[Attributt uten navn]"),
+      newDatom("newAttr", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
     ] ),
     createEventType: async () => await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newEventType", "entity/type", "eventType"),
@@ -149,7 +152,7 @@ let getUserActions = (S) => returnObject({
     ]),
     createEventField: async () => await sideEffects.submitDatomsWithValidation(S, [
             newDatom("eventField", "entity/type", "eventField"),
-            newDatom("eventField", "entity/label", "label"),
+            newDatom("eventField", "entity/label", "Ny hendelsesoutput"),
             newDatom("eventField", "entity/doc", "[doc]"),
             newDatom("eventField", "eventField/companyFields", [] ),
     ]),
@@ -262,6 +265,7 @@ let combinedEventIsValid = (S, eventAttributes, companyVariables) => S["sharedDa
 let constructCompanyDoc = (S, storedEvents) => {
 
   let allCompanyFields = S["sharedData"]["allCompanyFields"]
+  let allEventFields = S["sharedData"]["allEventFields"]
 
   let initialCompanyDoc = mergeArray( allCompanyFields.map( companyField => createObject(companyField, {})  ) ) 
 
@@ -284,8 +288,90 @@ let constructCompanyDoc = (S, storedEvents) => {
         let eventIsValid = combinedEventIsValid(S, eventAttributes, companyVariables)
         if(!eventIsValid){rejectedEvents.push( Event )}
         else{
-            let accountBalance = createObject("4372", new Function( [`eventAttributes`, `companyFields`], eventType["eventType/accountBalanceConstructorFunctionString"])( eventAttributes, companyVariables ) )  //Other fields TBD
-            Event.eventFields = accountBalance
+
+            let eventFieldConstructors = {
+              "4372": new Function( [`eventAttributes`, `companyFields`], eventType["eventType/accountBalanceConstructorFunctionString"]),
+              "5431": (eventAttributes, companyFields) => eventAttributes["event/incorporation/incorporationCost"],
+              "5414": (eventAttributes, companyFields) => {
+
+                let nonDeductibleAccounts = {
+                  2030: 'Stiftelesutgifter', //NB: skal kun gjelde i stiftelsesåret
+                  5901: 'Gave til ansatte, ikke fradragsberettiget (t.o.m. 2018)',
+                  6726: 'Honorar for juridisk bistand, ikke fradragsberettiget',
+                  7360: 'Representasjon, ikke fradragsberettiget',
+                  7410: 'Kontingent, ikke fradragsberettiget',
+                  7430: 'Gave, ikke fradragsberettiget',
+                  7791: 'Annen kostnad, ikke fradragsberettiget',
+                  8000: 'Inntekt på investering i datterselskap',
+                  8002: 'Konsernbidrag fra datter',
+                  8005: 'Netto positiv resultatandel vedr. investering i DS, TS og FKV',
+                  8006: 'Netto negativ resultatandel vedr. investering i DS, TS og FKV',
+                  8010: 'Inntekt på investering i annet foretak i samme konsern',
+                  8020: 'Inntekt på investering i tilknyttet selskap',
+                  8040: 'Renteinntekt, skattefri',
+                  8071: 'Aksjeutbytte',
+                  8078: 'Gevinst ved realisasjon av aksjer',
+                  8080: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi',
+                  8100: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi',
+                  8110: 'Nedskrivning av andre finansielle omløpsmidler',
+                  8120: 'Nedskrivning av finansielle anleggsmidler',
+                  8140: 'Rentekostnad, ikke fradragsberettiget',
+                  8178: 'Tap ved realisasjon av aksjer'
+                }
+
+                //3% dividendtax TBD
+                return mergeArray( [createObject("2030", companyFields[5434])].concat(Object.keys(nonDeductibleAccounts).map( account => createObject(`${account}: ${nonDeductibleAccounts[account]}`, companyFields[4380][account] ? companyFields[4380][account] : 0 ) )) );
+              },
+              "5459": (eventAttributes, companyFields) => {
+
+
+                let report = {
+                  "Regnskapsmessig verdi finansielle instrumenter": {
+                    lastYear: "TBD",
+                    thisYear: companyFields[4380][1880]
+                  },
+                  "Skattemessig verdi finansielle instrumenter": {
+                    lastYear: "TBD",
+                    thisYear: companyFields[4380][1880] + companyFields[4380][1881]
+                  },
+                  "Forskjeller": {
+                    lastYear: "TBD",
+                    thisYear: companyFields[4380][1881]
+                  },
+                  "Endring midlertidige forskjeller": {
+                    thisYear: companyFields[4380][1881] // TBD
+                  },
+                  "Framført ubenyttet underskudd etter fastsettingen": {
+                    lastYear: eventAttributes["event/attribute91"],
+                    thisYear: companyFields[4380][1880]
+                  },
+                  "Anvendelse av framført underskudd": {
+                    lastYear: "TBD",
+                    thisYear: eventAttributes["event/attribute92"]
+                  },
+                  "Årets underskudd": {
+                    thisYear: Object.keys(companyFields[4380]).filter( acc => Number(acc) >= 3000 ).reduce( (sum, acc) => sum + companyFields[4380][acc], 0 )
+                  },
+                  "Akkumulert fremførbart skattemessig underskudd": {
+                    lastYear: "TBD",
+                    thisYear: companyFields[4380][1880] - eventAttributes["event/attribute92"]
+                  }
+                }
+
+                console.log(report)
+
+                //3% dividendtax TBD
+                return report;
+              }
+            }
+
+            
+            
+            let updatedEventFields = eventType["eventType/eventFields"].map( entity => createObject(entity, eventFieldConstructors[entity]( eventAttributes, companyVariables ) ) )
+            Event.eventFields = mergeArray(updatedEventFields) 
+
+            console.log(Event)
+
             appliedEvents.push( Event )
 
             let [companyFieldsToUpdate, companyFieldsToKeep] = split( allCompanyFields, companyFieldEntity => eventType["eventType/eventFields"].map( eventFieldEntity => S["sharedData"]["E"][eventFieldEntity]["eventField/companyFields"]  ).flat().includes(companyFieldEntity)   )
@@ -349,16 +435,39 @@ let Admin = {
 
 let accBalConstructor = (eventAttributes, companyFields ) => {
 
-  console.log("args", eventAttributes, companyFields)
-  let accounts = Object.keys(companyFields[4380]).filter( acc => Number(acc) >= 3000 )
-  console.log("accounts", accounts)
-  let changes = accounts.map( acc => createObject(acc, -companyFields[4380][acc] ) )
-  console.log("changes", changes)
-  let patch = mergeArray( changes )
-  console.log("patch", patch)
+    `2036	Stiftelesutgifter
+    5901	Gave til ansatte, ikke fradragsberettiget (t.o.m. 2018)
+    6726	Honorar for juridisk bistand, ikke fradragsberettiget
+    7360	Representasjon, ikke fradragsberettiget
+    7410	Kontingent, ikke fradragsberettiget
+    7430	Gave, ikke fradragsberettiget
+    7791	Annen kostnad, ikke fradragsberettiget
+    8000	Inntekt på investering i datterselskap
+    8002	Konsernbidrag fra datter
+    8005	Netto positiv resultatandel vedr. investering i DS, TS og FKV
+    8006	Netto negativ resultatandel vedr. investering i DS, TS og FKV
+    8010	Inntekt på investering i annet foretak i samme konsern
+    8020	Inntekt på investering i tilknyttet selskap
+    8040	Renteinntekt, skattefri
+    8071	Aksjeutbytte
+    8078	Gevinst ved realisasjon av aksjer
+    8080	Verdiøkning av finansielle instrumenter vurdert til virkelig verdi
+    8100	Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi
+    8110	Nedskrivning av andre finansielle omløpsmidler
+    8120	Nedskrivning av finansielle anleggsmidler
+    8140	Rentekostnad, ikke fradragsberettiget
+    8178	Tap ved realisasjon av aksjer`
 
 
-  return  patch;
+  
+
+  let nonDeductibleAccounts = ['5901' , '6726' , '7360' , '7410' , '7430' , '7791' , '8000' , '8002' , '8005' , '8006' , '8010' , '8020' , '8040' , '8071' , '8078' , '8080' , '8100' , '8110' , '8120' , '8140' , '8178'] //NB: changed 2036 to 2030. Which to  use for Stiftelseskost?
+
+  let thisYearIncorporationCost = 5570; //må ha egen attributt fra stiftelse?
+
+  //3% dividendtax TBD
+
+  return mergeArray(nonDeductibleAccounts.map( account => createObject(account, companyFields[4380][account] ? companyFields[4380][account] : 0 ) ));
 } 
 
 

@@ -36,6 +36,8 @@ console.log( (label) ? label : "Logging this: ", something )
 return something
 }
 
+
+
 //Datom creation functions
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
@@ -120,7 +122,7 @@ let feedContainer = (content, date, entityID) => d([
 let companySelectionMenuRow = (S, A) => d([
   d( S["userEvents"].filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => console.log("TBD...") )), {style: "display:flex;"}),
 ]) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin/Attributter", "Admin/Hendelsestyper"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin/Attributter", "Admin/Hendelsestyper", "Admin/HendelsesOutput", "Admin/SelskapsOutput"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -134,8 +136,8 @@ let pageRouter = {
   "companyDoc": (S, A) => companyDocPage( S, A ),
   "Admin/Attributter": (S, A) => d( [attributesPage( S, A )], {class: "pageContainer"}),
   "Admin/Hendelsestyper": (S, A) => eventTypesPage( S, A ),
-  "admin/eventFields": (S, A) => eventFieldsPage( S, A ),
-  "admin/companyFields": (S, A) => companyFieldsPage( S, A ),
+  "Admin/HendelsesOutput": (S, A) => eventFieldsPage( S, A ),
+  "Admin/SelskapsOutput": (S, A) => companyFieldsPage( S, A ),
   "admin/eventValidators": (S, A) => eventValidatorsPage( S, A )
 }
 
@@ -171,6 +173,48 @@ let entitySpan = (S, id) => span( S["sharedData"]["E"][id]["entity/label"], S["s
 
 let slider = (value, min, max, onChange) => input({type: "range", min, max, value}, "change", onChange )
 
+let eventFieldViews = {
+  "4372": (S, selectedEvent, eventFieldEntity) => d([
+    d( S["sharedData"]["E"][ eventFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
+    accountBalanceView(S, selectedEvent["eventFields"][eventFieldEntity]),
+    d("<br>")
+    ]),
+  "5414": (S, selectedEvent, eventFieldEntity) => d(Object.entries(selectedEvent["eventFields"][eventFieldEntity]).map( entry => d([
+    d(entry[0]),
+    d(String(entry[1])),
+    d("<br>")
+  ], {class: "eventInspectorRow"}) )  )
+}
+
+
+let eventFieldView = (S, selectedEvent, eventFieldEntity) => eventFieldViews[eventFieldEntity] 
+  ? eventFieldViews[eventFieldEntity](S, selectedEvent, eventFieldEntity) 
+  : d([ 
+    d( S["sharedData"]["E"][ eventFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ), 
+    d([
+      d(`${S["sharedData"]["E"][ eventFieldEntity ]["entity/label"]}:`),
+      d(`${JSON.stringify(selectedEvent["eventFields"][eventFieldEntity])}`, {class: "rightAlignText"})
+    ], {class: "eventInspectorRow"})
+  ])
+
+
+let companyFieldViews = {
+  "4372": (S, companyFieldEntity) => d([
+    d( S["sharedData"]["E"][ companyFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
+    accountBalanceWithHistoryView(S, companyField, prevCompanyField),
+    d("<br>")
+    ])
+}
+
+
+let companyFieldView = (S, companyFieldEntity) => companyFieldEntity === 4380 ? d([
+  d( S["sharedData"]["E"][ companyFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
+  accountBalanceWithHistoryView(S, S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity], S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] - 1 ][companyFieldEntity]),
+]) : d([ 
+  d( S["sharedData"]["E"][ companyFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ), 
+  d(`${JSON.stringify(S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity])}`, {class: "rightAlignText"})
+])
+
 let companyDocPage = (S, A) => {
 
   let selectedVersion = S["UIstate"]["companyDocPage/selectedVersion"];
@@ -184,25 +228,18 @@ let companyDocPage = (S, A) => {
       d(">", {class: "textButton"}, "click", e => A.updateLocalState({"companyDocPage/selectedVersion": Math.min(S["selectedCompany"]["appliedEvents"].length, selectedVersion + 1 ) })),
     ], {class: "shareholderRow"}),
     d([
-      h3(`Attributter for hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
+      h3(`Attributter for hendelse ${selectedVersion}: ${eventType["entity/label"]}`),
       attributesTableView(S, selectedEvent["eventAttributes"], A ),
     ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
     d("<br>"),
     d([
       h3(`Hendelsesrapport for hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
-      d(eventType["eventType/eventFields"].map( eventFieldEntity => d([
-          d( S["sharedData"]["E"][ eventFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
-          accountBalanceView(S, logThis(selectedEvent)["eventFields"][eventFieldEntity])
-          ])
-        ))
+      d(eventType["eventType/eventFields"].map( eventFieldEntity => eventFieldView(S, selectedEvent, eventFieldEntity) ) )
     ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
     d("<br>"),
     d([
-      h3(`Selskapets saldobalanse etter hendelse ${selectedVersion}`),
-      d(S["sharedData"]["allCompanyFields"].map( companyFieldEntity => d([
-        d( S["sharedData"]["E"][ companyFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
-        accountBalanceWithHistoryView(S, S["selectedCompany"]["companyFields"][ selectedVersion ][companyFieldEntity], S["selectedCompany"]["companyFields"][ selectedVersion - 1 ][companyFieldEntity]),
-      ]) ))
+      h3(`Selskapsdokumentet etter hendelse ${selectedVersion}`),
+      d(S["sharedData"]["allCompanyFields"].map( companyFieldEntity => companyFieldView(S, companyFieldEntity) ))
     ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
   ] , {class: "pageContainer"} )
 } 
@@ -275,7 +312,6 @@ let eventTypesPage = ( S, A ) => {
   let selectedEventType = S["sharedData"]["E"][ S["UIstate"]["eventTypesPage/selectedEventType"] ]
 
   let eventTypeObjects = S["sharedData"]["allEventTypes"].map( entity => S["sharedData"]["E"][entity] )
-
   let eventAttributes = S["sharedData"]["allEventAttributes"]
   let eventValidators = S["sharedData"]["allEventValidators"]
   let companyFields = S["sharedData"]["allCompanyFields"]
@@ -312,13 +348,80 @@ let eventTypesPage = ( S, A ) => {
       retractEntityButton(A, selectedEventType["entity"])
     ],{class: "feedContainer"}),
   ], {style: "display: flex;"})
-} 
+}
 
 let newEntityRouter = {
   "eventValidators": (A) => A.createEventValidator(),
   "eventFields": (A) => A.createEventField(),
   "companyFields": (A) => A.createCompanyField()
 }
+
+let eventFieldsPage = ( S, A ) => {
+  let localStateVarName = "eventFieldsPage/selectedEventField"
+  let selectedEventField = S["sharedData"]["E"][ S["UIstate"][localStateVarName] ]
+
+  let eventFieldObjects = S["sharedData"]["allEventFields"].map( entity => S["sharedData"]["E"][entity] )
+  
+  return d([
+    d( [h3("Hendelsesfelt")].concat(eventFieldObjects.map( eventFieldObject => d( eventFieldObject["entity/label"], {class: eventFieldObject.entity === S["UIstate"][localStateVarName] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {[localStateVarName] : eventFieldObject.entity} ) )).concat(d("Opprett ny", {class: "textButton"}, "click", e => A.createEventField() ))) ),
+    d([
+      h3( `${selectedEventField["entity/label"]}`  ),
+      d([
+        d("EntitetsID:"),
+        d( String(selectedEventField["entity"]) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Navn:"),
+        input({value: selectedEventField["entity/label"]}, "change", e => A.updateEntityAttribute( selectedEventField.entity, "entity/label", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Beskrivelse:"),
+        input({value: selectedEventField["entity/doc"]}, "change", e => A.updateEntityAttribute( selectedEventField.entity, "entity/doc", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Internt notat:"),
+        textArea( String(selectedEventField["entity/note"]), e => A.updateEntityAttribute( selectedEventField.entity, "entity/note", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      multipleEntitySelectorView(S, A, selectedEventField.entity, "eventField/companyFields", S["sharedData"]["allCompanyFields"]),
+      retractEntityButton(A, selectedEventField["entity"])
+    ],{class: "feedContainer"}),
+  ], {style: "display: flex;"})
+} 
+
+let companyFieldsPage = ( S, A ) => {
+  let localStateVarName = "companyFieldsPage/selectedCompanyField"
+  let selectedCompanyField = S["sharedData"]["E"][ S["UIstate"][localStateVarName] ]
+
+  let companyFieldObjects = S["sharedData"]["allCompanyFields"].map( entity => S["sharedData"]["E"][entity] )
+  
+  return d([
+    d( [h3("Selskapsvariabler")].concat(companyFieldObjects.map( eventFieldObject => d( eventFieldObject["entity/label"], {class: eventFieldObject.entity === S["UIstate"][localStateVarName] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {[localStateVarName] : eventFieldObject.entity} ) )).concat(d("Opprett ny", {class: "textButton"}, "click", e => A.createCompanyField() ))) ),
+    d([
+      h3( `${selectedCompanyField["entity/label"]}`  ),
+      d([
+        d("EntitetsID:"),
+        d( String(selectedCompanyField["entity"]) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Navn:"),
+        input({value: selectedCompanyField["entity/label"]}, "change", e => A.updateEntityAttribute( selectedCompanyField.entity, "entity/label", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Beskrivelse:"),
+        input({value: selectedCompanyField["entity/doc"]}, "change", e => A.updateEntityAttribute( selectedCompanyField.entity, "entity/doc", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Internt notat:"),
+        textArea( String(selectedCompanyField["entity/note"]), e => A.updateEntityAttribute( selectedCompanyField.entity, "entity/note", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Generatorfunksjon"),
+        textArea( String(selectedCompanyField["companyField/constructorFunctionString"]), e => A.updateEntityAttribute( selectedCompanyField.entity, "companyField/constructorFunctionString", submitInputValue(e) )  )
+      ], {class: "eventAttributeRow"}),
+      retractEntityButton(A, selectedCompanyField["entity"])
+    ],{class: "feedContainer"}),
+  ], {style: "display: flex;"})
+} 
 
 
 let multipleEntitySelectorView = (S, A, parentEntity, attributeName, allAllowedEntities) =>  d([
@@ -334,26 +437,6 @@ let multipleEntitySelectorView = (S, A, parentEntity, attributeName, allAllowedE
     )  ) 
   )
 ], {class: "eventAttributeRow"})
-
-
-let entityAdminPage = ( S, A, entityType ) => d([
-  d([
-    d("entity"),
-    d("entity/label"),
-    d("entity/doc"),
-  ], {class: "attributeRow", style: "background-color: gray;"} ),
-  d( S[ entityType ].map( entity => d([
-    d(String(entity["entity"])),
-    input({value: entity["entity/label"]}, "change", e => A.updateEntityAttribute( entity.entity, "entity/label", submitInputValue(e) ) ),
-    input({value: entity["entity/doc"]}, "change", e => A.updateEntityAttribute( entity.entity, "entity/doc", submitInputValue(e) ) ),
-    d( "[X]", {class: "textButton"}, "click", e => A.retractEntity(entity["entity"])  ),
-  ], {class: "attributeRow"} ) ) ),
-  d("Opprett ny", {class: "textButton"}, "click", e => newEntityRouter[entityType](A) ),
-]) 
-
-let eventValidatorsPage = ( S, A ) =>  entityAdminPage( S, A, "eventValidators" )
-let eventFieldsPage = ( S, A ) =>  entityAdminPage( S, A, "eventFields" )
-let companyFieldsPage = ( S, A ) =>  entityAdminPage( S, A, "companyFields" )
 
 
 
