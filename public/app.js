@@ -289,103 +289,15 @@ let constructCompanyDoc = (S, storedEvents) => {
         if(!eventIsValid){rejectedEvents.push( Event )}
         else{
 
-            let eventFieldConstructors = {
-              "4372": new Function( [`eventAttributes`, `companyFields`], eventType["eventType/accountBalanceConstructorFunctionString"]),
-              "5431": (eventAttributes, companyFields) => eventAttributes["event/incorporation/incorporationCost"],
-              "5414": (eventAttributes, companyFields) => {
+            let eventFieldConstructor = entity => (entity === 4372) 
+              ? new Function( [`eventAttributes`, `companyFields`], eventType["eventType/accountBalanceConstructorFunctionString"]) 
+              : new Function( [`eventAttributes`, `companyFields`, `updatedEventFields`], S["sharedData"]["E"][entity]["eventField/constructorFunctionString"])
 
-                let nonDeductibleAccounts = {
-                  2030: 'Stiftelesutgifter', //NB: skal kun gjelde i stiftelsesåret
-                  5901: 'Gave til ansatte, ikke fradragsberettiget (t.o.m. 2018)',
-                  6726: 'Honorar for juridisk bistand, ikke fradragsberettiget',
-                  7360: 'Representasjon, ikke fradragsberettiget',
-                  7410: 'Kontingent, ikke fradragsberettiget',
-                  7430: 'Gave, ikke fradragsberettiget',
-                  7791: 'Annen kostnad, ikke fradragsberettiget',
-                  8000: 'Inntekt på investering i datterselskap',
-                  8002: 'Konsernbidrag fra datter',
-                  8005: 'Netto positiv resultatandel vedr. investering i DS, TS og FKV',
-                  8006: 'Netto negativ resultatandel vedr. investering i DS, TS og FKV',
-                  8010: 'Inntekt på investering i annet foretak i samme konsern',
-                  8020: 'Inntekt på investering i tilknyttet selskap',
-                  8040: 'Renteinntekt, skattefri',
-                  8071: 'Aksjeutbytte',
-                  8078: 'Gevinst ved realisasjon av aksjer',
-                  8080: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi',
-                  8100: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi',
-                  8110: 'Nedskrivning av andre finansielle omløpsmidler',
-                  8120: 'Nedskrivning av finansielle anleggsmidler',
-                  8140: 'Rentekostnad, ikke fradragsberettiget',
-                  8178: 'Tap ved realisasjon av aksjer'
-                }
+            Event.eventFields = eventType["eventType/eventFields"].reduce( (updatedEventFields, entity) => mergerino( 
+              updatedEventFields, 
+              createObject(entity, eventFieldConstructor(entity)( eventAttributes, companyVariables, updatedEventFields ) )
+            ), {} )
 
-                //3% dividendtax TBD
-                return [returnObject({account: "2030", label: nonDeductibleAccounts["2030"], value: companyFields[5434]})].concat(Object.keys(nonDeductibleAccounts).map( account => returnObject({account: account, label: nonDeductibleAccounts[account], value: companyFields[4380][account] ? companyFields[4380][account] : 0}) ));
-              },
-              "5459": (eventAttributes, companyFields) => {
-
-                let nonDeductibleAccounts = {
-                  2030: 'Stiftelesutgifter', //NB: skal kun gjelde i stiftelsesåret
-                  5901: 'Gave til ansatte, ikke fradragsberettiget (t.o.m. 2018)',
-                  6726: 'Honorar for juridisk bistand, ikke fradragsberettiget',
-                  7360: 'Representasjon, ikke fradragsberettiget',
-                  7410: 'Kontingent, ikke fradragsberettiget',
-                  7430: 'Gave, ikke fradragsberettiget',
-                  7791: 'Annen kostnad, ikke fradragsberettiget',
-                  8000: 'Inntekt på investering i datterselskap',
-                  8002: 'Konsernbidrag fra datter',
-                  8005: 'Netto positiv resultatandel vedr. investering i DS, TS og FKV',
-                  8006: 'Netto negativ resultatandel vedr. investering i DS, TS og FKV',
-                  8010: 'Inntekt på investering i annet foretak i samme konsern',
-                  8020: 'Inntekt på investering i tilknyttet selskap',
-                  8040: 'Renteinntekt, skattefri',
-                  8071: 'Aksjeutbytte',
-                  8078: 'Gevinst ved realisasjon av aksjer',
-                  8080: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi',
-                  8100: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi',
-                  8110: 'Nedskrivning av andre finansielle omløpsmidler',
-                  8120: 'Nedskrivning av finansielle anleggsmidler',
-                  8140: 'Rentekostnad, ikke fradragsberettiget',
-                  8178: 'Tap ved realisasjon av aksjer'
-                }
-
-                let permanentDifferencesReport = [returnObject({account: "2030", label: nonDeductibleAccounts["2030"], value: companyFields[5434]})].concat(Object.keys(nonDeductibleAccounts).map( account => returnObject({account: account, label: nonDeductibleAccounts[account], value: companyFields[4380][account] ? companyFields[4380][account] : 0}) ));
-
-                let EBT = Object.keys(companyFields[4380]).filter( acc => Number(acc) >= 3000 ).reduce( (sum, acc) => sum + companyFields[4380][acc] ? companyFields[4380][acc] : 0 , 0 )
-
-                let taxEarnings = EBT + permanentDifferencesReport.reduce( (sum, acc) => sum + companyFields[4380][acc], 0 ) + companyFields[4380][1881]
-                let utilizedLosses = 0 // TBD
-                let taxPayable = (taxEarnings + utilizedLosses) * 0.22
-                let changeInDelayedTaxes = companyFields[4380][1881]
-                let taxCost = taxPayable + changeInDelayedTaxes
-
-
-                let tempDifferencesReport = [
-                  {label: "Regnskapsmessig verdi finansielle instrumenter (i fjor)", value: 0}, //Åpningsbalanse
-                  {label: "Regnskapsmessig verdi finansielle instrumenter (i år)", value: companyFields[4380][1880] + companyFields[4380][1881] },
-                  {label: "Skattemessig verdi finansielle instrumenter (i fjor)", value: 0}, //Åpningsbalanse
-                  {label: "Skattemessig verdi finansielle instrumenter (i år)", value: companyFields[4380][1880] },
-                  {label: "Forskjeller (i fjor)", value: 0},  //Åpningsbalanse
-                  {label: "Forskjeller (i år)", value: companyFields[4380][1881]},
-                  {label: "Endring midlertidige forskjeller", value: companyFields[4380][1881]}, //til skattekost
-                  {label: "Framført ubenyttet underskudd etter fastsettingen (i fjor)", value: 0},
-                  {label: "Framført ubenyttet underskudd etter fastsettingen (i år)", value: eventAttributes["event/attribute91"]},
-                  {label: "Anvendelse av framført underskudd", value: eventAttributes["event/attribute92"]},
-                  {label: "Årets underskudd (før skatt)", value: EBT},
-                  {label: "Akkumulert fremførbart skattemessig underskudd (i fjor)", value: 0},
-                  {label: "Akkumulert fremførbart skattemessig underskudd (i år)", value: companyFields[4380][1881]},
-                  {label: "Regnskapsmessig resultat før skatt", value: EBT },
-                  {label: "Næringsinntekt", value: taxEarnings },
-                  {label: "Betalbar skatt", value: taxPayable },
-                  {label: "Skattekostnad", value: taxCost },
-                ]
-
-                return tempDifferencesReport;
-              }
-            }
-
-            let updatedEventFields = eventType["eventType/eventFields"].map( entity => createObject(entity, eventFieldConstructors[entity]( eventAttributes, companyVariables ) ) )
-            Event.eventFields = mergeArray(updatedEventFields) 
             appliedEvents.push( Event )
 
             let [companyFieldsToUpdate, companyFieldsToKeep] = split( allCompanyFields, companyFieldEntity => eventType["eventType/eventFields"].map( eventFieldEntity => S["sharedData"]["E"][eventFieldEntity]["eventField/companyFields"]  ).flat().includes(companyFieldEntity)   )
@@ -425,7 +337,25 @@ let update = (S) => {
 
     console.log(S["selectedCompany"])
 
-    
+    /* let datoms = S["sharedData"]["allEventFields"]
+      .map( e => S["sharedData"]["E"][e] )
+      .filter( e => e["entity/label"].startsWith("[RF-1167]") )
+      .map( eventField => [
+      newDatom("new_"+eventField.entity, "entity/type", "companyField" ),
+      newDatom("new_"+eventField.entity, "entity/label", eventField["entity/label"] ),
+      newDatom("new_"+eventField.entity, "entity/doc", eventField["entity/doc"]),
+      newDatom("new_"+eventField.entity, "companyField/constructorFunctionString", `return calculatedEventAttributes[${eventField.entity}];`),
+    ]  ).flat() 
+
+    console.log(datoms) */
+
+    let accounts = ['1000 Forskning og utvikling, ervervet', '1005 Forskning og utvikling, egenutviklet', '1020 Konsesjoner, ervervet', '1025 Konsesjoner, egenutviklet', '1030 Patenter, ervervet', '1035 Patenter, egenutviklet', '1040 Lisenser, ervervet', '1045 Lisenser, egenutviklet', '1050 Varemerker, ervervet', '1055 Varemerker, egenutviklet', '1060 Andre rettigheter, ervervet', '1065 Andre rettigheter, egenutviklet', '1070 Utsatt skattefordel', '1080 Goodwill, ervervet', '1100 Forretningsbygg', '1110 Bygg og anlegg, hotell o.l.', '1117 Elektroteknisk utrustning i kraftforetak', '1120 Fast teknisk installasjon i bygninger', '1130 Anlegg under utførelse', '1140 Jordbrukseiendommer', '1145 Skogbrukseiendommer', '1150 Tomter', '1155 Andre grunnarealer', '1160 Boliger inkl. tomter', '1180 Investeringseiendommer', '1190 Andre anleggsmidler', '1200 Maskiner og anlegg', '1210 Maskiner og anlegg under utførelse', '1220 Skip', '1224 Rigger', '1225 Fly', '1230 Personbiler/stasjonsvogner', '1233 Varebiler', '1236 Lastebiler', '1238 Busser', '1240 Traktorer', '1248 Trucker', '1249 Andre transportmidler', '1250 Inventar', '1260 Fast bygningsinventar, eget bygg', '1265 Fast bygningsinventar, leide bygg', '1270 Verktøy o.l.', '1280 Kontormaskiner', '1290 Andre driftsmidler', '1291 Andre driftsmidler, ikke avskrivbare', '1300 Investeringer i datterselskap', '1310 Investeringer i annet foretak i samme konsern', '1312 Investeringer i deltakerfastsatte datter- og konsernselskap', '1320 Lån til foretak i samme konsern', '1330 Investeringer i tilknyttet selskap', '1340 Lån til tilknyttet selskap og felles kontrollert virksomhet', '1350 Investeringer i aksjer, andeler og verdipapirfondsandeler', '1360 Obligasjoner', '1370 Fordringer på eiere', '1375 Fordringer på styremedlemmer', '1380 Fordringer på ansatte', '1393 Innskuddsfond', '1394 Overfinansiering av pensjonsforpliktelser', '1395 Leietakerinnskudd', '1396 Depositum', '1397 Forskuddsleasing', '1398 Påkostning leide driftsmidler', '1399 Andre fordringer', '1400 Råvarer', '1401 Halvfabrikata', '1405 Hjelpematerialer', '1408 Driftsmaterialer og reservedeler', '1409 Beholdningsendring', '1420 Varer under tilvirkning', '1429 Beholdningsendring', '1440 Ferdig egentilvirkede varer', '1449 Beholdningsendring', '1460 Innkjøpte varer for videresalg', '1465 Demonstrasjonsvarer', '1469 Beholdningsendring', '1480 Forskuddsbetaling til leverandører (varekontrakter/prosjekter)', '1490 Biologiske eiendeler', '1500 Kundefordringer', '1530 Opptjent, ikke fakturert driftsinntekt', '1550 Kundefordringer på selskap i samme konsern', '1560 Andre fordringer på selskap i samme konsern', '1569 Fordringer konsernbidrag, ikke vedtatt', '1570 Reiseforskudd', '1571 Lønnsforskudd', '1572 Andre kortsiktige lån til ansatte', '1576 Kortsiktig fordring eiere/styremedl. o.l.', '1579 Andre kortsiktige fordringer', '1580 Avsetning tap på kundefordringer', '1585 Avsetning tap på andre fordringer', '1590 Andre omløpsmidler', '1600 Utgående merverdiavgift, høy sats', '1601 Utgående merverdiavgift, mellom sats', '1602 Utgående merverdiavgift, råfisk', '1603 Utgående merverdiavgift, lav sats', '1604 Utgående merverdiavgift ved kjøp av tjenester fra utlandet, høy sats', '1605 Utgående innførselsavgift for varer, høy sats', '1606 Utgående innførselsavgift for varer, mellom sats', '1607 Utgående merverdiavgift ved innenlands kjøp med omvendt avgiftsplikt, høy sats', '1610 Inngående merverdiavgift, høy sats', '1611 Inngående merverdiavgift, mellom sats', '1612 Innenlands inngående merverdiavgift, råfisk', '1613 Innenlands inngående merverdiavgift, lav sats', '1614 Inngående merverdiavgift ved kjøp av tjenester fra utlandet, høy sats', '1615 Inngående innførselsavgift for varer, høy sats', '1616 Inngående innførselsavgift for varer, mellom sats', '1620 Grunnlag utgående merverdiavgift, omvendt avgiftsplikt', '1621 Motkonto grunnlag utgående innførselsavgift, omvendt avgiftsplikt', '1640 Oppgjørskonto merverdiavgift', '1650 Kompensert merverdiavgift, høy sats', '1651 Kompensert merverdiavgift, mellom sats', '1652 Kompensert merverdiavgift, lav sats', '1654 Oppgjørskonto kompensert merverdiavgift', '1655 Grunnlag kompensert merverdiavgift, høy sats', '1656 Grunnlag kompensert merverdiavgift, mellom sats', '1657 Grunnlag kompensert merverdiavgift, lav sats', '1659 Motkonto grunnlag kompensert merverdiavgift', '1660 Krav på refusjon av utenlandsk merverdiavgift', '1670 Krav på offentlige tilskudd', '1675 Skattefunn til gode, ikke fastsatt', '1700 Forskuddsbetalt leiekostnad', '1710 Forskuddsbetalt rentekostnad', '1720 Andre depositum', '1740 Forskuddsbetalt, ikke påløpt lønn', '1741 Forskuddsbetalt strøm, varme m.v.', '1742 Forskuddsbetalt forsikring', '1743 Forskuddsbetalt leasing (kortsiktig)', '1749 Andre forskuddsbetalte kostnader', '1750 Påløpt leieinntekt', '1760 Påløpt renteinntekt', '1770 Andre periodiseringer', '1780 Krav på innbetaling av selskapskapital', '1800 Aksjer og andeler i foretak i samme konsern', '1810 Markedsbaserte aksjer og verdipapirfondsandeler', '1820 Andre aksjer', '1830 Markedsbaserte obligasjoner', '1840 Andre obligasjoner', '1850 Markedsbaserte obligasjoner med kort løpetid (sertifikater)', '1860 Andre obligasjoner med kort løpetid (sertifikater)', '1870 Andre markedsbaserte finansielle instrumenter', '1880 Andre finansielle instrumenter', '1881 Verdijustering andre finansielle instrumenter', '1900 Kontanter, NOK', '1905 Kontanter, Euro', '1908 Kontanter, Annen valuta', '1909 Kassedifferanser', '1920 Bankinnskudd', '1925 Bankinnskudd, utland', '1950 Bankinnskudd for skattetrekk', '2000 Aksjekapital', '2010 Egne aksjer', '2020 Overkurs', '2025 Ikke registrert kapitalforhøyelse/ kapitalnedsettelse', '2030 Annen innskutt egenkapital', '2036 Stiftelesutgifter', '2040 Fond for vurderingsforskjeller', '2041 Fond for vurderingsforskjeller i DLS', '2042 Fond for vurderingsforskjeller i andre selskap', '2045 Fond for urealiserte gevinster', '2050 Annen egenkapital', '2080 Udekket tap', '2100 Pensjonsforpliktelser', '2120 Utsatt skatt', '2130 Derivater', '2160 Uopptjent inntekt', '2180 Andre avsetninger for forpliktelser', '2200 Konvertible lån', '2210 Obligasjonslån', '2220 Gjeld til kredittinstitusjoner', '2240 Pantelån', '2250 Gjeld til ansatte og eiere', '2260 Gjeld til selskap i samme konsern', '2270 Andre valutalån', '2280 Stille interessentinnskudd og ansvarlig lånekapital', '2290 Annen langsiktig gjeld', '2300 Konvertible lån', '2320 Obligasjonslån', '2330 Derivater', '2340 Andre valutalån', '2360 Byggelån', '2380 Kassakreditt', '2390 Annen gjeld til kredittinstitusjon', '2400 Leverandørgjeld', '2460 Leverandørgjeld til selskap i samme konsern', '2500 Betalbar skatt, ikke fastsatt', '2510 Betalbar skatt, fastsatt', '2540 Forskuddsskatt', '2600 Forskuddstrekk', '2610 Utleggstrekk', '2620 Bidragstrekk', '2630 Trygdetrekk', '2640 Forsikringstrekk', '2650 Trukket fagforeningskontingent', '2670 Trukket lavtlønnsfond', '2690 Andre trekk', '2700 Utgående merverdiavgift, høy sats', '2701 Utgående merverdiavgift, mellom sats', '2702 Utgående merverdiavgift, råfisk', '2703 Utgående merverdiavgift, lav sats', '2704 Utgående merverdiavgift ved kjøp av tjenester fra utlandet, høy sats', '2705 Utgående innførselsavgift for varer, høy sats', '2706 Utgående innførselsavgift for varer, mellom sats', '2707 Utgående merverdiavgift ved innenlands kjøp med omvendt avgiftsplikt, høy sats', '2710 Innenlands inngående merverdiavgift, høy sats', '2711 Innenlands inngående merverdiavgift, mellom sats', '2712 Innenlands inngående merverdiavgift, råfisk', '2713 Innenlands inngående merverdiavgift, lav sats', '2714 Inngående merverdiavgift ved kjøp av tjenester fra utlandet, høy sats', '2715 Inngående innførselsavgift for varer, høy sats', '2716 Inngående innførselsavgift for varer, mellom sats', '2720 Grunnlag utgående innførselsavgift', '2721 Motkonto grunnlag utgående innførselsavgift', '2740 Oppgjørskonto merverdiavgift', '2770 Skyldig arbeidsgiveravgift', '2780 Påløpt arbeidsgiveravgift på påløpt lønn', '2785 Påløpt arbeidsgiveravgift på ferielønn', '2790 Andre offentlige avgifter', '2800 Avsatt utbytte', '2900 Forskudd fra kunder', '2910 Gjeld til ansatte og eiere', '2920 Gjeld til selskap i samme konsern', '2929 Gjeld konsernbidrag, ikke vedtatt', '2930 Skyldig lønn', '2940 Skyldig feriepenger', '2950 Påløpt rente', '2960 Påløpt kostnad', '2965 Forskuddsbetalt inntekt', '2970 Uopptjent inntekt', '2980 Avsetning styrehonorar', '2981 Avsetning revisjonshonorar', '2982 Avsetning regnskapshonorar', '2989 Avsetning andre forpliktelser', '2990 Annen kortsiktig gjeld', '3000 Salgsinntekt, avgiftspliktig', '3060 Uttak av varer/tjenester', '3061 Motkonto uttak av varer/tjenester', '3080 Rabatt og annen salgsinntektsreduksjon', '3090 Opptjent, ikke fakturert inntekt', '3095 Motkonto, avgiftspliktig salgsinntekt', '3100 Salgsinntekt, avgiftsfri', '3160 Uttak av varer/tjenester', '3180 Rabatt og annen salgsinntektsreduksjon', '3190 Opptjent, ikke fakturert inntekt', '3200 Salgsinntekt, unntatt avgiftsplikt', '3260 Uttak av varer/tjenester', '3280 Rabatt og annen salgsinntektsreduksjon', '3290 Opptjent, ikke fakturert inntekt', '3300 Spesiell offentlig avgift for tilvirkede/solgte varer', '3400 Spesielt offentlig tilskudd for tilvirkede/solgte varer', '3440 Spesielt offentlig tilskudd for tjeneste', '3500 Garanti', '3510 Service', '3550 Annen uopptjent inntekt', '3600 Leieinntekt fast eiendom, unntatt avgiftsplikt', '3605 Leieinntekt fast eiendom, avgiftspliktig', '3610 Leieinntekt andre varige driftsmidler, avgiftspliktig', '3615 Leieinntekt andre varige driftsmidler, avgiftsfri', '3616 Leieinntekt andre varige driftsmidler, unntatt avgiftsplikt', '3620 Annen leieinntekt', '3690 Opptjent, ikke fakturert leieinntekt', '3695 Motkonto, avgiftspliktig leieinntekt', '3700 Provisjonsinntekt, avgiftspliktig', '3705 Provisjonsinntekt, avgiftsfri', '3710 Provisjonsinntekt, unntatt avgiftsplikt', '3790 Opptjent, ikke fakturert provisjon', '3800 Salgssum anleggsmidler, avgiftspliktig', '3805 Salgssum anleggsmidler, avgiftsfri', '3807 Salgssum anleggsmidler, unntatt avgiftsplikt', '3808 Realisasjonsverdi anleggsmidler', '3809 Motkonto, balanseverdi solgte anleggsmidler', '3850 Verdiendringer investeringseiendommer', '3870 Verdiendringer biologiske eiendeler', '3900 Annen driftsinntekt', '4000 Innkjøp av råvarer og halvfabrikater', '4060 Frakt, toll og spedisjon', '4070 Innkjøpsprisreduksjon', '4080 Beregningsgrunnlag for innførselsavgift ved kjøp av råvarer og halvfabrikata', '4081 Motkonto beregningsgrunnlag for innførselsavgift ved kjøp av råvarer og halvfabrikata', '4090 Beholdningsendring', '4100 Innkjøp varer under tilvirkning', '4160 Frakt, toll og spedisjon', '4170 Innkjøpsprisreduksjon', '4190 Beholdningsendring', '4200 Innkjøp ferdig egentilvirkede varer', '4260 Frakt, toll og spedisjon', '4270 Innkjøpsprisreduksjon', '4290 Beholdningsendring', '4300 Innkjøp av varer for videresalg', '4350 Svinn, tap', '4360 Frakt, toll og spedisjon', '4370 Innkjøpsprisreduksjon', '4380 Beregningsgrunnlag for innførselsavgift av varer innkjøpt for videresalg', '4381 Motkonto beregningsgrunnlag for innførselsavgift for varer innkjøpt for videresalg', '4390 Beholdningsendring', '4500 Fremmedytelse og underentreprise', '4520 Under-entreprenører, opplysningspliktige', '4590 Beholdningsendring', '4900 Annen periodisering', '4990 Beholdningsendring, egentilvirkede anleggsmidler', '5000 Lønn til ansatte', '5020 Feriepenger', '5030 Sykepenger', '5090 Påløpt, ikke utbetalt lønn', '5091 Påløpte feriepenger av ikke utbetalt lønn', '5099 Andre lønnsperiodiseringer', '5200 Fri bil', '5210 Fri telefon', '5220 Fri avis', '5230 Fri kost, losji og bolig', '5240 Rentefordel', '5251 Gruppelivsforsikring', '5252 Ulykkesforsikring', '5280 Annen fordel i arbeidsforhold', '5285 Annen fordel i arbeidsforhold - ikke arbeidsgiveravgiftspliktig', '5290 Motkonto for gruppe 52', '5300 Tantieme', '5310 Gruppelivsforsikring', '5320 Annen personalforsikring', '5330 Godtgjørelse til styre- og bedriftsforsamling', '5390 Annen opplysningspliktig godtgjørelse', '5395 Annen opplysningspliktig godtgjørelse - ikke arbeidsgiveravgiftspliktig', '5400 Arbeidsgiveravgift', '5401 Arbeidsgiveravgift av påløpt ferielønn', '5405 Arbeidsgiveravgift av andre påløpte lønnskostnader', '5420 Innberetningspliktig pensjonskostnad', '5500 Annen kostnadsgodtgjørelse', '5510 Trekkpliktig del reise', '5520 Trekkpliktige matpenger', '5700 Lærlingtilskudd', '5720 Annet lønnstilskudd', '5800 Refusjon av sykepenger', '5820 Refusjon av arbeidsgiveravgift', '5830 Refusjon arbeidsmarkedstiltak', '5890 Annen refusjon', '5900 Gave til ansatte, fradragsberettiget', '5901 Gave til ansatte, ikke fradragsberettiget (t.o.m. 2018)', '5910 Kantinekostnad', '5912 Middag ved overtid', '5919 Trekk kantinekostnad ansatte', '5920 Yrkesskadeforsikring', '5930 Annen ikke arbeidsgiveravgiftspliktig forsikring', '5941 LO/NHO ( O & U + sluttvederlag )', '5942 LO/NHO ( AFP )', '5945 Pensjonsforsikring for ansatte', '5946 Pensjonsforsikring for ansatte (uten arbeidsgiveravgift)', '5990 Annen personalkostnad', '6000 Avskrivning på bygninger og annen fast eiendom', '6005 Avskrivning på påkostninger, leid driftsmiddel', '6010 Avskrivning på transportmidler', '6015 Avskrivning på maskiner', '6017 Avskrivning på inventar', '6020 Avskrivning på immaterielle eiendeler', '6050 Nedskrivning av varige driftsmidler og immaterielle eiendeler', '6100 Frakt, transportkostnad og forsikring ved vareforsendelse', '6110 Toll og spedisjonskostnad ved vareforsendelse', '6190 Annen frakt- og transportkostnad ved salg', '6200 Elektrisitet', '6210 Gass', '6220 Fyringsolje', '6230 Kull, koks', '6240 Ved', '6250 Bensin, dieselolje', '6260 Vann', '6290 Annet brensel', '6300 Leie lokale', '6320 Renovasjon, vann, avløp o.l.', '6340 Lys, varme', '6360 Renhold', '6390 Annen kostnad lokaler', '6400 Leie maskiner', '6410 Leie inventar', '6420 Leie datasystemer', '6430 Leie andre kontormaskiner', '6440 Leie transportmidler', '6490 Annen leiekostnad', '6500 Motordrevet verktøy', '6510 Håndverktøy', '6520 Hjelpeverktøy', '6530 Spesialverktøy', '6540 Inventar', '6550 Driftsmateriale', '6551 Datautstyr (hardware)', '6552 Programvare (software)', '6560 Rekvisita', '6570 Arbeidsklær og verneutstyr', '6580 Andre driftsmidler', '6590 Annet driftsmateriale', '6600 Reparasjon og vedlikehold bygninger', '6620 Reparasjon og vedlikehold utstyr', '6690 Reparasjon og vedlikehold annet', '6701 Honorar revisjon', '6702 Honorar rådgivning revisjon', '6705 Honorar regnskap', '6720 Honorar for økonomisk rådgivning', '6725 Honorar for juridisk bistand, fradragsberettiget', '6726 Honorar for juridisk bistand, ikke fradragsberettiget', '6790 Annen fremmed tjeneste', '6800 Kontorrekvisita', '6820 Trykksak', '6840 Aviser, tidsskrifter, bøker o.l.', '6860 Møte, kurs, oppdatering o.l.', '6890 Annen kontorkostnad', '6900 Elektronisk kommunikasjon', '6940 Porto', '7000 Drivstoff', '7020 Vedlikehold bil', '7040 Forsikring og avgifter bil', '7090 Annen kostnad transportmidler', '7100 Bilgodtgjørelse, opplysningspliktig', '7130 Reisekostnad, opplysningspliktig', '7140 Reisekostnad, ikke opplysningspliktig', '7150 Diettkostnad, opplysningspliktig', '7160 Diettkostnad, ikke opplysningspliktig', '7190 Annen kostnadsgodtgjørelse', '7200 Provisjonskostnad, opplysningspliktig', '7210 Provisjonskostnad, ikke opplysningspliktig', '7300 Salgskostnad', '7320 Reklamekostnad', '7350 Representasjon, fradragsberettiget', '7360 Representasjon, ikke fradragsberettiget', '7390 Annen salgskostnad', '7400 Kontingent, fradragsberettiget', '7410 Kontingent, ikke fradragsberettiget', '7420 Gave, fradragsberettiget', '7430 Gave, ikke fradragsberettiget', '7500 Forsikringspremie', '7550 Garantikostnad', '7560 Servicekostnad', '7600 Lisensavgift og royalties', '7610 Patentkostnad ved egen patent', '7620 Kostnad ved varemerke o.l.', '7630 Kontroll-, prøve- og stempelavgift', '7710 Styre- og bedriftsforsamlingsmøter', '7720 Generalforsamling', '7730 Kostnad ved egne aksjer', '7740 Øredifferanser', '7750 Eiendoms- og festeavgift', '7770 Bank og kortgebyrer', '7780 Justering av inngående merverdiavgift', '7790 Annen kostnad, fradragsberettiget', '7791 Annen kostnad, ikke fradragsberettiget', '7820 Innkommet på tidligere nedskrevne fordringer', '7830 Tap på fordringer', '7831 Endring i avsetning tap på fordringer', '7860 Tap på kontrakter', '7880 Tap ved avgang av immaterielle eiendeler og varige driftsmidler', '7900 Annen periodisering', '8000 Inntekt på investering i datterselskap', '8002 Konsernbidrag fra datter', '8005 Netto positiv resultatandel vedr. investering i DS, TS og FKV', '8006 Netto negativ resultatandel vedr. investering i DS, TS og FKV', '8010 Inntekt på investering i annet foretak i samme konsern', '8020 Inntekt på investering i tilknyttet selskap', '8030 Renteinntekt fra foretak i samme konsern', '8040 Renteinntekt, skattefri', '8050 Renteinntekt (finansinstitusjoner)', '8055 Andre renteinntekter', '8060 Valutagevinst (agio)', '8070 Annen finansinntekt', '8071 Aksjeutbytte', '8078 Gevinst ved realisasjon av aksjer', '8080 Verdiøkning av finansielle instrumenter vurdert til virkelig verdi', '8090 Inntekt på andre investeringer', '8100 Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi', '8110 Nedskrivning av andre finansielle omløpsmidler', '8120 Nedskrivning av finansielle anleggsmidler', '8130 Rentekostnad til foretak i samme konsern', '8140 Rentekostnad, ikke fradragsberettiget', '8150 Rentekostnad (finansinstitusjoner)', '8155 Andre rentekostnader', '8160 Valutatap (disagio)', '8170 Annen finanskostnad', '8178 Tap ved realisasjon av aksjer', '8300 Betalbar skatt', '8320 Endring utsatt skatt', '8800 Årsresultat', '8900 Overføringer fond', '8910 Overføringer felleseid andelskapital for samvirkeforetak', '8920 Avsatt utbytte', '8925 Avsatt tilleggsutbytte', '8926 Avsatt ekstraordinært utbytte', '8930 Mottatt konsernbidrag', '8935 Avsatt konsernbidrag', '8950 Fondsemisjon', '8960 Overføringer annen egenkapital', '8990 Udekket tap']
+
+    let datoms = S["sharedData"]["allCompanyFields"]
+      .filter( e => !S["sharedData"]["E"][e]["entity/category"] )
+      .map( string => newDatom(string, "entity/category", "Altinn-skjemaer")  )
+
+    console.log(datoms) 
 
     console.log("State: ", S)
     let A = getUserActions(S)
@@ -439,7 +369,7 @@ sideEffects.configureClient();
 let Admin = {
     updateClientRelease: (newVersion) => Admin.submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
-    submitDatoms: async (datoms) => datoms.length < 2000
+    submitDatoms: async (datoms) => datoms.length < 3000
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms),
     //retractEntity: async entityAttributes => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( entityAttributes )

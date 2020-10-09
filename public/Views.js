@@ -184,13 +184,10 @@ let eventFieldViews = {
 
 let eventFieldView = (S, selectedEvent, eventFieldEntity) => eventFieldViews[eventFieldEntity] 
   ? eventFieldViews[eventFieldEntity](S, selectedEvent, eventFieldEntity) 
-  : d([ 
-    d( S["sharedData"]["E"][ eventFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ), 
-    d([
+  : d([
       d(`${S["sharedData"]["E"][ eventFieldEntity ]["entity/label"]}:`),
       d(`${JSON.stringify(selectedEvent["eventFields"][eventFieldEntity])}`, {class: "rightAlignText"})
     ], {class: "eventInspectorRow"})
-  ])
 
 
 let companyFieldViews = {
@@ -205,9 +202,12 @@ let companyFieldViews = {
 let companyFieldView = (S, companyFieldEntity) => companyFieldEntity === 4380 ? d([
   d( S["sharedData"]["E"][ companyFieldEntity ]["entity/label"], {style: "font-weight: bold;"} ),
   accountBalanceWithHistoryView(S, S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity], S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] - 1 ][companyFieldEntity]),
-]) : d([ 
+]) : d([
+  d(`${S["sharedData"]["E"][ companyFieldEntity ]["entity/label"]}:`),
   d(`${JSON.stringify(S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity])}`, {class: "rightAlignText"})
-])
+], {class: "eventInspectorRow"})
+
+
 
 let companyDocPage = (S, A) => {
 
@@ -351,72 +351,90 @@ let newEntityRouter = {
 }
 
 let eventFieldsPage = ( S, A ) => {
-  let localStateVarName = "eventFieldsPage/selectedEventField"
-  let selectedEventField = S["sharedData"]["E"][ S["UIstate"][localStateVarName] ]
 
-  let eventFieldObjects = S["sharedData"]["allEventFields"].map( entity => S["sharedData"]["E"][entity] )
+  let localStateVarName = "eventFieldsPage/selectedEventField"
+  let selectedEntity = S["sharedData"]["E"][ S["UIstate"][localStateVarName] ]
+
+  let entityObjects = S["sharedData"]["allEventFields"].map( entity => S["sharedData"]["E"][entity] )
+
+  let categories = entityObjects.map( entityObject => S["sharedData"]["E"][entityObject.entity]["entity/category"]).filter(filterUniqueValues)
+  let currentCategoryEntities = entityObjects.filter( entityObject => entityObject["entity/category"] === S["UIstate"]["eventFieldsPage/selectedCategory"] )
   
   return d([
-    d( [h3("Hendelsesfelt")].concat(eventFieldObjects.map( eventFieldObject => d( eventFieldObject["entity/label"], {class: eventFieldObject.entity === S["UIstate"][localStateVarName] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {[localStateVarName] : eventFieldObject.entity} ) )).concat(d("Opprett ny", {class: "textButton"}, "click", e => A.createEventField() ))) ),
+    d( [h3("Kategori")].concat(categories.map( category => d( category, {class: category === S["UIstate"]["eventFieldsPage/selectedCategory"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"eventFieldsPage/selectedCategory" : category} ) ))) ),
+    d( [h3("Hendelsesfelt")].concat(currentCategoryEntities.map( eventFieldObject => d( eventFieldObject["entity/label"], {class: eventFieldObject.entity === S["UIstate"][localStateVarName] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {[localStateVarName] : eventFieldObject.entity} ) )).concat(d("Opprett ny", {class: "textButton"}, "click", e => A.createEventField() ))) ),
     d([
-      h3( `${selectedEventField["entity/label"]}`  ),
+      h3( `${selectedEntity["entity/label"]}`  ),
       d([
         d("EntitetsID:"),
-        d( String(selectedEventField["entity"]) )
+        d( String(selectedEntity["entity"]) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Navn:"),
-        input({value: selectedEventField["entity/label"]}, "change", e => A.updateEntityAttribute( selectedEventField.entity, "entity/label", submitInputValue(e) ) )
+        input({value: selectedEntity["entity/label"]}, "change", e => A.updateEntityAttribute( selectedEntity.entity, "entity/label", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
+      d([
+        d("Kategori:"),
+        input({value: selectedEntity["entity/category"]}, "change", e => A.updateEntityAttribute( selectedEntity.entity, "entity/category", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Beskrivelse:"),
-        input({value: selectedEventField["entity/doc"]}, "change", e => A.updateEntityAttribute( selectedEventField.entity, "entity/doc", submitInputValue(e) ) )
+        input({value: selectedEntity["entity/doc"]}, "change", e => A.updateEntityAttribute( selectedEntity.entity, "entity/doc", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Internt notat:"),
-        textArea( String(selectedEventField["entity/note"]), e => A.updateEntityAttribute( selectedEventField.entity, "entity/note", submitInputValue(e) ) )
+        textArea( String(selectedEntity["entity/note"]), e => A.updateEntityAttribute( selectedEntity.entity, "entity/note", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
-      multipleEntitySelectorView(S, A, selectedEventField.entity, "eventField/companyFields", S["sharedData"]["allCompanyFields"]),
-      retractEntityButton(A, selectedEventField["entity"])
+      multipleEntitySelectorView(S, A, selectedEntity.entity, "eventField/companyFields", S["sharedData"]["allCompanyFields"]),
+      d([
+        d("Generatorfunksjon"),
+        textArea( String(selectedEntity["eventField/constructorFunctionString"]), e => A.updateEntityAttribute( selectedEntity.entity, "eventField/constructorFunctionString", submitInputValue(e) )  )
+      ], {class: "eventAttributeRow"}),
+      retractEntityButton(A, selectedEntity["entity"])
     ],{class: "feedContainer"}),
   ], {style: "display: flex;"})
 } 
 
 let companyFieldsPage = ( S, A ) => {
-  let localStateVarName = "companyFieldsPage/selectedCompanyField"
-  let selectedCompanyField = S["sharedData"]["E"][ S["UIstate"][localStateVarName] ]
 
-  let companyFieldObjects = S["sharedData"]["allCompanyFields"].map( entity => S["sharedData"]["E"][entity] )
+  let localStateVarName = "companyFieldsPage/selectedCompanyField"
+  let selectedEntity = S["sharedData"]["E"][ S["UIstate"][localStateVarName] ]
+
+  let entityObjects = S["sharedData"]["allCompanyFields"].map( entity => S["sharedData"]["E"][entity] )
+
+  let categories = entityObjects.map( entityObject => S["sharedData"]["E"][entityObject.entity]["entity/category"]).filter(filterUniqueValues)
+  let currentCategoryEntities = entityObjects.filter( entityObject => entityObject["entity/category"] === S["UIstate"]["companyFieldsPage/selectedCategory"] )
   
   return d([
-    d( [h3("Selskapsvariabler")].concat(companyFieldObjects.map( eventFieldObject => d( eventFieldObject["entity/label"], {class: eventFieldObject.entity === S["UIstate"][localStateVarName] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {[localStateVarName] : eventFieldObject.entity} ) )).concat(d("Opprett ny", {class: "textButton"}, "click", e => A.createCompanyField() ))) ),
+    d( [h3("Kategori")].concat(categories.map( category => d( category, {class: category === S["UIstate"]["companyFieldsPage/selectedCategory"] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {"companyFieldsPage/selectedCategory" : category} ) ))) ),
+    d( [h3("Selskapsvariabler")].concat(currentCategoryEntities.map( entityObject => d( entityObject["entity/label"], {class: entityObject.entity === S["UIstate"][localStateVarName] ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {[localStateVarName] : entityObject.entity} ) )).concat(d("Opprett ny", {class: "textButton"}, "click", e => A.createCompanyField() ))) ),
     d([
-      h3( `${selectedCompanyField["entity/label"]}`  ),
+      h3( `${selectedEntity["entity/label"]}`  ),
       d([
         d("EntitetsID:"),
-        d( String(selectedCompanyField["entity"]) )
+        d( String(selectedEntity["entity"]) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Navn:"),
-        input({value: selectedCompanyField["entity/label"]}, "change", e => A.updateEntityAttribute( selectedCompanyField.entity, "entity/label", submitInputValue(e) ) )
+        input({value: selectedEntity["entity/label"]}, "change", e => A.updateEntityAttribute( selectedEntity.entity, "entity/label", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
-      /* d([
+      d([
         d("Kategori:"),
-        input({value: selectedCompanyField["entity/category"]}, "change", e => A.updateEntityAttribute( selectedCompanyField.entity, "attribute/category", submitInputValue(e) ) )
-      ], {class: "eventAttributeRow"}), */
+        input({value: selectedEntity["entity/category"]}, "change", e => A.updateEntityAttribute( selectedEntity.entity, "entity/category", submitInputValue(e) ) )
+      ], {class: "eventAttributeRow"}),
       d([
         d("Beskrivelse:"),
-        input({value: selectedCompanyField["entity/doc"]}, "change", e => A.updateEntityAttribute( selectedCompanyField.entity, "entity/doc", submitInputValue(e) ) )
+        input({value: selectedEntity["entity/doc"]}, "change", e => A.updateEntityAttribute( selectedEntity.entity, "entity/doc", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Internt notat:"),
-        textArea( String(selectedCompanyField["entity/note"]), e => A.updateEntityAttribute( selectedCompanyField.entity, "entity/note", submitInputValue(e) ) )
+        textArea( String(selectedEntity["entity/note"]), e => A.updateEntityAttribute( selectedEntity.entity, "entity/note", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
       d([
         d("Generatorfunksjon"),
-        textArea( String(selectedCompanyField["companyField/constructorFunctionString"]), e => A.updateEntityAttribute( selectedCompanyField.entity, "companyField/constructorFunctionString", submitInputValue(e) )  )
+        textArea( String(selectedEntity["companyField/constructorFunctionString"]), e => A.updateEntityAttribute( selectedEntity.entity, "companyField/constructorFunctionString", submitInputValue(e) )  )
       ], {class: "eventAttributeRow"}),
-      retractEntityButton(A, selectedCompanyField["entity"])
+      retractEntityButton(A, selectedEntity["entity"])
     ],{class: "feedContainer"}),
   ], {style: "display: flex;"})
 } 
