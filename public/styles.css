@@ -93,6 +93,11 @@ body {background-color: #F2F3F5;}
 
 }
 
+.eventFieldConstructorRow {
+    display:grid;
+    grid-template-columns: 3fr 3fr 1fr;
+}
+
 .accountBalanceWithHistoryRow {
     display:grid;
     grid-template-columns: 3fr 1fr 1fr;
