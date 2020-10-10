@@ -132,6 +132,7 @@ let getUserActions = (S) => returnObject({
       newDatom("newAttr", "entity/type", "attribute"),
       newDatom("newAttr", "attr/name", "event/attribute" + S["sharedData"]["attributes"].length ),
       newDatom("newAttr", "attribute/category", "Mangler kategori"),
+      newDatom("newAttr", "entity/category", "Mangler kategori"),
       newDatom("newAttr", "entity/label", "[Attributt uten navn]"),
       newDatom("newAttr", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
     ] ),
@@ -139,10 +140,11 @@ let getUserActions = (S) => returnObject({
       newDatom("newEventType", "entity/type", "eventType"),
       newDatom("newEventType", "entity/label", "label"),
       newDatom("newEventType", "entity/doc", "[doc]"),
+      newDatom("newEventType", "entity/category", "Mangler kategori"),
       newDatom("newEventType", "eventType/eventAttributes", [] ),
       newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
       newDatom("newEventType", "eventType/eventValidators", [] ),
-      newDatom("newEventType", "eventType/eventFields", [] ), //eventFieldConstructors instead?
+      newDatom("newEventType", "eventType/eventFieldConstructors", {} ),
     ]),
     createEventValidator: async () => await sideEffects.submitDatomsWithValidation(S, [
         newDatom("newEventType", "entity/type", "eventValidator"),
@@ -154,12 +156,14 @@ let getUserActions = (S) => returnObject({
             newDatom("eventField", "entity/type", "eventField"),
             newDatom("eventField", "entity/label", "Ny hendelsesoutput"),
             newDatom("eventField", "entity/doc", "[doc]"),
+            newDatom("eventField", "entity/category", "Mangler kategori"),
             newDatom("eventField", "eventField/companyFields", [] ),
     ]),
     createCompanyField: async () => await sideEffects.submitDatomsWithValidation(S, [
         newDatom("companyField", "entity/type", "companyField"),
         newDatom("companyField", "entity/label", "label" ),
         newDatom("companyField", "entity/doc", "[doc]"),
+        newDatom("companyField", "entity/category", "Mangler kategori"),
     ]),
 })
 
@@ -342,14 +346,6 @@ let update = (S) => {
       .sort( (a, b) => a["event/index"] - b["event/index"]  ) )
 
     console.log(S["selectedCompany"])
-
-
-    let datoms = S["sharedData"]["allEventFields"]
-      .map( e => S["sharedData"]["E"][e] )
-      .filter( e => e["entity/category"] === "Kontoplan" )
-      .map( e => newDatom(e.entity, "eventField/companyFields", S["sharedData"]["allCompanyFields"].filter( cf => S["sharedData"]["E"][cf]["entity/label"] === e["entity/label"] ) )  )
-
-    console.log(datoms) 
 
     console.log("State: ", S)
     let A = getUserActions(S)
