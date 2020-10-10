@@ -55,7 +55,7 @@ const sideEffects = {
 
               let initialUIstate = {
                 "currentPage": "timeline",
-                "selectedOrgnumber": "999999999",
+                "selectedOrgnumber": "818924232",
                 "companyDocPage/selectedVersion": 1,
                 "attributesPage/selectedAttribute": 3172,
                 "attributesPage/selectedAttributeCategory": "",
@@ -164,6 +164,7 @@ let getUserActions = (S) => returnObject({
         newDatom("companyField", "entity/label", "label" ),
         newDatom("companyField", "entity/doc", "[doc]"),
         newDatom("companyField", "entity/category", "Mangler kategori"),
+        newDatom("companyField", "companyField/constructorFunctionString", `return 0;`),
     ]),
 })
 
@@ -334,7 +335,6 @@ let constructCompanyDoc = (S, storedEvents) => {
 
 }
 
-
 let update = (S) => {
 
     //To be fixed...
@@ -346,6 +346,23 @@ let update = (S) => {
       .sort( (a, b) => a["event/index"] - b["event/index"]  ) )
 
     console.log(S["selectedCompany"])
+
+    /* let datoms = S["sharedData"]["allEventFields"]
+      .map( e => S["sharedData"]["E"][e] )
+      .filter( eventField => !S["sharedData"]["allCompanyFields"].map( e => S["sharedData"]["E"][e]["entity/label"] ).includes(eventField["entity/label"]) )
+      .filter( eventField => eventField["entity/category"] === "Altinn-skjemaer"  )
+      .map( eventField => [
+        newDatom(eventField["entity/label"], "entity/type", "companyField"),
+        newDatom(eventField["entity/label"], "entity/label", eventField["entity/label"] ),
+        newDatom(eventField["entity/label"], "entity/doc", eventField["entity/label"]),
+        newDatom(eventField["entity/label"], "entity/category", "Altinn-skjemaer"),
+        newDatom(eventField["entity/label"], "companyField/constructorFunctionString", `return calculatedEventAttributes[${eventField.entity}];`),
+      ] ).flat()
+
+
+    console.log(datoms) */
+
+    Admin.S = S;
 
     console.log("State: ", S)
     let A = getUserActions(S)

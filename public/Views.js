@@ -102,6 +102,12 @@ let retractEntityButton = (A, entity) => d("Slett", {class: "textButton"}, "clic
 
 //Basic entity views
 
+const entityColors = {
+  "attribute": "#eca2637a",
+  "eventField": "#5b95eca6",
+  "companyField": "#00968870",
+}
+
 let editableAttributeView = (S, A, entity, attributeEntity, value) => d([
   entityLabel(S, attributeEntity ),
   input(
@@ -116,7 +122,7 @@ let entityLabelWithMouseover = (S, A, entity) => d( [
 ], {style:"display: inline-flex;"} )
 
 let entityLabel = (S, entity) => d( [
-  span( `${S["sharedData"]["E"][ entity ]["entity/label"]}`, `[${entity}] ${S["sharedData"]["E"][entity]["entity/doc"]}`, {class: "entityLabel"})
+  span( `${S["sharedData"]["E"][ entity ]["entity/label"]}`, `[${entity}] ${S["sharedData"]["E"][entity]["entity/doc"]}`, {class: "entityLabel", style: `background-color: ${entityColors[S["sharedData"]["E"][ entity ]["entity/type"]]};`} )
 ], {style:"display: inline-flex;"} ) 
 
 let entityValue = (value) => d( [
@@ -126,6 +132,18 @@ let entityValue = (value) => d( [
 let entityLabelAndValue = (S, entity, value) => d([
   entityLabel(S, entity),
   entityValue(value)
+], {class: "eventInspectorRow"})
+
+let entityRedlinedValue = (value, prevValue) => d( [
+  span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
+  span( `${JSON.stringify(value)}`),
+], {style:"display: inline-flex;justify-content: flex-end;"} ) 
+
+
+
+let entityLabelAndRedlinedValue = (S, entity, value, prevValue) => d([
+  entityLabel(S, entity),
+  entityRedlinedValue(value, prevValue)
 ], {class: "eventInspectorRow"})
 
 //Page frame
@@ -170,13 +188,23 @@ let timelineView = (S, A) => d([
   d("sidebar_right"),
 ], {class: "pageContainer"}) 
 
-let eventView = (S, Event , A) => d([
-    entityLabel(S, Event["eventAttributes"]["event/eventTypeEntity"] ),
-    d( S["sharedData"]["E"][ Event["eventAttributes"]["event/eventTypeEntity"] ]["eventType/eventAttributes"].map( attributeEntity => editableAttributeView(S, A, Event["eventAttributes"].entity, attributeEntity, Event["eventAttributes"][ S["sharedData"]["E"][attributeEntity]["attr/name"] ])  )),
-    //d( Event["event/:eventErrors"] ? Event["event/:eventErrors"].map( error => d(error, {style: "background-color: lightgray; color: red; padding: 3px; margin: 3px;"})  )  : [d("")] ),
+let eventView = (S, Event , A) => {
+
+  let eventTypeEntity = Event["eventAttributes"]["event/eventTypeEntity"]
+  let eventType = S["sharedData"]["E"][eventTypeEntity ]
+  let eventAttributeEntities = eventType["eventType/eventAttributes"]
+  let eventFieldEntities = Object.keys(eventType["eventType/eventFieldConstructors"])
+
+
+
+  return d([
+    h3(eventType["entity/label"]),
+    d( eventAttributeEntities.map( attributeEntity => editableAttributeView(S, A, Event["eventAttributes"].entity, attributeEntity, Event["eventAttributes"][ S["sharedData"]["E"][attributeEntity]["attr/name"] ])  )),
+    d( eventFieldEntities.map( eventFieldEntity => entityLabelAndValue(S, eventFieldEntity, Event["eventFields"][eventFieldEntity])  )),
     retractEventButton( Event["eventAttributes"]["entity"], A),
     newEventDropdown(S, A, Event)
 ], {class: "feedContainer"} )
+} 
 
 
 
@@ -241,23 +269,27 @@ let companyDocChangesView = (S, A, selectedVersion) => d([
   } ))
 ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-let companyDocView = (S, A, selectedVersion) => d([
-  h3(`Hele Selskapsdokumentet etter hendelse ${selectedVersion}`),
-  d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ]).map( companyFieldEntity => entityLabelAndValue(S, companyFieldEntity, S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity]) ))
-], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+let companyDocView = (S, A, selectedVersion) => {
+
+  let entityObjects = S["sharedData"]["allCompanyFields"].map( entity => S["sharedData"]["E"][entity] )
+
+  let categories = entityObjects.map( entityObject => S["sharedData"]["E"][entityObject.entity]["entity/category"]).filter(filterUniqueValues)
+
+  return d([
+    h3(`Hele Selskapsdokumentet etter hendelse ${selectedVersion}`),
+    d(categories.map( category => d([
+      d(`Kategori: ${category}`),
+      d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
+        .filter( companyFieldEntity => S["sharedData"]["E"][companyFieldEntity]["entity/category"] === category )
+        .map( companyFieldEntity => entityLabelAndValue(S, companyFieldEntity, S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity]) ))
+    ]) ))
+    
+  ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+} 
 
 
-let entityRedlinedValue = (value, prevValue) => d( [
-  span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
-  span( `${JSON.stringify(value)}`),
-], {style:"display: inline-flex;justify-content: flex-end;"} ) 
 
-
-
-let entityLabelAndRedlinedValue = (S, entity, value, prevValue) => d([
-  entityLabel(S, entity),
-  entityRedlinedValue(value, prevValue)
-], {class: "eventInspectorRow"})
 
 let attributesPage = ( S, A ) => {
   let selectedAttribute = S["sharedData"]["E"][ S["UIstate"]["attributesPage/selectedAttribute"] ]
@@ -387,10 +419,6 @@ let eventFieldsPage = ( S, A ) => {
         textArea( String(selectedEntity["entity/note"]), e => A.updateEntityAttribute( selectedEntity.entity, "entity/note", submitInputValue(e) ) )
       ], {class: "eventAttributeRow"}),
       multipleEntitySelectorView(S, A, selectedEntity.entity, "eventField/companyFields", S["sharedData"]["allCompanyFields"]),
-      d([
-        d("Generatorfunksjon"),
-        textArea( String(selectedEntity["eventField/constructorFunctionString"]), e => A.updateEntityAttribute( selectedEntity.entity, "eventField/constructorFunctionString", submitInputValue(e) )  )
-      ], {class: "eventAttributeRow"}),
       retractEntityButton(A, selectedEntity["entity"])
     ],{class: "feedContainer"}),
   ], {style: "display: flex;"})
@@ -443,7 +471,7 @@ let companyFieldsPage = ( S, A ) => {
 let eventFieldConstructorsView = (S, A, selectedEventType) => d([
   d(
     Object.keys(selectedEventType["eventType/eventFieldConstructors"]).map( entity => d([
-      d( S["sharedData"]["E"][entity]["entity/label"] ),
+      entityLabel(S, entity ),
       input({value: selectedEventType["eventType/eventFieldConstructors"][entity]}, "change", e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventFieldConstructors",  mergerino( selectedEventType["eventType/eventFieldConstructors"], createObject(entity, submitInputValue(e) ) )  ) ),
       span(" [ Fjern ] ", "Fjern denne oppføringen.", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventFieldConstructors",  mergerino( selectedEventType["eventType/eventFieldConstructors"], createObject(entity, undefined ) )  )  )
     ], {class: "eventFieldConstructorRow"}))
@@ -470,66 +498,10 @@ let multipleEntitySelectorView = (S, A, parentEntity, attributeName, allAllowedE
   )
 ], {class: "eventAttributeRow"})
 
-
-//Tailor-made complex views
-
-let foundersView = (S, A, attributeID, value, entityID) => d([
-    entityLabel(S, attributeID),
-    d([d("AksjonærID"), d("Antall aksjer"), d("Pris per aksje")], {class: "shareholderRow"}),
-    Object.keys(value).length === 0
-    ? d("Ingen stiftere")
-    : d( Object.values( value ).map( shareholder => d([
-        input({value: shareholder["shareholder"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-          entityID, 
-          S["sharedData"]["E"][attributeID]["attr/name"], 
-          mergerino(
-            value,
-            createObject( shareholder["shareholder"], undefined ),
-            createObject( submitInputValue(e), mergerino(
-              value[shareholder["shareholder"]],
-              createObject( "shareholder" , submitInputValue(e) ),
-              )
-            )
-        ) )),
-        input({value: shareholder["shareCount"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-          entityID, 
-          S["sharedData"]["E"][attributeID]["attr/name"], 
-          mergerino(
-            value,
-            createObject( shareholder["shareholder"] , createObject("shareCount", Number( submitInputValue(e) ) ) ),
-        ) )),
-        input({value: shareholder["sharePrice"], style: `text-align: right;`}, "change", e => A.updateEntityAttribute( 
-          entityID, 
-          S["sharedData"]["E"][attributeID]["attr/name"], 
-          mergerino(
-            value,
-            createObject( shareholder["shareholder"] , createObject("sharePrice", Number( submitInputValue(e) ) ) ),
-        ) )),
-        d("X", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
-          entityID, 
-          S["sharedData"]["E"][attributeID]["attr/name"], 
-          mergerino(
-            value,
-            createObject( shareholder["shareholder"] , undefined ) ) 
-        ) )
-        ], {class: "shareholderRow"}),
-        ) ),
-    d("Legg til stifter", {class: "textButton"}, "click", e => A.updateEntityAttribute( 
-      entityID, 
-      S["sharedData"]["E"][attributeID]["attr/name"], 
-      mergerino(
-        value,
-        createObject( "[AksjonærID]" , {shareholder: "[AksjonærID]", shareCount: 0, sharePrice: 0} ),
-    ) ) )
-  ], {style: "border: solid 1px black;"})
-
 let newEventDropdown = (S, A, Event) => dropdown( "", 
   S["sharedData"]["allEventTypes"].map( eventTypeEntity => returnObject({value: eventTypeEntity, label: S["sharedData"]["E"][eventTypeEntity]["entity/label"] }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
   e => A.createEvent(Event, Number(submitInputValue(e)) )
 )
-  
-let specialAttributeViews = {
-  "3761": foundersView
-}
+ 
 
 let accountDropdown = (S, currentValue) => dropdown(currentValue, Object.keys(S.Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${S.Accounts[ accountNumber ].label}` })).concat({value: "", label: "Ingen konto valgt."}), e => console.log( entityID, "event/account", submitInputValue(e))  )

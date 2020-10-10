@@ -115,10 +115,10 @@ body {background-color: #F2F3F5;}
 }
 
 .entityLabel {
-    background-color: #e9eef9;
     padding: .25rem;
     margin: .25rem;
 }
+
 
 .entityLabel:hover {
     background-color: lightskyblue;
