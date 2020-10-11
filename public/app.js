@@ -61,7 +61,8 @@ const sideEffects = {
                 "attributesPage/selectedAttributeCategory": "",
                 "eventTypesPage/selectedEventType": 4113,
                 "eventFieldsPage/selectedEventField": 4372,
-                "companyFieldsPage/selectedCompanyField": 4380
+                "companyFieldsPage/selectedCompanyField": 4380,
+                "eventValidatorsPage/selectedEntity": 4194,
               }
 
               let S = updateS({}, serverResponse, initialUIstate)
@@ -131,7 +132,6 @@ let getUserActions = (S) => returnObject({
     createAttribute: async () => await sideEffects.submitNewAttributeDatoms(S, [
       newDatom("newAttr", "entity/type", "attribute"),
       newDatom("newAttr", "attr/name", "event/attribute" + S["sharedData"]["attributes"].length ),
-      newDatom("newAttr", "attribute/category", "Mangler kategori"),
       newDatom("newAttr", "entity/category", "Mangler kategori"),
       newDatom("newAttr", "entity/label", "[Attributt uten navn]"),
       newDatom("newAttr", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
@@ -150,6 +150,8 @@ let getUserActions = (S) => returnObject({
         newDatom("newEventType", "entity/type", "eventValidator"),
         newDatom("newEventType", "entity/label", "label"),
         newDatom("newEventType", "entity/doc", "[doc]"),
+        newDatom("newEventType", "entity/category", "Mangler kategori"),
+        newDatom("newEventType", "eventValidator/validatorFunctionString", "return true;" ),
         newDatom("newEventType", "eventValidator/errorMessage", "[errorMessage]" ),
     ]),
     createEventField: async () => await sideEffects.submitDatomsWithValidation(S, [
@@ -291,7 +293,15 @@ let constructCompanyDoc = (S, storedEvents) => {
         let companyVariables = mergeArray( eventType["eventType/requiredCompanyFields"].map( entity => createObject( entity, companyDoc[ entity ] )  ) )  //validation TBD
         Event.companyVariables = companyVariables
         let eventIsValid = combinedEventIsValid(S, eventAttributes, companyVariables)
-        if(!eventIsValid){rejectedEvents.push( Event )}
+        if(!eventIsValid){
+          Event.errors = eventType["eventType/eventValidators"]
+          .map( entity =>  
+            new Function([`eventAttributes`, `companyFields`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( eventAttributes, companyVariables )
+              ? null
+              : S.getEntity(entity)["eventValidator/errorMessage"]
+          ).filter( error => error !== null )
+          rejectedEvents.push( Event )
+        }
         else{
 
             let eventFieldConstructor = entity => new Function( [`eventAttributes`, `companyFields`, `updatedEventFields`], eventType["eventType/eventFieldConstructors"][entity] )
@@ -364,6 +374,9 @@ let update = (S) => {
 
     Admin.S = S;
 
+    S.getEntity = e => S["sharedData"]["E"][e]
+    S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
+
     console.log("State: ", S)
     let A = getUserActions(S)
     //A.retractEntity(5860) //KBankinnskudd
@@ -374,51 +387,30 @@ let update = (S) => {
 sideEffects.configureClient();
 
 let Admin = {
+    S: null,
     updateClientRelease: (newVersion) => Admin.submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
     submitDatoms: async (datoms) => datoms.length < 3000
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms),
+    getEntity: e => Admin["S"]["sharedData"]["E"][e],
+    findEntities: filterFunction => Object.values(Admin["S"]["sharedData"]["E"]).filter( filterFunction )
     //retractEntity: async entityAttributes => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( entityAttributes )
     //)
 }
 
 
-let accBalConstructor = (eventAttributes, companyFields ) => {
+let demoConstructor = (eventAttributes, companyFields ) => {
 
-    `2036	Stiftelesutgifter
-    5901	Gave til ansatte, ikke fradragsberettiget (t.o.m. 2018)
-    6726	Honorar for juridisk bistand, ikke fradragsberettiget
-    7360	Representasjon, ikke fradragsberettiget
-    7410	Kontingent, ikke fradragsberettiget
-    7430	Gave, ikke fradragsberettiget
-    7791	Annen kostnad, ikke fradragsberettiget
-    8000	Inntekt på investering i datterselskap
-    8002	Konsernbidrag fra datter
-    8005	Netto positiv resultatandel vedr. investering i DS, TS og FKV
-    8006	Netto negativ resultatandel vedr. investering i DS, TS og FKV
-    8010	Inntekt på investering i annet foretak i samme konsern
-    8020	Inntekt på investering i tilknyttet selskap
-    8040	Renteinntekt, skattefri
-    8071	Aksjeutbytte
-    8078	Gevinst ved realisasjon av aksjer
-    8080	Verdiøkning av finansielle instrumenter vurdert til virkelig verdi
-    8100	Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi
-    8110	Nedskrivning av andre finansielle omløpsmidler
-    8120	Nedskrivning av finansielle anleggsmidler
-    8140	Rentekostnad, ikke fradragsberettiget
-    8178	Tap ved realisasjon av aksjer`
+    let annualResult = Object.keys(companyFields)
+      .filter( e => ["S"]["sharedData"]["E"][e]["entity/category"] === "Kontoplan" )
+      .filter( e => Number( ["S"]["sharedData"]["E"][e]["entity/category"].slice(0,1) ) >= 3 )
+      .reduce( (sum, companyField) => sum + companyFields[companyField], 0 )
+
+    console.log(annualResult)
 
 
-  
-
-  let nonDeductibleAccounts = ['5901' , '6726' , '7360' , '7410' , '7430' , '7791' , '8000' , '8002' , '8005' , '8006' , '8010' , '8020' , '8040' , '8071' , '8078' , '8080' , '8100' , '8110' , '8120' , '8140' , '8178'] //NB: changed 2036 to 2030. Which to  use for Stiftelseskost?
-
-  let thisYearIncorporationCost = 5570; //må ha egen attributt fra stiftelse?
-
-  //3% dividendtax TBD
-
-  return mergeArray(nonDeductibleAccounts.map( account => createObject(account, companyFields[4380][account] ? companyFields[4380][account] : 0 ) ));
+  return annualResult;
 } 
 
 
