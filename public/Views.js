@@ -110,7 +110,7 @@ const entityColors = {
 }
 
 let editableAttributeView = (S, A, entity, attributeEntity, value) => d([
-  entityLabel(S, attributeEntity ),
+  entityLabel(S, A, attributeEntity ),
   input(
     {value: value, style: `text-align: right; ${ validateAttributeValue(S, attributeEntity, value ) ? "" : "background-color: #fb9e9e; " }`}, 
     "change", 
@@ -118,20 +118,16 @@ let editableAttributeView = (S, A, entity, attributeEntity, value) => d([
   ),
   ], {class: "columns_3_1"})
 
-let entityLabelWithMouseover = (S, A, entity) => d( [
-  span( `${S["sharedData"]["E"][ entity ]["entity/label"]}`, `[${entity}] ${S["sharedData"]["E"][entity]["entity/doc"]}`, {class: "entityLabel"}, "mouseover", e => A.updateLocalState(  {"mouseOveredEntity" : entity} ) )
-], {style:"display: inline-flex;"} )
-
-let entityLabel = (S, entity) => d( [
-  span( `${S["sharedData"]["E"][ entity ]["entity/label"]}`, `[${entity}] ${S["sharedData"]["E"][entity]["entity/doc"]}`, {class: "entityLabel", style: `background-color: ${entityColors[S["sharedData"]["E"][ entity ]["entity/type"]]};`} )
+let entityLabel = (S, A, entity) => d( [
+  span( `${S["sharedData"]["E"][ entity ]["entity/label"]}`, `[${entity}] ${S["sharedData"]["E"][entity]["entity/doc"]}`, {class: "entityLabel", style: `background-color: ${entityColors[S["sharedData"]["E"][ entity ]["entity/type"]]};`}, "click", e => A.updateLocalState({"sidebar/selectedEntity": entity}) )
 ], {style:"display: inline-flex;"} ) 
 
 let entityValue = (value) => d( [
   d(`${JSON.stringify(value)}`, {class: typeof value === "number" ? "rightAlignText" : "" } )
 ]) 
 
-let entityLabelAndValue = (S, entity, value) => d([
-  entityLabel(S, entity),
+let entityLabelAndValue = (S, A, entity, value) => d([
+  entityLabel(S, A, entity),
   entityValue(value)
 ], {class: "eventInspectorRow"})
 
@@ -142,8 +138,8 @@ let entityRedlinedValue = (value, prevValue) => d( [
 
 
 
-let entityLabelAndRedlinedValue = (S, entity, value, prevValue) => d([
-  entityLabel(S, entity),
+let entityLabelAndRedlinedValue = (S, A, entity, value, prevValue) => d([
+  entityLabel(S, A, entity),
   entityRedlinedValue(value, prevValue)
 ], {class: "eventInspectorRow"})
 
@@ -165,7 +161,7 @@ let headerBarView = (S) => d([
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
 let companySelectionMenuRow = (S, A) => d([
-  d( S["userEvents"].filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => console.log("TBD...") )), {style: "display:flex;"}),
+  d( S["sharedData"]["userEvents"].filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => console.log("TBD...") )), {style: "display:flex;"}),
 ]) 
 let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin/Attributter", "Admin/EventTyper", "Admin/EventOutput", "Admin/SelskapsOutput", "Admin/EventValidering"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
@@ -202,7 +198,7 @@ let eventView = (S, Event , A) => {
   return d([
     h3(eventType["entity/label"]),
     d( eventAttributeEntities.map( attributeEntity => editableAttributeView(S, A, Event["eventAttributes"].entity, attributeEntity, Event["eventAttributes"][ S["sharedData"]["E"][attributeEntity]["attr/name"] ])  )),
-    d( eventFieldEntities.map( eventFieldEntity => Event["eventFields"] ? entityLabelAndValue(S, eventFieldEntity, Event["eventFields"][eventFieldEntity]) : d("ERROR")  )),
+    d( eventFieldEntities.map( eventFieldEntity => Event["eventFields"] ? entityLabelAndValue(S, A, eventFieldEntity, Event["eventFields"][eventFieldEntity]) : d("ERROR")  )),
     d(Event["errors"] 
       ? Event["errors"].map( eventErrorMessageView )
       : ""),
@@ -211,19 +207,42 @@ let eventView = (S, Event , A) => {
 ], {class: "feedContainer"} )
 } 
 
-let mouseOverBanner = (S, entity) => (typeof entity === "undefined") ? d("") : d([
-  h3(S["sharedData"]["E"][entity]["entity/label"]),
-  d([
-    d("ID:"),
-    d(String(entity), {class: "rightAlignText"}),
-  ], {class: "columns_3_1"}),
-  d([
-    d("Type:"),
-    d(S["sharedData"]["E"][entity]["entity/type"], {class: "rightAlignText"}),
-  ], {class: "columns_3_1"}),
-  d("<br>"),
-  d(S["sharedData"]["E"][entity]["entity/doc"])
-], {class: "centerVertically", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+let sidebar_left = (S) => {
+  let selectedEntity = S["sharedData"]["E"][S["UIstate"]["sidebar/selectedEntity"]] 
+  return selectedEntity 
+  ? d([
+      h3(selectedEntity["entity/label"], {style: `background-color: ${entityColors[selectedEntity["entity/type"]]}; padding: 3px;`}),
+      d([
+        d("ID:"),
+        d(String(selectedEntity.entity), {class: "rightAlignText"}),
+      ], {class: "columns_3_1"}),
+      d([
+        d("Type:"),
+        d(selectedEntity["entity/type"], {class: "rightAlignText"}),
+      ], {class: "columns_3_1"}),
+      d("<br>"),
+      d(selectedEntity["entity/doc"])
+    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+  : d("")
+}
+
+let sidebar_right = (S, A) =>{
+
+  let datoms = [{"entity":7313,"attribute":"type","value":"tx","isAddition":true,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a0c"},{"entity":7313,"attribute":"tx/tx","value":1602506365071,"isAddition":true,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a0d"},{"entity":7313,"attribute":"user/email","value":"ovindahl@gmail.com","isAddition":true,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a0e"},{"entity":7284,"attribute":"entity/type","value":"event","isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a0f"},{"entity":7284,"attribute":"event/eventTypeEntity","value":4113,"isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a10"},{"entity":7284,"attribute":"event/incorporation/orgnumber","value":"999999999","isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a11"},{"entity":7284,"attribute":"event/index","value":2,"isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a12"},{"entity":7284,"attribute":"event/date","value":"2020-01-07","isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a13"},{"entity":7284,"attribute":"event/currency","value":"NOK","isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a14"}]
+
+
+  return d([
+    h3("Siste lagrede datomer"),
+    d( datoms.map( datom => d([
+      //entityLabel(S, A, datom.entity),
+      d(String(datom.entity)),
+      entityLabel(S, A, getAttributeEntityFromName(S, datom.attribute) ),
+      d( String(datom.value) )
+    ], {class: "columns_1_1_1"}) ) )
+  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+} 
+
+
 
 let companyDocPage = (S, A) => {
 
@@ -232,9 +251,7 @@ let companyDocPage = (S, A) => {
   let eventType = S["sharedData"]["E"][ selectedEvent["eventAttributes"]["event/eventTypeEntity"] ]
 
   return d([
-    d([
-      mouseOverBanner(S, S["UIstate"]["mouseOveredEntity"])
-    ], {style: "position: relative;"}),
+    sidebar_left(S, A),
     d([
       d([
         d("<", {class: "textButton"}, "click", e => A.updateLocalState({"companyDocPage/selectedVersion": Math.max(1, selectedVersion - 1 )  })),
@@ -247,13 +264,14 @@ let companyDocPage = (S, A) => {
       d("<br>"),
       d([
         h3(`Hendelsesrapport for hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
-        d(Object.keys(eventType["eventType/eventFieldConstructors"]).map( eventFieldEntity => entityLabelAndValue(S, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) ) )
+        d(Object.keys(eventType["eventType/eventFieldConstructors"]).map( eventFieldEntity => entityLabelAndValue(S, A, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) ) )
       ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
       d("<br>"),
       companyDocChangesView(S, A, selectedVersion),
       d("<br>"),
       companyDocView(S, A, selectedVersion),
-    ] )
+    ] ),
+    sidebar_right(S, A)
   ], {class: "pageContainer"}) 
 }
 
@@ -266,7 +284,7 @@ let companyDocChangesView = (S, A, selectedVersion) => d([
     let value = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity]
     let prevValue = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] - 1 ][companyFieldEntity]
 
-    return (value === prevValue) ? entityLabelAndValue(S, companyFieldEntity, value) : entityLabelAndRedlinedValue(S, companyFieldEntity, value , prevValue )
+    return (value === prevValue) ? entityLabelAndValue(S, A, companyFieldEntity, value) : entityLabelAndRedlinedValue(S, A, companyFieldEntity, value , prevValue )
 
   } ))
 ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
@@ -283,7 +301,7 @@ let companyDocView = (S, A, selectedVersion) => {
       d(`Kategori: ${category}`),
       d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
         .filter( companyFieldEntity => S["sharedData"]["E"][companyFieldEntity]["entity/category"] === category )
-        .map( companyFieldEntity => entityLabelAndValue(S, companyFieldEntity, S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity]) ))
+        .map( companyFieldEntity => entityLabelAndValue(S, A, companyFieldEntity, S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity]) ))
     ]) ))
     
   ], {style: "width: 800px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
@@ -517,7 +535,7 @@ let eventValidatorsPage = ( S, A ) => {
 let eventFieldConstructorsView = (S, A, selectedEventType) => d([
   d(
     Object.keys(selectedEventType["eventType/eventFieldConstructors"]).map( entity => d([
-      entityLabel(S, entity ),
+      entityLabel(S, A, entity ),
       input({value: selectedEventType["eventType/eventFieldConstructors"][entity]}, "change", e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventFieldConstructors",  mergerino( selectedEventType["eventType/eventFieldConstructors"], createObject(entity, submitInputValue(e) ) )  ) ),
       span(" [ Fjern ] ", "Fjern denne oppføringen.", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventFieldConstructors",  mergerino( selectedEventType["eventType/eventFieldConstructors"], createObject(entity, undefined ) )  )  )
     ], {class: "eventFieldConstructorRow"}))
@@ -533,7 +551,7 @@ let eventFieldConstructorsView = (S, A, selectedEventType) => d([
 let multipleEntitySelectorView = (S, A, parentEntity, attributeName, allAllowedEntities) =>  d([
   d( attributeName  ),
   d( S["sharedData"]["E"][parentEntity][attributeName].map( entity => d([
-    entityLabel(S, entity), 
+    entityLabel(S, A, entity), 
     span(" [ Fjern ] ", "Fjern denne oppføringen.", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( parentEntity, attributeName, S["sharedData"]["E"][parentEntity][attributeName].filter( e => e !== entity )  )  )
     ]) 
   ).concat( dropdown(

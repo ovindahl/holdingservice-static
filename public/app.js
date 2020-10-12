@@ -65,9 +65,10 @@ const sideEffects = {
                 "eventValidatorsPage/selectedEntity": 4194,
               }
 
-              let S = updateS({}, serverResponse, initialUIstate)
-
-              update(S)
+              update({
+                UIstate: initialUIstate,
+                sharedData: updateData( serverResponse )
+              })
             }
             
         }else{
@@ -83,60 +84,57 @@ const sideEffects = {
         return true
     
     },
-    submitDatomsWithValidation: async (S, Datoms) => sideEffects.isIdle 
-      ? Datoms.every( datom => validateAttributeValue(S, getAttributeEntityFromName(S, datom.attribute), datom.value) ) 
-        ? update( updateS(S, await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), null ) )
-        : update( logThis( updateS(S, null, null ), "ERROR: Datoms not valid" ) ) 
-      : update( logThis(updateS(S, null, null ), "ERROR: HTTP request already in progress" ) ),
-    submitNewAttributeDatoms: async (S, Datoms) => sideEffects.isIdle 
-    ? Datoms.filter( datom => datom.attribute === "attr/name" && datom.value.startsWith("event/") ).length > 0
-      ? update( updateS(S, await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )), null ) )
-      : update( logThis( updateS(S, null, null ), "ERROR: Datoms not valid" ) ) 
-    : update( logThis( updateS(S, null, null ), "ERROR: HTTP request already in progress" ) ),
+    submitDatomsWithValidation: async (S, Datoms) => {
+      if(sideEffects.isIdle){
+        if(Datoms.filter( d => d.attribute !== "attr/name" ).every( datom => validateAttributeValue(S, getAttributeEntityFromName(S, datom.attribute), datom.value) )){return returnObject({
+            UIstate: S["UIstate"],
+            sharedData: updateData(await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )) )
+          }) }
+        else{console.log("ERROR: Datoms not valid: ", Datoms)}
+        }
+      else{console.log("ERROR: HTTP request already in progress, did not submit datoms.", Datoms)}
+    }
 }
 
 
-let updateS = (S, serverResponse, UIstatePatch) => mergerino( S, 
-  serverResponse === null ? {} : {"sharedData": {
-    "E": serverResponse["E"],
-    attributes: serverResponse["attributes"],
-    allCompanyFields: serverResponse["companyFields"].map( e => e.entity ),
-    "allEventTypes": serverResponse["eventTypes"].map( e => e.entity ),
-    "allEventAttributes": serverResponse["attributes"].filter( attr => attr["attr/name"] ).filter( attr => attr["attr/name"].startsWith("event/")  ).map( attribute => attribute.entity ),
-    "allEventValidators": serverResponse["eventValidators"].map( e => e.entity ),
-    "allEventFields": serverResponse["eventFields"].map( e => e.entity ),
-    "Accounts": getAccounts(),
-    "userEvents": serverResponse["Events"]
-  }},
-  UIstatePatch === null ? {} : {"UIstate": mergerino(S["UIstate"], UIstatePatch)}
-)
+let updateData = serverResponse => returnObject({
+  "E": serverResponse["E"],
+  attributes: serverResponse["attributes"],
+  allCompanyFields: serverResponse["companyFields"].map( e => e.entity ),
+  "allEventTypes": serverResponse["eventTypes"].map( e => e.entity ),
+  "allEventAttributes": serverResponse["attributes"].filter( attr => attr["attr/name"] ).filter( attr => attr["attr/name"].startsWith("event/")  ).map( attribute => attribute.entity ),
+  "allEventValidators": serverResponse["eventValidators"].map( e => e.entity ),
+  "allEventFields": serverResponse["eventFields"].map( e => e.entity ),
+  "Accounts": getAccounts(),
+  "userEvents": serverResponse["Events"]
+})
 
 let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
 
 let getUserActions = (S) => returnObject({
-    updateLocalState: (patch) => update( updateS(S, null, patch ) ),
-    updateEntityAttribute: async (entityID, attribute, value) => await sideEffects.submitDatomsWithValidation(S, [newDatom(entityID, attribute, value)] ),
-    createEvent: async ( prevEvent, newEventTypeEntity ) => await sideEffects.submitDatomsWithValidation(S, [
+    updateLocalState: (patch) => update( {
+      UIstate: mergerino( S["UIstate"], patch ), 
+      sharedData: S["sharedData"] 
+    }),
+    updateEntityAttribute: async (entityID, attribute, value) => update( await sideEffects.submitDatomsWithValidation(S, [newDatom(entityID, attribute, value)] )),
+    createEvent: async ( prevEvent, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newEvent", "entity/type", "event"),
       newDatom("newEvent", "event/eventTypeEntity", newEventTypeEntity),
       newDatom("newEvent", "event/incorporation/orgnumber", prevEvent["eventAttributes"]["event/incorporation/orgnumber"] ),
       newDatom("newEvent", "event/index", prevEvent["eventAttributes"]["event/index"] + 1 ),
       newDatom("newEvent", "event/date", prevEvent["eventAttributes"]["event/date"] ),
       newDatom("newEvent", "event/currency", "NOK")
-    ] ),
-    retractEvent: async entity => S["sharedData"]["E"][entity]["entity/type"] === "event" 
-      ? await sideEffects.submitDatomsWithValidation(S, getRetractionDatomsWithoutChildren([ S["sharedData"]["E"][entity] ]) ) 
-      : logThis(null, "ERROR: Not event"),
-    retractEntity: async entity => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S["sharedData"]["E"][entity] ])
-    ),
-    createAttribute: async () => await sideEffects.submitNewAttributeDatoms(S, [
+    ] )),
+    retractEvent: async entity => update( await sideEffects.submitDatomsWithValidation(S, getRetractionDatomsWithoutChildren([ S["sharedData"]["E"][entity] ]) ) ),
+    retractEntity: async entity => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S["sharedData"]["E"][entity] ]))),
+    createAttribute: async () => update( await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newAttr", "entity/type", "attribute"),
       newDatom("newAttr", "attr/name", "event/attribute" + S["sharedData"]["attributes"].length ),
       newDatom("newAttr", "entity/category", "Mangler kategori"),
       newDatom("newAttr", "entity/label", "[Attributt uten navn]"),
       newDatom("newAttr", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
-    ] ),
-    createEventType: async () => await sideEffects.submitDatomsWithValidation(S, [
+    ] )),
+    createEventType: async () => update( await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newEventType", "entity/type", "eventType"),
       newDatom("newEventType", "entity/label", "label"),
       newDatom("newEventType", "entity/doc", "[doc]"),
@@ -145,29 +143,29 @@ let getUserActions = (S) => returnObject({
       newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
       newDatom("newEventType", "eventType/eventValidators", [] ),
       newDatom("newEventType", "eventType/eventFieldConstructors", {} ),
-    ]),
-    createEventValidator: async () => await sideEffects.submitDatomsWithValidation(S, [
+    ])),
+    createEventValidator: async () => update( await sideEffects.submitDatomsWithValidation(S, [
         newDatom("newEventType", "entity/type", "eventValidator"),
         newDatom("newEventType", "entity/label", "label"),
         newDatom("newEventType", "entity/doc", "[doc]"),
         newDatom("newEventType", "entity/category", "Mangler kategori"),
         newDatom("newEventType", "eventValidator/validatorFunctionString", "return true;" ),
         newDatom("newEventType", "eventValidator/errorMessage", "[errorMessage]" ),
-    ]),
-    createEventField: async () => await sideEffects.submitDatomsWithValidation(S, [
+    ])),
+    createEventField: async () => update( await sideEffects.submitDatomsWithValidation(S, [
             newDatom("eventField", "entity/type", "eventField"),
             newDatom("eventField", "entity/label", "Ny hendelsesoutput"),
             newDatom("eventField", "entity/doc", "[doc]"),
             newDatom("eventField", "entity/category", "Mangler kategori"),
             newDatom("eventField", "eventField/companyFields", [] ),
-    ]),
-    createCompanyField: async () => await sideEffects.submitDatomsWithValidation(S, [
+    ])),
+    createCompanyField: async () => update( await sideEffects.submitDatomsWithValidation(S, [
         newDatom("companyField", "entity/type", "companyField"),
         newDatom("companyField", "entity/label", "label" ),
         newDatom("companyField", "entity/doc", "[doc]"),
         newDatom("companyField", "entity/category", "Mangler kategori"),
         newDatom("companyField", "companyField/constructorFunctionString", `return 0;`),
-    ]),
+    ])),
 })
 
 let getAttributeEntityFromName = (S, attributeName) => S["sharedData"]["attributes"].filter( a => a["attr/name"] === attributeName )[0]["entity"]
@@ -355,11 +353,10 @@ let update = (S) => {
 
     //To be fixed...
     S["sharedData"]["E"] = Array.isArray(S["sharedData"]["E"]) ?  mergeArray( S["sharedData"]["E"] ) : S["sharedData"]["E"] 
-    S["userEvents"] = S["sharedData"]["userEvents"]
     S.getEntity = e => S["sharedData"]["E"][e]
     S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
 
-    S["selectedCompany"] = constructCompanyDoc(S, S.userEvents
+    S["selectedCompany"] = constructCompanyDoc(S, S["sharedData"]["userEvents"]
       .filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber )
       .sort( (a, b) => a["event/index"] - b["event/index"]  ) )
 
@@ -402,7 +399,7 @@ let Admin = {
     : console.log("ERROR: Too many datoms: ", datoms),
     getEntity: e => Admin["S"]["sharedData"]["E"][e],
     findEntities: filterFunction => Object.values(Admin["S"]["sharedData"]["E"]).filter( filterFunction ),
-    //retractEntity: async entityAttributes => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( entityAttributes )
+    //retractEntity: async entityAttributes => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( entityAttributes )
     //)
     createAttribute: async (attrName, valueType, label, category, doc) => await Admin.submitDatoms([ 
       newDatom("newAttribute", "attr/name", attrName),
@@ -411,7 +408,8 @@ let Admin = {
       newDatom("newAttribute", "entity/category", category),
       newDatom("newAttribute", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
       newDatom("newAttribute", "entity/doc", doc)
-    ])
+    ]),
+    getServerCache: async () => await sideEffects.APIRequest("GET", "serverCache", null)
 }
 
 
