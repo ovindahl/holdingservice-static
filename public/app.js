@@ -320,7 +320,6 @@ let constructCompanyDoc = (S, storedEvents) => {
             let companyFieldsToKeep = existingCompanyFields.filter( entity => !directDependencies.includes(entity) )
             let dependenceisToUpdate = directDependencies.map( e => getDependencies(S, e) ).flat()
             let companyFieldsToUpdate = directDependencies.concat(dependenceisToUpdate)
-            console.log(Event, dependenceisToUpdate)
             
             let updatedFields = companyFieldsToUpdate.reduce( (updatedCompanyFields, entity) => mergerino( updatedCompanyFields, createObject(
               entity, //NB: Need better approach for undefined prevValue
