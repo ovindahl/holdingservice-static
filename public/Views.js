@@ -202,7 +202,7 @@ let eventView = (S, Event , A) => {
   return d([
     h3(eventType["entity/label"]),
     d( eventAttributeEntities.map( attributeEntity => editableAttributeView(S, A, Event["eventAttributes"].entity, attributeEntity, Event["eventAttributes"][ S["sharedData"]["E"][attributeEntity]["attr/name"] ])  )),
-    d( eventFieldEntities.map( eventFieldEntity => entityLabelAndValue(S, eventFieldEntity, Event["eventFields"][eventFieldEntity])  )),
+    d( eventFieldEntities.map( eventFieldEntity => Event["eventFields"] ? entityLabelAndValue(S, eventFieldEntity, Event["eventFields"][eventFieldEntity]) : d("ERROR")  )),
     d(Event["errors"] 
       ? Event["errors"].map( eventErrorMessageView )
       : ""),

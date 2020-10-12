@@ -386,7 +386,7 @@ let update = (S) => {
 
     console.log("State: ", S)
     let A = getUserActions(S)
-    //A.retractEntity(5860) //KBankinnskudd
+    //A.retractEntity(7251) //KBankinnskudd
     S.elementTree = generateHTMLBody(S, A )
     sideEffects.updateDOM( S.elementTree )
 }
