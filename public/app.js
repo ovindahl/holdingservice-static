@@ -318,11 +318,13 @@ let constructCompanyDoc = (S, storedEvents) => {
             let existingCompanyFields = Object.keys(companyDoc).concat(   ).filter( filterUniqueValues )
             let companyFieldsToUpdate = eventFieldsToUpdate.map( eventFieldEntity => S["sharedData"]["E"][eventFieldEntity]["eventField/companyFields"]  ).flat()
             let companyFieldsToKeep = existingCompanyFields.filter( entity => !companyFieldsToUpdate.includes(entity) )
-
-            let updatedFields = companyFieldsToUpdate.map( entity => createObject(
+            
+            let updatedFields = companyFieldsToUpdate.reduce( (updatedCompanyFields, entity) => mergerino( updatedCompanyFields, createObject(
               entity, //NB: Need better approach for undefined prevValue
-              new Function([`prevValue` , `calculatedEventAttributes`], S["sharedData"]["E"][entity]["companyField/constructorFunctionString"])( ((typeof companyDoc[entity] === "undefined") ? 0 : companyDoc[entity]), Event.eventFields ) 
-            ))
+              new Function([`prevValue` , `calculatedEventAttributes`, `companyFields`], S["sharedData"]["E"][entity]["companyField/constructorFunctionString"])( ((typeof updatedCompanyFields[entity] === "undefined") ? 0 : updatedCompanyFields[entity]), Event.eventFields, updatedCompanyFields ) 
+            )), companyDoc )
+
+            //console.log(eventType["entity/label"], companyFieldsToUpdate, updatedFields)
 
             let newDocVersion =  mergeArray( companyFieldsToKeep.map( entity => createObject(entity, companyDoc[entity] ) ).concat( updatedFields ) )
             docVersions.push(newDocVersion)
