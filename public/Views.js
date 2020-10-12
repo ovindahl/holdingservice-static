@@ -461,6 +461,7 @@ let companyFieldsPage = ( S, A ) => {
         d("Generatorfunksjon"),
         textArea( String(selectedEntity["companyField/constructorFunctionString"]), e => A.updateEntityAttribute( selectedEntity.entity, "companyField/constructorFunctionString", submitInputValue(e) )  )
       ], {class: "eventAttributeRow"}),
+      multipleEntitySelectorView(S, A, selectedEntity.entity, "companyField/companyFields", S["sharedData"]["allCompanyFields"]),
       retractEntityButton(A, selectedEntity["entity"])
     ],{class: "feedContainer"}),
   ], {style: "display: flex;"})

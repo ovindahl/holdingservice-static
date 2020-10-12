@@ -316,8 +316,11 @@ let constructCompanyDoc = (S, storedEvents) => {
             appliedEvents.push( Event )
 
             let existingCompanyFields = Object.keys(companyDoc).concat(   ).filter( filterUniqueValues )
-            let companyFieldsToUpdate = eventFieldsToUpdate.map( eventFieldEntity => S["sharedData"]["E"][eventFieldEntity]["eventField/companyFields"]  ).flat()
-            let companyFieldsToKeep = existingCompanyFields.filter( entity => !companyFieldsToUpdate.includes(entity) )
+            let directDependencies = eventFieldsToUpdate.map( eventFieldEntity => S["sharedData"]["E"][eventFieldEntity]["eventField/companyFields"]  ).flat()
+            let companyFieldsToKeep = existingCompanyFields.filter( entity => !directDependencies.includes(entity) )
+            let dependenceisToUpdate = directDependencies.map( e => getDependencies(S, e) ).flat()
+            let companyFieldsToUpdate = directDependencies.concat(dependenceisToUpdate)
+            console.log(Event, dependenceisToUpdate)
             
             let updatedFields = companyFieldsToUpdate.reduce( (updatedCompanyFields, entity) => mergerino( updatedCompanyFields, createObject(
               entity, //NB: Need better approach for undefined prevValue
@@ -347,11 +350,15 @@ let constructCompanyDoc = (S, storedEvents) => {
 
 }
 
+let getDependencies = (S, entity) => S.getEntity(entity)["companyField/companyFields"].concat( S.getEntity(entity)["companyField/companyFields"].map( e => getDependencies(S, e) ).flat()  )
+
 let update = (S) => {
 
     //To be fixed...
     S["sharedData"]["E"] = Array.isArray(S["sharedData"]["E"]) ?  mergeArray( S["sharedData"]["E"] ) : S["sharedData"]["E"] 
     S["userEvents"] = S["sharedData"]["userEvents"]
+    S.getEntity = e => S["sharedData"]["E"][e]
+    S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
 
     S["selectedCompany"] = constructCompanyDoc(S, S.userEvents
       .filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber )
@@ -376,8 +383,7 @@ let update = (S) => {
 
     Admin.S = S;
 
-    S.getEntity = e => S["sharedData"]["E"][e]
-    S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
+    
 
     console.log("State: ", S)
     let A = getUserActions(S)
@@ -396,9 +402,17 @@ let Admin = {
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms),
     getEntity: e => Admin["S"]["sharedData"]["E"][e],
-    findEntities: filterFunction => Object.values(Admin["S"]["sharedData"]["E"]).filter( filterFunction )
+    findEntities: filterFunction => Object.values(Admin["S"]["sharedData"]["E"]).filter( filterFunction ),
     //retractEntity: async entityAttributes => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( entityAttributes )
     //)
+    createAttribute: async (attrName, valueType, label, category, doc) => await Admin.submitDatoms([ 
+      newDatom("newAttribute", "attr/name", attrName),
+      newDatom("newAttribute", "attr/valueType", valueType),
+      newDatom("newAttribute", "entity/label", label),
+      newDatom("newAttribute", "entity/category", category),
+      newDatom("newAttribute", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
+      newDatom("newAttribute", "entity/doc", doc)
+    ])
 }
 
 
