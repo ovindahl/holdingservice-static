@@ -58,7 +58,8 @@ const sideEffects = {
                 "selectedOrgnumber": "818924232",
                 "companyDocPage/selectedVersion": 1,
                 "currentSubPage" : "attribute",
-                "selectedEntity": 3175
+                "selectedCategory": "Hendelsesattributter",
+                "selectedEntity": 3174
               }
 
               update({
@@ -95,8 +96,9 @@ const sideEffects = {
 
 let updateData = serverResponse => returnObject({
   "E": serverResponse["E"],
-  attributes: serverResponse["attributes"],
-  allCompanyFields: serverResponse["companyFields"].map( e => e.entity ),
+  "attributes": serverResponse["attributes"],
+  "allAttributes": serverResponse["attributes"].map( a => a.entity ),
+  "allCompanyFields": serverResponse["companyFields"].map( e => e.entity ),
   "allEventTypes": serverResponse["eventTypes"].map( e => e.entity ),
   "allEventAttributes": serverResponse["attributes"].filter( attr => attr["attr/name"] ).filter( attr => attr["attr/name"].startsWith("event/")  ).map( attribute => attribute.entity ),
   "allEventValidators": serverResponse["eventValidators"].map( e => e.entity ),
@@ -127,7 +129,7 @@ let getUserActions = (S) => returnObject({
     createAttribute: async () => update( await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newAttr", "entity/type", "attribute"),
       newDatom("newAttr", "attr/name", "event/attribute" + S["sharedData"]["attributes"].length ),
-      newDatom("newAttr", "entity/category", "Mangler kategori"),
+      newDatom("newAttr", "entity/category", S["UIstate"].selectedCategory),
       newDatom("newAttr", "entity/label", "[Attributt uten navn]"),
       newDatom("newAttr", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
     ] )),
@@ -135,7 +137,7 @@ let getUserActions = (S) => returnObject({
       newDatom("newEventType", "entity/type", "eventType"),
       newDatom("newEventType", "entity/label", "label"),
       newDatom("newEventType", "entity/doc", "[doc]"),
-      newDatom("newEventType", "entity/category", "Mangler kategori"),
+      newDatom("newEventType", "entity/category", S["UIstate"].selectedCategory),
       newDatom("newEventType", "eventType/eventAttributes", [] ),
       newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
       newDatom("newEventType", "eventType/eventValidators", [] ),
@@ -145,7 +147,7 @@ let getUserActions = (S) => returnObject({
         newDatom("newEventType", "entity/type", "eventValidator"),
         newDatom("newEventType", "entity/label", "label"),
         newDatom("newEventType", "entity/doc", "[doc]"),
-        newDatom("newEventType", "entity/category", "Mangler kategori"),
+        newDatom("newEventType", "entity/category", S["UIstate"].selectedCategory),
         newDatom("newEventType", "eventValidator/validatorFunctionString", "return true;" ),
         newDatom("newEventType", "eventValidator/errorMessage", "[errorMessage]" ),
     ])),
@@ -153,15 +155,16 @@ let getUserActions = (S) => returnObject({
             newDatom("eventField", "entity/type", "eventField"),
             newDatom("eventField", "entity/label", "Ny hendelsesoutput"),
             newDatom("eventField", "entity/doc", "[doc]"),
-            newDatom("eventField", "entity/category", "Mangler kategori"),
+            newDatom("eventField", "entity/category", S["UIstate"].selectedCategory),
             newDatom("eventField", "eventField/companyFields", [] ),
     ])),
     createCompanyField: async () => update( await sideEffects.submitDatomsWithValidation(S, [
         newDatom("companyField", "entity/type", "companyField"),
         newDatom("companyField", "entity/label", "label" ),
         newDatom("companyField", "entity/doc", "[doc]"),
-        newDatom("companyField", "entity/category", "Mangler kategori"),
+        newDatom("companyField", "entity/category", S["UIstate"].selectedCategory),
         newDatom("companyField", "companyField/constructorFunctionString", `return 0;`),
+        newDatom("companyField", "companyField/companyFields", []),
     ])),
 })
 
@@ -263,6 +266,8 @@ let combinedEventIsValid = (S, eventAttributes, companyVariables) => S["sharedDa
   )
     
     
+
+let createRecords = (array) => array.map( object => returnObject({account: Object.keys(object)[0], amount: object[0] }) )
 
 let constructCompanyDoc = (S, storedEvents) => {
 

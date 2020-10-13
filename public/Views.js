@@ -186,6 +186,15 @@ let pageRouter = {
   "Admin/Datomer": (S, A) => latestDatomsPage( S, A ),
 }
 
+
+let newEntityRouter = {
+  "attribute": A => A.createAttribute(),
+  "eventType": A => A.createEventType(),
+  "eventField": A => A.createEventField(),
+  "companyField": A => A.createCompanyField(),
+  "eventValidator": A => A.createEventValidator(),
+}
+
 let sidebar_left = (S, A) => S["UIstate"].currentPage === "Admin" 
   ? d([
       d( ["attribute", "eventType", "eventField", "companyField", "eventValidator"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentSubPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentSubPage : pageName} ) )  )),
@@ -193,7 +202,8 @@ let sidebar_left = (S, A) => S["UIstate"].currentPage === "Admin"
       d( categoryRouter[ S["UIstate"].currentSubPage ](S)
         .map( e => S["sharedData"]["E"][e] )
         .filter( e => e["entity/category"] === S["UIstate"].selectedCategory )
-        .map( entity => d( entity["entity/label"], {class: entity.entity === S["UIstate"].selectedEntity ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedEntity : entity.entity} ) ) ) 
+        .map( entity => d( entity["entity/label"], {class: entity.entity === S["UIstate"].selectedEntity ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedEntity : entity.entity} ) ) )
+        .concat( d("[Legg til ny]", {class: "textButton"}, "click", e => newEntityRouter[ S.getEntity(S["UIstate"].selectedEntity)["entity/type"] ](A) ) )
         )
   ], {style: "display:flex;"})
   : d("other")
@@ -341,20 +351,26 @@ let eventFieldConstructorsView = (S, A, selectedEventType) => d([
     )
 ]) 
 
+let multipleEntitySelectorView = (S, A, parentEntity, attributeName, allAllowedEntities) => {
 
-let multipleEntitySelectorView = (S, A, parentEntity, attributeName, allAllowedEntities) =>  d([
-  d( attributeName  ),
-  d( S["sharedData"]["E"][parentEntity][attributeName].map( entity => d([
-    entityLabel(S, A, entity), 
-    span(" [ Fjern ] ", "Fjern denne oppføringen.", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( parentEntity, attributeName, S["sharedData"]["E"][parentEntity][attributeName].filter( e => e !== entity )  )  )
-    ]) 
-  ).concat( dropdown(
-    0,
-    allAllowedEntities.filter( entity => !S["sharedData"]["E"][parentEntity][attributeName].includes( entity )  ).map( entity => returnObject({value: entity, label: `${S["sharedData"]["E"][entity]["entity/label"]}`})).concat({value: 0, label: "Legg til"}), 
-    e => A.updateEntityAttribute( parentEntity, attributeName, S["sharedData"]["E"][parentEntity][attributeName].concat( Number(submitInputValue(e)) )  )   
-    )  ) 
-  )
-], {class: "eventAttributeRow"})
+  let currentSelection = S["sharedData"]["E"][parentEntity][attributeName]
+
+  return d([
+    d( attributeName  ),
+    d( currentSelection .map( entity => d([
+      entityLabel(S, A, entity), 
+      span(" [ Fjern ] ", "Fjern denne oppføringen.", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( parentEntity, attributeName, S["sharedData"]["E"][parentEntity][attributeName].filter( e => e !== entity )  )  )
+      ]) 
+    ).concat( dropdown(
+      0,
+      allAllowedEntities
+        .filter( entity => S["sharedData"]["E"][parentEntity][attributeName] ? !S["sharedData"]["E"][parentEntity][attributeName].includes( entity ) : true  )
+        .map( entity => returnObject({value: entity, label: `${S["sharedData"]["E"][entity]["entity/label"]}`})).concat({value: 0, label: "Legg til"}), 
+      e => A.updateEntityAttribute( parentEntity, attributeName, S["sharedData"]["E"][parentEntity][attributeName].concat( Number(submitInputValue(e)) )  )   
+      )  ) 
+    )
+  ], {class: "eventAttributeRow"})
+}  
 
 let newEventDropdown = (S, A, Event) => dropdown( "", 
   S["sharedData"]["allEventTypes"].map( eventTypeEntity => returnObject({value: eventTypeEntity, label: S["sharedData"]["E"][eventTypeEntity]["entity/label"] }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
@@ -364,15 +380,12 @@ let newEventDropdown = (S, A, Event) => dropdown( "",
 
 let accountDropdown = (S, currentValue) => dropdown(currentValue, Object.keys(S.Accounts).map( accountNumber => returnObject({value: accountNumber, label: `${accountNumber}: ${S.Accounts[ accountNumber ].label}` })).concat({value: "", label: "Ingen konto valgt."}), e => console.log( entityID, "event/account", submitInputValue(e))  )
 
-
-
-
 let adminPage = (S, A) => entityAdminRouter[S["sharedData"]["E"][S["UIstate"]["selectedEntity"]]["entity/type"]](S, A, S["sharedData"]["E"][S["UIstate"]["selectedEntity"]] )
 
 let getSubPageCategories = (S, A) => categoryRouter[ S["UIstate"].currentSubPage ? S["UIstate"].currentSubPage : "attribute" ](S, A).map( entity => S["sharedData"]["E"][entity]["entity/category"] ).filter(filterUniqueValues)
 
 let categoryRouter = {
-  "attribute": S => S["sharedData"]["attributes"].map( a => a.entity ),
+  "attribute": S => S["sharedData"]["allAttributes"],
   "eventType": S => S["sharedData"]["allEventTypes"],
   "eventField": S => S["sharedData"]["allEventFields"],
   "companyField": S => S["sharedData"]["allCompanyFields"],
