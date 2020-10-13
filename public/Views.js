@@ -163,7 +163,7 @@ let headerBarView = (S) => d([
 let companySelectionMenuRow = (S, A) => d([
   d( S["sharedData"]["userEvents"].filter( E => E["event/incorporation/orgnumber"] ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues ).map( orgnumber => d( orgnumber, {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => console.log("TBD...") )), {style: "display:flex;"}),
 ]) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin/Attributter", "Admin/EventTyper", "Admin/EventOutput", "Admin/SelskapsOutput", "Admin/EventValidering"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin/Attributter", "Admin/EventTyper", "Admin/EventOutput", "Admin/SelskapsOutput", "Admin/EventValidering", "Admin/Datomer"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -180,6 +180,7 @@ let pageRouter = {
   "Admin/EventOutput": (S, A) => eventFieldsPage( S, A ),
   "Admin/SelskapsOutput": (S, A) => companyFieldsPage( S, A ),
   "Admin/EventValidering": (S, A) => eventValidatorsPage( S, A ),
+  "Admin/Datomer": (S, A) => latestDatomsPage( S, A ),
 }
 
 let timelineView = (S, A) => d([
@@ -207,7 +208,7 @@ let eventView = (S, Event , A) => {
 ], {class: "feedContainer"} )
 } 
 
-let sidebar_left = (S) => {
+let sidebar_left = S => {
   let selectedEntity = S["sharedData"]["E"][S["UIstate"]["sidebar/selectedEntity"]] 
   return selectedEntity 
   ? d([
@@ -530,6 +531,32 @@ let eventValidatorsPage = ( S, A ) => {
       retractEntityButton(A, selectedEntity["entity"])
     ],{class: "feedContainer"}),
   ], {style: "display: flex;"})
+} 
+
+let latestDatomsPage = (S, A) => {
+
+  let txs = [
+    {
+      tx: "abc",
+      datoms: [{"entity":7313,"attribute":"type","value":"tx","isAddition":true,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a0c"},{"entity":7313,"attribute":"tx/tx","value":1602506365071,"isAddition":true,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a0d"},{"entity":7313,"attribute":"user/email","value":"ovindahl@gmail.com","isAddition":true,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a0e"},{"entity":7284,"attribute":"entity/type","value":"event","isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a0f"},{"entity":7284,"attribute":"event/eventTypeEntity","value":4113,"isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a10"},{"entity":7284,"attribute":"event/incorporation/orgnumber","value":"999999999","isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a11"},{"entity":7284,"attribute":"event/index","value":2,"isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a12"},{"entity":7284,"attribute":"event/date","value":"2020-01-07","isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a13"},{"entity":7284,"attribute":"event/currency","value":"NOK","isAddition":false,"tx":1602506365071,"_id":"5f844e7de76d62000b0e7a14"}]
+    }
+  ]
+
+
+  return d([
+    sidebar_left(S),
+    d( txs.map( tx => d([
+      h3( `${tx.tx}` ),
+      d( tx.datoms.map( datom => d([
+          //entityLabel(S, A, datom.entity),
+          d(String(datom.entity)),
+          entityLabel(S, A, getAttributeEntityFromName(S, datom.attribute) ),
+          d( String(datom.value) )
+        ], {class: "columns_1_1_1"})  )),
+      ], {class: "feedContainer"})) 
+    ),
+    d("sidebar_right"),
+  ], {class: "pageContainer"}) 
 } 
 
 let eventFieldConstructorsView = (S, A, selectedEventType) => d([
