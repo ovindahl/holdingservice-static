@@ -129,6 +129,10 @@ body {background-color: #F2F3F5;}
     background-color: lightskyblue;
 }
 
+.entityLabel:hover > .entityInspector {
+    display: block
+}
+
 .accountBalanceWithHistoryRow {
     display:grid;
     grid-template-columns: 3fr 1fr 1fr;
@@ -147,4 +151,21 @@ body {background-color: #F2F3F5;}
 
 .rightAlignText {
     text-align: right;
+}
+
+
+.textArea_code {
+    background-color: black;
+    color: #57ff57;
+}
+
+
+.entityInspector {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border: 1px solid red;
+    background-color: #eee;
+    z-index: 10;
 }
