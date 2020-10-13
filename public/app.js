@@ -57,12 +57,8 @@ const sideEffects = {
                 "currentPage": "timeline",
                 "selectedOrgnumber": "818924232",
                 "companyDocPage/selectedVersion": 1,
-                "attributesPage/selectedAttribute": 3172,
-                "attributesPage/selectedAttributeCategory": "",
-                "eventTypesPage/selectedEventType": 4113,
-                "eventFieldsPage/selectedEventField": 4372,
-                "companyFieldsPage/selectedCompanyField": 4380,
-                "eventValidatorsPage/selectedEntity": 4194,
+                "currentSubPage" : "attribute",
+                "selectedEntity": 3175
               }
 
               update({
@@ -105,6 +101,7 @@ let updateData = serverResponse => returnObject({
   "allEventAttributes": serverResponse["attributes"].filter( attr => attr["attr/name"] ).filter( attr => attr["attr/name"].startsWith("event/")  ).map( attribute => attribute.entity ),
   "allEventValidators": serverResponse["eventValidators"].map( e => e.entity ),
   "allEventFields": serverResponse["eventFields"].map( e => e.entity ),
+  "latestTxs": serverResponse["latestTxs"].sort( (a, b) => b.tx - a.tx ),
   "Accounts": getAccounts(),
   "userEvents": serverResponse["Events"]
 })
