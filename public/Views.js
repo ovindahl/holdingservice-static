@@ -76,7 +76,7 @@ let span = (text, tooltip, attributesObject, eventType, action) => htmlElementOb
 let textArea = (content, attributesObject, onChange) => htmlElementObject("textarea", attributesObject, content, "change", onChange )
 let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", updateFunction  )
 
-let retractEventButton = (entity, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEvent(entity) )
+let retractEventButton = (entity, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEntity(entity) )
 let retractEntityButton = (A, entity) => d("Slett", {class: "textButton"}, "click", e => A.retractEntity(entity) )
 
 //Basic entity views
@@ -177,13 +177,7 @@ let pageRouter = {
   "Admin/Entitet": (S, A) => entityPage( S, A ),
 }
 
-let newEntityRouter = {
-  "attribute": A => A.createAttribute(),
-  "eventType": A => A.createEventType(),
-  "eventField": A => A.createEventField(),
-  "companyField": A => A.createCompanyField(),
-  "eventValidator": A => A.createEventValidator(),
-}
+
 
 let sidebar_left = (S, A) => S["UIstate"].currentPage == "Admin"
 ? d([
@@ -192,7 +186,6 @@ let sidebar_left = (S, A) => S["UIstate"].currentPage == "Admin"
       d( S.getAll( S["UIstate"].currentSubPage )
         .filter( Entity => Entity["entity/category"] === S["UIstate"].selectedCategory )
         .map( Entity => d( Entity["entity/label"], {class: Entity.entity === S["UIstate"].selectedEntity ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedEntity : Entity.entity} ) ) )
-        .concat( d("[Legg til ny]", {class: "textButton"}, "click", e => newEntityRouter[ S.getEntity(S["UIstate"].selectedEntity)["entity/type"] ](A) ) )
         )
   ], {style: "display:flex;"})
 :  d("")
@@ -435,7 +428,11 @@ let adminView_attribute = (S, A, entity) =>  d([
   defaultEntityFields(S, A, entity),
   editableAttributeView(S, A, entity, "attr/name", S.getEntity(entity)["attr/name"]  ),
   editableAttributeWithStaticDropdown(S, A, entity, "attr/valueType", ['string', 'number', 'object', 'boolean', 'ref']),
-  functionStringView(S, A, entity, "attribute/validatorFunctionString")
+  functionStringView(S, A, entity, "attribute/validatorFunctionString"),
+  d("<br>"),
+  d( ` Antall ganger benyttet: ${S.findEntities( e => Object.keys(e).includes( S.getEntity(entity)["attr/name"] ) ).length}` ),
+  d("<br>"),
+  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createAttribute() )
 ],{class: "feedContainer"})
 
 let adminView_eventType = (S, A, entity) =>  d([
@@ -444,27 +441,35 @@ let adminView_eventType = (S, A, entity) =>  d([
   multipleEntitySelectorView(S, A, entity, "eventType/eventValidators", S.getAll("eventValidator")),
   multipleEntitySelectorView(S, A, entity, "eventType/requiredCompanyFields", S.getAll("companyField")),
   eventFieldConstructorsView(S, A, entity),
-  retractEntityButton(A, entity)
+  retractEntityButton(A, entity),
+  d("<br>"),
+  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("eventType") )
 ],{class: "feedContainer"})
 
 let adminView_eventField = (S, A, entity) =>  d([
   defaultEntityFields(S, A, entity),
   multipleEntitySelectorView(S, A, entity, "eventField/companyFields", S.getAll("companyField")),
-  retractEntityButton(A, entity)
+  retractEntityButton(A, entity),
+  d("<br>"),
+  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("eventField") )
 ],{class: "feedContainer"})
 
 let adminView_companyField = (S, A, entity) =>  d([
   defaultEntityFields(S, A, entity),
   functionStringView(S, A, entity, "companyField/constructorFunctionString"),
   multipleEntitySelectorView(S, A, entity, "companyField/companyFields", S.getAll("companyField")),
-  retractEntityButton(A, entity)
+  retractEntityButton(A, entity),
+  d("<br>"),
+  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("companyField") )
 ],{class: "feedContainer"})
 
 let adminView_eventValidator = (S, A, entity) =>  d([
   defaultEntityFields(S, A, entity),
   functionStringView(S, A, entity, "eventValidator/validatorFunctionString"),
   editableAttributeView(S, A, entity, "eventValidator/errorMessage", S.getEntity(entity)["eventValidator/errorMessage"]  ),
-  retractEntityButton(A, entity)
+  retractEntityButton(A, entity),
+  d("<br>"),
+  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("eventValidator") )
 ],{class: "feedContainer"})
 
 let entityAdminRouter = {

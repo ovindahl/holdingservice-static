@@ -60,7 +60,7 @@ const sideEffects = {
                 "currentSubPage" : "attribute",
                 "selectedCategory": "Hendelsesattributter",
                 "selectedEntity": 3174,
-                "selectedAdminEntity": 4615
+                "selectedAdminEntity": 3174
               }
 
               update({
@@ -96,7 +96,6 @@ const sideEffects = {
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
-
 let updateData = serverResponse => returnObject({
   "E": serverResponse["E"],
   "attributes": serverResponse["attributes"],
@@ -105,62 +104,56 @@ let updateData = serverResponse => returnObject({
 
 let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
 
+let defaultEntityDatoms = (type, label, doc, category) => [
+  newDatom("newEntity", "entity/type", type),
+  newDatom("newEntity", "entity/label", label ? label : "[Mangler visningsnavn]"),
+  newDatom("newEntity", "entity/doc", doc ? doc : "Mangler kategori" ),
+  newDatom("newEntity", "entity/category", category ? category : "Mangler kategori" )
+]
+
+const datomsByEventType = {
+  "eventType": [
+    newDatom("newEntity", "eventType/eventAttributes", [] ),
+    newDatom("newEntity", "eventType/requiredCompanyFields", [] ),
+    newDatom("newEntity", "eventType/eventValidators", [] ),
+    newDatom("newEntity", "eventType/eventFieldConstructors", {} ),
+  ],
+  "eventField": [
+    newDatom("newEntity", "eventField/companyFields", [] ),
+  ],
+  "companyField": [
+    newDatom("newEntity", "companyField/constructorFunctionString", `return 0;`),
+    newDatom("newEntity", "companyField/companyFields", []),
+  ],
+  "eventValidator": [
+    newDatom("newEntity", "eventValidator/validatorFunctionString", "return true;" ),
+    newDatom("newEntity", "eventValidator/errorMessage", "[errorMessage]" ),
+  ],
+}
+
 let getUserActions = (S) => returnObject({
     updateLocalState: (patch) => update( {
       UIstate: mergerino( S["UIstate"], patch ), 
       sharedData: S["sharedData"] 
     }),
     updateEntityAttribute: async (entity, attribute, value) => update( await sideEffects.submitDatomsWithValidation(S, [newDatom(Number(entity), attribute, value)] )),
-    createEvent: async ( prevEvent, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, [
-      newDatom("newEvent", "entity/type", "event"),
-      newDatom("newEvent", "event/eventTypeEntity", newEventTypeEntity),
-      newDatom("newEvent", "event/incorporation/orgnumber", prevEvent["eventAttributes"]["event/incorporation/orgnumber"] ),
-      newDatom("newEvent", "event/index", prevEvent["eventAttributes"]["event/index"] + 1 ),
-      newDatom("newEvent", "event/date", prevEvent["eventAttributes"]["event/date"] ),
-      newDatom("newEvent", "event/currency", "NOK")
-    ] )),
-    retractEvent: async entity => update( await sideEffects.submitDatomsWithValidation(S, getRetractionDatomsWithoutChildren([ S.getEntity(entity) ]) ) ),
     retractEntity: async entity => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S.getEntity(entity) ]))),
-    createAttribute: async () => update( await sideEffects.submitDatomsWithValidation(S, [
-      newDatom("newAttr", "entity/type", "attribute"),
-      newDatom("newAttr", "attr/name", "event/attribute" + S.findEntities( e => e["entity/type"] === "attribute" ).length ),
-      newDatom("newAttr", "entity/category", S["UIstate"].selectedCategory),
-      newDatom("newAttr", "entity/label", "[Attributt uten navn]"),
-      newDatom("newAttr", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
-    ] )),
-    createEventType: async () => update( await sideEffects.submitDatomsWithValidation(S, [
-      newDatom("newEventType", "entity/type", "eventType"),
-      newDatom("newEventType", "entity/label", "label"),
-      newDatom("newEventType", "entity/doc", "[doc]"),
-      newDatom("newEventType", "entity/category", S["UIstate"].selectedCategory),
-      newDatom("newEventType", "eventType/eventAttributes", [] ),
-      newDatom("newEventType", "eventType/requiredCompanyFields", [] ),
-      newDatom("newEventType", "eventType/eventValidators", [] ),
-      newDatom("newEventType", "eventType/eventFieldConstructors", {} ),
-    ])),
-    createEventValidator: async () => update( await sideEffects.submitDatomsWithValidation(S, [
-        newDatom("newEventType", "entity/type", "eventValidator"),
-        newDatom("newEventType", "entity/label", "label"),
-        newDatom("newEventType", "entity/doc", "[doc]"),
-        newDatom("newEventType", "entity/category", S["UIstate"].selectedCategory),
-        newDatom("newEventType", "eventValidator/validatorFunctionString", "return true;" ),
-        newDatom("newEventType", "eventValidator/errorMessage", "[errorMessage]" ),
-    ])),
-    createEventField: async () => update( await sideEffects.submitDatomsWithValidation(S, [
-            newDatom("eventField", "entity/type", "eventField"),
-            newDatom("eventField", "entity/label", "Ny hendelsesoutput"),
-            newDatom("eventField", "entity/doc", "[doc]"),
-            newDatom("eventField", "entity/category", S["UIstate"].selectedCategory),
-            newDatom("eventField", "eventField/companyFields", [] ),
-    ])),
-    createCompanyField: async () => update( await sideEffects.submitDatomsWithValidation(S, [
-        newDatom("companyField", "entity/type", "companyField"),
-        newDatom("companyField", "entity/label", "label" ),
-        newDatom("companyField", "entity/doc", "[doc]"),
-        newDatom("companyField", "entity/category", S["UIstate"].selectedCategory),
-        newDatom("companyField", "companyField/constructorFunctionString", `return 0;`),
-        newDatom("companyField", "companyField/companyFields", []),
-    ])),
+    createAttribute: async () => update( await sideEffects.submitDatomsWithValidation(S, 
+      defaultEntityDatoms("attribute", "[Attributt uten navn]", "[Attributt uten dokumentasjon]", S["UIstate"].selectedCategory ).concat([
+        newDatom("newEntity", "attr/name", "event/attribute" + S.findEntities( e => e["entity/type"] === "attribute" ).length ),
+        newDatom("newEntity", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
+      ]) )),
+    createEntity: async type => update( await sideEffects.submitDatomsWithValidation(S, 
+      defaultEntityDatoms(type, `[${type}] uten navn`, `[${type}] Beskrivelse mangler.`, S["UIstate"].selectedCategory).concat( datomsByEventType[type] ) 
+    )),
+    createEvent: async ( prevEvent, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, 
+      defaultEntityDatoms("event", `Selskapshendelse for ${prevEvent["eventAttributes"]["event/incorporation/orgnumber"]}`, `Selskapshendelse for ${prevEvent["eventAttributes"]["event/incorporation/orgnumber"]}`, null).concat( [
+        newDatom("newEntity", "event/eventTypeEntity", newEventTypeEntity),
+        newDatom("newEntity", "event/incorporation/orgnumber", prevEvent["eventAttributes"]["event/incorporation/orgnumber"] ),
+        newDatom("newEntity", "event/index", prevEvent["eventAttributes"]["event/index"] + 1 ),
+        newDatom("newEntity", "event/date", prevEvent["eventAttributes"]["event/date"] ),
+        newDatom("newEntity", "event/currency", "NOK")
+      ]))),
 })
 
 let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["entity/type"] === "attribute" ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
@@ -345,7 +338,7 @@ let getDependencies = (S, entity) => S.getEntity(entity)["companyField/companyFi
 let update = (S) => {
 
     //To be fixed...
-    S.getEntity = entity => S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis({}, `Entitet [${entity}] finnes ikke` )
+    S.getEntity = entity => S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis(null, `Entitet [${entity}] finnes ikke` )
     S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
     S.getUserEvents = () => S.findEntities( e => e["entity/type"] === "event" ) //S["sharedData"]["userEvents"]
     S.getLatestTxs = () => S["sharedData"]["latestTxs"]
@@ -357,6 +350,9 @@ let update = (S) => {
     S.getEntityType = entity => S.getEntity(entity)["entity/type"] ? S.getEntity(entity)["entity/type"] : `[${entity}] Entitetstype mangler`
     S.getEntityCategory = entity => S.getEntity(entity)["entity/category"] ? S.getEntity(entity)["entity/category"] : `[${entity}] Kategori mangler`
     S.getEntityNote = entity => S.getEntity(entity)["entity/note"] ? S.getEntity(entity)["entity/note"] : `[${entity}] Ingen notat`
+
+    S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 3174 : S["UIstate"].selectedEntity
+    S["UIstate"].selectedAdminEntity = (S.getEntity(S["UIstate"].selectedAdminEntity) === null) ? 3174 : S["UIstate"].selectedEntity
     
     try {
       S["selectedCompany"] = constructCompanyDoc(S, S.getUserEvents()
