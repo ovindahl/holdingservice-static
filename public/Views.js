@@ -177,8 +177,6 @@ let pageRouter = {
   "Admin/Entitet": (S, A) => entityPage( S, A ),
 }
 
-
-
 let sidebar_left = (S, A) => S["UIstate"].currentPage == "Admin"
 ? d([
       d( ["attribute", "eventType", "eventField", "companyField", "eventValidator"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentSubPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentSubPage : pageName} ) )  )),

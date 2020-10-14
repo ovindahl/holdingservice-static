@@ -94,151 +94,9 @@ const sideEffects = {
     }
 }
 
-let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
-
-let updateData = serverResponse => returnObject({
-  "E": serverResponse["E"],
-  "attributes": serverResponse["attributes"],
-  "latestTxs": serverResponse["latestTxs"].sort( (a, b) => b.tx - a.tx ),
-})
-
-let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
-
-let defaultEntityDatoms = (type, label, doc, category) => [
-  newDatom("newEntity", "entity/type", type),
-  newDatom("newEntity", "entity/label", label ? label : "[Mangler visningsnavn]"),
-  newDatom("newEntity", "entity/doc", doc ? doc : "Mangler kategori" ),
-  newDatom("newEntity", "entity/category", category ? category : "Mangler kategori" )
-]
-
-const datomsByEventType = {
-  "eventType": [
-    newDatom("newEntity", "eventType/eventAttributes", [] ),
-    newDatom("newEntity", "eventType/requiredCompanyFields", [] ),
-    newDatom("newEntity", "eventType/eventValidators", [] ),
-    newDatom("newEntity", "eventType/eventFieldConstructors", {} ),
-  ],
-  "eventField": [
-    newDatom("newEntity", "eventField/companyFields", [] ),
-  ],
-  "companyField": [
-    newDatom("newEntity", "companyField/constructorFunctionString", `return 0;`),
-    newDatom("newEntity", "companyField/companyFields", []),
-  ],
-  "eventValidator": [
-    newDatom("newEntity", "eventValidator/validatorFunctionString", "return true;" ),
-    newDatom("newEntity", "eventValidator/errorMessage", "[errorMessage]" ),
-  ],
-}
-
-let getUserActions = (S) => returnObject({
-    updateLocalState: (patch) => update( {
-      UIstate: mergerino( S["UIstate"], patch ), 
-      sharedData: S["sharedData"] 
-    }),
-    updateEntityAttribute: async (entity, attribute, value) => update( await sideEffects.submitDatomsWithValidation(S, [newDatom(Number(entity), attribute, value)] )),
-    retractEntity: async entity => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S.getEntity(entity) ]))),
-    createAttribute: async () => update( await sideEffects.submitDatomsWithValidation(S, 
-      defaultEntityDatoms("attribute", "[Attributt uten navn]", "[Attributt uten dokumentasjon]", S["UIstate"].selectedCategory ).concat([
-        newDatom("newEntity", "attr/name", "event/attribute" + S.findEntities( e => e["entity/type"] === "attribute" ).length ),
-        newDatom("newEntity", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
-      ]) )),
-    createEntity: async type => update( await sideEffects.submitDatomsWithValidation(S, 
-      defaultEntityDatoms(type, `[${type}] uten navn`, `[${type}] Beskrivelse mangler.`, S["UIstate"].selectedCategory).concat( datomsByEventType[type] ) 
-    )),
-    createEvent: async ( prevEvent, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, 
-      defaultEntityDatoms("event", `Selskapshendelse for ${prevEvent["eventAttributes"]["event/incorporation/orgnumber"]}`, `Selskapshendelse for ${prevEvent["eventAttributes"]["event/incorporation/orgnumber"]}`, null).concat( [
-        newDatom("newEntity", "event/eventTypeEntity", newEventTypeEntity),
-        newDatom("newEntity", "event/incorporation/orgnumber", prevEvent["eventAttributes"]["event/incorporation/orgnumber"] ),
-        newDatom("newEntity", "event/index", prevEvent["eventAttributes"]["event/index"] + 1 ),
-        newDatom("newEntity", "event/date", prevEvent["eventAttributes"]["event/date"] ),
-        newDatom("newEntity", "event/currency", "NOK")
-      ]))),
-})
+//Company construction: To be moved to server
 
 let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["entity/type"] === "attribute" ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
-
-let getAccounts = (S) => returnObject({
-  '1070': {label: 'Utsatt skattefordel'}, 
-  '1300': {label: 'Investeringer i datterselskap'}, 
-  '1320': {label: 'Lån til foretak i samme konsern'}, 
-  '1330': {label: 'Investeringer i tilknyttet selskap'}, 
-  '1340': {label: 'Lån til tilknyttet selskap og felles kontrollert virksomhet'}, 
-  '1350': {label: 'Investeringer i aksjer, andeler og verdipapirfondsandeler'}, 
-  '1360': {label: 'Obligasjoner'}, 
-  '1370': {label: 'Fordringer på eiere'}, 
-  '1375': {label: 'Fordringer på styremedlemmer'}, 
-  '1380': {label: 'Fordringer på ansatte'}, 
-  '1399': {label: 'Andre fordringer'}, 
-  '1576': {label: 'Kortsiktig fordring eiere/styremedl. o.l.'}, 
-  '1579': {label: 'Andre kortsiktige fordringer'}, 
-  '1749': {label: 'Andre forskuddsbetalte kostnader'}, 
-  '1800': {label: 'Aksjer og andeler i foretak i samme konsern'}, 
-  '1810': {label: 'Markedsbaserte aksjer og verdipapirfondsandeler'}, 
-  '1820': {label: 'Andre aksjer'}, 
-  '1830': {label: 'Markedsbaserte obligasjoner'}, 
-  '1870': {label: 'Andre markedsbaserte finansielle instrumenter'}, 
-  '1880': {label: 'Andre finansielle instrumenter'}, 
-  '1920': {label: 'Bankinnskudd'}, 
-  '2000': {label: 'Aksjekapital'}, 
-  '2020': {label: 'Overkurs'}, 
-  '2030': {label: 'Annen innskutt egenkapital'}, 
-  '2050': {label: 'Annen egenkapital'}, 
-  '2080': {label: 'Udekket tap'}, 
-  '2120': {label: 'Utsatt skatt'}, 
-  '2220': {label: 'Gjeld til kredittinstitusjoner'}, 
-  '2250': {label: 'Gjeld til ansatte og eiere'}, 
-  '2260': {label: 'Gjeld til selskap i samme konsern'}, 
-  '2290': {label: 'Annen langsiktig gjeld'}, 
-  '2390': {label: 'Annen gjeld til kredittinstitusjon'}, 
-  '2400': {label: 'Leverandørgjeld'}, 
-  '2500': {label: 'Betalbar skatt, ikke fastsatt'}, 
-  '2510': {label: 'Betalbar skatt, fastsatt'}, 
-  '2800': {label: 'Avsatt utbytte'}, 
-  '2910': {label: 'Gjeld til ansatte og eiere'}, 
-  '2920': {label: 'Gjeld til selskap i samme konsern'}, 
-  '2990': {label: 'Annen kortsiktig gjeld'}, 
-  '6540': {label: 'Inventar'}, 
-  '6551': {label: 'Datautstyr (hardware)'}, 
-  '6552': {label: 'Programvare (software)'}, 
-  '6580': {label: 'Andre driftsmidler'}, 
-  '6701': {label: 'Honorar revisjon'}, 
-  '6702': {label: 'Honorar rådgivning revisjon'}, 
-  '6705': {label: 'Honorar regnskap'}, 
-  '6720': {label: 'Honorar for økonomisk rådgivning'}, 
-  '6725': {label: 'Honorar for juridisk bistand, fradragsberettiget'}, 
-  '6726': {label: 'Honorar for juridisk bistand, ikke fradragsberettiget'}, 
-  '6790': {label: 'Annen fremmed tjeneste'}, 
-  '6890': {label: 'Annen kontorkostnad'}, 
-  '6900': {label: 'Elektronisk kommunikasjon'}, 
-  '7770': {label: 'Bank og kortgebyrer'}, 
-  '7790': {label: 'Annen kostnad, fradragsberettiget'}, 
-  '7791': {label: 'Annen kostnad, ikke fradragsberettiget'}, 
-  '8000': {label: 'Inntekt på investering i datterselskap'}, 
-  '8020': {label: 'Inntekt på investering i tilknyttet selskap'}, 
-  '8030': {label: 'Renteinntekt fra foretak i samme konsern'}, 
-  '8050': {label: 'Renteinntekt (finansinstitusjoner)'}, 
-  '8055': {label: 'Andre renteinntekter'}, 
-  '8060': {label: 'Valutagevinst (agio)'}, 
-  '8070': {label: 'Annen finansinntekt'}, 
-  '8071': {label: 'Aksjeutbytte'}, 
-  '8078': {label: 'Gevinst ved realisasjon av aksjer'}, 
-  '8080': {label: 'Verdiøkning av finansielle instrumenter vurdert til virkelig verdi'}, 
-  '8090': {label: 'Inntekt på andre investeringer'}, 
-  '8100': {label: 'Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi'}, 
-  '8110': {label: 'Nedskrivning av andre finansielle omløpsmidler'}, 
-  '8120': {label: 'Nedskrivning av finansielle anleggsmidler'}, 
-  '8130': {label: 'Rentekostnad til foretak i samme konsern'}, 
-  '8140': {label: 'Rentekostnad, ikke fradragsberettiget'}, 
-  '8150': {label: 'Rentekostnad (finansinstitusjoner)'}, 
-  '8155': {label: 'Andre rentekostnader'}, 
-  '8160': {label: 'Valutatap (disagio)'}, 
-  '8170': {label: 'Annen finanskostnad'}, 
-  '8178': {label: 'Tap ved realisasjon av aksjer'}, 
-  '8300': {label: 'Betalbar skatt'}, 
-  '8320': {label: 'Endring utsatt skatt'},
-  '8800': {label: 'Årsresultat'}
-})
 
 let validateAttributeValue = (S, attributeEntity, value) =>  new Function(`inputValue`, S.getEntity( attributeEntity )["attribute/validatorFunctionString"] )( value )
 
@@ -253,8 +111,6 @@ let combinedEventIsValid = (S, eventAttributes, companyVariables) => S.getEntity
   )
     
 let newTransaction = (date, description, records) => returnObject({date, description, records}) 
-
-
 
 let constructCompanyDoc = (S, storedEvents) => {
 
@@ -334,6 +190,70 @@ let constructCompanyDoc = (S, storedEvents) => {
 }
 
 let getDependencies = (S, entity) => S.getEntity(entity)["companyField/companyFields"].concat( S.getEntity(entity)["companyField/companyFields"].map( e => getDependencies(S, e) ).flat()  )
+
+//Company construction END
+
+
+let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
+
+let updateData = serverResponse => returnObject({
+  "E": serverResponse["E"],
+  "latestTxs": serverResponse["latestTxs"].sort( (a, b) => b.tx - a.tx ),
+})
+
+let getRetractionDatomsWithoutChildren = Entities => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
+
+let defaultEntityDatoms = (type, label, doc, category) => [
+  newDatom("newEntity", "entity/type", type),
+  newDatom("newEntity", "entity/label", label ? label : "[Mangler visningsnavn]"),
+  newDatom("newEntity", "entity/doc", doc ? doc : "Mangler kategori" ),
+  newDatom("newEntity", "entity/category", category ? category : "Mangler kategori" )
+] //Should be added to DB
+
+const datomsByEventType = {
+  "eventType": [
+    newDatom("newEntity", "eventType/eventAttributes", [] ),
+    newDatom("newEntity", "eventType/requiredCompanyFields", [] ),
+    newDatom("newEntity", "eventType/eventValidators", [] ),
+    newDatom("newEntity", "eventType/eventFieldConstructors", {} ),
+  ],
+  "eventField": [
+    newDatom("newEntity", "eventField/companyFields", [] ),
+  ],
+  "companyField": [
+    newDatom("newEntity", "companyField/constructorFunctionString", `return 0;`),
+    newDatom("newEntity", "companyField/companyFields", []),
+  ],
+  "eventValidator": [
+    newDatom("newEntity", "eventValidator/validatorFunctionString", "return true;" ),
+    newDatom("newEntity", "eventValidator/errorMessage", "[errorMessage]" ),
+  ],
+} //Should be added to DB
+
+let getUserActions = (S) => returnObject({
+    updateLocalState: (patch) => update( {
+      UIstate: mergerino( S["UIstate"], patch ), 
+      sharedData: S["sharedData"] 
+    }),
+    updateEntityAttribute: async (entity, attribute, value) => update( await sideEffects.submitDatomsWithValidation(S, [newDatom(Number(entity), attribute, value)] )),
+    retractEntity: async entity => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S.getEntity(entity) ]))),
+    createAttribute: async () => update( await sideEffects.submitDatomsWithValidation(S, 
+      defaultEntityDatoms("attribute", "[Attributt uten navn]", "[Attributt uten dokumentasjon]", S["UIstate"].selectedCategory ).concat([
+        newDatom("newEntity", "attr/name", "event/attribute" + S.findEntities( e => e["entity/type"] === "attribute" ).length ),
+        newDatom("newEntity", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
+      ]) )),
+    createEntity: async type => update( await sideEffects.submitDatomsWithValidation(S, 
+      defaultEntityDatoms(type, `[${type}] uten navn`, `[${type}] Beskrivelse mangler.`, S["UIstate"].selectedCategory).concat( datomsByEventType[type] ) 
+    )),
+    createEvent: async ( prevEvent, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, 
+      defaultEntityDatoms("event", `Selskapshendelse for ${prevEvent["eventAttributes"]["event/incorporation/orgnumber"]}`, `Selskapshendelse for ${prevEvent["eventAttributes"]["event/incorporation/orgnumber"]}`, null).concat( [
+        newDatom("newEntity", "event/eventTypeEntity", newEventTypeEntity),
+        newDatom("newEntity", "event/incorporation/orgnumber", prevEvent["eventAttributes"]["event/incorporation/orgnumber"] ),
+        newDatom("newEntity", "event/index", prevEvent["eventAttributes"]["event/index"] + 1 ),
+        newDatom("newEntity", "event/date", prevEvent["eventAttributes"]["event/date"] ),
+        newDatom("newEntity", "event/currency", "NOK")
+      ]))),
+})
 
 let update = (S) => {
 
