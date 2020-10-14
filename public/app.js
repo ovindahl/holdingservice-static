@@ -117,7 +117,7 @@ let getUserActions = (S) => returnObject({
       UIstate: mergerino( S["UIstate"], patch ), 
       sharedData: S["sharedData"] 
     }),
-    updateEntityAttribute: async (entityID, attribute, value) => update( await sideEffects.submitDatomsWithValidation(S, [newDatom(entityID, attribute, value)] )),
+    updateEntityAttribute: async (entity, attribute, value) => update( await sideEffects.submitDatomsWithValidation(S, [newDatom(Number(entity), attribute, value)] )),
     createEvent: async ( prevEvent, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newEvent", "entity/type", "event"),
       newDatom("newEvent", "event/eventTypeEntity", newEventTypeEntity),
@@ -266,7 +266,9 @@ let combinedEventIsValid = (S, eventAttributes, companyVariables) => S.getEntity
     new Function([`eventAttributes`, `companyFields`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( eventAttributes, companyVariables )
   )
     
-let createRecords = (array) => array.map( object => returnObject({account: Object.keys(object)[0], amount: object[0] }) )
+let newTransaction = (date, description, records) => returnObject({date, description, records}) 
+
+
 
 let constructCompanyDoc = (S, storedEvents) => {
 
@@ -366,12 +368,18 @@ let update = (S) => {
     S.getEntityCategory = entity => S.getEntity(entity)["entity/category"] ? S.getEntity(entity)["entity/category"] : `[${entity}] Kategori mangler`
     S.getEntityNote = entity => S.getEntity(entity)["entity/note"] ? S.getEntity(entity)["entity/note"] : `[${entity}] Ingen notat`
     
-
-    S["selectedCompany"] = constructCompanyDoc(S, S.getUserEvents()
+    try {
+      S["selectedCompany"] = constructCompanyDoc(S, S.getUserEvents()
       .filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber )
       .sort( (a, b) => a["event/index"] - b["event/index"]  ) )
 
-    console.log(S["selectedCompany"])
+      console.log(S["selectedCompany"])
+      
+    } catch (error) {
+      console.log(error)
+    }
+
+    
 
     Admin.S = S;
 

@@ -243,7 +243,7 @@ let companyDocPage = (S, A) => {
     d("<br>"),
     d([
       h3(`Hendelsesrapport for hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
-      d(Object.keys(eventType["eventType/eventFieldConstructors"]).map( eventFieldEntity => entityLabelAndValue(S, A, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) ) )
+      d( Object.keys(eventType["eventType/eventFieldConstructors"]).map( eventFieldEntity => eventFieldEntity === "7343" ? newTransactionView(S, A, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) : entityLabelAndValue(S, A, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) ) )
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
     d("<br>"),
     companyDocChangesView(S, A, selectedVersion),
@@ -251,6 +251,40 @@ let companyDocPage = (S, A) => {
     companyDocView(S, A, selectedVersion),
   ] )
 }
+
+
+
+let newTransactionView = (S, A, eventFieldEntity, newTransaction) => d([
+  entityLabel(S, A, eventFieldEntity),
+  d([
+    h3("Ny hovedboktransaksjon"),
+    d(`Dato: ${newTransaction["date"]}`),
+    d(`Beskrivelse: ${newTransaction["description"]}`),
+    d(`<br>`),
+    d(`Posteringer:`),
+    d([
+      d(`#`),
+      d(`Konto`),
+      d(`Beløp`),
+    ], {class: "columns_1_1_1"}),
+    d( newTransaction.records.map( (record, index) => d([
+      d(`${index}`),
+      d(`${Object.keys(record)[0]}`, {class: "rightAlignText"}),
+      d(`${Object.values(record)[0]}`, {class: "rightAlignText"}),
+    ], {class: "columns_1_1_1"}) ) ),
+    d([
+      d(``),
+      d(`Sum`),
+      d(`${newTransaction.records.reduce(  (sum, record) => sum + Object.values(record)[0], 0 )}`, {class: "rightAlignText"}),
+    ], {class: "columns_1_1_1"}),
+  ], {style: "border: 1px solid gray;"})
+], {class: "eventInspectorRow"})
+
+
+/* return companyFields[7364]
+  .map( transaction => transaction.records ).flat()
+  .filter( record => Object.keys(record)[0] === "1920" )
+  .reduce( (sum, record) => sum + Object.values(record)[0], 0 ); */
 
 let companyDocChangesView = (S, A, selectedVersion) => d([
   h3(`Endringer i Selskapsdokumentet som følge av hendelse ${selectedVersion}`),
@@ -311,21 +345,21 @@ let txView = (S, A, tx) => d([
     ], {class: "columns_1_1_1"})  )),
 ], {class: "feedContainer"})
 
-let eventFieldConstructorsView = (S, A, selectedEventType) => d([
+let eventFieldConstructorsView = (S, A, entity) => d([
   d(
-    Object.keys(selectedEventType["eventType/eventFieldConstructors"]).map( entity => d([
-      entityLabel(S, A, entity ),
-      input({value: selectedEventType["eventType/eventFieldConstructors"][entity]}, "change", e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventFieldConstructors",  mergerino( selectedEventType["eventType/eventFieldConstructors"], createObject(entity, submitInputValue(e) ) )  ) ),
-      span(" [ Fjern ] ", "Fjern denne oppføringen.", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventFieldConstructors",  mergerino( selectedEventType["eventType/eventFieldConstructors"], createObject(entity, undefined ) )  )  )
+    Object.keys(S.getEntity(entity)["eventType/eventFieldConstructors"]).map( eventFieldEntity => d([
+      entityLabel(S, A, eventFieldEntity ),
+      textArea( S.getEntity(entity )["eventType/eventFieldConstructors"][eventFieldEntity],{class: "textArea_code"} , e => A.updateEntityAttribute( entity, "eventType/eventFieldConstructors",  mergerino( S.getEntity(entity)["eventType/eventFieldConstructors"], createObject(eventFieldEntity, submitInputValue(e).replaceAll(`"`, `'`) ) )  )),
+      span(" [ Fjern ] ", "Fjern denne oppføringen.", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( entity, "eventType/eventFieldConstructors",  mergerino( S.getEntity(entity)["eventType/eventFieldConstructors"], createObject(eventFieldEntity, undefined ) )  )  )
     ], {class: "eventFieldConstructorRow"}))
   ),
   dropdown(
     0,
     S.getAll("eventField")
-      .filter( entity => !Object.keys(selectedEventType["eventType/eventFieldConstructors"]).includes( String(entity.entity) )  )
-      .map( entity => returnObject({value: entity.entity, label: `${entity["entity/label"]}`}))
+      .filter( e => !Object.keys(S.getEntity(entity)["eventType/eventFieldConstructors"]).includes( String(e.entity) )  )
+      .map( e => returnObject({value: e.entity, label: `${e["entity/label"]}`}))
       .concat({value: 0, label: "Legg til"}), 
-    e => A.updateEntityAttribute( selectedEventType.entity, "eventType/eventFieldConstructors", mergerino( selectedEventType["eventType/eventFieldConstructors"], createObject(submitInputValue(e), "return 0;" ) )  )   
+    e => A.updateEntityAttribute( entity, "eventType/eventFieldConstructors", mergerino( S.getEntity(entity)["eventType/eventFieldConstructors"], createObject(submitInputValue(e), "return 0;" ) )  )   
     )
 ]) 
 
