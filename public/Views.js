@@ -154,7 +154,7 @@ let headerBarView = (S) => d([
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
 let companySelectionMenuRow = (S, A) => d( S.getAllOrgnumbers().map( orgnumber => d( orgnumber, {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => console.log("TBD...") )), {style: "display:flex;"}) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin", "Admin/Datomer"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin", "Admin/Datomer", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -174,6 +174,7 @@ let pageRouter = {
   "companyDoc": (S, A) => companyDocPage( S, A ),
   "Admin": (S, A) => adminPage( S, A ),
   "Admin/Datomer": (S, A) => latestDatomsPage( S, A ),
+  "Admin/Entitet": (S, A) => entityPage( S, A ),
 }
 
 let newEntityRouter = {
@@ -324,18 +325,44 @@ let txView = (S, A, tx) => d([
   d([
     d("Entitet"),
     d("Attributt"),
-    d("Verdi")
-  ], {class: "columns_1_1_1"}),
+    d("Verdi"),
+    d("Retraction?", {class: "rightAlignText"})
+  ], {class: "columns_1_1_1_1"}),
   d( tx.datoms
     .filter( datom => datom.entity === tx.datoms.map( d => d.entity ).sort()[0] )
     .map( datom => d([
       //entityLabel(S, A, datom.entity),
-      S.getEntity(datom.entity) ? entityLabel(S, A, datom.entity) : d(String(datom.entity)),
+      datom.isAddition 
+        ? S.getEntity(datom.entity) ? entityLabel(S, A, datom.entity) : d(String(datom.entity))
+        : d(String(datom.entity)),
       entityLabel(S, A, getAttributeEntityFromName(S, datom.attribute) ),
-      input({value: String(datom.value), disabled: "disabled", class: "rightAlignText" })
+      input({value: String(datom.value), disabled: "disabled", class: "rightAlignText" }),
+      datom.isAddition ? d("") : d("true", {class: "rightAlignText", style: "color: red;"} ),
       //entityRedlinedValue(String(datom.value), S.getEntity(datom.entity)[datom.attribute] )
-    ], {class: "columns_1_1_1"})  )),
+    ], {class: "columns_1_1_1_1"})  )),
 ], {class: "feedContainer"})
+
+
+let entityPage = (S, A) => d([
+  sidebar_left(S, A),
+  d([
+    input({value: S["UIstate"]["selectedAdminEntity"]}, "change", e => A.updateLocalState({selectedAdminEntity: Number(submitInputValue(e)) })),
+    entityAdminView(S, A, S["UIstate"]["selectedAdminEntity"]),
+  ], {class: "feedContainer"}),
+  d(""),
+], {class: "pageContainer"})
+
+
+
+let entityAdminView = (S, A, entity) => d([
+  h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${entityColors[S.getEntityType(entity)]}; padding: 3px;`}),
+  d(
+    Object.keys(S.getEntity(entity))
+      .filter( attr => attr !== "entity" )
+      .map( attributeName => editableAttributeView(S, A, entity, attributeName, S.getEntity(entity)[attributeName] )  ) //d(`${attributeName}: ${S.getEntity(entity)[attributeName]}`)
+  )
+])
+
 
 let eventFieldConstructorsView = (S, A, entity) => d([
   d(

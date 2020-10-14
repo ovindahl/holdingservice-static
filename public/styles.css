@@ -50,6 +50,11 @@ body {background-color: #F2F3F5;}
     grid-template-columns: 1fr 1fr 1fr;
 }
 
+.columns_1_1_1_1 {
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
 .redlineText {
     color: red;
     text-decoration-line: line-through;

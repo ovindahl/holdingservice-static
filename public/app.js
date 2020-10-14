@@ -59,7 +59,8 @@ const sideEffects = {
                 "companyDocPage/selectedVersion": 1,
                 "currentSubPage" : "attribute",
                 "selectedCategory": "Hendelsesattributter",
-                "selectedEntity": 3174
+                "selectedEntity": 3174,
+                "selectedAdminEntity": 4615
               }
 
               update({
@@ -344,7 +345,7 @@ let getDependencies = (S, entity) => S.getEntity(entity)["companyField/companyFi
 let update = (S) => {
 
     //To be fixed...
-    S.getEntity = entity => S["sharedData"]["E"][entity]
+    S.getEntity = entity => S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis({}, `Entitet [${entity}] finnes ikke` )
     S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
     S.getUserEvents = () => S.findEntities( e => e["entity/type"] === "event" ) //S["sharedData"]["userEvents"]
     S.getLatestTxs = () => S["sharedData"]["latestTxs"]
@@ -383,14 +384,14 @@ let Admin = {
     S: null,
     updateClientRelease: (newVersion) => Admin.submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
-    submitDatoms: async (datoms) => datoms.length < 3000
+    submitDatoms: async (datoms) => datoms.length < 5000
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms),
     getEntity: e => Admin.S.getEntity(e),
     findEntities: filterFunction => Admin.S.findEntities(filterFunction),
     updateEntityAttribute: async (entityID, attribute, value) => await Admin.submitDatoms([newDatom(entityID, attribute, value)]),
-    //retractEntity: async entityAttributes => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( entityAttributes )
-    //)
+    retractEntities: async entities => await Admin.submitDatoms( getRetractionDatomsWithoutChildren(entities.map( e => Admin.S.getEntity(e) )) ),
+    retractEntity: async entity => await Admin.retractEntities([entity]),
     createAttribute: async (attrName, valueType, label, category, doc) => await Admin.submitDatoms([ 
       newDatom("newAttribute", "attr/name", attrName),
       newDatom("newAttribute", "attr/valueType", valueType),
