@@ -99,15 +99,7 @@ let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, a
 let updateData = serverResponse => returnObject({
   "E": serverResponse["E"],
   "attributes": serverResponse["attributes"],
-  "allAttributes": serverResponse["attributes"].map( a => a.entity ),
-  "allCompanyFields": serverResponse["companyFields"].map( e => e.entity ),
-  "allEventTypes": serverResponse["eventTypes"].map( e => e.entity ),
-  "allEventAttributes": serverResponse["attributes"].filter( attr => attr["attr/name"] ).filter( attr => attr["attr/name"].startsWith("event/")  ).map( attribute => attribute.entity ),
-  "allEventValidators": serverResponse["eventValidators"].map( e => e.entity ),
-  "allEventFields": serverResponse["eventFields"].map( e => e.entity ),
   "latestTxs": serverResponse["latestTxs"].sort( (a, b) => b.tx - a.tx ),
-  "Accounts": getAccounts(),
-  "userEvents": serverResponse["Events"]
 })
 
 let getRetractionDatomsWithoutChildren = (Entities) => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
@@ -130,7 +122,7 @@ let getUserActions = (S) => returnObject({
     retractEntity: async entity => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S.getEntity(entity) ]))),
     createAttribute: async () => update( await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newAttr", "entity/type", "attribute"),
-      newDatom("newAttr", "attr/name", "event/attribute" + S["sharedData"]["attributes"].length ),
+      newDatom("newAttr", "attr/name", "event/attribute" + S.findEntities( e => e["entity/type"] === "attribute" ).length ),
       newDatom("newAttr", "entity/category", S["UIstate"].selectedCategory),
       newDatom("newAttr", "entity/label", "[Attributt uten navn]"),
       newDatom("newAttr", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
@@ -170,7 +162,7 @@ let getUserActions = (S) => returnObject({
     ])),
 })
 
-let getAttributeEntityFromName = (S, attributeName) => S["sharedData"]["attributes"].filter( a => a["attr/name"] === attributeName )[0]["entity"]
+let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["entity/type"] === "attribute" ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
 
 let getAccounts = (S) => returnObject({
   '1070': {label: 'Utsatt skattefordel'}, 
@@ -272,9 +264,6 @@ let newTransaction = (date, description, records) => returnObject({date, descrip
 
 let constructCompanyDoc = (S, storedEvents) => {
 
-  let allCompanyFields = S["sharedData"]["allCompanyFields"]
-  let allEventFields = S["sharedData"]["allEventFields"]
-
   let initialCompanyDoc = {}
 
   let docVersions = [initialCompanyDoc]
@@ -317,7 +306,7 @@ let constructCompanyDoc = (S, storedEvents) => {
             appliedEvents.push( Event )
 
             let existingCompanyFields = Object.keys(companyDoc).concat(   ).filter( filterUniqueValues )
-            let directDependencies = eventFieldsToUpdate.map( eventFieldEntity => S["sharedData"]["E"][eventFieldEntity]["eventField/companyFields"]  ).flat()
+            let directDependencies = eventFieldsToUpdate.map( eventFieldEntity => S.getEntity(eventFieldEntity)["eventField/companyFields"]  ).flat()
             let companyFieldsToKeep = existingCompanyFields.filter( entity => !directDependencies.includes(entity) )
             let dependenceisToUpdate = directDependencies.map( e => getDependencies(S, e) ).flat()
             let companyFieldsToUpdate = directDependencies.concat(dependenceisToUpdate)
@@ -355,12 +344,12 @@ let getDependencies = (S, entity) => S.getEntity(entity)["companyField/companyFi
 let update = (S) => {
 
     //To be fixed...
-    S["sharedData"]["E"] = Array.isArray(S["sharedData"]["E"]) ?  mergeArray( S["sharedData"]["E"] ) : S["sharedData"]["E"] 
     S.getEntity = entity => S["sharedData"]["E"][entity]
     S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
-    S.getAll = entityType => S.findEntities( e => e["entity/type"] === entityType )
-    S.getUserEvents = () => S["sharedData"]["userEvents"]
+    S.getUserEvents = () => S.findEntities( e => e["entity/type"] === "event" ) //S["sharedData"]["userEvents"]
     S.getLatestTxs = () => S["sharedData"]["latestTxs"]
+    
+    S.getAll = entityType => S.findEntities( e => e["entity/type"] === entityType )
     S.getAllOrgnumbers = () => S.getUserEvents().map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues )
     S.getEntityLabel = entity => S.getEntity(entity)["entity/label"] ? S.getEntity(entity)["entity/label"] : `[${entity}] Visningsnavn mangler`
     S.getEntityDoc = entity => S.getEntity(entity)["entity/doc"] ? S.getEntity(entity)["entity/doc"] : `[${entity}] Dokumentasjon mangler`
@@ -377,13 +366,9 @@ let update = (S) => {
       
     } catch (error) {
       console.log(error)
-    }
-
-    
+    }    
 
     Admin.S = S;
-
-    
 
     console.log("State: ", S)
     let A = getUserActions(S)
@@ -401,8 +386,8 @@ let Admin = {
     submitDatoms: async (datoms) => datoms.length < 3000
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms),
-    getEntity: e => Admin["S"]["sharedData"]["E"][e],
-    findEntities: filterFunction => Object.values(Admin["S"]["sharedData"]["E"]).filter( filterFunction ),
+    getEntity: e => Admin.S.getEntity(e),
+    findEntities: filterFunction => Admin.S.findEntities(filterFunction),
     updateEntityAttribute: async (entityID, attribute, value) => await Admin.submitDatoms([newDatom(entityID, attribute, value)]),
     //retractEntity: async entityAttributes => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( entityAttributes )
     //)
