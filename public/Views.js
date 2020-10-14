@@ -91,18 +91,23 @@ const entityColors = {
   "event": "#bfd1077a"
 }
 
-let getEntityColor = (S, entity) => entityColors[S.getEntity(entity )["entity/type"]]
-let editableAttributeView = (S, A, entity, attributeEntity, value) => d([
-  entityLabel(S, A, attributeEntity ),
+let getEntityColor = (S, entity) => entityColors[S.getEntityType(entity )]
+let editableAttributeView = (S, A, entity, attributeName, value) => d([
+  entityLabel(S, A, getAttributeEntityFromName(S, attributeName) ),
   input(
-    {value: value, style: `text-align: right; ${ validateAttributeValue(S, attributeEntity, value ) ? "" : "background-color: #fb9e9e; " }`}, 
+    {value: value, style: `text-align: right; ${ validateAttributeValue(S, getAttributeEntityFromName(S, attributeName), value ) ? "" : "background-color: #fb9e9e; " }`}, 
     "change", 
-    e => A.updateEntityAttribute( entity, S.getEntity(attributeEntity)["attr/name"], S.getEntity(attributeEntity)["attr/valueType"] === "number" ? Number(submitInputValue(e)) : submitInputValue(e)) 
+    e => A.updateEntityAttribute( entity, attributeName, S.getEntity(getAttributeEntityFromName(S, attributeName))["attr/valueType"] === "number" ? Number(submitInputValue(e)) : submitInputValue(e)) 
   ),
   ], {class: "columns_3_1"})
 
+
+
 let entityLabel = (S, A, entity) => d( [
-  span( `${ S.getEntity(entity)["entity/label"] ? S.getEntity(entity)["entity/label"] : String(entity)}`, `[${entity}] ${S.getEntity(entity)["entity/doc"] ? S.getEntity(entity)["entity/doc"] : String(entity)}`, {class: "entityLabel", style: `background-color: ${entityColors[S.getEntity(entity )["entity/type"]]};`}, "click", e => A.updateLocalState({"sidebar/selectedEntity": entity}) )
+  d([
+    span( `${ S.getEntityLabel(entity)}`, `[${entity}] ${S.getEntityDoc(entity)}`, {class: "entityLabel", style: `background-color: ${getEntityColor(S, entity)};`}, "click", e => A.updateLocalState({"sidebar/selectedEntity": entity}) ),
+    entityInspectorPopup(S, A, entity ),
+  ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
 let entityValue = (value) => d( [
@@ -113,6 +118,11 @@ let entityLabelAndValue = (S, A, entity, value) => d([
   entityLabel(S, A, entity),
   entityValue(value)
 ], {class: "eventInspectorRow"})
+
+let entityLabelWithoutPopup = (S, A, entity, value) => d( [
+  span( `${ S.getEntityLabel(entity)}`, `[${entity}] ${S.getEntityDoc(entity)}`, {class: "entityLabel", style: `background-color: ${getEntityColor(S, entity)};`}, "click", e => A.updateLocalState({"sidebar/selectedEntity": entity}) ),
+  entityValue(value)
+], {style:"display: inline-flex;"} )
 
 let entityIDWithLabel = (S, A, entity) => d([
   d( [
@@ -174,8 +184,8 @@ let newEntityRouter = {
   "eventValidator": A => A.createEventValidator(),
 }
 
-let sidebar_left = (S, A) => S["UIstate"].currentPage !== "Admin" ? d("")
-  : d([
+let sidebar_left = (S, A) => S["UIstate"].currentPage == "Admin"
+? d([
       d( ["attribute", "eventType", "eventField", "companyField", "eventValidator"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentSubPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentSubPage : pageName} ) )  )),
       d( S.getAll(S["UIstate"].currentSubPage).map( Entity => Entity["entity/category"] ).filter(filterUniqueValues).map( category => d( category, {class: category === S["UIstate"].selectedCategory ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedCategory : category} ) )  )),
       d( S.getAll( S["UIstate"].currentSubPage )
@@ -184,19 +194,18 @@ let sidebar_left = (S, A) => S["UIstate"].currentPage !== "Admin" ? d("")
         .concat( d("[Legg til ny]", {class: "textButton"}, "click", e => newEntityRouter[ S.getEntity(S["UIstate"].selectedEntity)["entity/type"] ](A) ) )
         )
   ], {style: "display:flex;"})
+:  d("")
 
-let sidebar_right = (S, A) => entityInspectorView(S, A, S.getEntity(S["UIstate"]["sidebar/selectedEntity"]) ) 
+let sidebar_right = (S, A) => d("")
 
-let entityInspectorView = (S, A, Entity) => Entity 
-  ? d([
-      h3(`[${Entity["entity"]}] ${Entity["entity/label"]}`, {style: `background-color: ${entityColors[Entity["entity/type"]]}; padding: 3px;`}),
-      entityLabelAndValue(S, A, getAttributeEntityFromName(S, "entity/type"), String(Entity["entity/type"])),
-      entityLabelAndValue(S, A, getAttributeEntityFromName(S, "entity/category"), String(Entity["entity/category"])),
+let entityInspectorPopup = (S, A, entity) => d([
+      h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${entityColors[S.getEntityType(entity)]}; padding: 3px;`}),
+      entityLabelWithoutPopup(S, A, getAttributeEntityFromName(S, "entity/type"), S.getEntityType(entity)),
+      entityLabelWithoutPopup(S, A, getAttributeEntityFromName(S, "entity/category"), S.getEntityCategory(entity)),
       d("<br>"),
-      d(Entity["entity/doc"]),
-      d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin", currentSubPage: Entity["entity/type"], selectedCategory: Entity["entity/category"], Entity: Entity.entity }))
-    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-  : d("")
+      d(S.getEntityDoc(entity)),
+      d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin", currentSubPage: S.getEntityType(entity), selectedCategory:  S.getEntityCategory(entity), selectedEntity: entity }))
+    ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 let timelineView = (S, A) => d( S["selectedCompany"]["appliedEvents"].concat(S["selectedCompany"]["rejectedEvents"]).map( Event => eventView( S, Event, A )  )) 
 
@@ -206,7 +215,7 @@ let eventView = (S, Event , A) => {
 
   return d([
     h3( eventType["entity/label"] ),
-    d( eventType["eventType/eventAttributes"].map( attributeEntity => editableAttributeView(S, A, Event["eventAttributes"].entity, attributeEntity, Event["eventAttributes"][ S.getEntity(attributeEntity)["attr/name"] ])  )),
+    d( eventType["eventType/eventAttributes"].map( attributeEntity => editableAttributeView(S, A, Event["eventAttributes"].entity, S.getEntity(attributeEntity)["attr/name"], Event["eventAttributes"][ S.getEntity(attributeEntity)["attr/name"] ])  )),
     d( eventFieldEntities.map( eventFieldEntity => Event["eventFields"] ? entityLabelAndValue(S, A, eventFieldEntity, Event["eventFields"][eventFieldEntity]) : d("ERROR")  )),
     d(Event["errors"] 
       ? Event["errors"].map( eventErrorMessageView )
@@ -229,7 +238,7 @@ let companyDocPage = (S, A) => {
     ], {class: "shareholderRow"}),
     d([
       h3(`Attributter for hendelse ${selectedVersion}: ${eventType["entity/label"]}`),
-      d( eventType["eventType/eventAttributes"].map( attributeEntity => editableAttributeView(S, A, selectedEvent["eventAttributes"].entity, attributeEntity, selectedEvent["eventAttributes"][ S.getEntity(attributeEntity)["attr/name"] ])  )),
+      d( eventType["eventType/eventAttributes"].map( attributeEntity => editableAttributeView(S, A, selectedEvent["eventAttributes"].entity, S.getEntity(attributeEntity)["attr/name"], selectedEvent["eventAttributes"][ S.getEntity(attributeEntity)["attr/name"] ])  )),
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
     d("<br>"),
     d([
@@ -360,49 +369,49 @@ let staticDropdown = (S, A, entity, attributeName, options) => dropdown(
   e => A.updateEntityAttribute(entity, attributeName, submitInputValue(e) )
 )
 
-let defaultEntityFields = (S, A, selectedEntity) => d([
-  h3( `[${selectedEntity["entity"]}]  ${selectedEntity["entity/type"]} /  ${selectedEntity["entity/category"]} /  ${selectedEntity["entity/label"]}`, {style: `background-color: ${getEntityColor(S, selectedEntity["entity"])}; padding: 4px;`}),
-  entityIDWithLabel(S, A, selectedEntity.entity),
-  editableAttributeView(S, A, selectedEntity["entity"], getAttributeEntityFromName(S, "entity/label"), selectedEntity["entity/label"]  ),
-  editableAttributeView(S, A, selectedEntity["entity"], getAttributeEntityFromName(S, "entity/category"), selectedEntity["entity/category"]  ),
-  editableAttributeView(S, A, selectedEntity["entity"], getAttributeEntityFromName(S, "entity/doc"), selectedEntity["entity/doc"]  ),
-  editableAttributeView(S, A, selectedEntity["entity"], getAttributeEntityFromName(S, "entity/note"), selectedEntity["entity/note"]  )
+let defaultEntityFields = (S, A, entity) => d([
+  h3( `[${entity}]  ${  S.getEntityType(entity)} /  ${S.getEntityCategory(entity)} /  ${S.getEntityLabel(entity)}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 4px;`}),
+  entityIDWithLabel(S, A, entity),
+  editableAttributeView(S, A, entity, "entity/label", S.getEntityLabel(entity)  ),
+  editableAttributeView(S, A, entity, "entity/category", S.getEntityCategory(entity)  ),
+  editableAttributeView(S, A, entity, "entity/doc", S.getEntityDoc(entity)  ),
+  editableAttributeView(S, A, entity, "entity/note", S.getEntityNote(entity)  )
 ])
 
-let adminView_attribute = (S, A, selectedEntity) =>  d([
-  defaultEntityFields(S, A, selectedEntity),
-  editableAttributeView(S, A, selectedEntity["entity"], getAttributeEntityFromName(S, "attr/name"), selectedEntity["attr/name"]  ),
-  editableAttributeWithStaticDropdown(S, A, selectedEntity["entity"], "attr/valueType", ['string', 'number', 'object', 'boolean', 'ref']),
-  functionStringView(S, A, selectedEntity["entity"], "attribute/validatorFunctionString")
+let adminView_attribute = (S, A, entity) =>  d([
+  defaultEntityFields(S, A, entity),
+  editableAttributeView(S, A, entity, "attr/name", S.getEntity(entity)["attr/name"]  ),
+  editableAttributeWithStaticDropdown(S, A, entity, "attr/valueType", ['string', 'number', 'object', 'boolean', 'ref']),
+  functionStringView(S, A, entity, "attribute/validatorFunctionString")
 ],{class: "feedContainer"})
 
-let adminView_eventType = (S, A, selectedEntity) =>  d([
-  defaultEntityFields(S, A, selectedEntity),
-  multipleEntitySelectorView(S, A, selectedEntity.entity, "eventType/eventAttributes", S.getAll("attribute")),
-  multipleEntitySelectorView(S, A, selectedEntity.entity, "eventType/eventValidators", S.getAll("eventValidator")),
-  multipleEntitySelectorView(S, A, selectedEntity.entity, "eventType/requiredCompanyFields", S.getAll("companyField")),
-  eventFieldConstructorsView(S, A, selectedEntity),
-  retractEntityButton(A, selectedEntity["entity"])
+let adminView_eventType = (S, A, entity) =>  d([
+  defaultEntityFields(S, A, entity),
+  multipleEntitySelectorView(S, A, entity, "eventType/eventAttributes", S.getAll("attribute")),
+  multipleEntitySelectorView(S, A, entity, "eventType/eventValidators", S.getAll("eventValidator")),
+  multipleEntitySelectorView(S, A, entity, "eventType/requiredCompanyFields", S.getAll("companyField")),
+  eventFieldConstructorsView(S, A, entity),
+  retractEntityButton(A, entity)
 ],{class: "feedContainer"})
 
-let adminView_eventField = (S, A, selectedEntity) =>  d([
-  defaultEntityFields(S, A, selectedEntity),
-  multipleEntitySelectorView(S, A, selectedEntity.entity, "eventField/companyFields", S.getAll("companyField")),
-  retractEntityButton(A, selectedEntity["entity"])
+let adminView_eventField = (S, A, entity) =>  d([
+  defaultEntityFields(S, A, entity),
+  multipleEntitySelectorView(S, A, entity, "eventField/companyFields", S.getAll("companyField")),
+  retractEntityButton(A, entity)
 ],{class: "feedContainer"})
 
-let adminView_companyField = (S, A, selectedEntity) =>  d([
-  defaultEntityFields(S, A, selectedEntity),
-  functionStringView(S, A, selectedEntity["entity"], "companyField/constructorFunctionString"),
-  multipleEntitySelectorView(S, A, selectedEntity.entity, "companyField/companyFields", S.getAll("companyField")),
-  retractEntityButton(A, selectedEntity["entity"])
+let adminView_companyField = (S, A, entity) =>  d([
+  defaultEntityFields(S, A, entity),
+  functionStringView(S, A, entity, "companyField/constructorFunctionString"),
+  multipleEntitySelectorView(S, A, entity, "companyField/companyFields", S.getAll("companyField")),
+  retractEntityButton(A, entity)
 ],{class: "feedContainer"})
 
-let adminView_eventValidator = (S, A, selectedEntity) =>  d([
-  defaultEntityFields(S, A, selectedEntity),
-  functionStringView(S, A, selectedEntity["entity"], "eventValidator/validatorFunctionString"),
-  editableAttributeView(S, A, selectedEntity["entity"], getAttributeEntityFromName(S, "eventValidator/errorMessage"), selectedEntity["eventValidator/errorMessage"]  ),
-  retractEntityButton(A, selectedEntity["entity"])
+let adminView_eventValidator = (S, A, entity) =>  d([
+  defaultEntityFields(S, A, entity),
+  functionStringView(S, A, entity, "eventValidator/validatorFunctionString"),
+  editableAttributeView(S, A, entity, "eventValidator/errorMessage", S.getEntity(entity)["eventValidator/errorMessage"]  ),
+  retractEntityButton(A, entity)
 ],{class: "feedContainer"})
 
 let entityAdminRouter = {
@@ -412,4 +421,6 @@ let entityAdminRouter = {
   "companyField": adminView_companyField,
   "eventValidator": adminView_eventValidator,
 }
-let adminPage = (S, A) => entityAdminRouter[S.getEntity(S["UIstate"]["selectedEntity"])["entity/type"]](S, A, S.getEntity(S["UIstate"]["selectedEntity"]) )
+let adminPage = (S, A) => entityAdminRouter[
+  S.getEntityType(S["UIstate"]["selectedEntity"])
+](S, A, S["UIstate"]["selectedEntity"] )

@@ -129,9 +129,7 @@ body {background-color: #F2F3F5;}
     background-color: lightskyblue;
 }
 
-.entityLabel:hover > .entityInspector {
-    display: block
-}
+
 
 .accountBalanceWithHistoryRow {
     display:grid;
@@ -159,13 +157,21 @@ body {background-color: #F2F3F5;}
     color: #57ff57;
 }
 
+.popupContainer {
+    position: relative;
+}
 
-.entityInspector {
+.popupContainer:hover > .entityInspectorPopup {
+    display: block
+}
+
+.entityInspectorPopup {
     display: none;
     position: absolute;
-    top: 50%;
-    left: 50%;
+    bottom: 100%;
+    right: 50%;
     border: 1px solid red;
     background-color: #eee;
     z-index: 10;
+    width: 200px;
 }

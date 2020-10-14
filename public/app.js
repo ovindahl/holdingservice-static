@@ -360,6 +360,12 @@ let update = (S) => {
     S.getUserEvents = () => S["sharedData"]["userEvents"]
     S.getLatestTxs = () => S["sharedData"]["latestTxs"]
     S.getAllOrgnumbers = () => S.getUserEvents().map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues )
+    S.getEntityLabel = entity => S.getEntity(entity)["entity/label"] ? S.getEntity(entity)["entity/label"] : `[${entity}] Visningsnavn mangler`
+    S.getEntityDoc = entity => S.getEntity(entity)["entity/doc"] ? S.getEntity(entity)["entity/doc"] : `[${entity}] Dokumentasjon mangler`
+    S.getEntityType = entity => S.getEntity(entity)["entity/type"] ? S.getEntity(entity)["entity/type"] : `[${entity}] Entitetstype mangler`
+    S.getEntityCategory = entity => S.getEntity(entity)["entity/category"] ? S.getEntity(entity)["entity/category"] : `[${entity}] Kategori mangler`
+    S.getEntityNote = entity => S.getEntity(entity)["entity/note"] ? S.getEntity(entity)["entity/note"] : `[${entity}] Ingen notat`
+    
 
     S["selectedCompany"] = constructCompanyDoc(S, S.getUserEvents()
       .filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber )
