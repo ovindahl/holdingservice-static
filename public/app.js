@@ -60,7 +60,8 @@ const sideEffects = {
                 "currentSubPage" : "attribute",
                 "selectedCategory": "Hendelsesattributter",
                 "selectedEntity": 3174,
-                "selectedAdminEntity": 3174
+                "selectedAdminEntity": 3174,
+                "currentSearchString": "Søk etter entitet",
               }
 
               update({
@@ -227,6 +228,12 @@ const datomsByEventType = {
   "eventValidator": [
     newDatom("newEntity", "eventValidator/validatorFunctionString", "return true;" ),
     newDatom("newEntity", "eventValidator/errorMessage", "[errorMessage]" ),
+  ],
+  "valueType": [
+    newDatom("newEntity", "valueType/jsType", "string" ),
+  ],
+  "entityType": [
+    newDatom("newEntity", "entityType/attributes", [3171, 4615, 4617, 5712, 4871] ),
   ],
 } //Should be added to DB
 
