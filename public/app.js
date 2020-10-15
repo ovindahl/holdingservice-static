@@ -57,7 +57,7 @@ const sideEffects = {
                 "currentPage": "timeline",
                 "selectedOrgnumber": "818924232",
                 "companyDocPage/selectedVersion": 1,
-                "currentSubPage" : "attribute",
+                "selectedEntityType" : 7684,
                 "selectedCategory": "Hendelsesattributter",
                 "selectedEntity": 3174,
                 "selectedAdminEntity": 3174,
@@ -97,7 +97,7 @@ const sideEffects = {
 
 //Company construction: To be moved to server
 
-let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["entity/type"] === "attribute" ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
+let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["entity/entityType"] === 7684 ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
 
 let validateAttributeValue = (S, attributeEntity, value) =>  new Function(`inputValue`, S.getEntity( attributeEntity )["attribute/validatorFunctionString"] )( value )
 
@@ -204,8 +204,22 @@ let updateData = serverResponse => returnObject({
 
 let getRetractionDatomsWithoutChildren = Entities => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
 
+
+let getEntityForEntityType = {
+  "attribute": 7684,
+  "eventType": 7686,
+  "eventField": 7780,
+  "companyField": 7784,
+  "eventValidator": 7728,
+  "valueType": 7689,
+  "entityType": 7794,
+  "event": 7790,
+  "tx": 7806
+}
+
 let defaultEntityDatoms = (type, label, doc, category) => [
   newDatom("newEntity", "entity/type", type),
+  newDatom("newEntity", "entity/entityType", getEntityForEntityType[type]),
   newDatom("newEntity", "entity/label", label ? label : "[Mangler visningsnavn]"),
   newDatom("newEntity", "entity/doc", doc ? doc : "Mangler kategori" ),
   newDatom("newEntity", "entity/category", category ? category : "Mangler kategori" )
@@ -246,7 +260,7 @@ let getUserActions = (S) => returnObject({
     retractEntity: async entity => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S.getEntity(entity) ]))),
     createAttribute: async () => update( await sideEffects.submitDatomsWithValidation(S, 
       defaultEntityDatoms("attribute", "[Attributt uten navn]", "[Attributt uten dokumentasjon]", S["UIstate"].selectedCategory ).concat([
-        newDatom("newEntity", "attr/name", "event/attribute" + S.findEntities( e => e["entity/type"] === "attribute" ).length ),
+        newDatom("newEntity", "attr/name", "event/attribute" + S.findEntities( e => e["entity/entityType"] === 7684 ).length ),
         newDatom("newEntity", "attribute/validatorFunctionString", `return (typeof inputValue !== "undefined");`),
       ]) )),
     createEntity: async type => update( await sideEffects.submitDatomsWithValidation(S, 
@@ -267,14 +281,13 @@ let update = (S) => {
     //To be fixed...
     S.getEntity = entity => S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis(null, `Entitet [${entity}] finnes ikke` )
     S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
-    S.getUserEvents = () => S.findEntities( e => e["entity/type"] === "event" ) //S["sharedData"]["userEvents"]
+    S.getUserEvents = () => S.findEntities( e => e["entity/entityType"] === 7790 ) //S["sharedData"]["userEvents"]
     S.getLatestTxs = () => S["sharedData"]["latestTxs"]
     
-    S.getAll = entityType => S.findEntities( e => e["entity/type"] === entityType )
+    S.getAll = entityType => S.findEntities( e => e["entity/entityType"] === getEntityForEntityType[entityType]  )
     S.getAllOrgnumbers = () => S.getUserEvents().map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues )
     S.getEntityLabel = entity => S.getEntity(entity)["entity/label"] ? S.getEntity(entity)["entity/label"] : `[${entity}] Visningsnavn mangler`
     S.getEntityDoc = entity => S.getEntity(entity)["entity/doc"] ? S.getEntity(entity)["entity/doc"] : `[${entity}] Dokumentasjon mangler`
-    S.getEntityType = entity => S.getEntity(entity)["entity/type"] ? S.getEntity(entity)["entity/type"] : `[${entity}] Entitetstype mangler`
     S.getEntityCategory = entity => S.getEntity(entity)["entity/category"] ? S.getEntity(entity)["entity/category"] : `[${entity}] Kategori mangler`
     S.getEntityNote = entity => S.getEntity(entity)["entity/note"] ? S.getEntity(entity)["entity/note"] : `[${entity}] Ingen notat`
 

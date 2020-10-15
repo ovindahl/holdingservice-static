@@ -81,19 +81,8 @@ let retractEntityButton = (A, entity) => d("Slett", {class: "textButton"}, "clic
 
 //Basic entity views
 
-const entityColors = {
-  "entity": "#eca2637a",
-  "attribute": "#eca2637a",
-  "eventField": "#5b95eca6",
-  "companyField": "#00968870",
-  "eventValidator": "#e402024d",
-  "eventType": "#9a25e07a",
-  "valueType": "#fffe0c80",
-  "entityType": "#0096888a",
-  "event": "#bfd1077a"
-}
 
-let getEntityColor = (S, entity) => entityColors[S.getEntityType(entity )]
+let getEntityColor = (S, entity) => S.getEntity( S.getEntity(entity)[ "entity/entityType" ] )["entityType/color"]
 let editableAttributeView = (S, A, entity, attributeName, value) => d([
   entityLabel(S, A, getAttributeEntityFromName(S, attributeName) ),
   input(
@@ -179,12 +168,35 @@ let pageRouter = {
   "Admin/Entitet": (S, A) => entityPage( S, A ),
 }
 
+let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a["entity/label"]).localeCompare(b["entity/label"])
+
 let sidebar_left = (S, A) => S["UIstate"].currentPage == "Admin"
 ? d([
-      d( ["attribute", "eventType", "eventField", "companyField", "eventValidator", "valueType", "entityType"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentSubPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentSubPage : pageName} ) )  )),
-      d( S.getAll(S["UIstate"].currentSubPage).map( Entity => Entity["entity/category"] ).filter(filterUniqueValues).map( category => d( category, {class: category === S["UIstate"].selectedCategory ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedCategory : category} ) )  )),
-      d( S.getAll( S["UIstate"].currentSubPage )
-        .filter( Entity => Entity["entity/category"] === S["UIstate"].selectedCategory )
+      d( S.getAll("entityType")
+        .filter( e => ![7790, 7806].includes(e.entity)  ) //Not event or tx
+        .sort( sortEntitiesAlphabeticallyByLabel )
+        .map( Entity => d( 
+          Entity["entity/label"], 
+          {class: Entity.entity === S["UIstate"].selectedEntityType ? "textButton textButton_selected" : "textButton"}, 
+          "click", 
+          e => A.updateLocalState(  {
+            selectedEntityType : Entity.entity, 
+            selectedCategory: S.findEntities( e => e["entity/entityType"] === Entity.entity )[0]["entity/category"],
+            selectedEntity: S.findEntities( e => e["entity/entityType"] === Entity.entity )[0]["entity"],
+           } ) 
+          )  )
+      ),
+      d( S.findEntities( e => e["entity/entityType"] === S["UIstate"].selectedEntityType ).map( Entity => Entity["entity/category"] ).filter(filterUniqueValues)
+        .sort( ( a , b ) => ('' + a).localeCompare(b) )
+        .map( category => d( 
+          category, 
+          {class: category === S["UIstate"].selectedCategory ? "textButton textButton_selected" : "textButton"}, 
+          "click", 
+          e => A.updateLocalState(  {selectedCategory : category, selectedEntity: S.findEntities( e => e["entity/entityType"] === S["UIstate"].selectedEntityType && e["entity/category"] === category)[0]["entity"]} )
+          )  )
+      ),
+      d( S.findEntities( e => e["entity/entityType"] === S["UIstate"].selectedEntityType && e["entity/category"] === S["UIstate"].selectedCategory )
+        .sort( sortEntitiesAlphabeticallyByLabel )
         .map( Entity => d( Entity["entity/label"], {class: Entity.entity === S["UIstate"].selectedEntity ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedEntity : Entity.entity} ) ) )
         )
   ], {style: "display:flex;"})
@@ -193,12 +205,12 @@ let sidebar_left = (S, A) => S["UIstate"].currentPage == "Admin"
 let sidebar_right = (S, A) => d("")
 
 let entityInspectorPopup = (S, A, entity) => d([
-      h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${entityColors[S.getEntityType(entity)]}; padding: 3px;`}),
-      entityLabelWithoutPopup(S, A, getAttributeEntityFromName(S, "entity/type"), S.getEntityType(entity)),
-      entityLabelWithoutPopup(S, A, getAttributeEntityFromName(S, "entity/category"), S.getEntityCategory(entity)),
+      h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 3px;`}),
+      entityLabelWithoutPopup(S, A, 7754, S.getEntity(entity)["entity/entityType"]),
+      entityLabelWithoutPopup(S, A, 5712, S.getEntityCategory(entity)),
       d("<br>"),
       d(S.getEntityDoc(entity)),
-      d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin", currentSubPage: S.getEntityType(entity), selectedCategory:  S.getEntityCategory(entity), selectedEntity: entity }))
+      d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin", selectedEntityType: S.getEntity(entity)["entity/entityType"], selectedCategory:  S.getEntityCategory(entity), selectedEntity: entity }))
     ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 let timelineView = (S, A) => d( S["selectedCompany"]["appliedEvents"].concat(S["selectedCompany"]["rejectedEvents"]).map( Event => eventView( S, Event, A )  )) 
@@ -348,7 +360,7 @@ let entityPage = (S, A) => d([
 
 
 let entityAdminView = (S, A, entity) => d([
-  h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${entityColors[S.getEntityType(entity)]}; padding: 3px;`}),
+  h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 3px;`}),
   d(
     Object.keys(S.getEntity(entity))
       .filter( attr => attr !== "entity" )
@@ -444,7 +456,7 @@ let staticDropdown = (S, A, entity, attributeName, options) => dropdown(
 )
 
 let defaultEntityFields = (S, A, entity) => d([
-  h3( `[${entity}]  ${  S.getEntityType(entity)} /  ${S.getEntityCategory(entity)} /  ${S.getEntityLabel(entity)}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 4px;`}),
+  h3( `[${entity}]  ${S.getEntityLabel(entity)}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 4px;`}),
   entityIDWithLabel(S, A, entity),
   singleEntitySelectorView(S, A, entity, "entity/entityType", S.getAll("entityType") ),
   editableAttributeView(S, A, entity, "entity/label", S.getEntityLabel(entity)  ),
@@ -515,6 +527,7 @@ let adminView_valueTypes = (S, A, entity) =>  d([
 let adminView_entityTypes = (S, A, entity) =>  d([
   defaultEntityFields(S, A, entity),
   multipleEntitySelectorView(S, A, entity, "entityType/attributes", S.getAll("attribute").filter( e => e["entity/category"] === "[db]" ) ),
+  editableAttributeView(S, A, entity, "entityType/color", S.getEntity(entity)["entityType/color"]  ),
   //editableAttributeView(S, A, entity, "valueType/jsType", S.getEntity(entity)["valueType/jsType"]  ),
   //functionStringView(S, A, entity, "valueType/validatorFunctionString"),
   retractEntityButton(A, entity),
@@ -523,17 +536,13 @@ let adminView_entityTypes = (S, A, entity) =>  d([
 ],{class: "feedContainer"})
 
 
-
-
 let entityAdminRouter = {
-  "attribute": adminView_attribute,
-  "eventType": adminView_eventType,
-  "eventField": adminView_eventField,
-  "companyField": adminView_companyField,
-  "eventValidator": adminView_eventValidator,
-  "valueType": adminView_valueTypes,
-  "entityType": adminView_entityTypes,
+  7684: adminView_attribute,
+  7686: adminView_eventType,
+  7780: adminView_eventField,
+  7784: adminView_companyField,
+  7728: adminView_eventValidator,
+  7689: adminView_valueTypes,
+  7794: adminView_entityTypes,
 }
-let adminPage = (S, A) => entityAdminRouter[
-  S.getEntityType(S["UIstate"]["selectedEntity"])
-](S, A, S["UIstate"]["selectedEntity"] )
+let adminPage = (S, A) => entityAdminRouter[ S.getEntity(S["UIstate"]["selectedEntity"])["entity/entityType"] ](S, A, S["UIstate"]["selectedEntity"] )
