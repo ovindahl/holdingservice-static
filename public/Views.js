@@ -117,7 +117,7 @@ let entityLabelWithoutPopup = (S, A, entity, value) => d( [
 
 let entityIDWithLabel = (S, A, entity) => d([
   d( [
-    span( `EntitetsID`, `ID-nummeret til entiteten i databasen`, {class: "entityLabel", style: `background-color: ${entityColors["entity"]};`} )
+    span( `EntitetsID`, `ID-nummeret til entiteten i databasen`, {style: `background-color: light-blue;`} )
   ], {style:"display: inline-flex;"} ),
   input({value: `${entity}`, disabled: "disabled", class: "rightAlignText"})
 ], {class: "eventInspectorRow"})
