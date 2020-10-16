@@ -258,7 +258,9 @@ let companyDocPage = (S, A) => {
   ] )
 }
 
-let newTransactionView = (S, A, eventFieldEntity, newTransaction) => d([
+let newTransactionView = (S, A, eventFieldEntity, newTransaction) => d(JSON.stringify(newTransaction)) 
+
+/* d([
   entityLabel(S, A, eventFieldEntity),
   d([
     h3("Ny hovedboktransaksjon"),
@@ -282,7 +284,7 @@ let newTransactionView = (S, A, eventFieldEntity, newTransaction) => d([
       d(`${newTransaction.records.reduce(  (sum, record) => sum + Object.values(record)[0], 0 )}`, {class: "rightAlignText"}),
     ], {class: "columns_1_1_1"}),
   ], {style: "border: 1px solid gray;"})
-], {class: "eventInspectorRow"})
+], {class: "eventInspectorRow"}) */
 
 let companyDocChangesView = (S, A, selectedVersion) => d([
   h3(`Endringer i Selskapsdokumentet som følge av hendelse ${selectedVersion}`),

@@ -111,7 +111,7 @@ let combinedEventIsValid = (S, eventAttributes, companyVariables) => S.getEntity
     new Function([`eventAttributes`, `companyFields`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( eventAttributes, companyVariables )
   )
     
-let newTransaction = (date, description, records) => returnObject({date, description, records}) 
+let newTransaction = (date, description, records) => records.map( record => returnObject({date, description, account: Object.keys(record)[0], amount: Object.values(record)[0] }) )
 
 let constructCompanyDoc = (S, storedEvents) => {
 
@@ -307,6 +307,8 @@ let update = (S) => {
 
     Admin.S = S;
 
+    let accounts = ['1070 Utsatt skattefordel', '1300 Investeringer i datterselskap', '1310 Investeringer i annet foretak i samme konsern', '1320 Lån til foretak i samme konsern', '1330 Investeringer i tilknyttet selskap', '1340 Lån til tilknyttet selskap og felles kontrollert virksomhet', '1350 Investeringer i aksjer, andeler og verdipapirfondsandeler', '1360 Obligasjoner', '1370 Fordringer på eiere', '1375 Fordringer på styremedlemmer', '1380 Fordringer på ansatte', '1576 Kortsiktig fordring eiere/styremedl. o.l.', '1800 Aksjer og andeler i foretak i samme konsern', '1810 Markedsbaserte aksjer og verdipapirfondsandeler', '1820 Andre aksjer', '1830 Markedsbaserte obligasjoner', '1870 Andre markedsbaserte finansielle instrumenter', '1881 Verdijustering andre finansielle instrumenter', '1920 Bankinnskudd', '2000 Aksjekapital', '2020 Overkurs', '2030 Annen innskutt egenkapital', '2036 Stiftelesutgifter', '2050 Annen egenkapital', '2080 Udekket tap', '2120 Utsatt skatt', '2250 Gjeld til ansatte og eiere', '2260 Gjeld til selskap i samme konsern', '2400 Leverandørgjeld', '2500 Betalbar skatt, ikke fastsatt', '2510 Betalbar skatt, fastsatt', '2800 Avsatt utbytte', '2910 Gjeld til ansatte og eiere', '2920 Gjeld til selskap i samme konsern', '6540 Inventar', '6551 Datautstyr (hardware)', '6552 Programvare (software)', '6580 Andre driftsmidler', '6701 Honorar revisjon', '6702 Honorar rådgivning revisjon', '6705 Honorar regnskap', '6720 Honorar for økonomisk rådgivning', '6725 Honorar for juridisk bistand, fradragsberettiget', '6726 Honorar for juridisk bistand, ikke fradragsberettiget', '6890 Annen kontorkostnad', '6900 Elektronisk kommunikasjon', '7770 Bank og kortgebyrer', '7790 Annen kostnad, fradragsberettiget', '7791 Annen kostnad, ikke fradragsberettiget', '8000 Inntekt på investering i datterselskap', '8010 Inntekt på investering i annet foretak i samme konsern', '8020 Inntekt på investering i tilknyttet selskap', '8030 Renteinntekt fra foretak i samme konsern', '8050 Renteinntekt (finansinstitusjoner)', '8055 Andre renteinntekter', '8060 Valutagevinst (agio)', '8070 Annen finansinntekt', '8071 Aksjeutbytte', '8078 Gevinst ved realisasjon av aksjer', '8080 Verdiøkning av finansielle instrumenter vurdert til virkelig verdi', '8090 Inntekt på andre investeringer', '8100 Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi', '8110 Nedskrivning av andre finansielle omløpsmidler', '8120 Nedskrivning av finansielle anleggsmidler', '8130 Rentekostnad til foretak i samme konsern', '8140 Rentekostnad, ikke fradragsberettiget', '8150 Rentekostnad (finansinstitusjoner)', '8155 Andre rentekostnader', '8160 Valutatap (disagio)', '8170 Annen finanskostnad', '8178 Tap ved realisasjon av aksjer', '8300 Betalbar skatt', '8320 Endring utsatt skatt', '8960 Overføringer annen egenkapital', '8990 Udekket tap']
+    console.log(accounts)
     console.log("State: ", S)
     let A = getUserActions(S)
     //A.retractEntity(7251) //KBankinnskudd
@@ -337,4 +339,16 @@ let Admin = {
       newDatom("newAttribute", "entity/doc", doc)
     ]),
     getServerCache: async () => await sideEffects.APIRequest("GET", "serverCache", null)
+}
+
+
+
+let a = () => {
+
+
+
+
+  return companyFields[7364].reduce( (accountBalance, record) => mergerino(accountBalance, createObject( record.account, prevValue => (typeof prevValue === "number") ? (prevValue + record.amount) : record.amount ), {} ))
+
+
 }
