@@ -252,53 +252,31 @@ let companyDocPage = (S, A) => {
       d( Object.keys(eventType["eventType/eventFieldConstructors"]).map( eventFieldEntity => eventFieldEntity === "7343" ? newTransactionView(S, A, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) : entityLabelAndValue(S, A, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) ) )
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
     d("<br>"),
-    companyDocChangesView(S, A, selectedVersion),
-    d("<br>"),
     companyDocView(S, A, selectedVersion),
   ] )
 }
 
-let newTransactionView = (S, A, eventFieldEntity, newTransaction) => d(JSON.stringify(newTransaction)) 
-
-/* d([
+let newTransactionView = (S, A, eventFieldEntity, records) => d([
   entityLabel(S, A, eventFieldEntity),
   d([
-    h3("Ny hovedboktransaksjon"),
-    d(`Dato: ${newTransaction["date"]}`),
-    d(`Beskrivelse: ${newTransaction["description"]}`),
-    d(`<br>`),
-    d(`Posteringer:`),
+    d(`Nye posteringer:`),
     d([
       d(`#`),
       d(`Konto`),
       d(`Beløp`),
     ], {class: "columns_1_1_1"}),
-    d( newTransaction.records.map( (record, index) => d([
+    d( records.map( (record, index) => d([
       d(`${index}`),
-      d(`${Object.keys(record)[0]}`, {class: "rightAlignText"}),
-      d(`${Object.values(record)[0]}`, {class: "rightAlignText"}),
+      d(`${record.account}`, {class: "rightAlignText"}),
+      d(`${record.amount}`, {class: "rightAlignText"}),
     ], {class: "columns_1_1_1"}) ) ),
     d([
       d(``),
       d(`Sum`),
-      d(`${newTransaction.records.reduce(  (sum, record) => sum + Object.values(record)[0], 0 )}`, {class: "rightAlignText"}),
+      d(`${records.reduce(  (sum, record) => sum + record.amount, 0 )}`, {class: "rightAlignText"}),
     ], {class: "columns_1_1_1"}),
   ], {style: "border: 1px solid gray;"})
-], {class: "eventInspectorRow"}) */
-
-let companyDocChangesView = (S, A, selectedVersion) => d([
-  h3(`Endringer i Selskapsdokumentet som følge av hendelse ${selectedVersion}`),
-  d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
-    .filter( companyFieldEntity => S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity] !== S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] - 1 ][companyFieldEntity] )
-    .map( companyFieldEntity => {
-
-    let value = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity]
-    let prevValue = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] - 1 ][companyFieldEntity]
-
-    return (value === prevValue) ? entityLabelAndValue(S, A, companyFieldEntity, value) : entityLabelAndRedlinedValue(S, A, companyFieldEntity, value , prevValue )
-
-  } ))
-], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+], {class: "eventInspectorRow"})
 
 let companyDocView = (S, A, selectedVersion) => {
 
@@ -311,8 +289,18 @@ let companyDocView = (S, A, selectedVersion) => {
     d(categories.map( category => d([
       d(`Kategori: ${category}`),
       d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
-        .filter( companyFieldEntity => S.getEntity(companyFieldEntity)["entity/category"] === category )
-        .map( companyFieldEntity => entityLabelAndValue(S, A, companyFieldEntity, S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][companyFieldEntity]) ))
+        .filter( entity => !["7364", "7911", "6850"].includes(String(entity)) )
+        .map( entity => S.getEntity(entity) )
+        .filter( Entity => Entity["entity/category"] === category )
+        .filter( Entity => !Number.isNaN(S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity])  )
+        .map( Entity => {
+
+          let value = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity]
+          let prevValue = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] - 1 ][Entity.entity]
+
+          return (value === prevValue) ? entityLabelAndValue(S, A, Entity.entity, value) : entityLabelAndRedlinedValue(S, A, Entity.entity, value , prevValue )
+
+        }))
     ]) ))
     
   ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
