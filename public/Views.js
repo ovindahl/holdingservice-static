@@ -289,10 +289,9 @@ let companyDocView = (S, A, selectedVersion) => {
     d(categories.map( category => d([
       d(`Kategori: ${category}`),
       d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
-        .filter( entity => !["7364", "7911", "6850"].includes(String(entity)) )
+        .filter( entity => !["7364", "7911"].includes(String(entity)) )
         .map( entity => S.getEntity(entity) )
         .filter( Entity => Entity["entity/category"] === category )
-        .filter( Entity => !Number.isNaN(S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity])  )
         .map( Entity => {
 
           let value = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity]

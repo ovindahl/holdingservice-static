@@ -85,9 +85,13 @@ const sideEffects = {
     },
     submitDatomsWithValidation: async (S, Datoms) => {
       if(sideEffects.isIdle){
-        if(Datoms.filter( d => d.attribute !== "attr/name" ).every( datom => validateAttributeValue(S, getAttributeEntityFromName(S, datom.attribute), datom.value) )){return returnObject({
+        if(Datoms.filter( d => d.attribute !== "attr/name" ).every( datom => validateAttributeValue(S, getAttributeEntityFromName(S, datom.attribute), datom.value) )){
+          
+          let serverResponse = await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )) 
+          
+          return returnObject({
             UIstate: S["UIstate"],
-            sharedData: updateData(await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )) )
+            sharedData: updateData(serverResponse)
           }) }
         else{console.log("ERROR: Datoms not valid: ", Datoms)}
         }
@@ -112,6 +116,12 @@ let combinedEventIsValid = (S, eventAttributes, companyVariables) => S.getEntity
   )
     
 let newTransaction = (date, description, records) => records.map( record => returnObject({date, description, account: Object.keys(record)[0], amount: Object.values(record)[0] }) )
+
+let getAccountBalance = (companyField, accountNumber) => (typeof companyField[ accountNumber ] === "number") ? companyField[ accountNumber ] : 0
+
+let sumAccounts = (companyFields, accountNumbers) => accountNumbers.reduce( (sum, accountNumber) => sum + getAccountBalance(companyFields[7911], accountNumber), 0 )
+
+let sumOpeningBalanceAccounts = (companyFields, accountNumbers) => accountNumbers.reduce( (sum, accountNumber) => sum + getAccountBalance(companyFields[8240], accountNumber), 0 )
 
 let constructCompanyDoc = (S, storedEvents) => {
 
@@ -157,10 +167,10 @@ let constructCompanyDoc = (S, storedEvents) => {
             appliedEvents.push( Event )
 
             let existingCompanyFields = Object.keys(companyDoc).concat(   ).filter( filterUniqueValues )
-            let directDependencies = eventFieldsToUpdate.map( eventFieldEntity => S.getEntity(eventFieldEntity)["eventField/companyFields"]  ).flat()
+            let directDependencies = eventFieldsToUpdate.map( eventFieldEntity => S.getEntity(eventFieldEntity)["eventField/companyFields"]  ).flat() //Get from companyfield
             let companyFieldsToKeep = existingCompanyFields.filter( entity => !directDependencies.includes(entity) )
-            let dependenceisToUpdate = directDependencies.map( e => getDependencies(S, e) ).flat()
-            let companyFieldsToUpdate = directDependencies.concat(dependenceisToUpdate)
+            let dependenceisToUpdate = directDependencies.map( e => getDependencies(S, e) ).flat() //Get from companyfield
+            let companyFieldsToUpdate = directDependencies.concat(dependenceisToUpdate) //Get from companyfield
             
             let updatedFields = companyFieldsToUpdate.reduce( (updatedCompanyFields, entity) => mergerino( updatedCompanyFields, createObject(
               entity, //NB: Need better approach for undefined prevValue
