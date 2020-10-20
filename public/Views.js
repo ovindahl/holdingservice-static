@@ -74,13 +74,23 @@ let submitInputValue = e => {
 }
 let span = (text, tooltip, attributesObject, eventType, action) => htmlElementObject("span", mergerino({"title": tooltip}, attributesObject), text, eventType, action)
 let textArea = (content, attributesObject, onChange) => htmlElementObject("textarea", attributesObject, content, "change", onChange )
-let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", updateFunction  )
+let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", e => {
+  let dropdown = document.getElementById(e.srcElement.id)
+  dropdown.style = "background-color: darkgray;"
+  updateFunction(e)
+}   )
 
-let retractEventButton = (entity, A) => d("Slett hendelse", {class: "textButton"}, "click", e => A.retractEntity(entity) )
-let retractEntityButton = (A, entity) => d("Slett", {class: "textButton"}, "click", e => A.retractEntity(entity) )
+
+let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", e => {
+  let button = document.getElementById(e.srcElement.id)
+  button.style = "background-color: darkgray;"
+  button.innerHTML = "Laster.."
+  onClick(e)
+}  )
+
+let retractEntityButton = (A, entity) => submitButton("Slett", e => A.retractEntity(entity) )
 
 //Basic entity views
-
 
 let getEntityColor = (S, entity) => S.getEntity( S.getEntity(entity)[ "entity/entityType" ] )["entityType/color"]
 let editableAttributeView = (S, A, entity, attributeName, value) => d([
@@ -139,7 +149,7 @@ let eventErrorMessageView = (errorMessage) => d( errorMessage, {class: "entityLa
 let headerBarView = (S) => d([
   d('<header><h1>Holdingservice Beta</h1></header>'),
   d([
-    d("Logg ut", {class: "textButton"}, "click", e => console.log("Log out!")),
+    d("Logg ut", {class: "textButton"}, "click", ),
     d("Innstillinger", {class: "textButton"}, "click", e => console.log("Innstillinger!"))
   ], {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
@@ -217,16 +227,18 @@ let timelineView = (S, A) => d( S["selectedCompany"]["appliedEvents"].concat(S["
 
 let eventView = (S, Event , A) => {
   let eventType = S.getEntity(Event["eventAttributes"]["event/eventTypeEntity"])
+  if(eventType === null){return d([d("ERROR: Hendelsestypen finnes ikke"), d(JSON.stringify(Event))], {class: "feedContainer"})}
   let eventFieldEntities = Object.keys(eventType["eventType/eventFieldConstructors"])
 
   return d([
     h3( eventType["entity/label"] ),
+    entityLabel(S, A, eventType.entity),
     d( eventType["eventType/eventAttributes"].map( attributeEntity => editableAttributeView(S, A, Event["eventAttributes"].entity, S.getEntity(attributeEntity)["attr/name"], Event["eventAttributes"][ S.getEntity(attributeEntity)["attr/name"] ])  )),
     d( eventFieldEntities.map( eventFieldEntity => Event["eventFields"] ? entityLabelAndValue(S, A, eventFieldEntity, Event["eventFields"][eventFieldEntity]) : d("ERROR")  )),
     d(Event["errors"] 
       ? Event["errors"].map( eventErrorMessageView )
       : ""),
-    retractEventButton( Event["eventAttributes"]["entity"], A),
+      retractEntityButton( A, Event["eventAttributes"]["entity"]),
     newEventDropdown(S, A, Event)
 ], {class: "feedContainer"} )
 } 
@@ -334,6 +346,9 @@ let txView = (S, A, tx) => d([
       datom.isAddition ? d("") : d("true", {class: "rightAlignText", style: "color: red;"} ),
       //entityRedlinedValue(String(datom.value), S.getEntity(datom.entity)[datom.attribute] )
     ], {class: "columns_1_1_1_1"})  )),
+    tx.datoms.some( datom => !datom.isAddition ) 
+      ? submitButton("Gjennopprett slettet enhet", e => A.undoTx(tx))
+      : d("")
 ], {class: "feedContainer"})
 
 
@@ -464,18 +479,18 @@ let adminView_attribute = (S, A, entity) =>  d([
   d("<br>"),
   d( ` Antall ganger benyttet: ${S.findEntities( e => Object.keys(e).includes( S.getEntity(entity)["attr/name"] ) ).length}` ),
   d("<br>"),
-  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createAttribute() )
+  submitButton("Legg til ny", e => A.createAttribute())
 ],{class: "feedContainer"})
 
 let adminView_eventType = (S, A, entity) =>  d([
   defaultEntityFields(S, A, entity),
-  multipleEntitySelectorView(S, A, entity, "eventType/eventAttributes", S.getAll("attribute")),
+  multipleEntitySelectorView(S, A, entity, "eventType/eventAttributes", S.getAll("attribute").filter( e => !["[Arkiverte attributter]", "[db]"].includes(e["entity/category"]) ) ),
   multipleEntitySelectorView(S, A, entity, "eventType/eventValidators", S.getAll("eventValidator")),
   multipleEntitySelectorView(S, A, entity, "eventType/requiredCompanyFields", S.getAll("companyField")),
   eventFieldConstructorsView(S, A, entity),
   retractEntityButton(A, entity),
   d("<br>"),
-  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("eventType") )
+  submitButton("Legg til ny", e => A.createEntity("eventType"))
 ],{class: "feedContainer"})
 
 let adminView_eventField = (S, A, entity) =>  d([
@@ -483,7 +498,7 @@ let adminView_eventField = (S, A, entity) =>  d([
   multipleEntitySelectorView(S, A, entity, "eventField/companyFields", S.getAll("companyField")),
   retractEntityButton(A, entity),
   d("<br>"),
-  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("eventField") )
+  submitButton("Legg til ny", e => A.createEntity("eventField"))
 ],{class: "feedContainer"})
 
 let adminView_companyField = (S, A, entity) =>  d([
@@ -492,7 +507,7 @@ let adminView_companyField = (S, A, entity) =>  d([
   multipleEntitySelectorView(S, A, entity, "companyField/companyFields", S.getAll("companyField")),
   retractEntityButton(A, entity),
   d("<br>"),
-  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("companyField") )
+  submitButton("Legg til ny", e => A.createEntity("companyField"))
 ],{class: "feedContainer"})
 
 let adminView_eventValidator = (S, A, entity) =>  d([
@@ -501,7 +516,7 @@ let adminView_eventValidator = (S, A, entity) =>  d([
   editableAttributeView(S, A, entity, "eventValidator/errorMessage", S.getEntity(entity)["eventValidator/errorMessage"]  ),
   retractEntityButton(A, entity),
   d("<br>"),
-  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("eventValidator") )
+  submitButton("Legg til ny", e => A.createEntity("eventValidator"))
 ],{class: "feedContainer"})
 
 let adminView_valueTypes = (S, A, entity) =>  d([
@@ -510,7 +525,7 @@ let adminView_valueTypes = (S, A, entity) =>  d([
   functionStringView(S, A, entity, "valueType/validatorFunctionString"),
   retractEntityButton(A, entity),
   d("<br>"),
-  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("valueType") )
+  submitButton("Legg til ny", e => A.createEntity("valueType"))
 ],{class: "feedContainer"})
 
 let adminView_entityTypes = (S, A, entity) =>  d([
@@ -521,7 +536,7 @@ let adminView_entityTypes = (S, A, entity) =>  d([
   //functionStringView(S, A, entity, "valueType/validatorFunctionString"),
   retractEntityButton(A, entity),
   d("<br>"),
-  d("[Legg til ny]", {class: "textButton"}, "click", e => A.createEntity("entityType") )
+  submitButton("Legg til ny", e => A.createEntity("entityType"))
 ],{class: "feedContainer"})
 
 

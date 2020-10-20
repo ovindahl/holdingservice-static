@@ -1,3 +1,4 @@
+
 const sideEffects = {
     isIdle: true,
     appContainer: "appContainer",
@@ -105,17 +106,38 @@ let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["e
 
 let validateAttributeValue = (S, attributeEntity, value) =>  new Function(`inputValue`, S.getEntity( attributeEntity )["attribute/validatorFunctionString"] )( value )
 
-let eventAttributesAreValid = (S, eventAttributes) => S.getEntity(  eventAttributes["event/eventTypeEntity"] )["eventType/eventAttributes"]
-  .every( attributeEntity =>  
-    validateAttributeValue(S, attributeEntity, eventAttributes[ S.getEntity( attributeEntity )["attr/name"] ] )
-  )
+let eventAttributesAreValid = (S, eventAttributes) => S.getEntity(  eventAttributes["event/eventTypeEntity"] ) === null 
+  ? false 
+  : S.getEntity(  eventAttributes["event/eventTypeEntity"] )["eventType/eventAttributes"]
+    .every( attributeEntity =>  
+      validateAttributeValue(S, attributeEntity, eventAttributes[ S.getEntity( attributeEntity )["attr/name"] ] )
+    )
 
 let combinedEventIsValid = (S, eventAttributes, companyVariables) => S.getEntity( eventAttributes["event/eventTypeEntity"] )["eventType/eventValidators"]
   .every( entity =>  
     new Function([`eventAttributes`, `companyFields`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( eventAttributes, companyVariables )
   )
+
+let newShareTransaction = (identifier, shareCount) => returnObject({identifier, shareCount})
     
 let newTransaction = (date, description, records) => records.map( record => returnObject({date, description, account: Object.keys(record)[0], amount: Object.values(record)[0] }) )
+
+
+
+let createInvestmentTransaction = (companyFields, eventAttributes) => {
+  let type = "investment"
+  let identifier = eventAttributes['event/investment/orgnumber']
+  let shareCount = eventAttributes['event/attribute85']
+  let investmentObject = companyFields[8538].filter( investmentObject => investmentObject.identifier === identifier  )[0]
+  let accountNumber = investmentObject.isLongTermHolding === "Anleggsmiddel" ? "1820" : "1350";
+  let records = newTransaction(eventAttributes['event/date'], eventAttributes['event/description'], [
+    {'1920': eventAttributes['event/amount']},
+    {[accountNumber]: -eventAttributes['event/amount']},
+  ])
+  return {type, identifier, shareCount, records}
+}
+
+
 
 let getAccountBalance = (companyField, accountNumber) => (typeof companyField[ accountNumber ] === "number") ? companyField[ accountNumber ] : 0
 
@@ -202,6 +224,36 @@ let getDependencies = (S, entity) => S.getEntity(entity)["companyField/companyFi
 
 //Company construction END
 
+let constructInvestmentHoldings = (transactions) => transactions
+.map( transaction => transaction.identifier )  
+.filter( filterUniqueValues )
+.filter( identifier => typeof identifier === "string" )
+.map( (identifier, index, array) => {
+
+  let selectedTransactions = transactions
+  .filter( entry => typeof entry === "object" )
+  .filter( entry => entry.identifier === identifier )
+
+  let name = selectedTransactions[0].name ? selectedTransactions[0].name : "Navn mangler"
+  let type = "Aksjer"
+  let ISIN = selectedTransactions[0].identifier
+  let country = selectedTransactions[0].country
+  let IB = 0;
+  let UB = selectedTransactions.filter( t => t.shareCount ).reduce( (sum, transaction) => sum + transaction.shareCount, 0 );
+  let gains = selectedTransactions.filter( t => t.unrealizedGain ).reduce( (sum, transaction) => sum + transaction.unrealizedGain, 0 );
+  let taxExemptGains = (selectedTransactions[0].isTaxExempt === "Innenfor fritaksmetoden") ? gains : 0
+  let taxableGains = (selectedTransactions[0].isTaxExempt === "Utenfor fritaksmetoden") ? gains : 0
+
+  let dividends = selectedTransactions.filter( t => t.dividend ).reduce( (sum, transaction) => sum + transaction.dividend, 0 );
+  let taxExemptDividends = selectedTransactions[0].isTaxExempt ? dividends : 0
+  let taxableDividends = selectedTransactions[0].isTaxExempt ? 0 : dividends
+
+
+  return {name, type, ISIN, country, IB, UB, taxExemptGains, taxableGains, taxExemptDividends, taxableDividends}
+
+} )
+
+
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
@@ -281,6 +333,21 @@ let getUserActions = (S) => returnObject({
         newDatom("newEntity", "event/date", prevEvent["eventAttributes"]["event/date"] ),
         newDatom("newEntity", "event/currency", "NOK")
       ]))),
+      undoTx: async (tx) => {
+
+        console.log(tx)
+
+        let txEntity = tx.datoms.filter( datom => datom.attribute === "tx/tx" )[0].entity
+
+        let datoms = tx.datoms
+          .filter( datom => datom.entity !== txEntity )
+          .map( datom => newDatom(datom.entity, datom.attribute, datom.value, !datom.isAddition) )
+
+        console.log("datoms", datoms)
+
+        update( await sideEffects.submitDatomsWithValidation(S, datoms ))
+
+      }
 })
 
 let update = (S) => {
@@ -350,7 +417,9 @@ let Admin = {
 
 let a = () => {
 
+  let shareTransactions = [0,{"type":"Aksjer","shareCount":573200,"orgNumber":"916823525"},{"type":"Aksjer","shareCount":1000,"ISIN":"Nigeria123","country":"Nigeria"},{"type":"Aksjer","shareCount":100,"ISIN":"Nigeria123","country":"Nigeria"}]
 
+  let table = shareTransactions.reduce( (accumulator, transaction) => mergerino(accumulator, createObject( )  ) )
 
 
   return Object.keys(companyFields)
