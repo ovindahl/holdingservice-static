@@ -159,12 +159,13 @@ let constructCompanyDoc = (S, storedEvents) => {
     if(rejectedEvents.length > 0){ rejectedEvents.push( Event ) }
     else{
       let eventType = S.getEntity(  eventAttributes["event/eventTypeEntity"] )
+      let companyDoc = docVersions[index]
+      let companyVariables = mergeArray( eventType["eventType/requiredCompanyFields"].map( entity => createObject( entity, companyDoc[ entity ] )  ) )  //validation TBD
+      Event.companyVariables = companyVariables
       let attributesAreValid = eventAttributesAreValid(S, eventAttributes)
       if(!attributesAreValid){rejectedEvents.push( Event ) }
       else{
-        let companyDoc = docVersions[index]
-        let companyVariables = mergeArray( eventType["eventType/requiredCompanyFields"].map( entity => createObject( entity, companyDoc[ entity ] )  ) )  //validation TBD
-        Event.companyVariables = companyVariables
+        
         let eventIsValid = combinedEventIsValid(S, eventAttributes, companyVariables)
         if(!eventIsValid){
           Event.errors = eventType["eventType/eventValidators"]
@@ -224,34 +225,86 @@ let getDependencies = (S, entity) => S.getEntity(entity)["companyField/companyFi
 
 //Company construction END
 
-let constructInvestmentHoldings = (transactions) => transactions
-.map( transaction => transaction.identifier )  
-.filter( filterUniqueValues )
-.filter( identifier => typeof identifier === "string" )
-.map( (identifier, index, array) => {
+let constructInvestmentHoldings = (companyFields) => {
 
-  let selectedTransactions = transactions
-  .filter( entry => typeof entry === "object" )
-  .filter( entry => entry.identifier === identifier )
+  let investmentObjects = companyFields[8538]
+  let investmentTransactions = companyFields[8346]
+  let rows = investmentObjects.map( investmentObject => {
 
-  let name = selectedTransactions[0].name ? selectedTransactions[0].name : "Navn mangler"
-  let type = "Aksjer"
-  let ISIN = selectedTransactions[0].identifier
-  let country = selectedTransactions[0].country
-  let IB = 0;
-  let UB = selectedTransactions.filter( t => t.shareCount ).reduce( (sum, transaction) => sum + transaction.shareCount, 0 );
-  let gains = selectedTransactions.filter( t => t.unrealizedGain ).reduce( (sum, transaction) => sum + transaction.unrealizedGain, 0 );
-  let taxExemptGains = (selectedTransactions[0].isTaxExempt === "Innenfor fritaksmetoden") ? gains : 0
-  let taxableGains = (selectedTransactions[0].isTaxExempt === "Utenfor fritaksmetoden") ? gains : 0
+    let selectedTransactions = investmentTransactions
+      .filter( entry => typeof entry === "object" )
+      .filter( entry => entry.identifier === investmentObject.identifier )
 
-  let dividends = selectedTransactions.filter( t => t.dividend ).reduce( (sum, transaction) => sum + transaction.dividend, 0 );
-  let taxExemptDividends = selectedTransactions[0].isTaxExempt ? dividends : 0
-  let taxableDividends = selectedTransactions[0].isTaxExempt ? 0 : dividends
+      let name = investmentObject.name
+      let type = "Aksjer"
+      let ISIN = investmentObject.identifier
+      let country = investmentObject.country
+      let IB = 0;
+      let UB = selectedTransactions.filter( t => t.shareCount ).reduce( (sum, transaction) => sum + transaction.shareCount, 0 );
+      let gains = selectedTransactions.filter( t => t.unrealizedGain ).reduce( (sum, transaction) => sum + transaction.unrealizedGain, 0 );
+      let taxExemptGains = (investmentObject.isTaxExempt === "Innenfor fritaksmetoden") ? gains : 0
+      let taxableGains = (investmentObject.isTaxExempt === "Utenfor fritaksmetoden") ? gains : 0
+
+      let dividends = selectedTransactions.filter( t => t.dividend ).reduce( (sum, transaction) => sum + transaction.dividend, 0 );
+      let taxExemptDividends = investmentObject.isTaxExempt ? dividends : 0
+      let taxableDividends = investmentObject.isTaxExempt ? 0 : dividends
 
 
-  return {name, type, ISIN, country, IB, UB, taxExemptGains, taxableGains, taxExemptDividends, taxableDividends}
+      return {
+        "Navn på verdipapir/Finansielt produkt": name, 
+        "Type verdipapir/Finansielt produkt": type, 
+        "ISIN-nummer / Orgnummer": ISIN, 
+        "Land selskapet erhjemmehørende i": country, 
+        "IB (antall)": IB,
+        "UB (antall)": UB, 
+        "Gevinst/tap innenfor fritaksmetoden": taxExemptGains, 
+        "Gevinst/tap utenfor fritaksmetoden": taxableGains, 
+        "Utbytte/utdeling innenfor fritaksmetoden": taxExemptDividends, 
+        "Utbytte/utdeling utenfor fritaksmetoden": taxableDividends
+      }
 
-} )
+
+
+  } )
+  return rows
+
+
+
+}
+
+/* return mergeArray(
+  Object.keys(companyFields[7911])
+  .filter( accountNumber => Number(accountNumber) < 3000 )
+  .map( accountNumber => createObject(accountNumber, companyFields[7911][accountNumber] ) )
+) */
+
+let generateShareholderRegistry = () => {
+
+  //NB: Kopiert inn i selskapsvariabel, denne brukes ikke
+
+  let shareholders = [{"shareholderID":"271089XXXYY","name":"Lene Gridseth","address":"Tollbugata 13, 0152 Oslo"}]
+  let shareTransactions = [{"shareCount":300,"shareholder":"271089"}]
+  let rows = shareholders.map( shareholder => {
+
+    let shareCount = shareTransactions
+    .filter( transaction => transaction.shareholder === shareholder.shareholderID )
+    .reduce( (sum, transaction) => sum + transaction.shareCount, 0 )
+
+    let totalPaidInCapital = shareTransactions
+    .filter( transaction => transaction.shareholder === shareholder.shareholderID )
+    .reduce( (sum, transaction) => sum + transaction.shareCount * transaction.capitalPerShare, 0 )
+
+    return returnObject({
+      "Navn": shareholder.name, 
+      "Adresse": shareholder.address, 
+      "F.dato/Org.nr.": shareholder.shareholderID, 
+      "Innbetalt kapital per aksje [snitt]": totalPaidInCapital / shareCount, 
+      "Antall aksjer": shareCount,
+      "Aksjenr": `1 - ${shareCount}`
+    }) 
+  })
+  return rows
+}
 
 
 

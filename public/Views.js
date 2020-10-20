@@ -103,6 +103,22 @@ let editableAttributeView = (S, A, entity, attributeName, value) => d([
   ], {class: "columns_3_1"})
 
 
+let selectShareholderView = (S, A, Event) => d([
+  entityLabel(S, A, 8807 ),
+  Object.keys(Event).includes("companyVariables") 
+    ?  Object.keys(Event["companyVariables"]).includes("8688") 
+      ? dropdown(
+          Event["eventAttributes"]["event/selectShareholder"], 
+          Event["companyVariables"][8688]
+            .map( shareholder => returnObject({value: shareholder.shareholderID, label: shareholder.name }) )
+            .concat({value: "", label: "Ingen aksjonær valgt."}), 
+            e => A.updateEntityAttribute(Event["eventAttributes"].entity, "event/selectShareholder", submitInputValue(e) ) 
+          ) 
+      : d("Error")
+    : d("Error")
+], {class: "columns_3_1"})
+
+
 
 let entityLabel = (S, A, entity, onClick) => d( [
   d([
@@ -233,7 +249,8 @@ let eventView = (S, Event , A) => {
   return d([
     h3( eventType["entity/label"] ),
     entityLabel(S, A, eventType.entity),
-    d( eventType["eventType/eventAttributes"].map( attributeEntity => editableAttributeView(S, A, Event["eventAttributes"].entity, S.getEntity(attributeEntity)["attr/name"], Event["eventAttributes"][ S.getEntity(attributeEntity)["attr/name"] ])  )),
+    eventAttributesView(S, A, Event),
+    //d( eventType["eventType/eventAttributes"].map( attributeEntity => editableAttributeView(S, A, Event["eventAttributes"].entity, S.getEntity(attributeEntity)["attr/name"], Event["eventAttributes"][ S.getEntity(attributeEntity)["attr/name"] ])  )),
     d( eventFieldEntities.map( eventFieldEntity => Event["eventFields"] ? entityLabelAndValue(S, A, eventFieldEntity, Event["eventFields"][eventFieldEntity]) : d("ERROR")  )),
     d(Event["errors"] 
       ? Event["errors"].map( eventErrorMessageView )
@@ -241,7 +258,13 @@ let eventView = (S, Event , A) => {
       retractEntityButton( A, Event["eventAttributes"]["entity"]),
     newEventDropdown(S, A, Event)
 ], {class: "feedContainer"} )
-} 
+}
+
+
+let eventAttributesView = (S, A, Event) => d(S.getEntity(Event["eventAttributes"]["event/eventTypeEntity"])["eventType/eventAttributes"].map( attributeEntity => (attributeEntity === 8807)
+    ? selectShareholderView(S, A, Event)
+    : editableAttributeView(S, A, Event["eventAttributes"].entity, S.getEntity(attributeEntity)["attr/name"], Event["eventAttributes"][ S.getEntity(attributeEntity)["attr/name"] ]) 
+    ))
 
 let companyDocPage = (S, A) => {
 
@@ -301,7 +324,7 @@ let companyDocView = (S, A, selectedVersion) => {
     d(categories.map( category => d([
       d(`Kategori: ${category}`),
       d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
-        .filter( entity => !["7364", "7911"].includes(String(entity)) )
+        .filter( entity => !["7364"].includes(String(entity)) )
         .map( entity => S.getEntity(entity) )
         .filter( Entity => Entity["entity/category"] === category )
         .map( Entity => {
