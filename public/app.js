@@ -131,16 +131,18 @@ let createAccountingTransaction = (companyFields, eventAttributes, records) => r
 })  
 
 let createInvestmentTransaction = (companyFields, eventAttributes) => {
-  let type = "investmentTransaction"
-  let identifier = eventAttributes['event/investment/orgnumber']
-  let shareCount = eventAttributes['event/attribute85']
-  let investmentObject = companyFields[8538].filter( investmentObject => investmentObject.identifier === identifier  )[0]
-  let accountNumber = investmentObject.isLongTermHolding === "Anleggsmiddel" ? "1820" : "1350";
-  let records = createAccountingTransaction(companyFields, eventAttributes, [
+  let investmentObject = companyFields[8538].filter( investmentObject => investmentObject.identifier === eventAttributes['event/investment/orgnumber']  )[0]
+  accountNumber = investmentObject.isLongTermHolding === "Anleggsmiddel" ? "1820" : "1350";
+  let transaction = createAccountingTransaction(companyFields, eventAttributes, [
     {'1920': eventAttributes['event/amount']},
     {[accountNumber]: -eventAttributes['event/amount']},
   ])
-  return {type, identifier, shareCount, records}
+  transaction.type = "investmentTransaction"
+  transaction.identifier = eventAttributes['event/investment/orgnumber']
+  transaction.shareCount = eventAttributes['event/attribute85']
+  
+  
+  return transaction
 }
 
 let createShareholderTransaction = (companyFields, eventAttributes) => {
@@ -226,7 +228,6 @@ let constructCompanyDoc = (S, storedEvents) => {
             let companyFieldsToKeep = existingCompanyFields.filter( entity => !directDependencies.includes(entity) )
             let dependenceisToUpdate = directDependencies.map( e => getDependencies(S, e) ).flat() //Get from companyfield
             let companyFieldsToUpdate = directDependencies.concat(dependenceisToUpdate) //Get from companyfield
-            
             let updatedFields = companyFieldsToUpdate.reduce( (updatedCompanyFields, entity) => mergerino( updatedCompanyFields, createObject(
               entity, //NB: Need better approach for undefined prevValue
               new Function([`prevValue` , `calculatedEventAttributes`, `companyFields`], S.getEntity(entity)["companyField/constructorFunctionString"])( (updatedCompanyFields[entity]), Event.eventFields, updatedCompanyFields ) 

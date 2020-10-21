@@ -325,8 +325,9 @@ let accumulatedEventChangesView = (S, A, selectedVersion) => {
 
   return d([
     h3(`Axels database etter hendelse ${selectedVersion}`),
-    d( ["7364", "8688", "8735", "8858", "8909", "8346"]
-        .map( entity => S.getEntity(entity) )
+    d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
+    .map( entity => S.getEntity(entity) )
+    .filter( Entity => Entity["entity/category"] === "ADB" )
         .map( Entity => {
 
           let values = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity] ? S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity] : []
@@ -352,8 +353,8 @@ let companyDocView = (S, A, selectedVersion) => {
     d(categories.map( category => d([
       d(`Kategori: ${category}`),
       d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
-        .filter( entity => !["7364", "8688", "8735", "8858", "8909", "8346"].includes(String(entity)) )
         .map( entity => S.getEntity(entity) )
+        .filter( Entity => Entity["entity/category"] !== "ADB" )
         .filter( Entity => Entity["entity/category"] === category )
         .map( Entity => {
 
