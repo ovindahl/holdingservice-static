@@ -239,7 +239,9 @@ let entityInspectorPopup = (S, A, entity) => d([
       d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin", selectedEntityType: S.getEntity(entity)["entity/entityType"], selectedCategory:  S.getEntityCategory(entity), selectedEntity: entity }))
     ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-let timelineView = (S, A) => d( S["selectedCompany"]["appliedEvents"].concat(S["selectedCompany"]["rejectedEvents"]).map( Event => eventView( S, Event, A )  )) 
+let timelineView = (S, A) => S["selectedCompany"] 
+  ? d( S["selectedCompany"]["appliedEvents"].concat(S["selectedCompany"]["rejectedEvents"]).map( Event => eventView( S, Event, A )  )) 
+  : d("Noe er galt med selskapets tidslinje")
 
 let eventView = (S, Event , A) => {
   let eventType = S.getEntity(Event["eventAttributes"]["event/eventTypeEntity"])
@@ -284,8 +286,10 @@ let companyDocPage = (S, A) => {
     d("<br>"),
     d([
       h3(`Hendelsesrapport for hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
-      d( Object.keys(eventType["eventType/eventFieldConstructors"]).map( eventFieldEntity => eventFieldEntity === "7343" ? newTransactionView(S, A, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) : entityLabelAndValue(S, A, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) ) )
+      d( Object.keys(eventType["eventType/eventFieldConstructors"]).map( eventFieldEntity => entityLabelAndValue(S, A, eventFieldEntity, selectedEvent["eventFields"][eventFieldEntity]) ) )
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d("<br>"),
+    accumulatedEventChangesView(S, A, selectedVersion),
     d("<br>"),
     companyDocView(S, A, selectedVersion),
   ] )
@@ -313,6 +317,30 @@ let newTransactionView = (S, A, eventFieldEntity, records) => d([
   ], {style: "border: 1px solid gray;"})
 ], {class: "eventInspectorRow"})
 
+let accumulatedEventChangesView = (S, A, selectedVersion) => {
+
+  let entityObjects = S.getAll("companyField")
+
+  let categories = entityObjects.map( entityObject => entityObject["entity/category"]).filter(filterUniqueValues)
+
+  return d([
+    h3(`Axels database etter hendelse ${selectedVersion}`),
+    d( ["7364", "8688", "8735", "8858", "8909", "8346"]
+        .map( entity => S.getEntity(entity) )
+        .map( Entity => {
+
+          let values = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity] ? S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity] : []
+
+          return d([
+            entityLabel(S, A, Entity.entity),
+            d(values.map( value => d(JSON.stringify(value)) ))
+          ])
+
+        }))
+  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+}
+
 let companyDocView = (S, A, selectedVersion) => {
 
   let entityObjects = S.getAll("companyField")
@@ -324,7 +352,7 @@ let companyDocView = (S, A, selectedVersion) => {
     d(categories.map( category => d([
       d(`Kategori: ${category}`),
       d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
-        .filter( entity => !["7364"].includes(String(entity)) )
+        .filter( entity => !["7364", "8688", "8735", "8858", "8909", "8346"].includes(String(entity)) )
         .map( entity => S.getEntity(entity) )
         .filter( Entity => Entity["entity/category"] === category )
         .map( Entity => {

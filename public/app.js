@@ -120,23 +120,52 @@ let combinedEventIsValid = (S, eventAttributes, companyVariables) => S.getEntity
 
 let newShareTransaction = (identifier, shareCount) => returnObject({identifier, shareCount})
     
-let newTransaction = (date, description, records) => records.map( record => returnObject({date, description, account: Object.keys(record)[0], amount: Object.values(record)[0] }) )
+let createRecord = recordObject => returnObject({account: Object.keys(recordObject)[0], amount: Object.values(recordObject)[0]})
 
-
+let createAccountingTransaction = (companyFields, eventAttributes, records) => returnObject({
+  type: "accountingTransaction",
+  id: companyFields[9212] + 1, 
+  date: eventAttributes['event/date'],
+  description: eventAttributes['event/description'],
+  records: records.map( createRecord )
+})  
 
 let createInvestmentTransaction = (companyFields, eventAttributes) => {
-  let type = "investment"
+  let type = "investmentTransaction"
   let identifier = eventAttributes['event/investment/orgnumber']
   let shareCount = eventAttributes['event/attribute85']
   let investmentObject = companyFields[8538].filter( investmentObject => investmentObject.identifier === identifier  )[0]
   let accountNumber = investmentObject.isLongTermHolding === "Anleggsmiddel" ? "1820" : "1350";
-  let records = newTransaction(eventAttributes['event/date'], eventAttributes['event/description'], [
+  let records = createAccountingTransaction(companyFields, eventAttributes, [
     {'1920': eventAttributes['event/amount']},
     {[accountNumber]: -eventAttributes['event/amount']},
   ])
   return {type, identifier, shareCount, records}
 }
 
+let createShareholderTransaction = (companyFields, eventAttributes) => {
+  let transaction = createAccountingTransaction(companyFields, eventAttributes, [
+    {'1579': eventAttributes['event/amount']},
+    {"2000": -eventAttributes['event/amount']},
+  ])
+  transaction.type = "shareholderTransaction"
+  transaction.shareholder = eventAttributes['event/selectShareholder']
+  transaction.shareCount = eventAttributes['event/attribute85']
+  transaction.capitalPerShare = companyFields[6821] + eventAttributes['event/sharePremium']
+  
+  return transaction
+}
+
+let createCreditorTransaction = (companyFields, eventAttributes) => {
+  let transaction = createAccountingTransaction(companyFields, eventAttributes, [
+    {'1920': eventAttributes['event/amount']}, 
+    {'2910': -eventAttributes['event/amount']}
+  ])
+  transaction.type = "creditorTransaction"
+  transaction.identifier = eventAttributes['event/creditorID']
+  
+  return transaction
+}
 
 
 let getAccountBalance = (companyField, accountNumber) => (typeof companyField[ accountNumber ] === "number") ? companyField[ accountNumber ] : 0
@@ -147,7 +176,10 @@ let sumOpeningBalanceAccounts = (companyFields, accountNumbers) => accountNumber
 
 let constructCompanyDoc = (S, storedEvents) => {
 
-  let initialCompanyDoc = {}
+  let initialCompanyDoc = {
+    9212: 0, //Bilagsnr
+    7364: [] //Hovedbok
+  }
 
   let docVersions = [initialCompanyDoc]
 
@@ -197,7 +229,7 @@ let constructCompanyDoc = (S, storedEvents) => {
             
             let updatedFields = companyFieldsToUpdate.reduce( (updatedCompanyFields, entity) => mergerino( updatedCompanyFields, createObject(
               entity, //NB: Need better approach for undefined prevValue
-              new Function([`prevValue` , `calculatedEventAttributes`, `companyFields`], S.getEntity(entity)["companyField/constructorFunctionString"])( ((typeof updatedCompanyFields[entity] === "undefined") ? 0 : updatedCompanyFields[entity]), Event.eventFields, updatedCompanyFields ) 
+              new Function([`prevValue` , `calculatedEventAttributes`, `companyFields`], S.getEntity(entity)["companyField/constructorFunctionString"])( (updatedCompanyFields[entity]), Event.eventFields, updatedCompanyFields ) 
             )), companyDoc )
 
             let newDocVersion =  mergeArray( companyFieldsToKeep.map( entity => createObject(entity, companyDoc[entity] ) ).concat( updatedFields ) )
@@ -220,6 +252,7 @@ let constructCompanyDoc = (S, storedEvents) => {
   return Company
 
 }
+
 
 let getDependencies = (S, entity) => S.getEntity(entity)["companyField/companyFields"].concat( S.getEntity(entity)["companyField/companyFields"].map( e => getDependencies(S, e) ).flat()  )
 
@@ -305,8 +338,6 @@ let generateShareholderRegistry = () => {
   })
   return rows
 }
-
-
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
