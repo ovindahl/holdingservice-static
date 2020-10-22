@@ -169,6 +169,24 @@ let createCreditorTransaction = (companyFields, eventAttributes) => {
   return transaction
 }
 
+let createEventOutput = (companyFields, eventAttributes, newEntities, attributeNames) => returnObject({
+  Entities: (typeof newEntities == "undefined") ? [] : newEntities,
+  attributeUpdates: (typeof attributeNames == "undefined") ? [] : createAttributeUpdates(companyFields, eventAttributes, attributeNames),
+});
+
+let createAttributeUpdates = (companyFields, eventAttributes, attributeNames) => mergeArray( attributeNames.map( attributeName => returnObject({attributeName, value: eventAttributes[attributeName], 'event/index': eventAttributes['event/index'], 'event/date': eventAttributes['event/date'] }) ) ) 
+
+let aadsfdsaf = (companyFields) => {
+
+  let allDatoms = companyFields[9384]
+
+  let EntititesObject = allDatoms.reduce( (Entitites, datom) => mergerino(Entitites, createObject(datom.entity, createObject(datom.attribute, datom.value)))    , {} )
+
+  return Object.entries(EntititesObject).map( entry => createObject(entry[0], entry[1])  )
+
+}
+
+let getCompanyAttribute = (companyFields, attributeName) => companyFields[9447][attributeName]
 
 let getAccountBalance = (companyField, accountNumber) => (typeof companyField[ accountNumber ] === "number") ? companyField[ accountNumber ] : 0
 
@@ -178,79 +196,56 @@ let sumOpeningBalanceAccounts = (companyFields, accountNumbers) => accountNumber
 
 let constructCompanyDoc = (S, storedEvents) => {
 
-  let initialCompanyDoc = {
-    9212: 0, //Bilagsnr
-    7364: [] //Hovedbok
-  }
+  let initialCompanyDoc = [{
+      index: 0,
+      Datoms: [],
+      Entities: {},
+      companyFields: {
+        9438: 1, //EntitetsID for selskapet
+        9423: 1, //Høyeste entitetsID 
+      },
+      isValid: true
+    }]
 
-  let docVersions = [initialCompanyDoc]
-
-  let appliedEvents = []
-  let rejectedEvents = []
-
-  storedEvents.forEach( (eventAttributes, index) => {
-    let Event = {eventAttributes}
-    if(rejectedEvents.length > 0){ rejectedEvents.push( Event ) }
-    else{
+  let companyDoc = storedEvents.reduce( (companyDocVersions, eventAttributes, prevVersionIndex) => {
+    let prevCompanyDoc = companyDocVersions[prevVersionIndex]
+    if(!prevCompanyDoc.isValid){return prevCompanyDoc}
       let eventType = S.getEntity(  eventAttributes["event/eventTypeEntity"] )
-      let companyDoc = docVersions[index]
-      let companyVariables = mergeArray( eventType["eventType/requiredCompanyFields"].map( entity => createObject( entity, companyDoc[ entity ] )  ) )  //validation TBD
-      Event.companyVariables = companyVariables
       let attributesAreValid = eventAttributesAreValid(S, eventAttributes)
-      if(!attributesAreValid){rejectedEvents.push( Event ) }
-      else{
-        
-        let eventIsValid = combinedEventIsValid(S, eventAttributes, companyVariables)
-        if(!eventIsValid){
-          Event.errors = eventType["eventType/eventValidators"]
-          .map( entity =>  
-            new Function([`eventAttributes`, `companyFields`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( eventAttributes, companyVariables )
-              ? null
-              : S.getEntity(entity)["eventValidator/errorMessage"]
-          ).filter( error => error !== null )
-          rejectedEvents.push( Event )
-        }
-        else{
+      if(!attributesAreValid){return mergerino(prevCompanyDoc, {isValid: false}) }
+        let eventIsValid = combinedEventIsValid(S, eventAttributes, prevCompanyDoc.companyFields)
+        if(!eventIsValid){return mergerino(prevCompanyDoc, {isValid: false}) }
+          let eventDatoms = eventType["eventType/newDatoms"].map( datom => newDatom(
+            new Function( [`companyFields`, `eventAttributes`, `Entities`], datom["entity"] )( prevCompanyDoc.companyFields, eventAttributes, prevCompanyDoc.Entities ),
+            datom.attribute,
+            new Function( [`companyFields`, `eventAttributes`, `Entities`], datom["value"] )( prevCompanyDoc.companyFields, eventAttributes, prevCompanyDoc.Entities )
+            )
+          )
+          let updatedCompanyEntities = eventDatoms.reduce( (Entities, datom) => mergerino(
+            Entities,
+            createObject(datom.entity, createObject(datom.attribute, datom.value ))
+          ), prevCompanyDoc.Entities )
 
-            let eventFieldConstructor = entity => new Function( [`eventAttributes`, `companyFields`, `updatedEventFields`], eventType["eventType/eventFieldConstructors"][entity] )
+          let companyFieldsToUpdate = [9423, 9948]
 
-            let eventFieldsToUpdate = Object.keys(eventType["eventType/eventFieldConstructors"])
+          let companyFields = mergeArray( companyFieldsToUpdate.map( entity => createObject(entity, new Function([`companyEntities`], S.getEntity(entity)["companyField/constructorFunctionString"])( updatedCompanyEntities ) ) ) ) 
+          
+          let index = prevVersionIndex + 1
 
-            Event.eventFields = eventFieldsToUpdate.reduce( (updatedEventFields, entity) => mergerino( 
-              updatedEventFields, 
-              createObject(entity, eventFieldConstructor( entity )( eventAttributes, companyVariables, updatedEventFields ) )
-            ), {} )
+          let companyDocVersion = {
+            index, 
+            eventAttributes, 
+            eventDatoms,
+            Datoms: prevCompanyDoc.Datoms.concat(eventDatoms),
+            Entities: updatedCompanyEntities,
+            companyFields: companyFields,
+            isValid: true
+          }
+          return companyDocVersions.concat(companyDocVersion)
 
-            appliedEvents.push( Event )
+  } , initialCompanyDoc )
 
-            let existingCompanyFields = Object.keys(companyDoc).concat(   ).filter( filterUniqueValues )
-            let directDependencies = eventFieldsToUpdate.map( eventFieldEntity => S.getEntity(eventFieldEntity)["eventField/companyFields"]  ).flat() //Get from companyfield
-            let companyFieldsToKeep = existingCompanyFields.filter( entity => !directDependencies.includes(entity) )
-            let dependenceisToUpdate = directDependencies.map( e => getDependencies(S, e) ).flat() //Get from companyfield
-            let companyFieldsToUpdate = directDependencies.concat(dependenceisToUpdate) //Get from companyfield
-            let updatedFields = companyFieldsToUpdate.reduce( (updatedCompanyFields, entity) => mergerino( updatedCompanyFields, createObject(
-              entity, //NB: Need better approach for undefined prevValue
-              new Function([`prevValue` , `calculatedEventAttributes`, `companyFields`], S.getEntity(entity)["companyField/constructorFunctionString"])( (updatedCompanyFields[entity]), Event.eventFields, updatedCompanyFields ) 
-            )), companyDoc )
-
-            let newDocVersion =  mergeArray( companyFieldsToKeep.map( entity => createObject(entity, companyDoc[entity] ) ).concat( updatedFields ) )
-            docVersions.push(newDocVersion)
-        }
-      }
-    }
-  })
-
-  //Change to user-friendly labels?
-
-  let Company = {
-    orgnumber: storedEvents[0]["event/incorporation/orgnumber"],
-    name: storedEvents[0]["event/attribute83"],
-    appliedEvents,
-    companyFields: docVersions,
-    rejectedEvents
-  }
-
-  return Company
+  return companyDoc
 
 }
 
@@ -410,12 +405,12 @@ let getUserActions = (S) => returnObject({
     createEntity: async type => update( await sideEffects.submitDatomsWithValidation(S, 
       defaultEntityDatoms(type, `[${type}] uten navn`, `[${type}] Beskrivelse mangler.`, S["UIstate"].selectedCategory).concat( datomsByEventType[type] ) 
     )),
-    createEvent: async ( prevEvent, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, 
-      defaultEntityDatoms("event", `Selskapshendelse for ${prevEvent["eventAttributes"]["event/incorporation/orgnumber"]}`, `Selskapshendelse for ${prevEvent["eventAttributes"]["event/incorporation/orgnumber"]}`, null).concat( [
+    createEvent: async ( eventAttributes, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, 
+      defaultEntityDatoms("event", `Selskapshendelse for ${eventAttributes["event/incorporation/orgnumber"]}`, `Selskapshendelse for ${eventAttributes["event/incorporation/orgnumber"]}`, null).concat( [
         newDatom("newEntity", "event/eventTypeEntity", newEventTypeEntity),
-        newDatom("newEntity", "event/incorporation/orgnumber", prevEvent["eventAttributes"]["event/incorporation/orgnumber"] ),
-        newDatom("newEntity", "event/index", prevEvent["eventAttributes"]["event/index"] + 1 ),
-        newDatom("newEntity", "event/date", prevEvent["eventAttributes"]["event/date"] ),
+        newDatom("newEntity", "event/incorporation/orgnumber", eventAttributes["event/incorporation/orgnumber"] ),
+        newDatom("newEntity", "event/index", eventAttributes["event/index"] + 1 ),
+        newDatom("newEntity", "event/date", eventAttributes["event/date"] ),
         newDatom("newEntity", "event/currency", "NOK")
       ]))),
       undoTx: async (tx) => {
