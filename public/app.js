@@ -226,7 +226,7 @@ let constructCompanyDoc = (S, storedEvents) => {
             createObject(datom.entity, createObject(datom.attribute, datom.value ))
           ), prevCompanyDoc.Entities )
 
-          let companyFieldsToUpdate = [9423, 9948]
+          let companyFieldsToUpdate = [9423, 9948, 9953]
 
           let companyFields = mergeArray( companyFieldsToUpdate.map( entity => createObject(entity, new Function([`companyEntities`], S.getEntity(entity)["companyField/constructorFunctionString"])( updatedCompanyEntities ) ) ) ) 
           

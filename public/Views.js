@@ -297,11 +297,11 @@ let companyDocPage = (S, A) => {
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
     d("<br>"),
     d([
-      h3(`Alle selskapsdatomer etter hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
+      h3(`ADB (Alle selskapsdatomer) etter hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
       d( companyDocVersion.Datoms.map( datom => d(JSON.stringify(datom)) ) ),
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
     d([
-      h3(`Selskapets entiteter etter hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
+      h3(`ADB (Selskapets entiteter) etter hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
       d( Object.entries(companyDocVersion.Entities).map( arr => d([
         h3(arr[0]),
         d(Object.entries(arr[1]).map( entry => d([
@@ -309,7 +309,13 @@ let companyDocPage = (S, A) => {
           ])))
       ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}) 
       )),
-    ])
+    ]),
+    d([
+      h3(`Selskapsrapporter etter hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
+      d( Object.entries(companyDocVersion.companyFields).map( entry => d([
+        entityLabelAndValue(S, A, entry[0], entry[1])
+      ])  ) ),
+    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
     /* accumulatedEventChangesView(S, A, selectedVersion),
     d("<br>"),
     companyDocView(S, A, selectedVersion), */
