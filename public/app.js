@@ -242,6 +242,7 @@ let constructCompanyDoc = (S, storedEvents) => {
           ), Q.companyEntities )
 
           Q.latestEntityID = Number( Object.keys(updatedCompanyEntities).pop() )
+          Q.companyEntities = updatedCompanyEntities
 
 
           let updatedReports = mergeArray( S.getAll("report")

@@ -303,11 +303,16 @@ let companyDocPage = (S, A) => {
           ])))
       ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}) 
       )),
-    ]),
+    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d("<br>"),
     d([
       h3(`Selskapsrapporter etter hendelse ${selectedVersion}: ${eventType["eventType/label"]}`),
-      d( Object.entries(companyDocVersion.companyFields).map( entry => d([
-        entityLabelAndValue(S, A, entry[0], entry[1])
+      d( Object.entries(companyDocVersion.Reports).map( ReportEntry => d([
+        entityLabel(S, A, ReportEntry[0]),
+        d(Object.entries(ReportEntry[1]).map( ReportFieldEntry => d([
+          entityLabelAndValue(S, A, ReportFieldEntry[0], ReportFieldEntry[1])
+        ]))),
+        d("<br>")
       ])  ) ),
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
   ] )
