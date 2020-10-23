@@ -394,7 +394,7 @@ let newDatomsConstructorView = (S, A, entity) => {
       dropdown(datom.attribute, S.findEntities( E => E["entity/entityType"] === 7684  )
         .filter( E => !["[Arkiverte attributter]", "[db]" ].includes(E["entity/category"])  )
         .sort( sortEntitiesAlphabeticallyByLabel  )
-        .map( E => returnObject({value: E.entity, label: E["entity/label"]}) ), e => A.updateEntityAttribute(entity, "eventType/newDatoms", mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})'`}})   )  ),
+        .map( E => returnObject({value: E.entity, label: E["entity/label"]}) ), e => A.updateEntityAttribute(entity, "eventType/newDatoms", mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}})   )  ),
       textArea(datom.value, {class:"textArea_code"}, e => A.updateEntityAttribute(entity, "eventType/newDatoms", mergerino(datoms, {[index]: {value: submitInputValue(e)}})   )),
       submitButton("[Slett]", e => A.updateEntityAttribute(entity, "eventType/newDatoms", datoms.filter( (d, i) => i !== index  ) )),
     ], {class: "columns_2_2_2_1"}) )),
