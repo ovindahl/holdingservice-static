@@ -106,91 +106,6 @@ let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["e
 
 let validateAttributeValue = (S, attributeEntity, value) =>  new Function(`inputValue`, S.getEntity( attributeEntity )["attribute/validatorFunctionString"] )( value )
 
-let eventAttributesAreValid = (S, eventAttributes) => S.getEntity(  eventAttributes["event/eventTypeEntity"] ) === null 
-  ? false 
-  : S.getEntity(  eventAttributes["event/eventTypeEntity"] )["eventType/eventAttributes"]
-    .every( attributeEntity =>  
-      validateAttributeValue(S, attributeEntity, eventAttributes[ S.getEntity( attributeEntity )["attr/name"] ] )
-    )
-
-
-
-let newShareTransaction = (identifier, shareCount) => returnObject({identifier, shareCount})
-    
-let createRecord = recordObject => returnObject({account: Object.keys(recordObject)[0], amount: Object.values(recordObject)[0]})
-
-let createAccountingTransaction = (companyFields, eventAttributes, records) => returnObject({
-  type: "accountingTransaction",
-  id: companyFields[9212] + 1, 
-  date: eventAttributes['event/date'],
-  description: eventAttributes['event/description'],
-  records: records.map( createRecord )
-})  
-
-let createInvestmentTransaction = (companyFields, eventAttributes) => {
-  let investmentObject = companyFields[8538].filter( investmentObject => investmentObject.identifier === eventAttributes['event/investment/orgnumber']  )[0]
-  accountNumber = investmentObject.isLongTermHolding === "Anleggsmiddel" ? "1820" : "1350";
-  let transaction = createAccountingTransaction(companyFields, eventAttributes, [
-    {'1920': eventAttributes['event/amount']},
-    {[accountNumber]: -eventAttributes['event/amount']},
-  ])
-  transaction.type = "investmentTransaction"
-  transaction.identifier = eventAttributes['event/investment/orgnumber']
-  transaction.shareCount = eventAttributes['event/attribute85']
-  
-  
-  return transaction
-}
-
-let createShareholderTransaction = (companyFields, eventAttributes) => {
-  let transaction = createAccountingTransaction(companyFields, eventAttributes, [
-    {'1579': eventAttributes['event/amount']},
-    {"2000": -eventAttributes['event/amount']},
-  ])
-  transaction.type = "shareholderTransaction"
-  transaction.shareholder = eventAttributes['event/selectShareholder']
-  transaction.shareCount = eventAttributes['event/attribute85']
-  transaction.capitalPerShare = companyFields[6821] + eventAttributes['event/sharePremium']
-  
-  return transaction
-}
-
-let createCreditorTransaction = (companyFields, eventAttributes) => {
-  let transaction = createAccountingTransaction(companyFields, eventAttributes, [
-    {'1920': eventAttributes['event/amount']}, 
-    {'2910': -eventAttributes['event/amount']}
-  ])
-  transaction.type = "creditorTransaction"
-  transaction.identifier = eventAttributes['event/creditorID']
-  
-  return transaction
-}
-
-let createEventOutput = (companyFields, eventAttributes, newEntities, attributeNames) => returnObject({
-  Entities: (typeof newEntities == "undefined") ? [] : newEntities,
-  attributeUpdates: (typeof attributeNames == "undefined") ? [] : createAttributeUpdates(companyFields, eventAttributes, attributeNames),
-});
-
-let createAttributeUpdates = (companyFields, eventAttributes, attributeNames) => mergeArray( attributeNames.map( attributeName => returnObject({attributeName, value: eventAttributes[attributeName], 'event/index': eventAttributes['event/index'], 'event/date': eventAttributes['event/date'] }) ) ) 
-
-let aadsfdsaf = (companyFields) => {
-
-  let allDatoms = companyFields[9384]
-
-  let EntititesObject = allDatoms.reduce( (Entitites, datom) => mergerino(Entitites, createObject(datom.entity, createObject(datom.attribute, datom.value)))    , {} )
-
-  return Object.entries(EntititesObject).map( entry => createObject(entry[0], entry[1])  )
-
-}
-
-let getCompanyAttribute = (companyFields, attributeName) => companyFields[9447][attributeName]
-
-let getAccountBalance = (companyField, accountNumber) => (typeof companyField[ accountNumber ] === "number") ? companyField[ accountNumber ] : 0
-
-let sumAccounts = (companyFields, accountNumbers) => accountNumbers.reduce( (sum, accountNumber) => sum + getAccountBalance(companyFields[7911], accountNumber), 0 )
-
-let sumOpeningBalanceAccounts = (companyFields, accountNumbers) => accountNumbers.reduce( (sum, accountNumber) => sum + getAccountBalance(companyFields[8240], accountNumber), 0 )
-
 let constructCompanyDoc = (S, storedEvents) => {
 
   let initialCompanyDoc = [{
@@ -207,8 +122,11 @@ let constructCompanyDoc = (S, storedEvents) => {
       isValid: true
     }]
 
-  let companyDoc = storedEvents.reduce( (companyDocVersions, eventAttributes, prevVersionIndex) => {
+    let companyDoc = storedEvents.reduce( (companyDocVersions, eventAttributes, prevVersionIndex) => {
     let prevCompanyDoc = companyDocVersions[prevVersionIndex]
+
+    console.log(companyDocVersions, eventAttributes)
+
 
     let Q = {
       companyEntities: companyDocVersions[prevVersionIndex]["Entities"],
@@ -218,10 +136,17 @@ let constructCompanyDoc = (S, storedEvents) => {
     Q.userInput = entity => eventAttributes[ S.getEntity(entity)["attr/name"] ]
 
     if(!prevCompanyDoc.isValid){return companyDocVersions}
+      if(!S.getEntity(  eventAttributes["event/eventTypeEntity"] )){return mergerino(companyDocVersions, {isValid: false}) }
       let eventType = S.getEntity(  eventAttributes["event/eventTypeEntity"] )
-      let attributesAreValid = eventAttributesAreValid(S, eventAttributes)
-      if(!attributesAreValid){return mergerino(companyDocVersions, {isValid: false}) }
+      let attributesAreValid = eventType["eventType/eventAttributes"].every( attributeEntity =>  
+        validateAttributeValue(S, attributeEntity, eventAttributes[ S.getEntity( attributeEntity )["attr/name"] ] )
+      )
 
+
+
+
+
+      if(!attributesAreValid){return mergerino(companyDocVersions, {isValid: false}) }
         let eventValidators = S.getEntity( eventAttributes["event/eventTypeEntity"] )["eventType/eventValidators"]
         let eventIsValid = eventValidators.every( entity =>  
           new Function([`Q`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( Q ) //To be updated
@@ -236,6 +161,8 @@ let constructCompanyDoc = (S, storedEvents) => {
             )
           )
 
+          
+
           let updatedCompanyEntities = eventDatoms.reduce( (Entities, datom) => mergerino(
             Entities,
             createObject(datom.entity, createObject(datom.attribute, datom.value ))
@@ -247,6 +174,7 @@ let constructCompanyDoc = (S, storedEvents) => {
 
           let updatedReports = mergeArray( S.getAll("report")
             .filter( report => new Function( [`eventDatoms`, `Q`], report["report/triggerFunction"] )( eventDatoms, Q)   )
+            //.sort(),
             .map( report => createObject(report.entity, mergeArray(report["report/reportFields"].map( reportField => createObject(reportField.attribute, new Function( [`Q`], reportField["value"] )( Q ) )  ))  ))
           )
           
@@ -261,6 +189,8 @@ let constructCompanyDoc = (S, storedEvents) => {
             Reports: updatedReports,
             isValid: true
           }
+
+
           return companyDocVersions.concat(companyDocVersion)
 
   } , initialCompanyDoc )
@@ -269,91 +199,6 @@ let constructCompanyDoc = (S, storedEvents) => {
 
 }
 
-
-let getDependencies = (S, entity) => S.getEntity(entity)["companyField/companyFields"].concat( S.getEntity(entity)["companyField/companyFields"].map( e => getDependencies(S, e) ).flat()  )
-
-//Company construction END
-
-let constructInvestmentHoldings = (companyFields) => {
-
-  let investmentObjects = companyFields[8538]
-  let investmentTransactions = companyFields[8346]
-  let rows = investmentObjects.map( investmentObject => {
-
-    let selectedTransactions = investmentTransactions
-      .filter( entry => typeof entry === "object" )
-      .filter( entry => entry.identifier === investmentObject.identifier )
-
-      let name = investmentObject.name
-      let type = "Aksjer"
-      let ISIN = investmentObject.identifier
-      let country = investmentObject.country
-      let IB = 0;
-      let UB = selectedTransactions.filter( t => t.shareCount ).reduce( (sum, transaction) => sum + transaction.shareCount, 0 );
-      let gains = selectedTransactions.filter( t => t.unrealizedGain ).reduce( (sum, transaction) => sum + transaction.unrealizedGain, 0 );
-      let taxExemptGains = (investmentObject.isTaxExempt === "Innenfor fritaksmetoden") ? gains : 0
-      let taxableGains = (investmentObject.isTaxExempt === "Utenfor fritaksmetoden") ? gains : 0
-
-      let dividends = selectedTransactions.filter( t => t.dividend ).reduce( (sum, transaction) => sum + transaction.dividend, 0 );
-      let taxExemptDividends = investmentObject.isTaxExempt ? dividends : 0
-      let taxableDividends = investmentObject.isTaxExempt ? 0 : dividends
-
-
-      return {
-        "Navn på verdipapir/Finansielt produkt": name, 
-        "Type verdipapir/Finansielt produkt": type, 
-        "ISIN-nummer / Orgnummer": ISIN, 
-        "Land selskapet erhjemmehørende i": country, 
-        "IB (antall)": IB,
-        "UB (antall)": UB, 
-        "Gevinst/tap innenfor fritaksmetoden": taxExemptGains, 
-        "Gevinst/tap utenfor fritaksmetoden": taxableGains, 
-        "Utbytte/utdeling innenfor fritaksmetoden": taxExemptDividends, 
-        "Utbytte/utdeling utenfor fritaksmetoden": taxableDividends
-      }
-
-
-
-  } )
-  return rows
-
-
-
-}
-
-/* return mergeArray(
-  Object.keys(companyFields[7911])
-  .filter( accountNumber => Number(accountNumber) < 3000 )
-  .map( accountNumber => createObject(accountNumber, companyFields[7911][accountNumber] ) )
-) */
-
-let generateShareholderRegistry = () => {
-
-  //NB: Kopiert inn i selskapsvariabel, denne brukes ikke
-
-  let shareholders = [{"shareholderID":"271089XXXYY","name":"Lene Gridseth","address":"Tollbugata 13, 0152 Oslo"}]
-  let shareTransactions = [{"shareCount":300,"shareholder":"271089"}]
-  let rows = shareholders.map( shareholder => {
-
-    let shareCount = shareTransactions
-    .filter( transaction => transaction.shareholder === shareholder.shareholderID )
-    .reduce( (sum, transaction) => sum + transaction.shareCount, 0 )
-
-    let totalPaidInCapital = shareTransactions
-    .filter( transaction => transaction.shareholder === shareholder.shareholderID )
-    .reduce( (sum, transaction) => sum + transaction.shareCount * transaction.capitalPerShare, 0 )
-
-    return returnObject({
-      "Navn": shareholder.name, 
-      "Adresse": shareholder.address, 
-      "F.dato/Org.nr.": shareholder.shareholderID, 
-      "Innbetalt kapital per aksje [snitt]": totalPaidInCapital / shareCount, 
-      "Antall aksjer": shareCount,
-      "Aksjenr": `1 - ${shareCount}`
-    }) 
-  })
-  return rows
-}
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
@@ -390,14 +235,7 @@ const datomsByEventType = {
     newDatom("newEntity", "eventType/eventAttributes", [] ),
     newDatom("newEntity", "eventType/requiredCompanyFields", [] ),
     newDatom("newEntity", "eventType/eventValidators", [] ),
-    newDatom("newEntity", "eventType/eventFieldConstructors", {} ),
-  ],
-  "eventField": [
-    newDatom("newEntity", "eventField/companyFields", [] ),
-  ],
-  "companyField": [
-    newDatom("newEntity", "companyField/constructorFunctionString", `return 0;`),
-    newDatom("newEntity", "companyField/companyFields", []),
+    newDatom("newEntity",  "eventType/newDatoms", [{entity: "return 1;", attribute: 3182, value: "return Q.userInput(3182);"}])
   ],
   "eventValidator": [
     newDatom("newEntity", "eventValidator/validatorFunctionString", "return true;" ),

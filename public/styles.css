@@ -50,6 +50,11 @@ body {background-color: #F2F3F5;}
     grid-template-columns: 1fr 1fr 1fr;
 }
 
+.columns_2_4_4{
+    display:grid;
+    grid-template-columns: 2fr 4fr 4fr;
+}
+
 .columns_1_1_1_1 {
     display:grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -58,6 +63,11 @@ body {background-color: #F2F3F5;}
 .columns_2_2_2_1 {
     display:grid;
     grid-template-columns: 2fr 2fr 2fr 1fr;
+}
+
+.columns_2_2_1 {
+    display:grid;
+    grid-template-columns: 2fr 2fr 1fr;
 }
 
 .redlineText {
