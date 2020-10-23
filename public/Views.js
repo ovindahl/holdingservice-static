@@ -74,7 +74,7 @@ let submitInputValue = e => {
 }
 let span = (text, tooltip, attributesObject, eventType, action) => htmlElementObject("span", mergerino({"title": tooltip}, attributesObject), text, eventType, action)
 let textArea = (content, attributesObject, onChange) => htmlElementObject("textarea", attributesObject, content, "change", onChange )
-let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", e => {
+let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("select", {id: getNewElementID(), style:"padding: 1em; border: 1px solid lightgray; max-width: 200px;"}, optionObjects.map( o => `<option value="${o.value}" ${o.value === value ? `selected="selected"` : ""}>${o.label}</option>` ).join(''), "change", e => {
   let dropdown = document.getElementById(e.srcElement.id)
   dropdown.style = "background-color: darkgray;"
   updateFunction(e)
@@ -260,10 +260,6 @@ let eventView = (S, companyDocVersion , A) => {
       entityLabel(S, A, datom.attribute),
       d( JSON.stringify(datom.value) )
     ], {class: "columns_1_1_1_1"})) ),
-    //d( eventFieldEntities.map( eventFieldEntity => Event["eventFields"] ? entityLabelAndValue(S, A, eventFieldEntity, Event["eventFields"][eventFieldEntity]) : d("ERROR")  )),
-    /* d(Event["errors"] 
-      ? Event["errors"].map( eventErrorMessageView )
-      : ""), */
     retractEntityButton( A, eventAttributes["entity"]),
     newEventDropdown(S, A, eventAttributes)
 ], {class: "feedContainer"} )
@@ -278,8 +274,6 @@ let companyDocPage = (S, A) => {
   let selectedVersion = S["UIstate"]["companyDocPage/selectedVersion"];
   let companyDocVersion =  S["selectedCompany"][selectedVersion ]
   let eventType = S.getEntity( companyDocVersion["eventAttributes"]["event/eventTypeEntity"])
-
-  console.log(companyDocVersion)
 
   return d([
     d([
@@ -316,86 +310,10 @@ let companyDocPage = (S, A) => {
         entityLabelAndValue(S, A, entry[0], entry[1])
       ])  ) ),
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-    /* accumulatedEventChangesView(S, A, selectedVersion),
-    d("<br>"),
-    companyDocView(S, A, selectedVersion), */
   ] )
 }
 
-let newTransactionView = (S, A, eventFieldEntity, records) => d([
-  entityLabel(S, A, eventFieldEntity),
-  d([
-    d(`Nye posteringer:`),
-    d([
-      d(`#`),
-      d(`Konto`),
-      d(`Beløp`),
-    ], {class: "columns_1_1_1"}),
-    d( records.map( (record, index) => d([
-      d(`${index}`),
-      d(`${record.account}`, {class: "rightAlignText"}),
-      d(`${record.amount}`, {class: "rightAlignText"}),
-    ], {class: "columns_1_1_1"}) ) ),
-    d([
-      d(``),
-      d(`Sum`),
-      d(`${records.reduce(  (sum, record) => sum + record.amount, 0 )}`, {class: "rightAlignText"}),
-    ], {class: "columns_1_1_1"}),
-  ], {style: "border: 1px solid gray;"})
-], {class: "eventInspectorRow"})
 
-let accumulatedEventChangesView = (S, A, selectedVersion) => {
-
-  let entityObjects = S.getAll("companyField")
-
-  let categories = entityObjects.map( entityObject => entityObject["entity/category"]).filter(filterUniqueValues)
-
-  return d([
-    h3(`Axels database etter hendelse ${selectedVersion}`),
-    d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
-    .map( entity => S.getEntity(entity) )
-    .filter( Entity => Entity["entity/category"] === "ADB" )
-        .map( Entity => {
-
-          let values = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity] ? S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity] : []
-
-          return d([
-            entityLabel(S, A, logThis(Entity).entity),
-            d(values.map( value => d(JSON.stringify(value)) ))
-          ])
-
-        }))
-  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-
-}
-
-let companyDocView = (S, A, selectedVersion) => {
-
-  let entityObjects = S.getAll("companyField")
-
-  let categories = entityObjects.map( entityObject => entityObject["entity/category"]).filter(filterUniqueValues)
-
-  return d([
-    h3(`Hele Selskapsdokumentet etter hendelse ${selectedVersion}`),
-    d(categories.map( category => d([
-      d(`Kategori: ${category}`),
-      d( Object.keys(S["selectedCompany"]["companyFields"][selectedVersion ])
-        .map( entity => S.getEntity(entity) )
-        .filter( Entity => Entity["entity/category"] !== "ADB" )
-        .filter( Entity => Entity["entity/category"] === category )
-        .map( Entity => {
-
-          let value = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] ][Entity.entity]
-          let prevValue = S["selectedCompany"]["companyFields"][ S["UIstate"]["companyDocPage/selectedVersion"] - 1 ][Entity.entity]
-
-          return (value === prevValue) ? entityLabelAndValue(S, A, Entity.entity, value) : entityLabelAndRedlinedValue(S, A, Entity.entity, value , prevValue )
-
-        }))
-    ]) ))
-    
-  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-
-}
 
 let latestDatomsPage = (S, A) => d([
   sidebar_left(S, A),
@@ -440,8 +358,6 @@ let entityPage = (S, A) => d([
   d(""),
 ], {class: "pageContainer"})
 
-
-
 let entityAdminView = (S, A, entity) => d([
   h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 3px;`}),
   d(
@@ -450,25 +366,6 @@ let entityAdminView = (S, A, entity) => d([
       .map( attributeName => editableAttributeView(S, A, entity, attributeName, S.getEntity(entity)[attributeName] )  ) //d(`${attributeName}: ${S.getEntity(entity)[attributeName]}`)
   )
 ])
-
-
-let eventFieldConstructorsView = (S, A, entity) => d([
-  d(
-    Object.keys(S.getEntity(entity)["eventType/eventFieldConstructors"]).map( eventFieldEntity => d([
-      entityLabel(S, A, eventFieldEntity ),
-      textArea( S.getEntity(entity )["eventType/eventFieldConstructors"][eventFieldEntity],{class: "textArea_code"} , e => A.updateEntityAttribute( entity, "eventType/eventFieldConstructors",  mergerino( S.getEntity(entity)["eventType/eventFieldConstructors"], createObject(eventFieldEntity, submitInputValue(e).replaceAll(`"`, `'`) ) )  )),
-      span(" [ Fjern ] ", "Fjern denne oppføringen.", {class: "textButton_narrow"}, "click", e => A.updateEntityAttribute( entity, "eventType/eventFieldConstructors",  mergerino( S.getEntity(entity)["eventType/eventFieldConstructors"], createObject(eventFieldEntity, undefined ) )  )  )
-    ], {class: "eventFieldConstructorRow"}))
-  ),
-  dropdown(
-    0,
-    S.getAll("eventField")
-      .filter( e => !Object.keys(S.getEntity(entity)["eventType/eventFieldConstructors"]).includes( String(e.entity) )  )
-      .map( e => returnObject({value: e.entity, label: `${e["entity/label"]}`}))
-      .concat({value: 0, label: "Legg til"}), 
-    e => A.updateEntityAttribute( entity, "eventType/eventFieldConstructors", mergerino( S.getEntity(entity)["eventType/eventFieldConstructors"], createObject(submitInputValue(e), "return 0;" ) )  )   
-    )
-]) 
 
 let newDatomsConstructorView = (S, A, entity) => {
 
@@ -482,20 +379,54 @@ let newDatomsConstructorView = (S, A, entity) => {
       d("EntitetID"),
       d("Attributt"),
       d("Verdi")
-    ], {class: "columns_1_1_1_1"}),
+    ], {class: "columns_2_2_2_1"}),
     d(datoms.map( (datom, index) => d([
-      input({value: datom.entity, class:"textArea_code"}, "change", e => A.updateEntityAttribute(entity, "eventType/newDatoms", mergerino(datoms, {[index]: {entity: submitInputValue(e)}})   )   ),
+      dropdown(
+        datom.entity, 
+        [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.getReportField(10085,10040) + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.getReportField(10085,10040) + 2;`, label: `Ny entitet nr. 2`}, , {value: `return Q.getReportField(10085,10040) + 3;`, label: `Ny entitet nr. 3`}],
+        e => A.updateEntityAttribute(entity, "eventType/newDatoms", mergerino(datoms, {[index]: {entity: submitInputValue(e)}})   )
+        ),
       dropdown(datom.attribute, S.findEntities( E => E["entity/entityType"] === 7684  )
         .filter( E => !["[Arkiverte attributter]", "[db]" ].includes(E["entity/category"])  )
         .sort( sortEntitiesAlphabeticallyByLabel  )
-        .map( E => returnObject({value: E.entity, label: E["entity/label"]}) ), e => A.updateEntityAttribute(entity, "eventType/newDatoms", mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return eventAttributes['${S.getEntity(Number(submitInputValue(e)))["attr/name"]}']`}})   )  ),
-      input({value: datom.value, class:"textArea_code"}, "change", e => A.updateEntityAttribute(entity, "eventType/newDatoms", mergerino(datoms, {[index]: {value: submitInputValue(e)}})   ))
-    ], {class: "columns_1_1_1_1"}) )),
-    submitButton("Legg til", e => A.updateEntityAttribute(entity, "eventType/newDatoms", datoms.concat({entity: "return companyFields[9423] + 1;", attribute: 3174, value: `return eventAttributes[${S.getEntity(3174)["attribute/name"]}]` }) ))
+        .map( E => returnObject({value: E.entity, label: E["entity/label"]}) ), e => A.updateEntityAttribute(entity, "eventType/newDatoms", mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})'`}})   )  ),
+      textArea(datom.value, {class:"textArea_code"}, e => A.updateEntityAttribute(entity, "eventType/newDatoms", mergerino(datoms, {[index]: {value: submitInputValue(e)}})   )),
+      submitButton("[Slett]", e => A.updateEntityAttribute(entity, "eventType/newDatoms", datoms.filter( (d, i) => i !== index  ) )),
+    ], {class: "columns_2_2_2_1"}) )),
+    submitButton("Legg til", e => A.updateEntityAttribute(entity, "eventType/newDatoms", datoms.concat({entity: `return Q.getReportField(10085,10040) + 1;`, attribute: 3174, value: `return Q.userInput(3174)` }) )),
   ])
 
 
 }
+
+
+
+let reportFieldsConstructorView = (S, A, entity) => {
+
+  let reportFields = S.getEntity(entity)["report/reportFields"]
+
+  if( !Array.isArray(reportFields) || reportFields.length === 0  ){return d("DATOMS ERROR")}
+
+  return d([
+    entityLabel(S, A, getAttributeEntityFromName(S, "report/reportFields")),
+    d([
+      d("Attributt"),
+      d("Verdi")
+    ], {class: "columns_2_2_2_1"}),
+    d(reportFields.map( (reportField, index) => d([
+      dropdown(reportField.attribute, S.findEntities( E => E["entity/entityType"] === 7684  )
+        .filter( E => !["[Arkiverte attributter]", "[db]" ].includes(E["entity/category"])  )
+        .sort( sortEntitiesAlphabeticallyByLabel  )
+        .map( E => returnObject({value: E.entity, label: E["entity/label"]}) ), e => A.updateEntityAttribute(entity, "report/reportFields", mergerino(reportFields, {[index]: {attribute: Number(submitInputValue(e)), value: `return 0`}})   )  ),
+      textArea(reportField.value, {class:"textArea_code"}, e => A.updateEntityAttribute(entity, "report/reportFields", mergerino(reportFields, {[index]: {value: submitInputValue(e)}})   )),
+      submitButton("[Slett]", e => A.updateEntityAttribute(entity, "report/reportFields", reportFields.filter( (d, i) => i !== index  ) )),
+    ], {class: "columns_2_2_2_1"}) )),
+    submitButton("Legg til", e => A.updateEntityAttribute(entity, "report/reportFields", reportFields.concat({attribute: 4933, value: `return [TBD]` }) )),
+  ])
+
+
+}
+
 
 let multipleEntitySelectorView = (S, A, parentEntity, attributeName, allAllowedEntities) => {
 
@@ -541,8 +472,6 @@ let singleEntitySelectorView = (S, A, parentEntity, attributeName, allAllowedEnt
       }   ) )
       , {class: "searchBoxContainer"})
 ], {class: "eventAttributeRow"})
-
-
 
 let functionStringView = (S, A, entity, attributeName) => d([
   entityLabel(S, A, getAttributeEntityFromName(S, attributeName)),
@@ -597,6 +526,16 @@ let adminView_eventType = (S, A, entity) =>  d([
   retractEntityButton(A, entity),
   d("<br>"),
   submitButton("Legg til ny", e => A.createEntity("eventType"))
+],{class: "feedContainer"})
+
+
+let adminView_reports = (S, A, entity) =>  d([
+  defaultEntityFields(S, A, entity),
+  functionStringView(S, A, entity, "report/triggerFunction"),
+  reportFieldsConstructorView(S, A, entity),
+  retractEntityButton(A, entity),
+  d("<br>"),
+  submitButton("Legg til ny", e => A.createEntity("report"))
 ],{class: "feedContainer"})
 
 let adminView_eventField = (S, A, entity) =>  d([
@@ -654,5 +593,6 @@ let entityAdminRouter = {
   7728: adminView_eventValidator,
   7689: adminView_valueTypes,
   7794: adminView_entityTypes,
+  9966: adminView_reports,
 }
 let adminPage = (S, A) => entityAdminRouter[ S.getEntity(S["UIstate"]["selectedEntity"])["entity/entityType"] ](S, A, S["UIstate"]["selectedEntity"] )

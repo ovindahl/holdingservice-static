@@ -113,10 +113,7 @@ let eventAttributesAreValid = (S, eventAttributes) => S.getEntity(  eventAttribu
       validateAttributeValue(S, attributeEntity, eventAttributes[ S.getEntity( attributeEntity )["attr/name"] ] )
     )
 
-let combinedEventIsValid = (S, eventAttributes, companyVariables) => S.getEntity( eventAttributes["event/eventTypeEntity"] )["eventType/eventValidators"]
-  .every( entity =>  
-    new Function([`eventAttributes`, `companyFields`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( eventAttributes, companyVariables )
-  )
+
 
 let newShareTransaction = (identifier, shareCount) => returnObject({identifier, shareCount})
     
@@ -199,36 +196,58 @@ let constructCompanyDoc = (S, storedEvents) => {
   let initialCompanyDoc = [{
       index: 0,
       Datoms: [],
-      Entities: {},
-      companyFields: {
-        9438: 1, //EntitetsID for selskapet
-        9423: 1, //Høyeste entitetsID 
+      Entities: {
+        "1": {}
+      },
+      Reports: {
+        10085: {
+          10040: 1, //Høyeste entitetsID 
+        } 
       },
       isValid: true
     }]
 
   let companyDoc = storedEvents.reduce( (companyDocVersions, eventAttributes, prevVersionIndex) => {
     let prevCompanyDoc = companyDocVersions[prevVersionIndex]
-    if(!prevCompanyDoc.isValid){return prevCompanyDoc}
+
+    let Q = {
+      companyEntities: companyDocVersions[prevVersionIndex]["Entities"],
+    }
+
+    Q.getReportField = (reportEntity, attributeEntity) => companyDocVersions[prevVersionIndex]["Reports"][reportEntity][attributeEntity]
+    Q.userInput = entity => eventAttributes[ S.getEntity(entity)["attr/name"] ]
+
+    if(!prevCompanyDoc.isValid){return companyDocVersions}
       let eventType = S.getEntity(  eventAttributes["event/eventTypeEntity"] )
       let attributesAreValid = eventAttributesAreValid(S, eventAttributes)
-      if(!attributesAreValid){return mergerino(prevCompanyDoc, {isValid: false}) }
-        let eventIsValid = combinedEventIsValid(S, eventAttributes, prevCompanyDoc.companyFields)
-        if(!eventIsValid){return mergerino(prevCompanyDoc, {isValid: false}) }
+      if(!attributesAreValid){return mergerino(companyDocVersions, {isValid: false}) }
+
+        let eventValidators = S.getEntity( eventAttributes["event/eventTypeEntity"] )["eventType/eventValidators"]
+        let eventIsValid = eventValidators.every( entity =>  
+          new Function([`Q`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( Q ) //To be updated
+        )
+
+        if(!eventIsValid){return mergerino(companyDocVersions, {isValid: false}) }
+
           let eventDatoms = eventType["eventType/newDatoms"].map( datom => newDatom(
-            new Function( [`companyFields`, `eventAttributes`, `Entities`], datom["entity"] )( prevCompanyDoc.companyFields, eventAttributes, prevCompanyDoc.Entities ),
+            new Function( [`Q`], datom["entity"] )( Q ),
             datom.attribute,
-            new Function( [`companyFields`, `eventAttributes`, `Entities`], datom["value"] )( prevCompanyDoc.companyFields, eventAttributes, prevCompanyDoc.Entities )
+            new Function( [`Q`], datom["value"] )( Q )
             )
           )
+
           let updatedCompanyEntities = eventDatoms.reduce( (Entities, datom) => mergerino(
             Entities,
             createObject(datom.entity, createObject(datom.attribute, datom.value ))
-          ), prevCompanyDoc.Entities )
+          ), Q.companyEntities )
 
-          let companyFieldsToUpdate = [9423, 9948, 9953]
+          Q.latestEntityID = Number( Object.keys(updatedCompanyEntities).pop() )
 
-          let companyFields = mergeArray( companyFieldsToUpdate.map( entity => createObject(entity, new Function([`companyEntities`], S.getEntity(entity)["companyField/constructorFunctionString"])( updatedCompanyEntities ) ) ) ) 
+
+          let updatedReports = mergeArray( S.getAll("report")
+            .filter( report => new Function( [`eventDatoms`, `Q`], report["report/triggerFunction"] )( eventDatoms, Q)   )
+            .map( report => createObject(report.entity, mergeArray(report["report/reportFields"].map( reportField => createObject(reportField.attribute, new Function( [`Q`], reportField["value"] )( Q ) )  ))  ))
+          )
           
           let index = prevVersionIndex + 1
 
@@ -238,7 +257,7 @@ let constructCompanyDoc = (S, storedEvents) => {
             eventDatoms,
             Datoms: prevCompanyDoc.Datoms.concat(eventDatoms),
             Entities: updatedCompanyEntities,
-            companyFields: companyFields,
+            Reports: updatedReports,
             isValid: true
           }
           return companyDocVersions.concat(companyDocVersion)
@@ -354,7 +373,8 @@ let getEntityForEntityType = {
   "valueType": 7689,
   "entityType": 7794,
   "event": 7790,
-  "tx": 7806
+  "tx": 7806,
+  "report": 9966
 }
 
 let defaultEntityDatoms = (type, label, doc, category) => [
@@ -388,6 +408,9 @@ const datomsByEventType = {
   "entityType": [
     newDatom("newEntity", "entityType/attributes", [3171, 4615, 4617, 5712, 4871] ),
   ],
+  "report": [
+    newDatom("newEntity", "report/reportFields", [{attribute: 4933, value: `return [TBD]` }] ),
+  ]
 } //Should be added to DB
 
 let getUserActions = (S) => returnObject({
