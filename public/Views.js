@@ -358,7 +358,7 @@ let genericEntityView = (S, A, entity) => {
     retractEntityButton(A, entity),
     d("<br>"),
     submitButton("Legg til ny", e => A.createEntity( selectedEntityType.entity ) )
-  ])
+  ], {class: "feedContainer"} )
 
 }
 
@@ -368,6 +368,7 @@ let attributeView = (S, A, entity, attributeEntity, value) => {
     "7651": valueTypeView_simpleText, //Tekst
     "7653": valueTypeView_number, //Tall
     "7664": valueTypeView_singleEntity, //Entitet
+    "7669": valueTypeView_object, //Array
     "10849": valueTypeView_multipleEntities,
     "10820": valueTypeView_functionString, //Funksjonstekst
     "10834": valueTypeView_object,
@@ -379,28 +380,25 @@ let attributeView = (S, A, entity, attributeEntity, value) => {
   let Attribute = S.getEntity(attributeEntity)
   let valueType = S.getEntity(Attribute["attribute/valueType"])
 
-  let updateFunction = e => A.updateEntityAttribute( entity, S.getEntity(attributeEntity)["attr/name"], S.getEntity(attributeEntity)["attr/valueType"] === "number" ? Number(submitInputValue(e)) : submitInputValue(e)) 
-
-
   return d([
     entityLabel(S,A, attributeEntity),
-    genericValueTypeViews[valueType.entity](S, A, entity, attributeEntity, value, updateFunction)
+    genericValueTypeViews[valueType.entity](S, A, entity, attributeEntity, value)
   ], {class: "columns_1_1_1"})
 } 
 
-let valueTypeView_simpleText = (S, A, entity, attributeEntity, value, updateFunction) => input(
+let valueTypeView_simpleText = (S, A, entity, attributeEntity, value) => input(
   {value: String(value), style: `${ validateAttributeValue(S, attributeEntity, value ) ? "" : "background-color: #fb9e9e; " }`}, 
   "change", 
   e => A.updateEntityAttribute( entity, S.getEntity(attributeEntity)["attr/name"], submitInputValue(e) ) 
 )
 
-let valueTypeView_number = (S, A, entity, attributeEntity, value, updateFunction) => input(
+let valueTypeView_number = (S, A, entity, attributeEntity, value) => input(
   {value: String(value), style: `text-align: right; ${ validateAttributeValue(S, attributeEntity, value ) ? "" : "background-color: #fb9e9e; " }`}, 
   "change", 
   e => A.updateEntityAttribute( entity, S.getEntity(attributeEntity)["attr/name"], submitInputValue(e) ) 
 )
 
-let valueTypeView_singleEntity = (S, A, entity, attributeEntity, value, updateFunction) => d([
+let valueTypeView_singleEntity = (S, A, entity, attributeEntity, value) => d([
   dropdown(
     value, 
     S.findEntities( E => E["entity/entityType"] === S.getEntity(value)["entity/entityType"]  ).map( Entity => returnObject({value: Entity.entity, label: Entity["entity/label"]})  ).concat({value: "", label: "[tom]"}),
@@ -408,7 +406,7 @@ let valueTypeView_singleEntity = (S, A, entity, attributeEntity, value, updateFu
      )
 ])
 
-let valueTypeView_multipleEntities = (S, A, parentEntity, attributeEntity, value, updateFunction) => {
+let valueTypeView_multipleEntities = (S, A, parentEntity, attributeEntity, value) => {
   let attributeName = S.getEntity(attributeEntity)["attr/name"]
 
   let allAllowedEntities = S.findEntities( E => E["entity/entityType"] === S.getEntity(value[0])["entity/entityType"]  )
@@ -429,14 +427,14 @@ let valueTypeView_multipleEntities = (S, A, parentEntity, attributeEntity, value
   ], {class: "eventAttributeRow"})
 }
 
-let valueTypeView_functionString = (S, A, entity, attributeEntity, value, updateFunction) => textArea(value, {class:"textArea_code"}, e => A.updateEntityAttribute(entity, S.getEntity(attributeEntity)["attr/name"], submitInputValue(e).replaceAll(`"`, `'`) ))
+let valueTypeView_functionString = (S, A, entity, attributeEntity, value) => textArea(value, {class:"textArea_code"}, e => A.updateEntityAttribute(entity, S.getEntity(attributeEntity)["attr/name"], submitInputValue(e).replaceAll(`"`, `'`) ))
 
-let valueTypeView_object = (S, A, entity, attributeEntity, value, updateFunction) => d(JSON.stringify(value))
+let valueTypeView_object = (S, A, entity, attributeEntity, value) => d(JSON.stringify(value))
 
-let valueTypeView_boolean = (S, A, entity, attributeEntity, value, updateFunction) => d(JSON.stringify(value))
+let valueTypeView_boolean = (S, A, entity, attributeEntity, value) => d(JSON.stringify(value))
 
 
-let valueTypeView_newDatoms = (S, A, entity, attributeEntity, value, updateFunction) => {
+let valueTypeView_newDatoms = (S, A, entity, attributeEntity, value) => {
 
   let datoms = S.getEntity(entity)["eventType/newDatoms"] ? S.getEntity(entity)["eventType/newDatoms"] : []
   return d([
@@ -465,7 +463,7 @@ let valueTypeView_newDatoms = (S, A, entity, attributeEntity, value, updateFunct
 
 }
 
-let valueTypeView_reportFields = (S, A, entity, attributeEntity, value, updateFunction) => {
+let valueTypeView_reportFields = (S, A, entity, attributeEntity, value) => {
 
   let reportFields = S.getEntity(entity)["report/reportFields"]
 

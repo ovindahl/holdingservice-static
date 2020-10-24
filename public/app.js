@@ -86,23 +86,72 @@ const sideEffects = {
     },
     submitDatomsWithValidation: async (S, Datoms) => {
       if(sideEffects.isIdle){
-        if(Datoms.filter( d => d.attribute !== "attr/name" ).every( datom => validateAttributeValue(S, getAttributeEntityFromName(S, datom.attribute), datom.value) )){
+        if(Datoms.filter( d => d.attribute !== "attr/name" ).every( datom => validateDatom(S, datom) )){
           
           let serverResponse = await sideEffects.APIRequest("POST", "transactor", JSON.stringify( Datoms )) 
-          
-          return returnObject({
+
+          let newState = {
             UIstate: S["UIstate"],
             sharedData: updateData(serverResponse)
-          }) }
+          }
+          
+          return newState }
         else{console.log("ERROR: Datoms not valid: ", Datoms)}
         }
       else{console.log("ERROR: HTTP request already in progress, did not submit datoms.", Datoms)}
     }
 }
 
+
+let validateDatom = (S, datom) => {
+
+  let isExistingEntity = (typeof datom.entity === "number")
+  let attribute = (typeof datom.attribute === "string") ? getAttributeEntityFromName(S, datom.attribute) : datom.attribute
+
+  if(isExistingEntity){
+    let Entity = S.getEntity(datom.entity)
+    let EntityType = S.getEntity(Entity["entity/entityType"])
+    let isEvent = EntityType.entity === 7790
+    let isValidAttributeForEntityType = EntityType["entityType/attributes"].includes(attribute) //Event har varierende attributter...
+    let eitherOr = (isEvent || isValidAttributeForEntityType)
+
+
+    if(eitherOr){
+      
+      let Attribute = S.getEntity( attribute  )
+      let ValueType = S.getEntity(Attribute["attribute/valueType"])
+      let isValidValueType = new Function("inputValue", ValueType["valueType/validatorFunctionString"] )(datom.value)
+      if(isValidValueType){    
+        let isValidAttributeValue = new Function("inputValue", Attribute["attribute/validatorFunctionString"] )(datom.value)
+        if(isValidAttributeValue){    
+          return true
+        }else{return logThis(false, ["Value did not pass global attribute validation", datom])}
+        
+      }else{return logThis(false, ["Value is not valid for the valueType of the selected attribute", datom])}
+      
+    }else{return logThis(false, ["Attribute is not valid for the selected entity type", datom])}
+    
+  }else{
+    let Attribute = S.getEntity( attribute  )
+    let ValueType = S.getEntity(Attribute["attribute/valueType"])
+    let isValidValueType = new Function("inputValue", ValueType["valueType/validatorFunctionString"] )(datom.value)
+    if(isValidValueType){    
+      let isValidAttributeValue = new Function("inputValue", Attribute["attribute/validatorFunctionString"] )(datom.value)
+      if(isValidAttributeValue){    
+        return true
+      }else{return logThis(false, ["Value did not pass global attribute validation", datom])}
+        
+    }else{return logThis(false, ["Value is not valid for the valueType of the selected attribute", datom])}
+  }
+
+
+}
+
+
+
 //Company construction: To be moved to server
 
-let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["entity/entityType"] === 7684 ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
+let getAttributeEntityFromName = (S, attributeName) => logThis(S).findEntities( e => e["entity/entityType"] === 7684 ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
 
 let validateAttributeValue = (S, attributeEntity, value) =>  new Function(`inputValue`, S.getEntity( attributeEntity )["attribute/validatorFunctionString"] )( value )
 
@@ -124,9 +173,6 @@ let constructCompanyDoc = (S, storedEvents) => {
 
     let companyDoc = storedEvents.reduce( (companyDocVersions, eventAttributes, prevVersionIndex) => {
     let prevCompanyDoc = companyDocVersions[prevVersionIndex]
-
-    console.log(companyDocVersions, eventAttributes)
-
 
     let Q = {
       companyEntities: companyDocVersions[prevVersionIndex]["Entities"],
@@ -254,10 +300,11 @@ let getUserActions = (S) => returnObject({
         newDatom("newEntity", "entity/category", S["UIstate"]["selectedCategory"] )
       ]  )
 
+    let newState = await sideEffects.submitDatomsWithValidation(S, Datoms)
 
-    update( await sideEffects.submitDatomsWithValidation(S, Datoms) )
+    update( newState )
 
-    } ,
+    },
     createEvent: async ( eventAttributes, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, [
         newDatom("newEntity", "entity/entityType", 7790),
         newDatom("newEntity", "entity/label", `Selskapshendelse for ${eventAttributes["event/incorporation/orgnumber"]}`),
@@ -313,7 +360,7 @@ let update = (S) => {
       
     } catch (error) {
       console.log(error)
-    }    
+    }
 
     Admin.S = S;
 
