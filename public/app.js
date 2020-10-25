@@ -96,9 +96,9 @@ const sideEffects = {
           }
           
           return newState }
-        else{console.log("ERROR: Datoms not valid: ", Datoms)}
+        else{return logThis(S,["ERROR: Datoms not valid: ", Datoms])}
         }
-      else{console.log("ERROR: HTTP request already in progress, did not submit datoms.", Datoms)}
+      else{return logThis(S,["ERROR: HTTP request already in progress, did not submit datoms.", Datoms])}
     }
 }
 
@@ -151,7 +151,7 @@ let validateDatom = (S, datom) => {
 
 //Company construction: To be moved to server
 
-let getAttributeEntityFromName = (S, attributeName) => logThis(S).findEntities( e => e["entity/entityType"] === 7684 ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
+let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["entity/entityType"] === 7684 ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
 
 let validateAttributeValue = (S, attributeEntity, value) =>  new Function(`inputValue`, S.getEntity( attributeEntity )["attribute/validatorFunctionString"] )( value )
 
@@ -171,8 +171,10 @@ let constructCompanyDoc = (S, storedEvents) => {
       isValid: true
     }]
 
+    
+
     let companyDoc = storedEvents.reduce( (companyDocVersions, eventAttributes, prevVersionIndex) => {
-    let prevCompanyDoc = companyDocVersions[prevVersionIndex]
+    let latestCompanyDoc = companyDocVersions[ companyDocVersions.length - 1 ]
 
     let Q = {
       companyEntities: companyDocVersions[prevVersionIndex]["Entities"],
@@ -181,7 +183,7 @@ let constructCompanyDoc = (S, storedEvents) => {
     Q.getReportField = (reportEntity, attributeEntity) => companyDocVersions[prevVersionIndex]["Reports"][reportEntity][attributeEntity]
     Q.userInput = entity => eventAttributes[ S.getEntity(entity)["attr/name"] ]
 
-    if(!prevCompanyDoc.isValid){return companyDocVersions}
+    if(!latestCompanyDoc.isValid){return companyDocVersions}
       if(!S.getEntity(  eventAttributes["event/eventTypeEntity"] )){return mergerino(companyDocVersions, {isValid: false}) }
       let eventType = S.getEntity(  eventAttributes["event/eventTypeEntity"] )
       let attributesAreValid = eventType["eventType/eventAttributes"].every( attributeEntity =>  
@@ -230,7 +232,7 @@ let constructCompanyDoc = (S, storedEvents) => {
             index, 
             eventAttributes, 
             eventDatoms,
-            Datoms: prevCompanyDoc.Datoms.concat(eventDatoms),
+            Datoms: latestCompanyDoc.Datoms.concat(eventDatoms),
             Entities: updatedCompanyEntities,
             Reports: updatedReports,
             isValid: true
@@ -274,7 +276,14 @@ let getUserActions = (S) => returnObject({
       UIstate: mergerino( S["UIstate"], patch ), 
       sharedData: S["sharedData"] 
     }),
-    updateEntityAttribute: async (entity, attribute, value) => update( await sideEffects.submitDatomsWithValidation(S, [newDatom(Number(entity), attribute, value)] )),
+    updateEntityAttribute: async (entity, attribute, value) => {
+
+      let datom = newDatom(Number(entity), attribute, value)
+      let serverReponse = await sideEffects.submitDatomsWithValidation(S, [datom] )
+
+
+      update( serverReponse )
+    },
     retractEntity: async entity => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S.getEntity(entity) ]))),
     createEntity: async entityTypeEntity => {
 
@@ -338,7 +347,7 @@ let update = (S) => {
     //To be fixed...
     S.getEntity = entity => S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis(null, `Entitet [${entity}] finnes ikke` )
     S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
-    S.getUserEvents = () => S.findEntities( e => e["entity/entityType"] === 7790 ) //S["sharedData"]["userEvents"]
+    S.getUserEvents = () => S.findEntities( e => e["entity/entityType"] === 7790 ).filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ) //S["sharedData"]["userEvents"]
     S.getLatestTxs = () => S["sharedData"]["latestTxs"]
     
     S.getAll = entityType => S.findEntities( e => e["entity/entityType"] === getEntityForEntityType[entityType]  )
@@ -352,9 +361,8 @@ let update = (S) => {
     S["UIstate"].selectedAdminEntity = (S.getEntity(S["UIstate"].selectedAdminEntity) === null) ? 3174 : S["UIstate"].selectedEntity
     
     try {
-      S["selectedCompany"] = constructCompanyDoc(S, S.getUserEvents()
-      .filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber )
-      .sort( (a, b) => a["event/index"] - b["event/index"]  ) )
+      S["selectedCompany"] = constructCompanyDoc(S, S.getUserEvents())
+      
 
       console.log(S["selectedCompany"])
       
