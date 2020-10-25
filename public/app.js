@@ -111,9 +111,10 @@ let validateDatom = (S, datom) => {
   if(isExistingEntity){
     let Entity = S.getEntity(datom.entity)
     let EntityType = S.getEntity(Entity["entity/entityType"])
+    let isRetraction = !datom.isAddition
     let isEvent = EntityType.entity === 7790
     let isValidAttributeForEntityType = EntityType["entityType/attributes"].includes(attribute) //Event har varierende attributter...
-    let eitherOr = (isEvent || isValidAttributeForEntityType)
+    let eitherOr = (isEvent || isValidAttributeForEntityType || isRetraction)
 
 
     if(eitherOr){
@@ -385,7 +386,7 @@ let Admin = {
     S: null,
     updateClientRelease: (newVersion) => Admin.submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
-    submitDatoms: async (datoms) => datoms.length < 5000
+    submitDatoms: async (datoms) => datoms.length < 5200
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms),
     getEntity: e => Admin.S.getEntity(e),
