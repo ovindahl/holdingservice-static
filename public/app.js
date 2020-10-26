@@ -325,7 +325,21 @@ let getUserActions = (S) => returnObject({
         newDatom("newEntity", "event/index", eventAttributes["event/index"] + 1 ),
         newDatom("newEntity", "event/date", eventAttributes["event/date"] ),
         newDatom("newEntity", "event/currency", "NOK")
-      ])),
+    ])),
+    createCompany: async () => update( await sideEffects.submitDatomsWithValidation(S, [
+      newDatom("newEntity", "entity/entityType", 7790),
+      newDatom("newEntity", "event/index", 1 ),
+      newDatom("newEntity", "event/eventTypeEntity", 4113),
+      newDatom("newEntity", "event/incorporation/orgnumber", randBetween(800000000, 1000000000) ),
+      newDatom("newEntity", "event/date", "2020-01-01" ),
+      newDatom("newEntity", 8426, "2020-01-01" ),
+      newDatom("newEntity", 3175, 1),
+      newDatom("newEntity", 4933, "Selskapet AS"),
+      newDatom("newEntity", 10636, "Selskapets forretningsadresse"),
+      newDatom("newEntity", 10639, "Selskapets næring"),
+      newDatom("newEntity", 10642, "Selskapets postnummer"),
+      newDatom("newEntity", 10645, "Selskapets poststed"),
+  ])),
       undoTx: async (tx) => {
 
         console.log(tx)
@@ -352,7 +366,7 @@ let update = (S) => {
     S.getLatestTxs = () => S["sharedData"]["latestTxs"]
     
     S.getAll = entityType => S.findEntities( e => e["entity/entityType"] === getEntityForEntityType[entityType]  )
-    S.getAllOrgnumbers = () => S.getUserEvents().map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues )
+    S.getAllOrgnumbers = () => S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues )
     S.getEntityLabel = entity => S.getEntity(entity)["entity/label"] ? S.getEntity(entity)["entity/label"] : `[${entity}] Visningsnavn mangler`
     S.getEntityDoc = entity => S.getEntity(entity)["entity/doc"] ? S.getEntity(entity)["entity/doc"] : `[${entity}] Dokumentasjon mangler`
     S.getEntityCategory = entity => S.getEntity(entity)["entity/category"] ? S.getEntity(entity)["entity/category"] : `[${entity}] Kategori mangler`

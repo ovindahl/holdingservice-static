@@ -35,6 +35,8 @@ return something
 
 let filterUniqueValues = (value, index, self) => self.indexOf(value) === index
 
+let randBetween = (lowest, highest) => Math.round( lowest + Math.random() * (highest - lowest) )
+
 //HTML element generation
 let IDcounter = [0];
 let getNewElementID = () => String( IDcounter.push( IDcounter.length  ) )
@@ -129,7 +131,7 @@ let headerBarView = (S) => d([
   ], {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
-let companySelectionMenuRow = (S, A) => d( S.getAllOrgnumbers().map( orgnumber => d( orgnumber, {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(d( "+", {class: "textButton"}, "click", e => console.log("TBD...") )), {style: "display:flex;"}) 
+let companySelectionMenuRow = (S, A) => d( S.getAllOrgnumbers().map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
 let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin", "Admin/Datomer", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
@@ -372,14 +374,13 @@ let valueTypeView_number = (S, A, entity, attributeEntity, value) => input(
 
 let valueTypeView_singleEntity = (S, A, entity, attributeEntity, value) => {
 
-
-  let optionsFilter = new Function( "Entity" , S.getEntity(attributeEntity)["attribute/selectableEntitiesFilterFunction"] ) 
+  let options = new Function( "S" , S.getEntity(attributeEntity)["attribute/selectableEntitiesFilterFunction"] )( S )
   
 
   return d([
     dropdown(
       value, 
-      S.findEntities( optionsFilter )
+      options
         .map( Entity => returnObject({value: Entity.entity, label: Entity["entity/label"]})  ).concat({value: "", label: "[tom]"}),
       e => A.updateEntityAttribute( entity, S.getEntity(attributeEntity)["attr/name"], Number(submitInputValue(e)) )
        )
@@ -390,7 +391,7 @@ let valueTypeView_multipleEntities = (S, A, entity, attributeEntity, value) => {
   
   let attributeName = S.getEntity(attributeEntity)["attr/name"]
 
-  let optionsFilter = new Function( "Entity" , S.getEntity(attributeEntity)["attribute/selectableEntitiesFilterFunction"] ) 
+  let options = new Function( "S" , S.getEntity(attributeEntity)["attribute/selectableEntitiesFilterFunction"] )( S )
 
   return d([
     d( S.getEntity(entity)[attributeName] .map( attr => d([
@@ -399,7 +400,7 @@ let valueTypeView_multipleEntities = (S, A, entity, attributeEntity, value) => {
       ], {class: "columns_3_1"} ) 
     ).concat( dropdown(
       0,
-      S.findEntities( optionsFilter )
+      options
         .filter( Entity => !S.getEntity(entity)[attributeName].includes( Entity.entity ) )
         .map( Entity => returnObject({value: Entity.entity, label: `${Entity["entity/label"]}`})).concat({value: 0, label: "Legg til"}), 
       e => A.updateEntityAttribute( entity, attributeName, S.getEntity(entity)[attributeName].concat( Number(submitInputValue(e)) )  )   
@@ -410,7 +411,7 @@ let valueTypeView_multipleEntities = (S, A, entity, attributeEntity, value) => {
 
 let valueTypeView_functionString = (S, A, entity, attributeEntity, value) => textArea(value, {class:"textArea_code"}, e => A.updateEntityAttribute(entity, S.getEntity(attributeEntity)["attr/name"], submitInputValue(e).replaceAll(`"`, `'`) ))
 
-let valueTypeView_object = (S, A, entity, attributeEntity, value) => d(JSON.stringify(value))
+let valueTypeView_object = (S, A, entity, attributeEntity, value) => textArea(JSON.stringify(value), {class:"textArea_code"}, e => A.updateEntityAttribute(entity, S.getEntity(attributeEntity)["attr/name"], JSON.parse(submitInputValue(e)) ))
 
 let valueTypeView_boolean = (S, A, entity, attributeEntity, value) => d(JSON.stringify(value))
 
