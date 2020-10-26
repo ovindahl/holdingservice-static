@@ -105,6 +105,9 @@ const sideEffects = {
 
 let validateDatom = (S, datom) => {
 
+  //TBD: Check that exactly all entity type attributes are present
+  //Other ???
+
   let isExistingEntity = (typeof datom.entity === "number")
   let attribute = (typeof datom.attribute === "string") ? getAttributeEntityFromName(S, datom.attribute) : datom.attribute
 
@@ -359,31 +362,25 @@ let getUserActions = (S) => returnObject({
 
 let update = (S) => {
 
-    //To be fixed...
+    //DB queries
+    
     S.getEntity = entity => S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis(null, `Entitet [${entity}] finnes ikke` )
     S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
-    S.getUserEvents = () => S.findEntities( e => e["entity/entityType"] === 7790 ).filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ) //S["sharedData"]["userEvents"]
-    S.getLatestTxs = () => S["sharedData"]["latestTxs"]
-    
-    S.getAll = entityType => S.findEntities( e => e["entity/entityType"] === getEntityForEntityType[entityType]  )
-    S.getAllOrgnumbers = () => S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues )
     S.getEntityLabel = entity => S.getEntity(entity)["entity/label"] ? S.getEntity(entity)["entity/label"] : `[${entity}] Visningsnavn mangler`
     S.getEntityDoc = entity => S.getEntity(entity)["entity/doc"] ? S.getEntity(entity)["entity/doc"] : `[${entity}] Dokumentasjon mangler`
     S.getEntityCategory = entity => S.getEntity(entity)["entity/category"] ? S.getEntity(entity)["entity/category"] : `[${entity}] Kategori mangler`
     S.getEntityNote = entity => S.getEntity(entity)["entity/note"] ? S.getEntity(entity)["entity/note"] : `[${entity}] Ingen notat`
 
+    //User data  
+    S.getUserEvents = () => S.findEntities( e => e["entity/entityType"] === 7790 ).filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ) //S["sharedData"]["userEvents"]
+    S.getLatestTxs = () => S["sharedData"]["latestTxs"]
+    S.getAllOrgnumbers = () => S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues )
+    
+    //Local state
     S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 3174 : S["UIstate"].selectedEntity
     S["UIstate"].selectedAdminEntity = (S.getEntity(S["UIstate"].selectedAdminEntity) === null) ? 3174 : S["UIstate"].selectedEntity
     
-    try {
-      S["selectedCompany"] = constructCompanyDoc(S, S.getUserEvents())
-      
-
-      console.log(S["selectedCompany"])
-      
-    } catch (error) {
-      console.log(error)
-    }
+    try {S["selectedCompany"] = constructCompanyDoc(S, S.getUserEvents())} catch (error) {console.log(error)}
 
     Admin.S = S;
 
@@ -409,20 +406,4 @@ let Admin = {
     retractEntities: async entities => await Admin.submitDatoms( getRetractionDatomsWithoutChildren(entities.map( e => Admin.S.getEntity(e) )) ),
     retractEntity: async entity => await Admin.retractEntities([entity]),
     getServerCache: async () => await sideEffects.APIRequest("GET", "serverCache", null)
-}
-
-
-
-let a = () => {
-
-  let shareTransactions = [0,{"type":"Aksjer","shareCount":573200,"orgNumber":"916823525"},{"type":"Aksjer","shareCount":1000,"ISIN":"Nigeria123","country":"Nigeria"},{"type":"Aksjer","shareCount":100,"ISIN":"Nigeria123","country":"Nigeria"}]
-
-  let table = shareTransactions.reduce( (accumulator, transaction) => mergerino(accumulator, createObject( )  ) )
-
-
-  return Object.keys(companyFields)
-    .filter( account => Number(account) >= 3000  )
-    .reduce( (sum, account) => sum + companyFields[7911][account], 0);
-
-
 }

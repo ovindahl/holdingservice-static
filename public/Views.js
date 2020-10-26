@@ -159,7 +159,7 @@ let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a["entity/label"]).lo
 
 let sidebar_left = (S, A) => S["UIstate"].currentPage == "Admin"
 ? d([
-      d( S.getAll("entityType")
+      d( S.findEntities(E => E["entity/entityType"] ===  7794 )
         .filter( e => ![7790, 7806].includes(e.entity)  ) //Not event or tx
         .sort( sortEntitiesAlphabeticallyByLabel )
         .map( Entity => d( 
@@ -307,7 +307,7 @@ let txView = (S, A, tx) => d([
 
 
 let newEventDropdown = (S, A, eventAttributes) => dropdown( "", 
-  S.getAll("eventType").map( Entity => returnObject({value: Entity.entity, label: Entity["entity/label"] }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
+  S.findEntities(E => E["entity/entityType"] ===  7686 ).map( Entity => returnObject({value: Entity.entity, label: Entity["entity/label"] }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
   e => A.createEvent(eventAttributes, Number(submitInputValue(e)) )
 )
 
