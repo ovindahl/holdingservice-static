@@ -295,10 +295,8 @@ let getUserActions = (S) => returnObject({
       let Datoms = EntityType["entityType/attributes"].map( attribute => {
 
       let Attribute = S.getEntity(attribute)
-      let ValueType = S.getEntity(Attribute["attribute/valueType"])
-      let defaultValue = ValueType["valueType/defaultValue"]
-
-      let datom = newDatom("newEntity", Attribute["attr/name"], defaultValue)
+      let value = new Function("S", Attribute["attribute/startValue"] )( S )
+      let datom = newDatom("newEntity", Attribute["attr/name"], value)
 
       return datom
 
