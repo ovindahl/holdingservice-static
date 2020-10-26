@@ -60,8 +60,8 @@ const sideEffects = {
                 "companyDocPage/selectedVersion": 1,
                 "selectedEntityType" : 7684,
                 "selectedCategory": "Hendelsesattributter",
-                "selectedEntity": 3174,
-                "selectedAdminEntity": 3174,
+                "selectedEntity": 9970,
+                "selectedReport": 10439,
                 "currentSearchString": "Søk etter entitet",
               }
 
@@ -104,6 +104,8 @@ const sideEffects = {
 
 
 let validateDatom = (S, datom) => {
+
+  console.log(datom)
 
   //TBD: Check that exactly all entity type attributes are present
   //Other ???
@@ -320,28 +322,13 @@ let getUserActions = (S) => returnObject({
     },
     createEvent: async ( eventAttributes, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, [
         newDatom("newEntity", "entity/entityType", 7790),
-        newDatom("newEntity", "entity/label", `Selskapshendelse for ${eventAttributes["event/incorporation/orgnumber"]}`),
-        newDatom("newEntity", "entity/doc", "Mangler beskrivelse" ),
-        newDatom("newEntity", "entity/category", "Mangler kategori" ),
         newDatom("newEntity", "event/eventTypeEntity", newEventTypeEntity),
-        newDatom("newEntity", "event/incorporation/orgnumber", eventAttributes["event/incorporation/orgnumber"] ),
-        newDatom("newEntity", "event/index", eventAttributes["event/index"] + 1 ),
-        newDatom("newEntity", "event/date", eventAttributes["event/date"] ),
-        newDatom("newEntity", "event/currency", "NOK")
+        newDatom("newEntity", 11320, eventAttributes[S.getEntity(11320)["attr/name"]] )
     ])),
     createCompany: async () => update( await sideEffects.submitDatomsWithValidation(S, [
       newDatom("newEntity", "entity/entityType", 7790),
-      newDatom("newEntity", "event/index", 1 ),
       newDatom("newEntity", "event/eventTypeEntity", 4113),
-      newDatom("newEntity", "event/incorporation/orgnumber", randBetween(800000000, 1000000000) ),
-      newDatom("newEntity", "event/date", "2020-01-01" ),
-      newDatom("newEntity", 8426, "2020-01-01" ),
-      newDatom("newEntity", 3175, 1),
-      newDatom("newEntity", 4933, "Selskapet AS"),
-      newDatom("newEntity", 10636, "Selskapets forretningsadresse"),
-      newDatom("newEntity", 10639, "Selskapets næring"),
-      newDatom("newEntity", 10642, "Selskapets postnummer"),
-      newDatom("newEntity", 10645, "Selskapets poststed"),
+      newDatom("newEntity", 11320, randBetween(800000000, 1000000000) ),
   ])),
       undoTx: async (tx) => {
 
@@ -372,9 +359,9 @@ let update = (S) => {
     S.getEntityNote = entity => S.getEntity(entity)["entity/note"] ? S.getEntity(entity)["entity/note"] : `[${entity}] Ingen notat`
 
     //User data  
-    S.getUserEvents = () => S.findEntities( e => e["entity/entityType"] === 7790 ).filter( eventAttributes => eventAttributes["event/incorporation/orgnumber"] === S["UIstate"].selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ) //S["sharedData"]["userEvents"]
+    S.getUserEvents = () => S.findEntities( e => e["entity/entityType"] === 7790 ).filter( eventAttributes => eventAttributes[S.getEntity(11320)["attr/name"]] === S["UIstate"].selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ) //S["sharedData"]["userEvents"]
     S.getLatestTxs = () => S["sharedData"]["latestTxs"]
-    S.getAllOrgnumbers = () => S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E["event/incorporation/orgnumber"] ).filter( filterUniqueValues )
+    S.getAllOrgnumbers = () => S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E[ S.getEntity(11320)["attr/name"] ] ).filter( filterUniqueValues )
     
     //Local state
     S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 3174 : S["UIstate"].selectedEntity
@@ -397,7 +384,7 @@ let Admin = {
     S: null,
     updateClientRelease: (newVersion) => Admin.submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
-    submitDatoms: async (datoms) => datoms.length < 5200
+    submitDatoms: async (datoms) => datoms.length < 10000
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
     : console.log("ERROR: Too many datoms: ", datoms),
     getEntity: e => Admin.S.getEntity(e),

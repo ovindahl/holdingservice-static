@@ -132,13 +132,13 @@ let headerBarView = (S) => d([
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
 let companySelectionMenuRow = (S, A) => d( S.getAllOrgnumbers().map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "companyDoc", "Admin", "Admin/Datomer", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["timeline", "Rapporter", "Admin", "Admin/Datomer", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
   companySelectionMenuRow(S, A),
   pageSelectionMenuRow(S, A),
-  pageContainer(S, A)
+  pageRouter[ S["UIstate"].currentPage ]( S, A ),
 ]
 
 let pageContainer = (S, A) => d([
@@ -149,7 +149,7 @@ let pageContainer = (S, A) => d([
 
 let pageRouter = {
   "timeline": (S, A) => timelineView(S, A),
-  "companyDoc": (S, A) => companyDocPage( S, A ),
+  "Rapporter": (S, A) => reportsPage( S, A ),
   "Admin": (S, A) => adminPage( S, A ),
   "Admin/Datomer": (S, A) => latestDatomsPage( S, A ),
   "Admin/Entitet": (S, A) => genericEntityView(S, A, S["UIstate"]["selectedEntity"]),
@@ -208,9 +208,13 @@ let newDatomsView = (S, A, companyDocVersion) => d([
   ], {class: "columns_2_4_4"})) )
 ]) 
 
-let timelineView = (S, A) => (S.getUserEvents().length > 0)
+let timelineView = (S, A) => d([
+  d(""),
+  (S.getUserEvents().length > 0)
   ? d( S.getUserEvents().map( eventAttributes => eventView( S, eventAttributes, A )  )) 
-  : d("Noe er galt med selskapets tidslinje")
+  : d("Noe er galt med selskapets tidslinje"),
+  d("")
+], {class: "pageContainer"}) 
 
 let eventView = (S, eventAttributes , A) => (S.getEntity(eventAttributes["event/eventTypeEntity"]) === null)
   ? d([d("ERROR: Hendelsestypen finnes ikke"), d(JSON.stringify(Event))], {class: "feedContainer"})
@@ -271,6 +275,31 @@ let companyDocPage = (S, A) => {
   ] )
 }
 
+
+let reportsPage = (S, A) => d([
+  d( //Left sidebar
+    S.findEntities(E => E["entity/entityType"] ===  9966 ).map( Report => d([
+      entityLabel(S, A, Report.entity, e => A.updateLocalState({selectedReport: Report.entity}))
+    ])  )
+    ),
+  genericReportView(S, A, S["UIstate"]["selectedReport"]),
+  d("")
+], {class: "pageContainer"})
+
+let genericReportView = (S, A, selectedReport) => {
+
+  let Report = S.getEntity(selectedReport)
+  let companyDocVersion = S["selectedCompany"][ S["selectedCompany"].length - 1 ]
+  let companyReport = companyDocVersion["Reports"][ selectedReport ]
+
+  return d([
+    h3(Report["entity/label"]),
+    companyReport ? d(Report["report/reportFields"].map( reportField => entityLabelAndValue(S, A, reportField.attribute, companyReport[reportField.attribute] ? companyReport[reportField.attribute] : "na." ) )
+
+    ) : d("Rapporten er ikke tilgjengelig")
+  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+} 
+
 let latestDatomsPage = (S, A) => d([
   sidebar_left(S, A),
   d( S.getLatestTxs().map( tx => txView(S, A, tx) ) ),
@@ -311,11 +340,15 @@ let newEventDropdown = (S, A, eventAttributes) => dropdown( "",
   e => A.createEvent(eventAttributes, Number(submitInputValue(e)) )
 )
 
-let adminPage = (S, A) => genericEntityView(S, A, S["UIstate"]["selectedEntity"]) 
+let adminPage = (S, A) => d([
+  sidebar_left(S, A),
+  genericEntityView(S, A, S["UIstate"]["selectedEntity"]),
+  d("")
+], {class: "pageContainer"})
 
 let genericEntityView = (S, A, entity) => {
 
-  let selectedEntity = S.getEntity(entity)
+  let selectedEntity = S.getEntity(logThis(entity))
   let selectedEntityType = S.getEntity(selectedEntity["entity/entityType"])
   let selectedEntityAttribtues = selectedEntityType["entityType/attributes"]
   
@@ -349,6 +382,8 @@ let attributeView = (S, A, entity, attributeEntity, value) => {
     "10838": valueTypeView_boolean,
     "10905": valueTypeView_newDatoms,
     "10911": valueTypeView_reportFields,
+    "11280": valueTypeView_staticDropdown,
+    "11304": valueTypeView_companyEntityDropdown,
   }
 
   let Attribute = S.getEntity(attributeEntity)
@@ -403,6 +438,8 @@ let valueTypeView_multipleEntities = (S, A, entity, attributeEntity, value) => {
   let attributeName = S.getEntity(attributeEntity)["attr/name"]
 
   let options = new Function( "S" , S.getEntity(attributeEntity)["attribute/selectableEntitiesFilterFunction"] )( S )
+
+  console.log(entity, attributeEntity, value)
 
   return d([
     entityLabel(S,A, attributeEntity),
@@ -496,4 +533,46 @@ let valueTypeView_reportFields = (S, A, entity, attributeEntity, value) => {
     submitButton("Legg til", e => A.updateEntityAttribute(entity, "report/reportFields", reportFields.concat({attribute: 4933, value: `return [TBD]` }) )),
   ])
 
+}
+
+
+let valueTypeView_staticDropdown = (S, A, entity, attributeEntity, value)  => {
+
+  let options = new Function( "S", S.getEntity(attributeEntity)["attribute/selectableEntitiesFilterFunction"] )( S )
+
+  return d([
+    entityLabel(S,A, attributeEntity),
+    d([
+      dropdown(
+        value, 
+        options
+          .map( option => returnObject({value: option, label: option})  ),
+        e => A.updateEntityAttribute( entity, S.getEntity(attributeEntity)["attr/name"], submitInputValue(e) )
+         )
+    ])
+  ], {class: "columns_1_1"})
+}
+
+let valueTypeView_companyEntityDropdown = (S, A, entity, attributeEntity, value)  => {
+
+  let companyEntities = Object.values( S["selectedCompany"][ S.getEntity(entity)["event/index"] ]["Entities"] )
+
+  let Q = {}
+
+  Q.getShareholders = () => companyEntities.filter( E => E["3171"] === "shareholder" )
+
+  let options = new Function( "S", "Q" , S.getEntity(attributeEntity)["attribute/selectableEntitiesFilterFunction"] )( S, Q )
+  
+
+  return d([
+    entityLabel(S,A, attributeEntity),
+    d([
+      dropdown(
+        value, 
+        options
+          .map( option => returnObject({value: option, label: option})  ),
+        e => A.updateEntityAttribute( entity, S.getEntity(attributeEntity)["attr/name"], submitInputValue(e) )
+         )
+    ])
+  ], {class: "columns_1_1"})
 }
