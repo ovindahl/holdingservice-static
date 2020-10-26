@@ -183,6 +183,8 @@ let constructCompanyDoc = (S, storedEvents) => {
 
     Q.getReportField = (reportEntity, attributeEntity) => companyDocVersions[prevVersionIndex]["Reports"][reportEntity][attributeEntity]
     Q.userInput = entity => eventAttributes[ S.getEntity(entity)["attr/name"] ]
+    Q.companyEntity = entity => Q.companyEntities[entity]
+    Q.companyAttribute = attribute => Q.companyEntity(1)[attribute]
 
     if(!latestCompanyDoc.isValid){return companyDocVersions}
       if(!S.getEntity(  eventAttributes["event/eventTypeEntity"] )){return mergerino(companyDocVersions, {isValid: false}) }
