@@ -167,8 +167,18 @@ let updateCompanyMethods = (S, Company) => {
   Company.getEntity = entity => Company.Entities[entity]
   Company.getAttributeValue = attribute => Company.getEntity(1)[attribute]
   Company.getLatestEntityID = () => Number(Object.keys(Company.Entities)[ Object.keys(Company.Entities).length - 1 ])
-  Company.getReport = entity => mergeArray( S.getEntity(entity)["report/reportFields"].map( reportField => createObject(reportField.attribute, new Function( [`Company`], reportField["value"] )( Company ) )  ) )
   Company.getVersion = t => Company.previousVersions.filter( Company => Company.t === t  )[0]
+  Company.getReport = (report, t) => mergeArray( S.getEntity(report)["report/reportFields"].map( reportField => {
+
+    let selectedCompanyVersion = ( typeof t === "undefined" || t === Company.t ) ? Company : Company.getVersion(t)
+
+    let ReportField = createObject(reportField.attribute, new Function( [`Company`], reportField["value"] )( selectedCompanyVersion ) )
+
+    return ReportField
+  }))
+
+  Company.getEntities = (filterFunction) => Object.values(Company.Entities).filter( filterFunction )
+  
 
   return Company
 }
@@ -219,6 +229,7 @@ let constructEvents = (S, storedEvents) => {
 
       let Entities = eventDatoms.reduce( (updatedEntities, datom) => mergerino(
         updatedEntities,
+        createObject(datom.entity, {entity: datom.entity}),
         createObject(datom.entity, createObject(datom.attribute, datom.value ))
       ), Company.Entities )
 
@@ -242,103 +253,6 @@ let constructEvents = (S, storedEvents) => {
 }
 
 
-let constructCompanyDoc = (S, storedEvents) => {
-
-  let initialCompanyDoc = [{
-      index: 0,
-      Datoms: [],
-      Entities: {
-        "1": {}
-      },
-      Reports: {
-        10085: {
-          10040: 1, //Høyeste entitetsID 
-        } 
-      },
-      isValid: true
-    }]
-
-    
-
-    let companyDoc = storedEvents.reduce( (companyDocVersions, eventAttributes, prevVersionIndex) => {
-    let latestCompanyDoc = companyDocVersions[ companyDocVersions.length - 1 ]
-
-    let Q = {
-      companyEntities: companyDocVersions[prevVersionIndex]["Entities"],
-    }
-
-    
-    Q.userInput = entity => eventAttributes[ S.getEntity(entity)["attr/name"] ]
-    Q.companyEntity = entity => Q.companyEntities[entity]
-    Q.companyAttribute = attribute => Q.companyEntity(1)[attribute]
-
-    Q.latestEntityID = () => Object.keys(Q.companyEntities).map( key => Number(key) ).sort().reverse()[0]
-
-    Q.getReportField = (reportEntity, attributeEntity) => Number(Q.latestEntityID )
-
-    if(!latestCompanyDoc.isValid){return companyDocVersions}
-      if(!S.getEntity(  eventAttributes["event/eventTypeEntity"] )){return mergerino(companyDocVersions, {isValid: false}) }
-      let eventType = S.getEntity(  eventAttributes["event/eventTypeEntity"] )
-      let attributesAreValid = eventType["eventType/eventAttributes"].every( attributeEntity =>  
-        validateAttributeValue(S, attributeEntity, eventAttributes[ S.getEntity( attributeEntity )["attr/name"] ] )
-      )
-
-
-
-
-
-      if(!attributesAreValid){return mergerino(companyDocVersions, {isValid: false}) }
-        let eventValidators = S.getEntity( eventAttributes["event/eventTypeEntity"] )["eventType/eventValidators"]
-        let eventIsValid = eventValidators.every( entity =>  
-          new Function([`Q`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( Q ) //To be updated
-        )
-
-        if(!eventIsValid){return mergerino(companyDocVersions, {isValid: false}) }
-
-          let eventDatoms = eventType["eventType/newDatoms"].map( datom => newDatom(
-            new Function( [`Q`], datom["entity"] )( Q ),
-            datom.attribute,
-            new Function( [`Q`], datom["value"] )( Q )
-            )
-          )
-
-          
-
-          let updatedCompanyEntities = eventDatoms.reduce( (Entities, datom) => mergerino(
-            Entities,
-            createObject(datom.entity, createObject(datom.attribute, datom.value ))
-          ), Q.companyEntities )
-
-          Q.latestEntityID = Number( Object.keys(updatedCompanyEntities).pop() )
-          Q.companyEntities = updatedCompanyEntities
-
-
-          let updatedReports = mergeArray( S.findEntities( E => E["entity/entityType"] === 9966 )
-            .filter( report => new Function( [`eventDatoms`, `Q`], report["report/triggerFunction"] )( eventDatoms, Q)   )
-            //.sort(),
-            .map( report => createObject(report.entity, mergeArray(report["report/reportFields"].map( reportField => createObject(reportField.attribute, new Function( [`Q`], reportField["value"] )( Q ) )  ))  ))
-          )
-          
-          let index = prevVersionIndex + 1
-
-          let companyDocVersion = {
-            index, 
-            eventAttributes, 
-            eventDatoms,
-            Datoms: latestCompanyDoc.Datoms.concat(eventDatoms),
-            Entities: updatedCompanyEntities,
-            Reports: updatedReports,
-            isValid: true
-          }
-
-
-          return companyDocVersions.concat(companyDocVersion)
-
-  } , initialCompanyDoc )
-
-  return companyDoc
-
-}
 
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
@@ -382,7 +296,7 @@ let getUserActions = (S) => returnObject({
 
         let addedAttribute = value[ value.length - 1 ]
 
-        let entityConstructor = currentValue[ currentValue.length - 1 ].entity
+        let entityConstructor = currentValue[ currentValue.length - 1 ].entity ? currentValue[ currentValue.length - 1 ].entity : `return Q.latestEntityID() + 1;`
 
 
 
@@ -500,7 +414,7 @@ sideEffects.configureClient();
 
 let Admin = {
     S: null,
-    updateClientRelease: (newVersion) => Admin.submitDatoms([newDatom(2829, "transaction/records", {"serverVersion":"0.3.2","clientVersion":newVersion})], null),
+    updateClientRelease: (newVersion) => sideEffects.APIRequest("POST", "updateClientRelease", JSON.stringify({"clientVersion": newVersion})),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
     submitDatoms: async (datoms) => datoms.length < 10000
     ? await sideEffects.APIRequest("POST", "transactor", JSON.stringify( logThis(datoms, "Datoms submitted to Transactor.") )) 
@@ -511,4 +425,115 @@ let Admin = {
     retractEntities: async entities => await Admin.submitDatoms( getRetractionDatomsWithoutChildren(entities.map( e => Admin.S.getEntity(e) )) ),
     retractEntity: async entity => await Admin.retractEntities([entity]),
     getServerCache: async () => await sideEffects.APIRequest("GET", "serverCache", null)
+}
+
+
+
+
+
+
+
+
+
+
+
+//Archive
+
+
+let constructCompanyDoc = (S, storedEvents) => {
+
+  let initialCompanyDoc = [{
+      index: 0,
+      Datoms: [],
+      Entities: {
+        "1": {}
+      },
+      Reports: {
+        10085: {
+          10040: 1, //Høyeste entitetsID 
+        } 
+      },
+      isValid: true
+    }]
+
+    
+
+    let companyDoc = storedEvents.reduce( (companyDocVersions, eventAttributes, prevVersionIndex) => {
+    let latestCompanyDoc = companyDocVersions[ companyDocVersions.length - 1 ]
+
+    let Q = {
+      companyEntities: companyDocVersions[prevVersionIndex]["Entities"],
+    }
+
+    
+    Q.userInput = entity => eventAttributes[ S.getEntity(entity)["attr/name"] ]
+    Q.companyEntity = entity => Q.companyEntities[entity]
+    Q.companyAttribute = attribute => Q.companyEntity(1)[attribute]
+
+    Q.latestEntityID = () => Object.keys(Q.companyEntities).map( key => Number(key) ).sort().reverse()[0]
+
+    Q.getReportField = (reportEntity, attributeEntity) => Number(Q.latestEntityID )
+
+    if(!latestCompanyDoc.isValid){return companyDocVersions}
+      if(!S.getEntity(  eventAttributes["event/eventTypeEntity"] )){return mergerino(companyDocVersions, {isValid: false}) }
+      let eventType = S.getEntity(  eventAttributes["event/eventTypeEntity"] )
+      let attributesAreValid = eventType["eventType/eventAttributes"].every( attributeEntity =>  
+        validateAttributeValue(S, attributeEntity, eventAttributes[ S.getEntity( attributeEntity )["attr/name"] ] )
+      )
+
+
+
+
+
+      if(!attributesAreValid){return mergerino(companyDocVersions, {isValid: false}) }
+        let eventValidators = S.getEntity( eventAttributes["event/eventTypeEntity"] )["eventType/eventValidators"]
+        let eventIsValid = eventValidators.every( entity =>  
+          new Function([`Q`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( Q ) //To be updated
+        )
+
+        if(!eventIsValid){return mergerino(companyDocVersions, {isValid: false}) }
+
+          let eventDatoms = eventType["eventType/newDatoms"].map( datom => newDatom(
+            new Function( [`Q`], datom["entity"] )( Q ),
+            datom.attribute,
+            new Function( [`Q`], datom["value"] )( Q )
+            )
+          )
+
+          
+
+          let updatedCompanyEntities = eventDatoms.reduce( (Entities, datom) => mergerino(
+            Entities,
+            createObject(datom.entity, createObject(datom.attribute, datom.value ))
+          ), Q.companyEntities )
+
+          Q.latestEntityID = Number( Object.keys(updatedCompanyEntities).pop() )
+          Q.companyEntities = updatedCompanyEntities
+
+
+          let updatedReports = mergeArray( S.findEntities( E => E["entity/entityType"] === 9966 )
+            .filter( report => new Function( [`eventDatoms`, `Q`], report["report/triggerFunction"] )( eventDatoms, Q)   )
+            //.sort(),
+            .map( report => createObject(report.entity, mergeArray(report["report/reportFields"].map( reportField => createObject(reportField.attribute, new Function( [`Q`], reportField["value"] )( Q ) )  ))  ))
+          )
+          
+          let index = prevVersionIndex + 1
+
+          let companyDocVersion = {
+            index, 
+            eventAttributes, 
+            eventDatoms,
+            Datoms: latestCompanyDoc.Datoms.concat(eventDatoms),
+            Entities: updatedCompanyEntities,
+            Reports: updatedReports,
+            isValid: true
+          }
+
+
+          return companyDocVersions.concat(companyDocVersion)
+
+  } , initialCompanyDoc )
+
+  return companyDoc
+
 }

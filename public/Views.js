@@ -81,6 +81,7 @@ let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("sele
   dropdown.style = "background-color: darkgray;"
   updateFunction(e)
 }   )
+let checkBox = (isChecked, onClick) => input({type: "checkbox", value: isChecked}, "click", onClick)
 
 let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", e => {
   let button = document.getElementById(e.srcElement.id)
@@ -199,6 +200,9 @@ let entityInspectorPopup = (S, A, entity) => d([
       d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin", selectedEntityType: S.getEntity(entity)["entity/entityType"], selectedCategory:  S.getEntityCategory(entity), selectedEntity: entity }))
     ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
+
+
+
 let newDatomsView = (S, A, Datoms) => d([
   h3("Nye selskapsdatomer generert av hendelsen:"),
   d( Datoms.map( datom => d([
@@ -240,7 +244,7 @@ let reportsPage = (S, A) => d([
 ], {class: "pageContainer"})
 
 let versionSelector = (S, A) => d([
-  d( `T = [${S["UIstate"].selectedVersion} / ${S["selectedCompany"]["t"]}]`),
+  d( `Viser rapporten etter hendelse [${S["UIstate"].selectedVersion} / ${S["selectedCompany"]["t"]}]`),
   d([
     submitButton("<<", e => A.updateLocalState({selectedVersion: 0}) ),
     submitButton("<", e => A.updateLocalState({selectedVersion: S["UIstate"].selectedVersion > 0 ? S["UIstate"].selectedVersion - 1 : 0}) ),
@@ -250,20 +254,60 @@ let versionSelector = (S, A) => d([
   
 ], {class: "columns_1_1_1"})
 
-
+//Report view
 
 let genericReportView = (S, A, selectedReport) => {
 
   let Report = S.getEntity(selectedReport)
-  let companyReport = S["selectedCompany"].getReport(selectedReport) 
+  let companyReport = S["selectedCompany"].getReport(selectedReport, S["UIstate"].selectedVersion )
+
 
   return d([
     versionSelector(S, A),
     h3(Report["entity/label"]),
-    companyReport ? d(Report["report/reportFields"].map( reportField => entityLabelAndValue(S, A, reportField.attribute, companyReport[reportField.attribute] ? companyReport[reportField.attribute] : "na." ) )
+    companyReport ? d(Report["report/reportFields"].map( reportField => reportFieldView(S, A, selectedReport, reportField.attribute, companyReport[reportField.attribute]) ) // entityLabelAndValue(S, A, reportField.attribute, companyReport[reportField.attribute] ? companyReport[reportField.attribute] : "na." ) )
     ) : d("Rapporten er ikke tilgjengelig")
   ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 } 
+
+let reportFieldView = (S, A, selectedReport, attributeEntity, value) => {
+
+  let customReportFieldViews = {
+    "12420": reportFieldView_Datoms, //Tekst
+    "12434": reportFieldView_Entities
+  }
+
+  console.log(S, A, selectedReport, attributeEntity, value)
+
+  return customReportFieldViews[attributeEntity] ? customReportFieldViews[attributeEntity](S, A, value) : entityLabelAndValue(S, A, attributeEntity, value ? value : "na." )
+}
+
+let reportFieldView_Datoms = (S, A, Datoms) => d([
+  d([
+    d( "Entitet" ),
+    d( "Attributt" ),
+    d( "Verdi" ),
+    d( "Hendelse #" ),
+  ], {class: "columns_1_1_1_1"}),
+  d(Datoms.map( Datom => d([
+    d( String( Datom.entity ) ),
+    entityLabel(S, A, Datom.attribute),
+    d( JSON.stringify(Datom.value) ),
+    d( String( Datom.t ) ),
+  ], {class: "columns_1_1_1_1"}) ))
+])
+
+let reportFieldView_Entities = (S, A, Entities) => d([
+  d(Entities.map( Entity => d([
+    d(String( Entity.entity )),
+    d(Object.keys(Entity).filter( key => key !== "entity" ).map( attribute => d([
+      entityLabel(S, A, Number(attribute)),
+      d( JSON.stringify(Entity[attribute]) ),
+    ], {class: "columns_1_1"}) )),
+    d("<br>"),
+  ])   ))
+])
+
 
 let latestDatomsPage = (S, A) => d([
   sidebar_left(S, A),
@@ -308,6 +352,11 @@ let adminPage = (S, A) => d([
   genericEntityView(S, A, S["UIstate"]["selectedEntity"]),
   d("")
 ], {class: "pageContainer"})
+
+
+
+
+//Entity view
 
 let genericEntityView = (S, A, entity) => {
 
@@ -427,7 +476,11 @@ let valueTypeView_object = (S, A, entity, attributeEntity, value) => d([
 
 let valueTypeView_boolean = (S, A, entity, attributeEntity, value) => d([
   entityLabel(S,A, attributeEntity),
-  d(JSON.stringify(value))
+  dropdown(
+    value ? "Ja" : "Nei", 
+    ["Ja", "Nei"].map( option => returnObject({value: option, label: option})  ),
+    e => A.updateEntityAttribute( entity, S.getEntity(attributeEntity)["attr/name"], (submitInputValue(e) === "Ja") )
+    )
 ], {class: "columns_1_1"})
 
 let valueTypeView_newDatoms = (S, A, entity, attributeEntity, value) => {
