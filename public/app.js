@@ -376,6 +376,7 @@ let getUserActions = (S) => returnObject({
       let datoms = [datom]
 
       if(attribute === "eventType/eventAttributes"){
+        
 
         let currentValue = S.getEntity(entity)["eventType/newDatoms"]
 
