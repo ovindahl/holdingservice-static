@@ -56,7 +56,7 @@ const sideEffects = {
 
               let initialUIstate = {
                 "currentPage": "timeline",
-                "selectedOrgnumber": "818924232",
+                "selectedOrgnumber": null,
                 "companyDocPage/selectedVersion": 1,
                 "selectedEntityType" : 7684,
                 "selectedCategory": "Hendelsesattributter",
@@ -161,6 +161,87 @@ let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["e
 
 let validateAttributeValue = (S, attributeEntity, value) =>  new Function(`inputValue`, S.getEntity( attributeEntity )["attribute/validatorFunctionString"] )( value )
 
+
+let updateCompanyMethods = (S, Company) => {
+
+  Company.getEntity = entity => Company.Entities[entity]
+  Company.getAttributeValue = attribute => Company.getEntity(1)[attribute]
+  Company.getLatestEntityID = () => Number(Object.keys(Company.Entities)[ Object.keys(Company.Entities).length - 1 ])
+  Company.getReport = entity => mergeArray( S.getEntity(entity)["report/reportFields"].map( reportField => createObject(reportField.attribute, new Function( [`Company`], reportField["value"] )( Company ) )  ) )
+  Company.getVersion = t => Company.previousVersions.filter( Company => Company.t === t  )[0]
+
+  return Company
+}
+
+
+let constructEvents = (S, storedEvents) => {
+
+  let initialCompany = {
+    t: 0,
+    Events: storedEvents,
+    Datoms: [],
+    Entities: {
+      "1": {}
+    },
+    previousVersions: [],
+    isValid: true
+  }
+
+  
+
+  Company = storedEvents.reduce( (Company, Event) => {
+
+    let t = Company.t + 1
+
+    let EventType = S.getEntity(  Event["event/eventTypeEntity"] )
+
+    let isApplicable = [
+      (Company, Event) => Company.isValid,
+      (Company, Event) => S.findEntities( E => E["entity/entityType"] === 7686 ).map( E => E.entity).includes( Event["event/eventTypeEntity"] ),
+      (Company, Event) => EventType["eventType/eventAttributes"].every( attribute =>  validateAttributeValue(S, attribute, Event[ S.getEntity( attribute )["attr/name"] ] ) ),
+      (Company, Event) => EventType["eventType/eventValidators"].every( eventValidator =>  new Function([`Q`], S.getEntity(eventValidator)["eventValidator/validatorFunctionString"])( Company ) ),
+    ].every( validatorFunction => validatorFunction(Company, Event) )
+
+    if(isApplicable){
+
+      let Q = {
+        userInput: entity => Event[ S.getEntity(entity)["attr/name"] ],
+        latestEntityID: () => Company.getLatestEntityID()
+      }
+
+      let eventDatoms = EventType["eventType/newDatoms"].map( datomConstructor => returnObject({
+          "entity": new Function( [`Q`], datomConstructor["entity"] )( Q ),
+          "attribute": datomConstructor.attribute,
+          "value": new Function( [`Q`], datomConstructor["value"] )( Q ),
+          "t": t
+        })
+      )
+
+      let Entities = eventDatoms.reduce( (updatedEntities, datom) => mergerino(
+        updatedEntities,
+        createObject(datom.entity, createObject(datom.attribute, datom.value ))
+      ), Company.Entities )
+
+      let updatedCompany = {
+        t: t,
+        Events: Company.Events,
+        Datoms: Company.Datoms.concat(eventDatoms),
+        Entities: Entities,
+        previousVersions: Company.previousVersions.concat(Company),
+        isValid: true
+      }
+
+      return updateCompanyMethods(S, updatedCompany);
+
+    }else{return mergerino(Company, {isValid: false}) }
+
+  }, updateCompanyMethods(S, initialCompany) )
+
+  return Company
+
+}
+
+
 let constructCompanyDoc = (S, storedEvents) => {
 
   let initialCompanyDoc = [{
@@ -186,10 +267,14 @@ let constructCompanyDoc = (S, storedEvents) => {
       companyEntities: companyDocVersions[prevVersionIndex]["Entities"],
     }
 
-    Q.getReportField = (reportEntity, attributeEntity) => companyDocVersions[prevVersionIndex]["Reports"][reportEntity][attributeEntity]
+    
     Q.userInput = entity => eventAttributes[ S.getEntity(entity)["attr/name"] ]
     Q.companyEntity = entity => Q.companyEntities[entity]
     Q.companyAttribute = attribute => Q.companyEntity(1)[attribute]
+
+    Q.latestEntityID = () => Object.keys(Q.companyEntities).map( key => Number(key) ).sort().reverse()[0]
+
+    Q.getReportField = (reportEntity, attributeEntity) => Number(Q.latestEntityID )
 
     if(!latestCompanyDoc.isValid){return companyDocVersions}
       if(!S.getEntity(  eventAttributes["event/eventTypeEntity"] )){return mergerino(companyDocVersions, {isValid: false}) }
@@ -287,7 +372,31 @@ let getUserActions = (S) => returnObject({
     updateEntityAttribute: async (entity, attribute, value) => {
 
       let datom = newDatom(Number(entity), attribute, value)
-      let serverReponse = await sideEffects.submitDatomsWithValidation(S, [datom] )
+
+      let datoms = [datom]
+
+      if(attribute === "eventType/eventAttributes"){
+
+        let currentValue = S.getEntity(entity)["eventType/newDatoms"]
+
+        let addedAttribute = value[ value.length - 1 ]
+
+        let entityConstructor = currentValue[ currentValue.length - 1 ].entity
+
+
+
+        let extraDatom = newDatom(entity, "eventType/newDatoms", currentValue.concat( {entity: entityConstructor, attribute: addedAttribute, value: `return Q.userInput(${addedAttribute});`} ) )
+
+        datoms.push(extraDatom)
+
+      }
+
+
+      
+
+
+
+      let serverReponse = await sideEffects.submitDatomsWithValidation(S, datoms )
 
 
       update( serverReponse )
@@ -364,10 +473,18 @@ let update = (S) => {
     S.getAllOrgnumbers = () => S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E[ S.getEntity(11320)["attr/name"] ] ).filter( filterUniqueValues )
     
     //Local state
-    S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 3174 : S["UIstate"].selectedEntity
-    S["UIstate"].selectedAdminEntity = (S.getEntity(S["UIstate"].selectedAdminEntity) === null) ? 3174 : S["UIstate"].selectedEntity
+    S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 9970 : S["UIstate"].selectedEntity
+    S["UIstate"].selectedOrgnumber = (S["UIstate"].selectedOrgnumber === null) ? S.getAllOrgnumbers()[0] : S["UIstate"].selectedOrgnumber
+
     
-    try {S["selectedCompany"] = constructCompanyDoc(S, S.getUserEvents())} catch (error) {console.log(error)}
+    
+    
+    try {S["selectedCompany"] = constructEvents(S, S.getUserEvents() ) } catch (error) {console.log(error)}
+    S["UIstate"].selectedVersion = (typeof S["UIstate"].selectedVersion === "undefined" ) ? S["selectedCompany"].t : S["UIstate"].selectedVersion
+
+    let C = constructEvents(S, S.getUserEvents() )
+
+    console.log("C", C)
 
     Admin.S = S;
 
