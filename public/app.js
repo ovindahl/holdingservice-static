@@ -245,8 +245,7 @@ let constructEvents = (S, storedEvents) => {
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
 let updateData = serverResponse => returnObject({
-  "E": serverResponse["E"],
-  "latestTxs": serverResponse["latestTxs"].sort( (a, b) => b.tx - a.tx ),
+  "E": serverResponse["E"]
 })
 
 let getRetractionDatomsWithoutChildren = Entities => Entities.map( Entity =>  Object.entries( Entity ).filter( entry => typeof entry[1] !== "function" ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
@@ -296,6 +295,32 @@ let getUserActions = (S) => returnObject({
     update: newS => update( newS )
 })
 
+let activateEntities = (S, Entities) => {
+
+  let activatedEntities = Entities.map( Entity => {
+    Entity.Datoms = [] //TBD
+    Entity.get = attribute => Entity[S.attrName(attribute)]
+    Entity.type = () => Entity.get("entity/entityType") ? Entity.get("entity/entityType") : logThis(null, `Entitet [${Entity.get("entity")}] ( mangler visningsnavn )` )
+    Entity.label = () => Entity.get("entity/label") ? Entity.get("entity/label") : `Entitet [${Entity.get("entity")}] ( mangler visningsnavn )`
+    Entity.doc = () => Entity.get("entity/doc") ? Entity.get("entity/doc") : `Entitet [${Entity.get("entity")}] ( mangler beskrivelse )`
+    Entity.category = () => Entity.get("entity/category") ? Entity.get("entity/category") : `Entitet [${Entity.get("entity")}] ( mangler kategori )`
+    Entity.retract = async () => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [Entity])) //Hmmmmm
+    Entity.update = async (attribute, newValue) => await sideEffects.submitDatomsWithValidation(S, [newDatom( Entity.get("entity"), S.attrName(attribute), newValue )] ) //Hmmmmm
+  
+    return Entity
+  }  )
+
+
+  activatedEntities.getEntity = entity => {
+    let searchResult = Entities.filter( Entity => Entity.get("entity") === entity )
+    let returnValue = searchResult.length === 1 ? searchResult[0] : logThis(null, `Entitet [${entity}] finnes ikke` )
+    return returnValue
+  }
+
+  return activatedEntities
+
+} 
+
 let update = (S) => {
 
     //DB queries
@@ -305,61 +330,26 @@ let update = (S) => {
     S.attrName = attribute => (typeof attribute === "string") ? attribute : Attributes.filter( Attribute => Attribute.entity === attribute )[0]["attr/name"]
     S.attrEntity = attrName => (typeof attrName === "number") ? attrName : Attributes.filter( Attribute => Attribute["attr/name"] === attrName )[0]["entity"]
 
-    let Entities = Object.values(S["sharedData"]["E"]).filter( Entity => Object.keys(Entity).length > 1 ).map( Entity => {
-      
-      Entity.Datoms = [] //TBD
-      Entity.get = attribute => Entity[S.attrName(attribute)]
-      Entity.type = () => Entity.get("entity/entityType") ? Entity.get("entity/entityType") : logThis(null, `Entitet [${Entity.get("entity")}] ( mangler visningsnavn )` )
-      Entity.label = () => Entity.get("entity/label") ? Entity.get("entity/label") : `Entitet [${Entity.get("entity")}] ( mangler visningsnavn )`
-      Entity.doc = () => Entity.get("entity/doc") ? Entity.get("entity/doc") : `Entitet [${Entity.get("entity")}] ( mangler beskrivelse )`
-      Entity.category = () => Entity.get("entity/category") ? Entity.get("entity/category") : `Entitet [${Entity.get("entity")}] ( mangler kategori )`
-      Entity.retract = async () => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [Entity])) //Hmmmmm
-      Entity.update = async (attribute, newValue) => await sideEffects.submitDatomsWithValidation(S, [newDatom( Entity.get("entity"), S.attrName(attribute), newValue )] ) //Hmmmmm
-  
-      return Entity
-    }  )
-
-    Entities.getEntity = entity => {
-
-      let searchResult = Entities.filter( Entity => Entity.get("entity") === entity )
-
-      let returnValue = searchResult.length === 1 ? searchResult[0] : logThis(null, `Entitet [${entity}] finnes ikke` )
-
-      return returnValue
-
-    } 
-
+    let Entities = activateEntities( S, Object.values(S["sharedData"]["E"]).filter( Entity => Object.keys(Entity).length > 1 ) ) 
     
     S.getEntity = entity => Entities.getEntity(entity)  //S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis(null, `Entitet [${entity}] finnes ikke` )
     S.findEntities = filterFunction => Entities.filter( filterFunction )
     S.getEntityLabel = entity => Entities.getEntity(entity).label()
     S.getEntityDoc = entity => Entities.getEntity(entity).doc()
     S.getEntityCategory = entity => Entities.getEntity(entity).category()
-
-    //User data  
-    S.getUserEvents = () => Entities
-      .filter( e => e["entity/entityType"] === 7790 )
-      .filter( eventAttributes => eventAttributes[S.getEntity(11320)["attr/name"]] === S["UIstate"].selectedOrgnumber )
-      .sort( (a, b) => a["event/index"] - b["event/index"]  )
-    S.getLatestTxs = () => [] //TBD
-    S.getAllOrgnumbers = () => Entities
-      .filter( e => e["entity/entityType"] === 7790 )
-      .map( E => E[ S.getEntity(11320)["attr/name"] ] )
-      .filter( filterUniqueValues )
     
+    try {
+      S.selectedCompany = constructEvents(S, Entities
+        .filter( e => e["entity/entityType"] === 7790 )
+        .filter( eventAttributes => eventAttributes[S.getEntity(11320)["attr/name"]] === S["UIstate"].selectedOrgnumber )
+        .sort( (a, b) => a["event/index"] - b["event/index"]  )
+      )} catch (error) {console.log(error)}
+
+
     //Local state
     S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 9970 : S["UIstate"].selectedEntity
-    S["UIstate"].selectedOrgnumber = (S["UIstate"].selectedOrgnumber === null) ? S.getAllOrgnumbers()[0] : S["UIstate"].selectedOrgnumber
-
-    
-    
-    
-    try {S["selectedCompany"] = constructEvents(S, S.getUserEvents() ) } catch (error) {console.log(error)}
+    S["UIstate"].selectedOrgnumber = (S["UIstate"].selectedOrgnumber === null) ? S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E.get(11320) ).filter( filterUniqueValues )[0] : S["UIstate"].selectedOrgnumber
     S["UIstate"].selectedVersion = (typeof S["UIstate"].selectedVersion === "undefined" ) ? S["selectedCompany"].t : S["UIstate"].selectedVersion
-
-    let C = constructEvents(S, S.getUserEvents() )
-
-    console.log("C", C)
 
     Admin.S = S;
 

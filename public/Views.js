@@ -132,7 +132,7 @@ let headerBarView = (S) => d([
   ], {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
-let companySelectionMenuRow = (S, A) => d( S.getAllOrgnumbers().map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
+let companySelectionMenuRow = (S, A) => d( S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E.get(11320) ).filter( filterUniqueValues ).map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
 let pageSelectionMenuRow = (S, A) => d( ["timeline", "Rapporter", "Admin", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
@@ -142,11 +142,6 @@ let generateHTMLBody = (S, A) => [
   pageRouter[ S["UIstate"].currentPage ]( S, A ),
 ]
 
-let pageContainer = (S, A) => d([
-  sidebar_left(S, A),
-  pageRouter[ S["UIstate"].currentPage ]( S, A ),
-  d("")
-], {class: "pageContainer"})
 
 let pageRouter = {
   "timeline": (S, A) => timelineView(S, A),
@@ -157,27 +152,22 @@ let pageRouter = {
 
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label()).localeCompare(b.label())
 
-let sidebar_left = (S, A) => S["UIstate"].currentPage == "Admin"
-? d([
+let sidebar_left = (S, A) => d([
       d( S.findEntities( Entity => Entity.type() ===  7794 )
         .filter( e => ![7790, 7806].includes(e.entity)  ) //Not event or tx
         .sort( sortEntitiesAlphabeticallyByLabel )
-        .map( Entity => d( 
-          Entity.label(), 
-          {class: Entity.entity === S["UIstate"].selectedEntityType ? "textButton textButton_selected" : "textButton"}, 
-          "click", 
-          e => A.updateLocalState(  {
-            selectedEntityType : Entity.entity, 
-            selectedCategory: S.findEntities( e => e.type() === Entity.entity )[0]["entity/category"],
-            selectedEntity: S.findEntities( e => e.type() === Entity.entity )[0]["entity"],
-           } ) 
-          )  )
+        .map( Entity => entityLabel(S, A, Entity.entity, e => A.updateLocalState(  {
+          selectedEntityType : Entity.entity, 
+          selectedCategory: S.findEntities( e => e.type() === Entity.entity )[0]["entity/category"],
+          selectedEntity: S.findEntities( e => e.type() === Entity.entity )[0]["entity"]
+          }))
+        )
       ),
       d( S.findEntities( e => e.type() === S["UIstate"].selectedEntityType ).map( Entity => Entity["entity/category"] ).filter(filterUniqueValues)
         .sort( ( a , b ) => ('' + a).localeCompare(b) )
         .map( category => d( 
           category, 
-          {class: category === S["UIstate"].selectedCategory ? "textButton textButton_selected" : "textButton"}, 
+          {class: category === S["UIstate"].selectedCategory ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, 
           "click", 
           e => A.updateLocalState(  {selectedCategory : category, selectedEntity: S.findEntities( e => e.type() === S["UIstate"].selectedEntityType && e["entity/category"] === category)[0]["entity"]} )
           )  )
@@ -185,10 +175,9 @@ let sidebar_left = (S, A) => S["UIstate"].currentPage == "Admin"
       d( S.findEntities( e => e.type() === S["UIstate"].selectedEntityType && e["entity/category"] === S["UIstate"].selectedCategory )
         .filter( E => E["entity/status"] !== "Utgått" )
         .sort( sortEntitiesAlphabeticallyByLabel )
-        .map( Entity => d( Entity.label(), {class: Entity.entity === S["UIstate"].selectedEntity ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedEntity : Entity.entity} ) ) )
+        .map( Entity => entityLabel(S, A, Entity.entity, e => A.updateLocalState(  {selectedEntity : Entity.entity} ) ))
         )
   ], {style: "display:flex;"})
-:  d("")
 
 let entityInspectorPopup = (S, A, entity) => d([
       h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 3px;`}),
@@ -213,8 +202,8 @@ let newDatomsView = (S, A, Datoms) => d([
 
 let timelineView = (S, A) => d([
   d(""),
-  (S.getUserEvents().length > 0)
-  ? d( S.getUserEvents().map( eventAttributes => eventView( S, eventAttributes, A )  )) 
+  (S.selectedCompany.Events.length > 0)
+  ? d( S.selectedCompany.Events.map( eventAttributes => eventView( S, eventAttributes, A )  )) 
   : d("Noe er galt med selskapets tidslinje"),
   d("")
 ], {class: "pageContainer"}) 
@@ -275,8 +264,6 @@ let reportFieldView = (S, A, selectedReport, attribute, value) => {
     "12420": reportFieldView_Datoms, //Tekst
     "12434": reportFieldView_Entities
   }
-
-  console.log(S, A, selectedReport, attribute, value)
 
   return customReportFieldViews[attribute] ? customReportFieldViews[attribute](S, A, value) : entityLabelAndValue(S, A, attribute, value ? value : "na." )
 }
