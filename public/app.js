@@ -51,6 +51,13 @@ const sideEffects = {
             console.log("Authenticated");
             
             let serverResponse = await sideEffects.APIRequest("GET", "userContent", null)
+
+
+            //let serverResponse2 = await sideEffects.APIRequest("GET", "Entities", null)
+
+            //console.log(serverResponse2)
+            
+
             if( serverResponse === null){console.log("Received null")}
             else{
 
@@ -67,7 +74,7 @@ const sideEffects = {
 
               update({
                 UIstate: initialUIstate,
-                sharedData: updateData( serverResponse )
+                Entities: serverResponse.Entities
               })
             }
             
@@ -92,7 +99,7 @@ const sideEffects = {
 
           let newState = {
             UIstate: S["UIstate"],
-            sharedData: updateData(serverResponse)
+            Entities: serverResponse.Entities
           }
           
           return newState }
@@ -244,9 +251,6 @@ let constructEvents = (S, storedEvents) => {
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
-let updateData = serverResponse => returnObject({
-  "E": serverResponse["E"]
-})
 
 let getRetractionDatomsWithoutChildren = Entities => Entities.map( Entity =>  Object.entries( Entity ).filter( entry => typeof entry[1] !== "function" ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
 
@@ -292,7 +296,10 @@ let getUserActions = (S) => returnObject({
       newDatom("newEntity", "event/eventTypeEntity", 4113),
       newDatom("newEntity", 11320, randBetween(800000000, 1000000000) ),
   ])),
-    update: newS => update( newS )
+    update: serverResponse => update( {
+      UIstate: S["UIstate"],
+      Entities: logThis(serverResponse, "serverResponse").Entities
+    } )
 })
 
 let activateEntities = (S, Entities) => {
@@ -325,12 +332,15 @@ let update = (S) => {
 
     //DB queries
 
-    let Attributes = Object.values(S["sharedData"]["E"]).filter( Entity => Entity["entity/entityType"] === 7684 )
+    
+
+    let Attributes = S.Entities.filter( Entity => Entity["entity/entityType"] === 7684 )
 
     S.attrName = attribute => (typeof attribute === "string") ? attribute : Attributes.filter( Attribute => Attribute.entity === attribute )[0]["attr/name"]
     S.attrEntity = attrName => (typeof attrName === "number") ? attrName : Attributes.filter( Attribute => Attribute["attr/name"] === attrName )[0]["entity"]
-
-    let Entities = activateEntities( S, Object.values(S["sharedData"]["E"]).filter( Entity => Object.keys(Entity).length > 1 ) ) 
+    
+    let Entities = activateEntities( S, S.Entities.filter( Entity => Object.keys(Entity).length > 1 ) ) 
+    
     
     S.getEntity = entity => Entities.getEntity(entity)  //S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis(null, `Entitet [${entity}] finnes ikke` )
     S.findEntities = filterFunction => Entities.filter( filterFunction )
