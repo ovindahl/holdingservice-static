@@ -102,16 +102,13 @@ const sideEffects = {
     }
 }
 
-
 let validateDatom = (S, datom) => {
-
-  console.log(datom)
 
   //TBD: Check that exactly all entity type attributes are present
   //Other ???
 
   let isExistingEntity = (typeof datom.entity === "number")
-  let attribute = (typeof datom.attribute === "string") ? getAttributeEntityFromName(S, datom.attribute) : datom.attribute
+  let attribute = S.attrEntity(datom.attribute)
 
   if(isExistingEntity){
     let Entity = S.getEntity(datom.entity)
@@ -153,14 +150,7 @@ let validateDatom = (S, datom) => {
 
 }
 
-
-
-//Company construction: To be moved to server
-
-let getAttributeEntityFromName = (S, attributeName) => S.findEntities( e => e["entity/entityType"] === 7684 ).filter( a => a["attr/name"] === attributeName )[0]["entity"]
-
 let validateAttributeValue = (S, attributeEntity, value) =>  new Function(`inputValue`, S.getEntity( attributeEntity )["attribute/validatorFunctionString"] )( value )
-
 
 let updateCompanyMethods = (S, Company) => {
 
@@ -182,7 +172,6 @@ let updateCompanyMethods = (S, Company) => {
 
   return Company
 }
-
 
 let constructEvents = (S, storedEvents) => {
 
@@ -216,6 +205,7 @@ let constructEvents = (S, storedEvents) => {
 
       let Q = {
         userInput: entity => Event[ S.getEntity(entity)["attr/name"] ],
+        companyAttribute: attribute => Company.getAttributeValue(attribute),
         latestEntityID: () => Company.getLatestEntityID()
       }
 
@@ -252,9 +242,6 @@ let constructEvents = (S, storedEvents) => {
 
 }
 
-
-
-
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
 let updateData = serverResponse => returnObject({
@@ -262,61 +249,13 @@ let updateData = serverResponse => returnObject({
   "latestTxs": serverResponse["latestTxs"].sort( (a, b) => b.tx - a.tx ),
 })
 
-let getRetractionDatomsWithoutChildren = Entities => Entities.map( Entity =>  Object.entries( Entity ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
-
-
-let getEntityForEntityType = {
-  "attribute": 7684,
-  "eventType": 7686,
-  "eventField": 7780,
-  "companyField": 7784,
-  "eventValidator": 7728,
-  "valueType": 7689,
-  "entityType": 7794,
-  "event": 7790,
-  "tx": 7806,
-  "report": 9966
-}
+let getRetractionDatomsWithoutChildren = Entities => Entities.map( Entity =>  Object.entries( Entity ).filter( entry => typeof entry[1] !== "function" ).map( e => newDatom(Entity["entity"], e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
 
 let getUserActions = (S) => returnObject({
     updateLocalState: (patch) => update( {
       UIstate: mergerino( S["UIstate"], patch ), 
       sharedData: S["sharedData"] 
     }),
-    updateEntityAttribute: async (entity, attribute, value) => {
-
-      let datom = newDatom(Number(entity), attribute, value)
-
-      let datoms = [datom]
-
-      if(attribute === "eventType/eventAttributes"){
-        
-
-        let currentValue = S.getEntity(entity)["eventType/newDatoms"]
-
-        let addedAttribute = value[ value.length - 1 ]
-
-        let entityConstructor = currentValue[ currentValue.length - 1 ].entity ? currentValue[ currentValue.length - 1 ].entity : `return Q.latestEntityID() + 1;`
-
-
-
-        let extraDatom = newDatom(entity, "eventType/newDatoms", currentValue.concat( {entity: entityConstructor, attribute: addedAttribute, value: `return Q.userInput(${addedAttribute});`} ) )
-
-        datoms.push(extraDatom)
-
-      }
-
-
-      
-
-
-
-      let serverReponse = await sideEffects.submitDatomsWithValidation(S, datoms )
-
-
-      update( serverReponse )
-    },
-    retractEntity: async entity => update( await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [S.getEntity(entity) ]))),
     createEntity: async entityTypeEntity => {
 
       let EntityType = S.getEntity(entityTypeEntity)
@@ -354,38 +293,59 @@ let getUserActions = (S) => returnObject({
       newDatom("newEntity", "event/eventTypeEntity", 4113),
       newDatom("newEntity", 11320, randBetween(800000000, 1000000000) ),
   ])),
-      undoTx: async (tx) => {
-
-        console.log(tx)
-
-        let txEntity = tx.datoms.filter( datom => datom.attribute === "tx/tx" )[0].entity
-
-        let datoms = tx.datoms
-          .filter( datom => datom.entity !== txEntity )
-          .map( datom => newDatom(datom.entity, datom.attribute, datom.value, !datom.isAddition) )
-
-        console.log("datoms", datoms)
-
-        update( await sideEffects.submitDatomsWithValidation(S, datoms ))
-
-      }
+    update: newS => update( newS )
 })
 
 let update = (S) => {
 
     //DB queries
+
+    let Attributes = Object.values(S["sharedData"]["E"]).filter( Entity => Entity["entity/entityType"] === 7684 )
+
+    S.attrName = attribute => (typeof attribute === "string") ? attribute : Attributes.filter( Attribute => Attribute.entity === attribute )[0]["attr/name"]
+    S.attrEntity = attrName => (typeof attrName === "number") ? attrName : Attributes.filter( Attribute => Attribute["attr/name"] === attrName )[0]["entity"]
+
+    let Entities = Object.values(S["sharedData"]["E"]).filter( Entity => Object.keys(Entity).length > 1 ).map( Entity => {
+      
+      Entity.Datoms = [] //TBD
+      Entity.get = attribute => Entity[S.attrName(attribute)]
+      Entity.type = () => Entity.get("entity/entityType") ? Entity.get("entity/entityType") : logThis(null, `Entitet [${Entity.get("entity")}] ( mangler visningsnavn )` )
+      Entity.label = () => Entity.get("entity/label") ? Entity.get("entity/label") : `Entitet [${Entity.get("entity")}] ( mangler visningsnavn )`
+      Entity.doc = () => Entity.get("entity/doc") ? Entity.get("entity/doc") : `Entitet [${Entity.get("entity")}] ( mangler beskrivelse )`
+      Entity.category = () => Entity.get("entity/category") ? Entity.get("entity/category") : `Entitet [${Entity.get("entity")}] ( mangler kategori )`
+      Entity.retract = async () => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [Entity])) //Hmmmmm
+      Entity.update = async (attribute, newValue) => await sideEffects.submitDatomsWithValidation(S, [newDatom( Entity.get("entity"), S.attrName(attribute), newValue )] ) //Hmmmmm
+  
+      return Entity
+    }  )
+
+    Entities.getEntity = entity => {
+
+      let searchResult = Entities.filter( Entity => Entity.get("entity") === entity )
+
+      let returnValue = searchResult.length === 1 ? searchResult[0] : logThis(null, `Entitet [${entity}] finnes ikke` )
+
+      return returnValue
+
+    } 
+
     
-    S.getEntity = entity => S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis(null, `Entitet [${entity}] finnes ikke` )
-    S.findEntities = filterFunction => Object.values(S["sharedData"]["E"]).filter( filterFunction )
-    S.getEntityLabel = entity => S.getEntity(entity)["entity/label"] ? S.getEntity(entity)["entity/label"] : `[${entity}] Visningsnavn mangler`
-    S.getEntityDoc = entity => S.getEntity(entity)["entity/doc"] ? S.getEntity(entity)["entity/doc"] : `[${entity}] Dokumentasjon mangler`
-    S.getEntityCategory = entity => S.getEntity(entity)["entity/category"] ? S.getEntity(entity)["entity/category"] : `[${entity}] Kategori mangler`
-    S.getEntityNote = entity => S.getEntity(entity)["entity/note"] ? S.getEntity(entity)["entity/note"] : `[${entity}] Ingen notat`
+    S.getEntity = entity => Entities.getEntity(entity)  //S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis(null, `Entitet [${entity}] finnes ikke` )
+    S.findEntities = filterFunction => Entities.filter( filterFunction )
+    S.getEntityLabel = entity => Entities.getEntity(entity).label()
+    S.getEntityDoc = entity => Entities.getEntity(entity).doc()
+    S.getEntityCategory = entity => Entities.getEntity(entity).category()
 
     //User data  
-    S.getUserEvents = () => S.findEntities( e => e["entity/entityType"] === 7790 ).filter( eventAttributes => eventAttributes[S.getEntity(11320)["attr/name"]] === S["UIstate"].selectedOrgnumber ).sort( (a, b) => a["event/index"] - b["event/index"]  ) //S["sharedData"]["userEvents"]
-    S.getLatestTxs = () => S["sharedData"]["latestTxs"]
-    S.getAllOrgnumbers = () => S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E[ S.getEntity(11320)["attr/name"] ] ).filter( filterUniqueValues )
+    S.getUserEvents = () => Entities
+      .filter( e => e["entity/entityType"] === 7790 )
+      .filter( eventAttributes => eventAttributes[S.getEntity(11320)["attr/name"]] === S["UIstate"].selectedOrgnumber )
+      .sort( (a, b) => a["event/index"] - b["event/index"]  )
+    S.getLatestTxs = () => [] //TBD
+    S.getAllOrgnumbers = () => Entities
+      .filter( e => e["entity/entityType"] === 7790 )
+      .map( E => E[ S.getEntity(11320)["attr/name"] ] )
+      .filter( filterUniqueValues )
     
     //Local state
     S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 9970 : S["UIstate"].selectedEntity
@@ -425,115 +385,4 @@ let Admin = {
     retractEntities: async entities => await Admin.submitDatoms( getRetractionDatomsWithoutChildren(entities.map( e => Admin.S.getEntity(e) )) ),
     retractEntity: async entity => await Admin.retractEntities([entity]),
     getServerCache: async () => await sideEffects.APIRequest("GET", "serverCache", null)
-}
-
-
-
-
-
-
-
-
-
-
-
-//Archive
-
-
-let constructCompanyDoc = (S, storedEvents) => {
-
-  let initialCompanyDoc = [{
-      index: 0,
-      Datoms: [],
-      Entities: {
-        "1": {}
-      },
-      Reports: {
-        10085: {
-          10040: 1, //Høyeste entitetsID 
-        } 
-      },
-      isValid: true
-    }]
-
-    
-
-    let companyDoc = storedEvents.reduce( (companyDocVersions, eventAttributes, prevVersionIndex) => {
-    let latestCompanyDoc = companyDocVersions[ companyDocVersions.length - 1 ]
-
-    let Q = {
-      companyEntities: companyDocVersions[prevVersionIndex]["Entities"],
-    }
-
-    
-    Q.userInput = entity => eventAttributes[ S.getEntity(entity)["attr/name"] ]
-    Q.companyEntity = entity => Q.companyEntities[entity]
-    Q.companyAttribute = attribute => Q.companyEntity(1)[attribute]
-
-    Q.latestEntityID = () => Object.keys(Q.companyEntities).map( key => Number(key) ).sort().reverse()[0]
-
-    Q.getReportField = (reportEntity, attributeEntity) => Number(Q.latestEntityID )
-
-    if(!latestCompanyDoc.isValid){return companyDocVersions}
-      if(!S.getEntity(  eventAttributes["event/eventTypeEntity"] )){return mergerino(companyDocVersions, {isValid: false}) }
-      let eventType = S.getEntity(  eventAttributes["event/eventTypeEntity"] )
-      let attributesAreValid = eventType["eventType/eventAttributes"].every( attributeEntity =>  
-        validateAttributeValue(S, attributeEntity, eventAttributes[ S.getEntity( attributeEntity )["attr/name"] ] )
-      )
-
-
-
-
-
-      if(!attributesAreValid){return mergerino(companyDocVersions, {isValid: false}) }
-        let eventValidators = S.getEntity( eventAttributes["event/eventTypeEntity"] )["eventType/eventValidators"]
-        let eventIsValid = eventValidators.every( entity =>  
-          new Function([`Q`], S.getEntity(entity)["eventValidator/validatorFunctionString"])( Q ) //To be updated
-        )
-
-        if(!eventIsValid){return mergerino(companyDocVersions, {isValid: false}) }
-
-          let eventDatoms = eventType["eventType/newDatoms"].map( datom => newDatom(
-            new Function( [`Q`], datom["entity"] )( Q ),
-            datom.attribute,
-            new Function( [`Q`], datom["value"] )( Q )
-            )
-          )
-
-          
-
-          let updatedCompanyEntities = eventDatoms.reduce( (Entities, datom) => mergerino(
-            Entities,
-            createObject(datom.entity, createObject(datom.attribute, datom.value ))
-          ), Q.companyEntities )
-
-          Q.latestEntityID = Number( Object.keys(updatedCompanyEntities).pop() )
-          Q.companyEntities = updatedCompanyEntities
-
-
-          let updatedReports = mergeArray( S.findEntities( E => E["entity/entityType"] === 9966 )
-            .filter( report => new Function( [`eventDatoms`, `Q`], report["report/triggerFunction"] )( eventDatoms, Q)   )
-            //.sort(),
-            .map( report => createObject(report.entity, mergeArray(report["report/reportFields"].map( reportField => createObject(reportField.attribute, new Function( [`Q`], reportField["value"] )( Q ) )  ))  ))
-          )
-          
-          let index = prevVersionIndex + 1
-
-          let companyDocVersion = {
-            index, 
-            eventAttributes, 
-            eventDatoms,
-            Datoms: latestCompanyDoc.Datoms.concat(eventDatoms),
-            Entities: updatedCompanyEntities,
-            Reports: updatedReports,
-            isValid: true
-          }
-
-
-          return companyDocVersions.concat(companyDocVersion)
-
-  } , initialCompanyDoc )
-
-  return companyDoc
-
 }
