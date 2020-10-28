@@ -331,9 +331,6 @@ let activateEntities = (S, Entities) => {
 let update = (S) => {
 
     //DB queries
-
-    
-
     let Attributes = S.Entities.filter( Entity => Entity["entity/entityType"] === 7684 )
 
     S.attrName = attribute => (typeof attribute === "string") ? attribute : Attributes.filter( Attribute => Attribute.entity === attribute )[0]["attr/name"]
