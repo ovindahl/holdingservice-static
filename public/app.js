@@ -67,9 +67,9 @@ const sideEffects = {
                 "currentPage": "timeline",
                 "selectedOrgnumber": null,
                 "companyDocPage/selectedVersion": 1,
-                "selectedEntityType" : 7684,
-                "selectedCategory": "Hendelsesattributter",
-                "selectedEntity": 9970,
+                "selectedEntityType" : 42,
+                "selectedCategory": "[db] Entitet",
+                "selectedEntity": 4,
                 "selectedReport": 10439,
                 "currentSearchString": "Søk etter entitet",
               }
@@ -336,7 +336,7 @@ let update = (S) => {
 
 
     //DB queries
-    let Attributes = S.Entities.filter( Entity => Entity.current["entity/entityType"] === 7684 )
+    let Attributes = S.Entities.filter( Entity => Entity.current["entity/entityType"] === 42 )
 
     S.attrName = attribute => (typeof attribute === "string") ? attribute : Attributes.filter( Attribute => Attribute.current.entity === attribute )[0].current["attr/name"]
     S.attrEntity = attrName => (typeof attrName === "number") ? attrName : Attributes.filter( Attribute => Attribute.current["attr/name"] === attrName )[0].current["entity"]
@@ -359,9 +359,9 @@ let update = (S) => {
 
 
     //Local state
-    S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 9970 : S["UIstate"].selectedEntity
-    S["UIstate"].selectedOrgnumber = (S["UIstate"].selectedOrgnumber === null) ? S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E.get(11320) ).filter( filterUniqueValues )[0] : S["UIstate"].selectedOrgnumber
-    S["UIstate"].selectedVersion = (typeof S["UIstate"].selectedVersion === "undefined" ) ? S["selectedCompany"].t : S["UIstate"].selectedVersion
+    S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 4 : S["UIstate"].selectedEntity
+    /* S["UIstate"].selectedOrgnumber = (S["UIstate"].selectedOrgnumber === null) ? S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E.get(11320) ).filter( filterUniqueValues )[0] : S["UIstate"].selectedOrgnumber
+    S["UIstate"].selectedVersion = (typeof S["UIstate"].selectedVersion === "undefined" ) ? S["selectedCompany"].t : S["UIstate"].selectedVersion */
 
     Admin.S = S;
 

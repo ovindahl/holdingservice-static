@@ -153,7 +153,7 @@ let pageRouter = {
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label()).localeCompare(b.label())
 
 let sidebar_left = (S, A) => d([
-      d( S.findEntities( Entity => Entity.type() ===  7794 )
+      d( S.findEntities( Entity => Entity.type() ===  47 )
         .filter( e => ![7790, 7806].includes(e.entity)  ) //Not event or tx
         .sort( sortEntitiesAlphabeticallyByLabel )
         .map( Entity => entityLabel(S, A, Entity.entity, e => A.updateLocalState(  {
@@ -163,17 +163,16 @@ let sidebar_left = (S, A) => d([
           }))
         )
       ),
-      d( S.findEntities( e => e.type() === S["UIstate"].selectedEntityType ).map( Entity => Entity["entity/category"] ).filter(filterUniqueValues)
+      d( S.findEntities( e => e.type() === S["UIstate"].selectedEntityType ).map( Entity => Entity.get("entity/category") ).filter(filterUniqueValues)
         .sort( ( a , b ) => ('' + a).localeCompare(b) )
         .map( category => d( 
           category, 
           {class: category === S["UIstate"].selectedCategory ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, 
           "click", 
-          e => A.updateLocalState(  {selectedCategory : category, selectedEntity: S.findEntities( e => e.type() === S["UIstate"].selectedEntityType && e["entity/category"] === category)[0]["entity"]} )
+          e => A.updateLocalState(  {selectedCategory : category, selectedEntity: S.findEntities( e => e.type() === S["UIstate"].selectedEntityType && e.get("entity/category") === category)[0].get("entity")} )
           )  )
       ),
-      d( S.findEntities( e => e.type() === S["UIstate"].selectedEntityType && e["entity/category"] === S["UIstate"].selectedCategory )
-        .filter( E => E["entity/status"] !== "Utgått" )
+      d( S.findEntities( e => e.type() === S["UIstate"].selectedEntityType && e.get("entity/category") === S["UIstate"].selectedCategory )
         .sort( sortEntitiesAlphabeticallyByLabel )
         .map( Entity => entityLabel(S, A, Entity.entity, e => A.updateLocalState(  {selectedEntity : Entity.entity} ) ))
         )
@@ -181,8 +180,8 @@ let sidebar_left = (S, A) => d([
 
 let entityInspectorPopup = (S, A, entity) => d([
       h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 3px;`}),
-      entityLabelWithoutPopup(S, A, 7754, S.getEntity(entity).type()),
-      entityLabelWithoutPopup(S, A, 5712, S.getEntityCategory(entity)),
+      //entityLabelWithoutPopup(S, A, 7754, S.getEntity(entity).type()),
+      //entityLabelWithoutPopup(S, A, 5712, S.getEntityCategory(entity)),
       d("<br>"),
       d(S.getEntityDoc(entity)),
       d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin", selectedEntityType: S.getEntity(entity).type(), selectedCategory:  S.getEntityCategory(entity), selectedEntity: entity }))
@@ -312,7 +311,7 @@ let adminPage = (S, A) => d([
 
 //Entity view
 
-let genericEntityView = (S, A, entity) => {
+let genericEntityView = (S, A, entity) => {if(S.getEntity(entity)){
 
   let Entity = S.getEntity(entity)
   let selectedEntityType = S.getEntity(Entity.type())
@@ -333,23 +332,23 @@ let genericEntityView = (S, A, entity) => {
     submitButton("Legg til ny", e => A.createEntity( selectedEntityType.entity ) )
   ], {class: "feedContainer"} )
 
-}
+}else{d("Fant ikke entitet.")}}
 
 let attributeView = (S, A, entity, attribute) => {
 
   let genericValueTypeViews = {
-    "7651": valueTypeView_simpleText, //Tekst
-    "7653": valueTypeView_number, //Tall
-    "7664": valueTypeView_singleEntity, //Entitet
-    "7669": valueTypeView_object, //Array
-    "10849": valueTypeView_multipleEntities,
-    "10820": valueTypeView_functionString, //Funksjonstekst
-    "10834": valueTypeView_object,
-    "10838": valueTypeView_boolean,
-    "10905": valueTypeView_newDatoms,
-    "10911": valueTypeView_reportFields,
-    "11280": valueTypeView_staticDropdown,
-    "11304": valueTypeView_companyEntityDropdown,
+    "30": valueTypeView_simpleText, //Tekst
+    "31": valueTypeView_number, //Tall
+    "32": valueTypeView_singleEntity, //Entitet
+    "33": valueTypeView_object, //Array
+    "37": valueTypeView_multipleEntities,
+    "34": valueTypeView_functionString, //Funksjonstekst
+    "35": valueTypeView_object,
+    "36": valueTypeView_boolean,
+    "38": valueTypeView_newDatoms,
+    "39": valueTypeView_reportFields,
+    "40": valueTypeView_staticDropdown,
+    "41": valueTypeView_companyEntityDropdown,
   }
 
   let Entity = S.getEntity(entity)
@@ -399,7 +398,7 @@ let valueTypeView_singleEntity = (S, A, entity, attribute, value) => {
 
 let valueTypeView_multipleEntities = (S, A, entity, attribute, value) => {
   
-  let options = new Function( "S" , S.getEntity(attribute)["attribute/selectableEntitiesFilterFunction"] )( S )
+  let options = new Function( "S" , S.getEntity(attribute).get("attribute/selectableEntitiesFilterFunction") )( S )
 
   return d([
     entityLabel(S,A, attribute),
@@ -455,7 +454,7 @@ let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
         [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, , {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}],
         async e => A.update( await S.getEntity(entity).update( 9559, mergerino(datoms, {[index]: {entity: submitInputValue(e)}}) )  )
         ),
-      dropdown(datom.attribute, S.findEntities( E => E.type() === 7684  )
+      dropdown(datom.attribute, S.findEntities( E => E.type() === 42  )
         .filter( E => !["[Arkiverte attributter]", "[db]" ].includes(E["entity/category"])  )
         .sort( sortEntitiesAlphabeticallyByLabel  )
         .map( E => returnObject({value: E.entity, label: E.label()}) ), async e => A.update( await S.getEntity(entity).update( 9559, mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}}) )  )
@@ -481,7 +480,7 @@ let valueTypeView_reportFields = (S, A, entity, attribute, value) => {
       d("Verdi")
     ], {class: "columns_2_2_1"}),
     d(reportFields.map( (reportField, index) => d([
-      dropdown(reportField.attribute, S.findEntities( E => E.type() === 7684  )
+      dropdown(reportField.attribute, S.findEntities( E => E.type() === 42  )
         .filter( E => !["[Arkiverte attributter]", "[db]" ].includes(E["entity/category"])  )
         .filter( E => !reportFields.map( reportField => reportField.attribute ).includes(E["entity"])  )
         .concat( S.getEntity(reportField.attribute) )
