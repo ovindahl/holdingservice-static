@@ -49,8 +49,10 @@ const sideEffects = {
     
         if(isAuthenticated){
             console.log("Authenticated");
+
+            // /newDatoms
             
-            let serverResponse = await sideEffects.APIRequest("GET", "userContent", null)
+            let Entities = await sideEffects.APIRequest("GET", "Entities", null)
 
 
             //let serverResponse2 = await sideEffects.APIRequest("GET", "Entities", null)
@@ -58,7 +60,7 @@ const sideEffects = {
             //console.log(serverResponse2)
             
 
-            if( serverResponse === null){console.log("Received null")}
+            if( Entities === null){console.log("Received null")}
             else{
 
               let initialUIstate = {
@@ -74,7 +76,7 @@ const sideEffects = {
 
               update({
                 UIstate: initialUIstate,
-                Entities: serverResponse.Entities
+                Entities
               })
             }
             
@@ -257,7 +259,7 @@ let getRetractionDatomsWithoutChildren = Entities => Entities.map( Entity =>  Ob
 let getUserActions = (S) => returnObject({
     updateLocalState: (patch) => update( {
       UIstate: mergerino( S["UIstate"], patch ), 
-      sharedData: S["sharedData"] 
+      Entities: S["Entities"] 
     }),
     createEntity: async entityTypeEntity => {
 
@@ -306,12 +308,12 @@ let activateEntities = (S, Entities) => {
 
   let activatedEntities = Entities.map( Entity => {
     Entity.Datoms = [] //TBD
-    Entity.get = attribute => Entity[S.attrName(attribute)]
+    Entity.get = attribute => Entity.current[S.attrName(attribute)]
     Entity.type = () => Entity.get("entity/entityType") ? Entity.get("entity/entityType") : logThis(null, `Entitet [${Entity.get("entity")}] ( mangler visningsnavn )` )
     Entity.label = () => Entity.get("entity/label") ? Entity.get("entity/label") : `Entitet [${Entity.get("entity")}] ( mangler visningsnavn )`
     Entity.doc = () => Entity.get("entity/doc") ? Entity.get("entity/doc") : `Entitet [${Entity.get("entity")}] ( mangler beskrivelse )`
     Entity.category = () => Entity.get("entity/category") ? Entity.get("entity/category") : `Entitet [${Entity.get("entity")}] ( mangler kategori )`
-    Entity.retract = async () => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [Entity])) //Hmmmmm
+    Entity.retract = async () => await sideEffects.submitDatomsWithValidation(S,  getRetractionDatomsWithoutChildren( [Entity.current])) //Hmmmmm
     Entity.update = async (attribute, newValue) => await sideEffects.submitDatomsWithValidation(S, [newDatom( Entity.get("entity"), S.attrName(attribute), newValue )] ) //Hmmmmm
   
     return Entity
@@ -328,15 +330,18 @@ let activateEntities = (S, Entities) => {
 
 } 
 
+
+
 let update = (S) => {
 
-    //DB queries
-    let Attributes = S.Entities.filter( Entity => Entity["entity/entityType"] === 7684 )
 
-    S.attrName = attribute => (typeof attribute === "string") ? attribute : Attributes.filter( Attribute => Attribute.entity === attribute )[0]["attr/name"]
-    S.attrEntity = attrName => (typeof attrName === "number") ? attrName : Attributes.filter( Attribute => Attribute["attr/name"] === attrName )[0]["entity"]
+    //DB queries
+    let Attributes = S.Entities.filter( Entity => Entity.current["entity/entityType"] === 7684 )
+
+    S.attrName = attribute => (typeof attribute === "string") ? attribute : Attributes.filter( Attribute => Attribute.current.entity === attribute )[0].current["attr/name"]
+    S.attrEntity = attrName => (typeof attrName === "number") ? attrName : Attributes.filter( Attribute => Attribute.current["attr/name"] === attrName )[0].current["entity"]
     
-    let Entities = activateEntities( S, S.Entities.filter( Entity => Object.keys(Entity).length > 1 ) ) 
+    let Entities = activateEntities( S, S.Entities.filter( Entity => Object.keys(Entity.current).length > 1 ) ) 
     
     
     S.getEntity = entity => Entities.getEntity(entity)  //S["sharedData"]["E"][entity] ? S["sharedData"]["E"][entity] : logThis(null, `Entitet [${entity}] finnes ikke` )

@@ -382,7 +382,7 @@ let valueTypeView_number = (S, A, entity, attribute, value) => d([
 
 let valueTypeView_singleEntity = (S, A, entity, attribute, value) => {
 
-  let options = new Function( "S" , S.getEntity(attribute)["attribute/selectableEntitiesFilterFunction"] )( S )
+  let options = new Function( "S" , S.getEntity(attribute).get("attribute/selectableEntitiesFilterFunction") )( S )
   
   return d([
     entityLabel(S,A, attribute),
@@ -390,7 +390,7 @@ let valueTypeView_singleEntity = (S, A, entity, attribute, value) => {
       dropdown(
         value, 
         options
-          .map( Entity => returnObject({value: Entity.entity, label: Entity.label()})  ).concat({value: "", label: "[tom]"}),
+          .map( Entity => returnObject({value: Entity.get("entity"), label: Entity.label()})  ).concat({value: "", label: "[tom]"}),
         async e => A.update( await S.getEntity(entity).update( attribute, Number(submitInputValue(e)) )  )
          )
     ])
