@@ -90,7 +90,7 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
   onClick(e)
 }  )
 
-let retractEntityButton = (S, A, entity) => submitButton("Slett", async e => A.update( await S.getEntity(entity).retract()  )  )
+let retractEntityButton = (S, A, entity) => submitButton("Slett", async e => A.update( await S.getEntity(entity).retract() ))
 
 //Basic entity views
 
@@ -132,7 +132,7 @@ let headerBarView = (S) => d([
   ], {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
-let companySelectionMenuRow = (S, A) => d( S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E.get(11320) ).filter( filterUniqueValues ).map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
+let companySelectionMenuRow = (S, A) => d( S.findEntities( Entity => Entity.type() === 46 ).map( E => E.get(11320) ).filter( filterUniqueValues ).map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
 let pageSelectionMenuRow = (S, A) => d( ["timeline", "Rapporter", "Admin", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
@@ -287,7 +287,7 @@ let reportFieldView_Entities = (S, A, Entities) => d([
     d(String( Entity.entity )),
     d(Object.keys(Entity).filter( key => key !== "entity" ).map( attribute => d([
       entityLabel(S, A, Number(attribute)),
-      d( JSON.stringify(Entity[attribute]) ),
+      d( JSON.stringify(Entity.get(attribute)) ),
     ], {class: "columns_1_1"}) )),
     d("<br>"),
   ])   ))
@@ -308,6 +308,22 @@ let adminPage = (S, A) => d([
 
 
 
+let entityView = (S, A, entity) => d([
+  d([
+    d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
+    d(String(entity), {style: `text-align: right;`} )
+  ], {class: "columns_1_1"}),
+  d([
+    d([span( `Versjon`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
+    d( `${new Date(S.getEntity(entity).version()).toLocaleDateString()} ${new Date(S.getEntity(entity).version()).toLocaleTimeString()}`, {style: `text-align: right;`} )
+  ], {class: "columns_1_1"}),
+]) 
+
+
+
+
+
+
 
 //Entity view
 
@@ -316,16 +332,14 @@ let genericEntityView = (S, A, entity) => {if(S.getEntity(entity)){
   let Entity = S.getEntity(entity)
   let selectedEntityType = S.getEntity(Entity.type())
   let selectedEntityAttribtues = selectedEntityType.get("entityType/attributes")
+
   
-  let entityView = d([
-    entityLabel(S, A, entity),
-    input( {value: String(entity), style: `text-align: right;`}, "change", e => A.updateLocalState({"selectedEntity": Number(submitInputValue(e)) }) )
-  ], {class: "columns_1_1_1"}) 
   let attributeViews = selectedEntityAttribtues.map( attribute => attributeView(S, A, entity, attribute) )
 
 
   return d([
-    entityView,
+    h3(Entity.label()),
+    entityView(S, A, entity),
     d(attributeViews),
     retractEntityButton(S, A, entity),
     d("<br>"),
@@ -363,7 +377,7 @@ let attributeView = (S, A, entity, attribute) => {
 let valueTypeView_simpleText = (S, A, entity, attribute, value) => d([
   entityLabel(S, A, attribute),
   input(
-    {value: String(value), style: `${ validateAttributeValue(S, attribute, value ) ? "" : "background-color: #fb9e9e; " }`}, 
+    {value: String(value), style: `${ validateDatom(S, newDatom(entity, attribute, value)) ? "" : "background-color: #fb9e9e; " }`}, 
     "change", 
     async e => A.update( await S.getEntity(entity).update( attribute, submitInputValue(e) )  ) 
     )
@@ -373,7 +387,7 @@ let valueTypeView_simpleText = (S, A, entity, attribute, value) => d([
 let valueTypeView_number = (S, A, entity, attribute, value) => d([
   entityLabel(S,A, attribute),
   input(
-    {value: String(value), style: `text-align: right; ${ validateAttributeValue(S, attribute, value ) ? "" : "background-color: #fb9e9e; " }`}, 
+    {value: String(value), style: `text-align: right; ${ validateDatom(S, newDatom(entity, attribute, value)) ? "" : "background-color: #fb9e9e; " }`}, 
     "change", 
     async e => A.update( await S.getEntity(entity).update( attribute, Number(submitInputValue(e)) )  )
   )
@@ -455,7 +469,6 @@ let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
         async e => A.update( await S.getEntity(entity).update( 9559, mergerino(datoms, {[index]: {entity: submitInputValue(e)}}) )  )
         ),
       dropdown(datom.attribute, S.findEntities( E => E.type() === 42  )
-        .filter( E => !["[Arkiverte attributter]", "[db]" ].includes(E["entity/category"])  )
         .sort( sortEntitiesAlphabeticallyByLabel  )
         .map( E => returnObject({value: E.entity, label: E.label()}) ), async e => A.update( await S.getEntity(entity).update( 9559, mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}}) )  )
         ),
@@ -481,8 +494,7 @@ let valueTypeView_reportFields = (S, A, entity, attribute, value) => {
     ], {class: "columns_2_2_1"}),
     d(reportFields.map( (reportField, index) => d([
       dropdown(reportField.attribute, S.findEntities( E => E.type() === 42  )
-        .filter( E => !["[Arkiverte attributter]", "[db]" ].includes(E["entity/category"])  )
-        .filter( E => !reportFields.map( reportField => reportField.attribute ).includes(E["entity"])  )
+        .filter( E => !reportFields.map( reportField => reportField.attribute ).includes(E.get("entity"))  )
         .concat( S.getEntity(reportField.attribute) )
         .sort( sortEntitiesAlphabeticallyByLabel  )
         .map( E => returnObject({value: E.entity, label: S.getEntityLabel(E.entity) }) ), async e => A.update( await S.getEntity(entity).update( 9970, mergerino(reportFields, {[index]: {attribute: Number(submitInputValue(e)), value: `return 0`}}) )  )
@@ -522,7 +534,7 @@ let valueTypeView_companyEntityDropdown = (S, A, entity, attribute, value)  => {
 
   let Q = {}
 
-  Q.getShareholders = () => companyEntities.filter( E => E["3171"] === "shareholder" )
+  Q.getShareholders = () => companyEntities.filter( E => E.get("3171") === "shareholder" )
 
   let options = new Function( "S", "Q" , S.getEntity(attribute)["attribute/selectableEntitiesFilterFunction"] )( S, Q )
   
