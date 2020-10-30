@@ -103,18 +103,23 @@ let entityLabel = (S, A, entity, onClick) => d( [
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
-let entityValue = (value) => d( [
-  d(`${JSON.stringify(value)}`, {class: typeof value === "number" ? "rightAlignText" : "" } )
-]) 
+let entityLabelAndValue = (S, A, entity, value) => {
 
-let entityLabelAndValue = (S, A, entity, value) => d([
-  entityLabel(S, A, entity),
-  entityValue(value)
-], {class: "eventInspectorRow"})
+  let valueView = S.getEntity(entity).get("attribute/valueType") === 32
+    ? entityLabel(S, A, value)
+    : d(`${JSON.stringify(value)}`, {class: typeof value === "number" ? "rightAlignText" : "" } )
+
+
+  return d([
+    entityLabel(S, A, entity),
+    valueView
+  ], {class: "eventInspectorRow"})
+
+} 
 
 let entityLabelWithoutPopup = (S, A, entity, value) => d( [
   span( `${ S.getEntityLabel(entity)}`, `[${entity}] ${S.getEntityDoc(entity)}`, {class: "entityLabel", style: `background-color: ${getEntityColor(S, entity)};`}, "click", e => A.updateLocalState({"sidebar/selectedEntity": entity}) ),
-  entityValue(value)
+  d(`${JSON.stringify(value)}`, {class: typeof value === "number" ? "rightAlignText" : "" } )
 ], {style:"display: inline-flex;"} )
 
 let entityRedlinedValue = (value, prevValue) => d( [
@@ -207,17 +212,16 @@ let timelineView = (S, A) => d([
   d("")
 ], {class: "pageContainer"}) 
 
-let eventView = (S, eventAttributes , A) => (S.getEntity(eventAttributes.get("event/eventTypeEntity")) === null)
-  ? d([d("ERROR: Hendelsestypen finnes ikke"), d(JSON.stringify(Event))], {class: "feedContainer"})
-  : d([
-      h3( S.getEntity(eventAttributes.get("event/eventTypeEntity")).label() ),
-      entityLabel(S, A, eventAttributes.get("event/eventTypeEntity")),
-      d(S.getEntity(eventAttributes.get("event/eventTypeEntity")).get("eventType/eventAttributes").map( attribute => attributeView(S, A, eventAttributes.entity, attribute) )),
-      d("<br>"),
-      S["selectedCompany"]["t"] >= eventAttributes["event/index"] ? newDatomsView(S, A, S["selectedCompany"].Datoms.filter( datom => datom.t === eventAttributes["event/index"] )) : d("Kan ikke vise hendelsens output"),
-      d("<br>"),
-      retractEntityButton(S, A, eventAttributes["entity"]),
-      newEventDropdown(S, A, eventAttributes)
+let eventView = (S, eventAttributes , A) => d([
+  h3( S.getEntity(eventAttributes.get("event/eventTypeEntity")).label() ),
+  entityView(S, A, eventAttributes.get("entity")),
+  entityLabelAndValue(S, A, S.attrEntity("event/eventTypeEntity"), eventAttributes.get("event/eventTypeEntity") ),
+  d(S.getEntity(eventAttributes.get("event/eventTypeEntity")).get("eventType/eventAttributes").map( attribute => attributeView(S, A, eventAttributes.entity, attribute) )),
+  d("<br>"),
+  S["selectedCompany"]["t"] >= eventAttributes["event/index"] ? newDatomsView(S, A, S["selectedCompany"].Datoms.filter( datom => datom.t === eventAttributes["event/index"] )) : d("Kan ikke vise hendelsens output"),
+  d("<br>"),
+  retractEntityButton(S, A, eventAttributes["entity"]),
+  newEventDropdown(S, A, eventAttributes)
 ], {class: "feedContainer"} )
 
 let reportsPage = (S, A) => d([
@@ -417,7 +421,7 @@ let valueTypeView_multipleEntities = (S, A, entity, attribute, value) => {
   return d([
     entityLabel(S,A, attribute),
     d([
-      d( S.getEntity(entity).get(attribute).map( attr => d([
+      d( logThis(S.getEntity(entity).get(attribute)).map( attr => d([
         entityLabel(S, A, attr), 
         submitButton("[X]", async e => A.update( await S.getEntity(entity).update( attribute, value.filter( e => e !== attr ) )  ))
         ], {class: "columns_3_1"} ) 

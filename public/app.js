@@ -240,6 +240,9 @@ let getUserActions = (S) => returnObject({
       Entities: S["Entities"] 
     }),
     createEntity: async entityTypeEntity => {
+
+      console.log("Creating new entity of type: ", entityTypeEntity)
+
       let Datoms = S.getEntity(entityTypeEntity).get("entityType/attributes").map( attribute => newDatom("newEntity", S.getEntity(attribute).get("attr/name"), new Function("S", S.getEntity(attribute).get("attribute/startValue") )( S )))
         .filter( datom => datom.attribute !== "entity/entityType" )
         .filter( datom => datom.attribute !== "entity/label" )
