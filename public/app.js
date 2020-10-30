@@ -176,6 +176,8 @@ let constructEvents = (S, storedEvents) => {
     isValid: true
   }
 
+  console.log("storedEvents", storedEvents)
+
   
 
   Company = storedEvents.reduce( (Company, Event) => {
@@ -257,11 +259,14 @@ let getUserActions = (S) => returnObject({
         Entities: addUpdatedEntities(S, changedEntities)
       } ) 
     },
-    createEvent: async ( eventAttributes, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, [
+    createEvent: async ( prevEvent, newEventTypeEntity ) => update({
+      UIstate: S["UIstate"],
+      Entities: addUpdatedEntities(S, await sideEffects.submitDatomsWithValidation(S, [
         newDatom("newEntity", "entity/entityType", 46),
         newDatom("newEntity", "event/eventTypeEntity", newEventTypeEntity),
-        newDatom("newEntity", 11320, eventAttributes[S.getEntity(11320)["attr/name"]] )
-    ])),
+        newDatom("newEntity", S.attrName(1005), prevEvent.get( S.attrName(1005) ) )
+    ]))
+    }),
     createCompany: async () => update({
       UIstate: S["UIstate"],
       Entities: addUpdatedEntities(S, await sideEffects.submitDatomsWithValidation(S, [
@@ -269,7 +274,7 @@ let getUserActions = (S) => returnObject({
         newDatom("newEntity", "event/eventTypeEntity", 5000),
         newDatom("newEntity", S.attrName(1005), randBetween(800000000, 1000000000) ),
     ]))
-    } ),
+    }),
     update: changedEntities => update({
       UIstate: S["UIstate"],
       Entities: addUpdatedEntities(S, changedEntities)
@@ -324,13 +329,12 @@ let update = (S) => {
     S.getEntityDoc = entity => Entities.getEntity(entity).doc()
     S.getEntityCategory = entity => Entities.getEntity(entity).category()
     S.getLatestEntityID = () => Entities.map( Entity => Entity.get("entity") ).sort( (a, b) => b - a )[0]
+    S.getUserEvents = () => S.findEntities( Entity => Entity.type() === 46 )
+      .filter( Event => Event.get(S.attrName(1005)) === Number(S["UIstate"].selectedOrgnumber) )
+      .sort( (EventA, EventB) => EventA.get("event/index") - EventB.get("event/index")  )
 
     //User data
-    try {
-      S.selectedCompany = constructEvents(S, S.findEntities( Entity => Entity.type() === 46 )
-        .filter( Event => Event.get(S.attrName(1005)) === S["UIstate"].selectedOrgnumber )
-        .sort( (EventA, EventB) => EventA.get("event/index") - EventB.get("event/index")  )
-      )} catch (error) {console.log(error)}
+    try {S.selectedCompany = constructEvents(S, S.getUserEvents())} catch (error) {console.log(error)}
 
 
     //Local state

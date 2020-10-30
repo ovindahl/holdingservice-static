@@ -207,21 +207,21 @@ let newDatomsView = (S, A, Datoms) => d([
 let timelineView = (S, A) => d([
   d(""),
   (S.selectedCompany.Events.length > 0)
-  ? d( S.selectedCompany.Events.map( eventAttributes => eventView( S, eventAttributes, A )  )) 
+  ? d( S.selectedCompany.Events.map( Event => eventView( S, Event, A )  )) 
   : d("Noe er galt med selskapets tidslinje"),
   d("")
 ], {class: "pageContainer"}) 
 
-let eventView = (S, eventAttributes , A) => d([
-  h3( S.getEntity(eventAttributes.get("event/eventTypeEntity")).label() ),
-  entityView(S, A, eventAttributes.get("entity")),
-  entityLabelAndValue(S, A, S.attrEntity("event/eventTypeEntity"), eventAttributes.get("event/eventTypeEntity") ),
-  d(S.getEntity(eventAttributes.get("event/eventTypeEntity")).get("eventType/eventAttributes").map( attribute => attributeView(S, A, eventAttributes.entity, attribute) )),
+let eventView = (S, Event , A) => d([
+  h3( S.getEntity(Event.get("event/eventTypeEntity")).label() ),
+  entityView(S, A, Event.get("entity")),
+  entityLabelAndValue(S, A, S.attrEntity("event/eventTypeEntity"), Event.get("event/eventTypeEntity") ),
+  d(S.getEntity(Event.get("event/eventTypeEntity")).get("eventType/eventAttributes").map( attribute => attributeView(S, A, Event.entity, attribute) )),
   d("<br>"),
-  S["selectedCompany"]["t"] >= eventAttributes["event/index"] ? newDatomsView(S, A, S["selectedCompany"].Datoms.filter( datom => datom.t === eventAttributes["event/index"] )) : d("Kan ikke vise hendelsens output"),
+  S["selectedCompany"]["t"] >= Event["event/index"] ? newDatomsView(S, A, S["selectedCompany"].Datoms.filter( datom => datom.t === Event["event/index"] )) : d("Kan ikke vise hendelsens output"),
   d("<br>"),
-  retractEntityButton(S, A, eventAttributes["entity"]),
-  newEventDropdown(S, A, eventAttributes)
+  retractEntityButton(S, A, Event["entity"]),
+  newEventDropdown(S, A, Event)
 ], {class: "feedContainer"} )
 
 let reportsPage = (S, A) => d([
@@ -299,9 +299,9 @@ let reportFieldView_Entities = (S, A, Entities) => d([
 
 
 
-let newEventDropdown = (S, A, eventAttributes) => dropdown( "", 
-  S.findEntities(E => E.type() ===  7686 ).map( Entity => returnObject({value: Entity.entity, label: Entity.label() }) ).concat({value: "", label: "Legg til hendelse etter denne"}),
-  e => A.createEvent(eventAttributes, Number(submitInputValue(e)) )
+let newEventDropdown = (S, A, Event) => dropdown( 0, 
+  S.findEntities(E => E.type() ===  43 ).map( Entity => returnObject({value: Entity.entity, label: Entity.label() }) ).concat({value: 0, label: "Legg til hendelse etter denne"}),
+  e => A.createEvent(Event, Number(submitInputValue(e)) )
 )
 
 let adminPage = (S, A) => d([
