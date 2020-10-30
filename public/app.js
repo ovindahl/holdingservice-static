@@ -289,6 +289,7 @@ let activateEntities = (S, Entities) => {
 
     Entity.retract = async () => logThis( await sideEffects.submitDatomsWithValidation(S,  Entity.getRetractionDatoms() ), "Entity Retraction: Response from server")
     Entity.update = async (attribute, newValue) => logThis( await sideEffects.submitDatomsWithValidation(S, [newDatom( Entity.get("entity"), S.attrName(attribute), newValue )] ), "Entity Update: Response from server")
+    Entity.submitDatoms = async (attributeValueArray) => logThis( await sideEffects.submitDatomsWithValidation(S, attributeValueArray.map( entry => newDatom(Entity.get("entity"), S.attrName(entry.attribute), entry.value) ) ), "Entity Update: Response from server")
   
     return Entity
   }  )

@@ -470,14 +470,22 @@ let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
         ),
       dropdown(datom.attribute, S.findEntities( E => E.type() === 42  )
         .sort( sortEntitiesAlphabeticallyByLabel  )
-        .map( E => returnObject({value: E.entity, label: E.label()}) ), async e => A.update( await S.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}}) )  )
+        .map( E => returnObject({value: E.entity, label: E.label()}) ), async e => {
+
+          let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}})
+
+          A.update( await S.getEntity(entity).submitDatoms( [{attribute: attribute, value: updatedValue}, {attribute: S.attrEntity("eventType/eventAttributes"), value: S.getEntity(entity).get("eventType/eventAttributes").concat(Number(submitInputValue(e))) }])  )
+
+
+          A.update( await S.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}}) )  )
+        } 
         ),
       textArea(datom.value, {class:"textArea_code"}, async e => A.update( await S.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}}) )  )
       ),
       submitButton("[Slett]", async e => A.update( await S.getEntity(entity).update( attribute, datoms.filter( (d, i) => i !== index  ) )  )
       ),
     ], {class: "columns_2_2_2_1"}) )),
-    submitButton("Legg til", async e => A.update( await S.getEntity(entity).update( attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 12017, value: `return ''` }) )  )
+    submitButton("Legg til", async e => A.update( await S.getEntity(entity).update( attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1000, value: `return ''` }) )  )
     ),
   ], {style: "padding:1em;border: solid 1px lightgray;"})
 }
