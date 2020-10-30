@@ -132,7 +132,7 @@ let headerBarView = (S) => d([
   ], {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
-let companySelectionMenuRow = (S, A) => d( S.findEntities( Entity => Entity.type() === 46 ).map( E => E.get(11320) ).filter( filterUniqueValues ).map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
+let companySelectionMenuRow = (S, A) => d( S.findEntities( Entity => Entity.type() === 46 ).map( E => E.get("eventAttribute/1005") ).filter( filterUniqueValues ).map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
 let pageSelectionMenuRow = (S, A) => d( ["timeline", "Rapporter", "Admin", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
@@ -454,9 +454,9 @@ let valueTypeView_boolean = (S, A, entity, attribute, value) => d([
 
 let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
 
-  let datoms = S.getEntity(entity).get(9559) ? S.getEntity(entity).get(9559) : []
+  let datoms = S.getEntity(entity).get(attribute) ? S.getEntity(entity).get(attribute) : []
   return d([
-    entityLabel(S, A, 9559),
+    entityLabel(S, A, attribute),
     d([
       d("EntitetID"),
       d("Attributt"),
@@ -466,18 +466,18 @@ let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
       dropdown(
         datom.entity, 
         [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, , {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}],
-        async e => A.update( await S.getEntity(entity).update( 9559, mergerino(datoms, {[index]: {entity: submitInputValue(e)}}) )  )
+        async e => A.update( await S.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {entity: submitInputValue(e)}}) )  )
         ),
       dropdown(datom.attribute, S.findEntities( E => E.type() === 42  )
         .sort( sortEntitiesAlphabeticallyByLabel  )
-        .map( E => returnObject({value: E.entity, label: E.label()}) ), async e => A.update( await S.getEntity(entity).update( 9559, mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}}) )  )
+        .map( E => returnObject({value: E.entity, label: E.label()}) ), async e => A.update( await S.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}}) )  )
         ),
-      textArea(datom.value, {class:"textArea_code"}, async e => A.update( await S.getEntity(entity).update( 9559, mergerino(datoms, {[index]: {value: submitInputValue(e)}}) )  )
+      textArea(datom.value, {class:"textArea_code"}, async e => A.update( await S.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}}) )  )
       ),
-      submitButton("[Slett]", async e => A.update( await S.getEntity(entity).update( 9559, datoms.filter( (d, i) => i !== index  ) )  )
+      submitButton("[Slett]", async e => A.update( await S.getEntity(entity).update( attribute, datoms.filter( (d, i) => i !== index  ) )  )
       ),
     ], {class: "columns_2_2_2_1"}) )),
-    submitButton("Legg til", async e => A.update( await S.getEntity(entity).update( 9559, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 12017, value: `return ''` }) )  )
+    submitButton("Legg til", async e => A.update( await S.getEntity(entity).update( attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 12017, value: `return ''` }) )  )
     ),
   ], {style: "padding:1em;border: solid 1px lightgray;"})
 }

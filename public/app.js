@@ -254,16 +254,19 @@ let getUserActions = (S) => returnObject({
         Entities: addUpdatedEntities(S, changedEntities)
       } ) 
     },
-    /* createEvent: async ( eventAttributes, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, [
-        newDatom("newEntity", "entity/entityType", 7790),
+    createEvent: async ( eventAttributes, newEventTypeEntity ) => update( await sideEffects.submitDatomsWithValidation(S, [
+        newDatom("newEntity", "entity/entityType", 46),
         newDatom("newEntity", "event/eventTypeEntity", newEventTypeEntity),
         newDatom("newEntity", 11320, eventAttributes[S.getEntity(11320)["attr/name"]] )
     ])),
-    createCompany: async () => update( await sideEffects.submitDatomsWithValidation(S, [
-      newDatom("newEntity", "entity/entityType", 7790),
-      newDatom("newEntity", "event/eventTypeEntity", 4113),
-      newDatom("newEntity", 11320, randBetween(800000000, 1000000000) ),
-  ])), */
+    createCompany: async () => update({
+      UIstate: S["UIstate"],
+      Entities: addUpdatedEntities(S, await sideEffects.submitDatomsWithValidation(S, [
+        newDatom("newEntity", "entity/entityType", 46),
+        newDatom("newEntity", "event/eventTypeEntity", 5000),
+        newDatom("newEntity", S.attrName(1005), randBetween(800000000, 1000000000) ),
+    ]))
+    } ),
     update: changedEntities => update({
       UIstate: S["UIstate"],
       Entities: addUpdatedEntities(S, changedEntities)
@@ -319,12 +322,10 @@ let update = (S) => {
     S.getLatestEntityID = () => Entities.map( Entity => Entity.get("entity") ).sort( (a, b) => b - a )[0]
 
     //User data
-    
     try {
-      S.selectedCompany = constructEvents(S, Entities
-        .filter( e => e["entity/entityType"] === 7790 )
-        .filter( eventAttributes => eventAttributes[S.getEntity(11320)["attr/name"]] === S["UIstate"].selectedOrgnumber )
-        .sort( (a, b) => a["event/index"] - b["event/index"]  )
+      S.selectedCompany = constructEvents(S, S.findEntities( Entity => Entity.type() === 46 )
+        .filter( Event => Event.get(S.attrName(1005)) === S["UIstate"].selectedOrgnumber )
+        .sort( (EventA, EventB) => EventA.get("event/index") - EventB.get("event/index")  )
       )} catch (error) {console.log(error)}
 
 
@@ -351,7 +352,8 @@ let Admin = {
     S: null,
     updateClientRelease: (newVersion) => sideEffects.APIRequest("POST", "updateClientRelease", JSON.stringify({"clientVersion": newVersion})),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
-    submitDatoms: async Datoms => await sideEffects.submitDatomsWithValidation(Admin.S, Datoms)
+    submitDatoms: async Datoms => await sideEffects.submitDatomsWithValidation(Admin.S, Datoms),
+    submitDatomsWithoutValidation: async Datoms => await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ))
 }
 
 
