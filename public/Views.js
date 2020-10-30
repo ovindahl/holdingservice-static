@@ -118,7 +118,7 @@ let entityLabelAndValue = (S, A, entity, value) => {
 } 
 
 let entityLabelWithoutPopup = (S, A, entity, value) => d( [
-  span( `${ S.getEntityLabel(entity)}`, `[${entity}] ${S.getEntityDoc(entity)}`, {class: "entityLabel", style: `background-color: ${getEntityColor(S, entity)};`}, "click", e => A.updateLocalState({"sidebar/selectedEntity": entity}) ),
+  span( `${ S.getEntity(entity).label()}`, `[${entity}] ${S.getEntity(entity).doc()}`, {class: "entityLabel", style: `background-color: ${getEntityColor(S, entity)};`}, "click", e => A.updateLocalState({"sidebar/selectedEntity": entity}) ),
   d(`${JSON.stringify(value)}`, {class: typeof value === "number" ? "rightAlignText" : "" } )
 ], {style:"display: inline-flex;"} )
 
@@ -184,12 +184,12 @@ let sidebar_left = (S, A) => d([
   ], {style: "display:flex;"})
 
 let entityInspectorPopup = (S, A, entity) => d([
-      h3(`[${entity}] ${S.getEntityLabel(entity)}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 3px;`}),
+      h3(`[${entity}] ${S.getEntity(entity).label()}`, {style: `background-color: ${getEntityColor(S, entity)}; padding: 3px;`}),
       //entityLabelWithoutPopup(S, A, 7754, S.getEntity(entity).type()),
-      //entityLabelWithoutPopup(S, A, 5712, S.getEntityCategory(entity)),
+      //entityLabelWithoutPopup(S, A, 5712, S.getEntity(entity).category()),
       d("<br>"),
-      d(S.getEntityDoc(entity)),
-      d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin", selectedEntityType: S.getEntity(entity).type(), selectedCategory:  S.getEntityCategory(entity), selectedEntity: entity }))
+      d(S.getEntity(entity).doc()),
+      d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin", selectedEntityType: S.getEntity(entity).type(), selectedCategory:  S.getEntity(entity).category(), selectedEntity: entity }))
     ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
@@ -212,7 +212,7 @@ let timelineView = (S, A) => d([
   d("")
 ], {class: "pageContainer"}) 
 
-let eventView = (S, Event , A) => d([
+let eventView = (S, Event , A) => S.getEntity(Event.get("event/eventTypeEntity")) ? d([
   h3( S.getEntity(Event.get("event/eventTypeEntity")).label() ),
   entityView(S, A, Event.get("entity")),
   entityLabelAndValue(S, A, S.attrEntity("event/eventTypeEntity"), Event.get("event/eventTypeEntity") ),
@@ -222,7 +222,14 @@ let eventView = (S, Event , A) => d([
   d("<br>"),
   retractEntityButton(S, A, Event["entity"]),
   newEventDropdown(S, A, Event)
-], {class: "feedContainer"} )
+], {class: "feedContainer"} ) : d([
+  entityView(S, A, Event.get("entity")),
+  d("<br>"),
+  d(` Hendelsestypen [${Event.get("event/eventTypeEntity")}]  finnes ikke.`),
+  d("<br>"),
+  d( JSON.stringify(Event.current) ),
+  retractEntityButton(S, A, Event["entity"]),
+], {class: "feedContainer"})
 
 let reportsPage = (S, A) => d([
   d( //Left sidebar
@@ -407,6 +414,7 @@ let valueTypeView_singleEntity = (S, A, entity, attribute, value) => {
       dropdown(
         value, 
         options
+          .sort( sortEntitiesAlphabeticallyByLabel )
           .map( Entity => returnObject({value: Entity.get("entity"), label: Entity.label()})  ).concat({value: "", label: "[tom]"}),
         async e => A.update( await S.getEntity(entity).update( attribute, Number(submitInputValue(e)) )  )
          )
@@ -428,6 +436,7 @@ let valueTypeView_multipleEntities = (S, A, entity, attribute, value) => {
       ).concat( dropdown(
         0,
         options
+          .sort( sortEntitiesAlphabeticallyByLabel )
           .filter( Entity => !S.getEntity(entity).get(attribute).includes( Entity.entity ) )
           .map( Entity => returnObject({value: Entity.entity, label: Entity.label()})).concat({value: 0, label: "Legg til"}), 
         async e => A.update( await S.getEntity(entity).update( attribute, S.getEntity(entity).get(attribute).concat( Number(submitInputValue(e)) ) )  )
@@ -516,7 +525,7 @@ let valueTypeView_reportFields = (S, A, entity, attribute, value) => {
       submitButton("[Slett]", async e => A.update( await S.getEntity(entity).update( 9970, reportFields.filter( (d, i) => i !== index  ) )  )
       ),
     ], {class: "columns_2_2_1"}) )),
-    submitButton("Legg til", async e => A.update( await S.getEntity(entity).update( 9970, reportFields.concat({attribute: 4615, value: `return '${S.getEntityLabel(entity)}';` }) )  )
+    submitButton("Legg til", async e => A.update( await S.getEntity(entity).update( 9970, reportFields.concat({attribute: 4615, value: `return '${S.getEntity(entity).label()}';` }) )  )
     ),
   ])
 

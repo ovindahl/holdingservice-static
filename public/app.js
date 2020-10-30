@@ -39,6 +39,7 @@ const sideEffects = {
         if(await sideEffects.auth0.isAuthenticated()){
             console.log("Authenticated");            
             let Entities = await sideEffects.APIRequest("GET", "Entities", null)
+            
             if( Entities === null){console.log("Received null")}
             else{ update({
               UIstate: {
