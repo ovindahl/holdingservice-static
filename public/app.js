@@ -1,4 +1,166 @@
 
+
+const Database = {
+  tx: null,
+  Entities: [],
+  applyEntityMethods: serverEntity => {
+    let Entity = {
+      entity: serverEntity.entity,
+      Datoms: serverEntity.Datoms.map( Datom => typeof Datom.tx === "undefined" ? mergerino(Datom, {tx: 0}) : Datom )
+    }
+
+    Entity.versions = Entity.Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues )
+
+    Entity.tx = Entity.versions[ Entity.versions.length - 1 ]
+
+    Entity.getActiveDatoms = () => Entity.Datoms.filter( Datom => Entity.Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
+
+    Entity.getEntityVersion = tx => Entity.Datoms
+      .filter( Datom => Datom.tx <= tx )
+      .reduce( 
+        (Entity, Datom) => mergerino(
+          Entity, 
+          createObject(
+            Datom.attribute, 
+            Datom.isAddition 
+              ? Datom.value
+              : undefined 
+          ) 
+        ),
+        {entity: Entity.entity, tx}
+      )
+    
+    Entity.Entity = () => Entity.getEntityVersion( Entity.tx )
+
+
+
+    Entity.getDatom = attributeName => Entity.Datoms.filter( Datom => Datom.attribute === attributeName ).reverse()[0]
+    Entity.getAttributeValue = attributeName => Entity.getDatom(attributeName) 
+      ? Entity.getDatom(attributeName).isAddition
+        ? Entity.getDatom(attributeName).value 
+        : undefined //To be verified....
+      : undefined
+    Entity.getAttributeVersion = attributeName => Entity.getDatom(attributeName) ? Entity.getDatom(attributeName).tx : undefined
+    Entity.type = () => Entity.getAttributeValue("entity/entityType")
+    Entity.label = () => Entity.getAttributeValue("entity/label") ? Entity.getAttributeValue("entity/label") : `[${Entity.entity}] mangler visningsnavn.`
+    Entity.category = () => Entity.getAttributeValue("entity/category")
+
+    Entity.getRetractionDatoms = () => Entity.getActiveDatoms().map( Datom => newDatom(Entity.entity, Datom.attribute, Datom.value, false) )
+
+    Entity.update = ( attribute, newValue ) => Database.updateEntity( Database, Entity.entity, attribute, newValue )
+    Entity.retract = ( ) => Database.retractEntity( Entity.entity )
+    
+    return Entity
+  },
+  updateEntity: async (entity, attribute, value) => {
+
+    let Attribute = Database.getEntity( typeof attribute === "string" ? Database.Entities.filter( Entity => Entity.getAttributeValue("attr/name") === attribute )[0].entity : attribute  )
+    let ValueType = Database.getEntity( Attribute.getAttributeValue("attribute/valueType") )
+
+    let isValid_existingEntity = typeof Database.getEntity(entity) === "object"
+    let isValid_valueType = new Function("inputValue", ValueType.getAttributeValue("valueType/validatorFunctionString") ) ( value )
+    let isValid_attribute = new Function("inputValue", Attribute.getAttributeValue("attribute/validatorFunctionString") ) ( value )
+    let isValid_notNaN = !Number.isNaN(value)
+
+
+    //Add checks for whether attribtue is valid for the entity type?
+
+    if( isValid_existingEntity && isValid_valueType && isValid_attribute && isValid_notNaN  ){
+
+      let Datom = newDatom(entity, Attribute.getAttributeValue("attr/name"), value )
+      let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( [Datom] ) )
+      let updatedEntity = serverResponse.map( serverEntity => Database.applyEntityMethods(serverEntity) )
+
+      Database.Entities = Database.Entities.filter( Entity => Entity.entity !== entity ).concat( updatedEntity )
+      Database.systemAttributes = Database.Entities
+        .filter( Entity => Entity.type() === 42 )
+        .filter( Entity => Entity.entity < 1000  )
+        Database.tx = Database.Entities.map( Entity => Entity.tx ).reverse()[0]
+        Database.getEntity = entity => Database.Entities.filter( Entity => Entity.entity === entity )[0]
+      
+      return Database
+
+    }else{
+
+      console.log("Database.updateEntity did not pass validation.", {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN })
+      return Database
+
+    }
+
+        
+    
+
+
+
+              //Entity.retract = async () => logThis( await sideEffects.submitDatomsWithValidation(S,  Entity.getRetractionDatoms() ), "Entity Retraction: Response from server")
+              
+              //Entity.submitDatoms = async (attributeValueArray) => logThis( await sideEffects.submitDatomsWithValidation(S, attributeValueArray.map( entry => newDatom(Entity.getAttributeValue("entity"), S.attrName(entry.attribute), entry.value) ) ), "Entity Update: Response from server")
+
+  },
+  createEntity: async entityType => {
+    let EntityType = Database.getEntity(entityType)
+    let Datoms = EntityType.getAttributeValue("entityType/attributes")
+      .map( attribute => newDatom("newEntity", Database.getEntity(attribute).getAttributeValue("attr/name"), new Function("S", Database.getEntity(attribute).getAttributeValue("attribute/startValue") )( Database )))
+      .filter( datom => datom.attribute !== "entity/entityType" )
+      .filter( datom => datom.attribute !== "entity/label" )
+      .concat([
+        newDatom("newEntity", "entity/entityType", entityType ),
+        newDatom("newEntity", "entity/label", `[${EntityType.getAttributeValue("entity/label")} uten navn]` ),
+        newDatom("newEntity", "entity/category", `Mangler kategori` )
+      ])
+
+      let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
+      let newEntity = serverResponse.map( serverEntity => Database.applyEntityMethods(serverEntity) )
+
+      Database.Entities = Database.Entities.concat( newEntity )
+      Database.systemAttributes = Database.Entities
+        .filter( Entity => Entity.type() === 42 )
+        .filter( Entity => Entity.entity < 1000  )
+      Database.tx = Database.Entities.map( Entity => Entity.tx ).reverse()[0]
+      Database.getEntity = entity => Database.Entities.filter( Entity => Entity.entity === entity )[0]
+      
+      return Database
+  },
+  retractEntity: async entity => {
+
+
+    let Entity = Database.getEntity(entity)
+    let retractDatoms = Entity.getRetractionDatoms()
+    let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractDatoms ) )
+    let retractedEntity = serverResponse.map( serverEntity => Database.applyEntityMethods(serverEntity) )
+    Database.Entities = Database.Entities.filter( Entity => Entity.entity !== entity ).concat( retractedEntity )
+    Database.systemAttributes = Database.Entities
+        .filter( Entity => Entity.type() === 42 )
+        .filter( Entity => Entity.entity < 1000  )
+    Database.tx = Database.Entities.map( Entity => Entity.tx ).reverse()[0]
+    Database.getEntity = entity => Database.Entities.filter( Entity => Entity.entity === entity )[0]
+      
+    return Database
+
+
+
+
+
+  },
+  init: async () => { 
+    let serverResponse = await sideEffects.APIRequest("GET", "Entities", null)
+    Database.Entities = serverResponse
+      .filter( serverEntity => Object.keys(serverEntity).length > 1 )
+      .map( serverEntity => Database.applyEntityMethods(serverEntity) )
+
+      //Only .createEntity on .getEntity or .findEntities? Not on init
+
+    Database.systemAttributes = Database.Entities
+      .filter( Entity => Entity.type() === 42 )
+      .filter( Entity => Entity.entity < 1000  )
+    Database.tx = Database.Entities.map( Entity => Entity.tx ).reverse()[0]
+    Database.getEntity = entity => Database.Entities.filter( Entity => Entity.entity === entity )[0]
+    
+    return Database
+  }
+}
+
+
 const sideEffects = {
     isIdle: true,
     appContainer: "appContainer",
@@ -40,8 +202,8 @@ const sideEffects = {
             console.log("Authenticated");      
 
 
-            let Entities = await DB.init()
-            Entities.getEntity = entity => Entities.filter( Entity => Entity.entity === entity )[0]
+            let DB = await Database.init();
+            
 
             
 
@@ -55,11 +217,10 @@ const sideEffects = {
                 "selectedEntity": 4,
                 "selectedReport": 10439,
                 "currentSearchString": "Søk etter entitet",
-              },
-              Entities
+              }
             }
 
-            update( S )
+            update( S, DB )
             
         }else{
             try{
@@ -85,73 +246,6 @@ const sideEffects = {
 
 
 
-
-const DB = {
-  tx: null,
-  Entities: [],
-  createEntity: serverEntity => {
-    let Entity = {
-      entity: serverEntity.entity,
-      Datoms: serverEntity.Datoms.map( Datom => typeof Datom.tx === "undefined" ? mergerino(Datom, {tx: 0}) : Datom )
-    }
-
-    Entity.versions = Entity.Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues )
-
-    Entity.tx = Entity.versions[ Entity.versions.length - 1 ]
-
-    Entity.getActiveDatoms = () => Entity.Datoms.filter( Datom => Entity.Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
-
-    Entity.getEntityVersion = tx => Entity.Datoms
-      .filter( Datom => Datom.tx <= tx )
-      .reduce( 
-        (Entity, Datom) => mergerino(
-          Entity, 
-          createObject(
-            Datom.attribute, 
-            Datom.isAddition 
-              ? Datom.value
-              : undefined 
-          ) 
-        ),
-        {entity: Entity.entity, tx}
-      )
-    
-    Entity.Entity = () => Entity.getEntityVersion( Entity.tx )
-
-
-
-    Entity.getDatom = attributeName => Entity.Datoms.filter( Datom => Datom.attribute === attributeName ).reverse()[0]
-    Entity.getAttributeValue = attributeName => Entity.getDatom(attributeName) ? Entity.getDatom(attributeName).value : undefined
-    Entity.getAttributeVersion = attributeName => Entity.getDatom(attributeName) ? Entity.getDatom(attributeName).tx : undefined
-    Entity.type = () => Entity.getAttributeValue("entity/entityType")
-    Entity.label = () => Entity.getAttributeValue("entity/label") ? Entity.getAttributeValue("entity/label") : `[${Entity.entity}] mangler visningsnavn.`
-    Entity.category = () => Entity.getAttributeValue("entity/category")
-
-    Entity.getRetractionDatoms = () => Entity.getActiveDatoms().map( Datom => newDatom(Entity.entity, Datom.attribute, Datom.value, false) )
-    
-    return Entity
-  },
-  update: (entity, attribute, value) => {
-    
-              /* Entity.update = async (attribute, newValue) => {
-                let serverResponse = await sideEffects.submitDatomsWithValidation(S, [newDatom( Entity.getAttributeValue("entity"), S.attrName(attribute), newValue )] )
-                let updatedEntity = serverResponse[0].entity ? serverResponse[0] : undefined
-              } */
-
-
-
-              //Entity.retract = async () => logThis( await sideEffects.submitDatomsWithValidation(S,  Entity.getRetractionDatoms() ), "Entity Retraction: Response from server")
-              
-              //Entity.submitDatoms = async (attributeValueArray) => logThis( await sideEffects.submitDatomsWithValidation(S, attributeValueArray.map( entry => newDatom(Entity.getAttributeValue("entity"), S.attrName(entry.attribute), entry.value) ) ), "Entity Update: Response from server")
-
-  },
-  init: async () => { 
-    let serverResponse = await sideEffects.APIRequest("GET", "Entities", null)
-    DB.Entities = serverResponse.map( serverEntity => DB.createEntity(serverEntity) )
-    DB.tx = DB.Entities.map( Entity => Entity.tx ).reverse()[0]
-    return DB.Entities
-  }
-}
 
 
 
@@ -316,30 +410,12 @@ let constructEvents = (S, storedEvents) => {
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
-let getUserActions = (S) => returnObject({
+let getUserActions = (S, DB) => returnObject({
     updateLocalState: (patch) => update({
-      UIstate: mergerino( S["UIstate"], patch ), 
-      Entities: S["Entities"] 
-    }),
-    createEntity: async entityTypeEntity => {
-
-      console.log("Creating new entity of type: ", entityTypeEntity)
-
-      let Datoms = S.getEntity(entityTypeEntity).getAttributeValue("entityType/attributes").map( attribute => newDatom("newEntity", S.getEntity(attribute).getAttributeValue("attr/name"), new Function("S", S.getEntity(attribute).getAttributeValue("attribute/startValue") )( S )))
-        .filter( datom => datom.attribute !== "entity/entityType" )
-        .filter( datom => datom.attribute !== "entity/label" )
-        .concat([
-          newDatom("newEntity", "entity/entityType", entityTypeEntity ),
-          newDatom("newEntity", "entity/label", `[${S.getEntity(entityTypeEntity).getAttributeValue("entity/label")} uten navn]` ),
-          newDatom("newEntity", "entity/category", S["UIstate"]["selectedCategory"] )
-        ])
-      let changedEntities = await sideEffects.submitDatomsWithValidation(S, Datoms)
-      update( {
-        UIstate: S["UIstate"],
-        Entities: addUpdatedEntities(S, changedEntities)
-      } ) 
-    },
-    createEvent: async ( prevEvent, newEventTypeEntity ) => update({
+      UIstate: mergerino( S["UIstate"], patch )
+    }, DB),
+    createEntity: async entityTypeEntity => update(S, await DB.createEntity(entityTypeEntity) ),
+    /* createEvent: async ( prevEvent, newEventTypeEntity ) => update({
       UIstate: S["UIstate"],
       Entities: addUpdatedEntities(S, await sideEffects.submitDatomsWithValidation(S, [
         newDatom("newEntity", "entity/entityType", 46),
@@ -354,20 +430,19 @@ let getUserActions = (S) => returnObject({
         newDatom("newEntity", "event/eventTypeEntity", 5000),
         newDatom("newEntity", S.getEntity(1005).getAttributeValue("attr/name"), randBetween(800000000, 1000000000) ),
     ]))
-    }),
-    update: changedEntities => update({
-      UIstate: S["UIstate"],
-      Entities: addUpdatedEntities(S, changedEntities)
-    })
+    }), */
+    update: newDB => update({UIstate: S["UIstate"]}, newDB)
 })
 
-let update = (S) => {
+let update = ( S, DB ) => {
+
+    console.log("DB", DB)
 
 
     //DB queries
-    S.getEntity = entity => S.Entities.getEntity(entity)
-    S.findEntities = filterFunction => S.Entities.filter( filterFunction )
-    S.getUserEvents = () => S.findEntities( Entity => Entity.type() === 46 )
+    S.getEntity = entity => DB.getEntity(entity)
+    S.findEntities = filterFunction => DB.Entities.filter( filterFunction )
+    S.getUserEvents = () => DB.Entities.filter( Entity => Entity.type() === 46 )
       .filter( Event => Event.getAttributeValue("eventAttribute/1005") === Number(S["UIstate"].selectedOrgnumber) )
       .sort( (EventA, EventB) => EventA.getAttributeValue("event/index") - EventB.getAttributeValue("event/index")  )
 
@@ -376,14 +451,15 @@ let update = (S) => {
 
 
     //Local state
-    S["UIstate"].selectedEntity = (S.getEntity(S["UIstate"].selectedEntity) === null) ? 4 : S["UIstate"].selectedEntity
+    S["UIstate"].selectedEntity = ( DB.getEntity(S["UIstate"].selectedEntity) === null) ? 4 : S["UIstate"].selectedEntity
     /* S["UIstate"].selectedOrgnumber = (S["UIstate"].selectedOrgnumber === null) ? S.findEntities( e => e["entity/entityType"] === 7790 ).map( E => E.getAttributeValue(11320) ).filter( filterUniqueValues )[0] : S["UIstate"].selectedOrgnumber
     S["UIstate"].selectedVersion = (typeof S["UIstate"].selectedVersion === "undefined" ) ? S["selectedCompany"].t : S["UIstate"].selectedVersion */
 
     Admin.S = S;
+    Admin.DB = DB
 
     console.log("State: ", S)
-    let A = getUserActions(S)
+    let A = getUserActions(S, DB)
 
     S.elementTree = generateHTMLBody(S, A )
     sideEffects.updateDOM( S.elementTree )
