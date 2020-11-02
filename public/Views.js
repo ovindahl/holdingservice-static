@@ -137,7 +137,7 @@ let entityRedlinedValue = (value, prevValue) => d( [
 //Page frame
 
 let headerBarView = (S) => d([
-  d('<header><h1>Holdingservice Beta</h1></header>'),
+  d('<header><h1>Holdingservice Alpha</h1></header>'),
   d([
     d("Logg ut", {class: "textButton"}, "click", ),
     d("Innstillinger", {class: "textButton"}, "click", e => console.log("Innstillinger!"))
@@ -295,9 +295,6 @@ let genericReportView = (S, A, selectedReport) => {
 
   let Report = S.getEntity(selectedReport)
   let companyReport = S["selectedCompany"].getReport(selectedReport, S["UIstate"].selectedVersion )
-
-  console.log(selectedReport, Report, companyReport)
-
 
   return d([
     versionSelector(S, A),
