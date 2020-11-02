@@ -518,6 +518,7 @@ let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
         .sort( sortEntitiesAlphabeticallyByLabel  )
         .map( E => returnObject({value: E.entity, label: E.label()}) ), async e => {
           let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}})
+          
           let newDB = await S.getEntity(entity).update("eventType/eventAttributes", S.getEntity(entity).getAttributeValue("eventType/eventAttributes").concat( Number(submitInputValue(e)) )  )
           A.update( await S.getEntity(entity).update( attribute, updatedValue )  )
         } 
