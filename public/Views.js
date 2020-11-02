@@ -234,11 +234,10 @@ let entityInspectorPopup = (S, A, entity) => d([
 let newDatomsView = (S, A, Datoms) => d([
   h3("Nye selskapsdatomer generert av hendelsen:"),
   d( Datoms.map( datom => d([
-    d( String( datom.entity ) ),
-    entityLabel(S, A, datom.attribute),
-    d( JSON.stringify(datom.value) )
-  ], {class: "columns_2_4_4"})) )
-]) 
+    span( `Selskapsentitet ${ datom.entity }`, ``, {class: "entityLabel", style: `background-color: lightgray;`} ),
+    entityLabelAndValue(S, A, datom.attribute, datom.value),
+  ], {class: "columns_1_3"} )) )
+])
 
 let timelineView = (S, A) => d([
   d(""),
@@ -254,7 +253,9 @@ let eventView = (S, Event , A) => S.getEntity(Event.getAttributeValue("event/eve
   entityLabelAndValue(S, A, 27, Event.getAttributeValue("event/eventTypeEntity") ),
   d(S.getEntity(Event.getAttributeValue("event/eventTypeEntity")).getAttributeValue("eventType/eventAttributes").map( attribute => attributeView(S, A, Event.entity, attribute) )),
   d("<br>"),
-  S["selectedCompany"]["t"] >= Event["event/index"] ? newDatomsView(S, A, S["selectedCompany"].Datoms.filter( datom => datom.t === Event["event/index"] )) : d("Kan ikke vise hendelsens output"),
+  S["selectedCompany"]["t"] >= Event.getAttributeValue("eventAttribute/1000") 
+    ? newDatomsView(S, A, S["selectedCompany"].Datoms.filter( datom => datom.t === Event.getAttributeValue("eventAttribute/1000") )) 
+    : d("Kan ikke vise hendelsens output"),
   d("<br>"),
   retractEntityButton(S, A, Event["entity"]),
   newEventDropdown(S, A, Event)
@@ -269,7 +270,7 @@ let eventView = (S, Event , A) => S.getEntity(Event.getAttributeValue("event/eve
 
 let reportsPage = (S, A) => d([
   d( //Left sidebar
-    S.allReports.map( Report => d([
+    S.Reports.map( Report => d([
       entityLabel(S, A, Report.entity, e => A.updateLocalState({selectedReport: Report.entity}))
     ])  )
     ),
@@ -295,20 +296,23 @@ let genericReportView = (S, A, selectedReport) => {
   let Report = S.getEntity(selectedReport)
   let companyReport = S["selectedCompany"].getReport(selectedReport, S["UIstate"].selectedVersion )
 
+  console.log(selectedReport, Report, companyReport)
+
 
   return d([
     versionSelector(S, A),
     h3(Report.label()),
-    companyReport ? d(Report["report/reportFields"].map( reportField => reportFieldView(S, A, selectedReport, reportField.attribute, companyReport[reportField.attribute]) ) // entityLabelAndValue(S, A, reportField.attribute, companyReport[reportField.attribute] ? companyReport[reportField.attribute] : "na." ) )
-    ) : d("Rapporten er ikke tilgjengelig")
+    companyReport 
+      ? d( Report.getAttributeValue("report/reportFields").map( reportField => reportFieldView(S, A, selectedReport, reportField.attribute, companyReport[reportField.attribute]) ) ) 
+      : d("Rapporten er ikke tilgjengelig")
   ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 } 
 
 let reportFieldView = (S, A, selectedReport, attribute, value) => {
 
   let customReportFieldViews = {
-    "12420": reportFieldView_Datoms, //Tekst
-    "12434": reportFieldView_Entities
+    "5578": reportFieldView_Datoms, //Tekst
+    "5579": reportFieldView_Entities
   }
 
   return customReportFieldViews[attribute] ? customReportFieldViews[attribute](S, A, value) : entityLabelAndValue(S, A, attribute, value ? value : "na." )
@@ -332,9 +336,11 @@ let reportFieldView_Datoms = (S, A, Datoms) => d([
 let reportFieldView_Entities = (S, A, Entities) => d([
   d(Entities.map( Entity => d([
     d(String( Entity.entity )),
-    d(Object.keys(Entity).filter( key => key !== "entity" ).map( attribute => d([
-      entityLabel(S, A, Number(attribute)),
-      d( JSON.stringify(Entity.getAttributeValue(S.getEntity(attribute).getAttributeValue("attr/name"))) ),
+    d(Object.keys(Entity)
+      .filter( key => key !== "entity" && key !== "t" )
+      .map( attribute => d([
+        entityLabel(S, A, Number(attribute)),
+        d( JSON.stringify(Entity[attribute] ) ),
     ], {class: "columns_1_1"}) )),
     d("<br>"),
   ])   ))
@@ -500,7 +506,13 @@ let valueTypeView_boolean = (S, A, entity, attribute, value) => d([
 
 let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
 
+  console.log(entity, attribute, value)
+
   let datoms = S.getEntity(entity).getAttributeValue(S.getEntity(attribute).getAttributeValue("attr/name")) ? S.getEntity(entity).getAttributeValue(S.getEntity(attribute).getAttributeValue("attr/name")) : []
+
+
+  
+
   return d([
     entityLabel(S, A, attribute),
     d([
@@ -535,10 +547,12 @@ let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
 
 let valueTypeView_reportFields = (S, A, entity, attribute, value) => {
 
-  let reportFields = S.getEntity(entity).getAttributeValue(9970) ? S.getEntity(entity).getAttributeValue(9970) : []
+  console.log(entity, attribute, value)
+
+  let reportFields = S.getEntity(entity).getAttributeValue(S.attrName(attribute)) ? S.getEntity(entity).getAttributeValue(S.attrName(attribute)) : []
 
   return d([
-    entityLabel(S, A, 9970),
+    entityLabel(S, A, attribute),
     d([
       d("Attributt"),
       d("Verdi")
@@ -548,14 +562,14 @@ let valueTypeView_reportFields = (S, A, entity, attribute, value) => {
         .filter( E => !reportFields.map( reportField => reportField.attribute ).includes(E.entity)  )
         .concat( S.getEntity(reportField.attribute) )
         .sort( sortEntitiesAlphabeticallyByLabel  )
-        .map( E => returnObject({value: E.entity, label: S.getEntityLabel(E.entity) }) ), async e => A.update( await S.getEntity(entity).update( 9970, mergerino(reportFields, {[index]: {attribute: Number(submitInputValue(e)), value: `return 0`}}) )  )
+        .map( E => returnObject({value: E.entity, label: S.getEntity(E.entity).label() }) ), async e => A.update( await S.getEntity(entity).update( S.attrName(attribute), mergerino(reportFields, {[index]: {attribute: Number(submitInputValue(e)), value: `return 0`}}) )  )
         ),
-      textArea(reportField.value, {class:"textArea_code"}, async e => A.update( await S.getEntity(entity).update( 9970, mergerino(reportFields, {[index]: {value: submitInputValue(e)}}) )  )
+      textArea(reportField.value, {class:"textArea_code"}, async e => A.update( await S.getEntity(entity).update( S.attrName(attribute), mergerino(reportFields, {[index]: {value: submitInputValue(e)}}) )  )
       ),
-      submitButton("[Slett]", async e => A.update( await S.getEntity(entity).update( 9970, reportFields.filter( (d, i) => i !== index  ) )  )
+      submitButton("[Slett]", async e => A.update( await S.getEntity(entity).update( S.attrName(attribute), reportFields.filter( (d, i) => i !== index  ) )  )
       ),
     ], {class: "columns_2_2_1"}) )),
-    submitButton("Legg til", async e => A.update( await S.getEntity(entity).update( 9970, reportFields.concat({attribute: 4615, value: `return '${S.getEntity(entity).label()}';` }) )  )
+    submitButton("Legg til", async e => A.update( await S.getEntity(entity).update( S.attrName(attribute), reportFields.concat({attribute: 1001, value: `return '${S.getEntity(entity).label()}';` }) )  )
     ),
   ])
 

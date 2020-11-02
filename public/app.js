@@ -144,11 +144,19 @@ const Database = {
 
       //Only .createEntity on .getEntity or .findEntities? Not on init
 
+    
+
+
+    Database.Attributes = Database.Entities.filter( E => E.type() === 42  )
     Database.systemAttributes = Database.Entities
-      .filter( Entity => Entity.type() === 42 )
       .filter( Entity => Entity.entity < 1000  )
+    Database.EventTypes = Database.Entities.filter(E => E.type() ===  43 )
+    Database.ValueTypes = Database.Entities.filter( E => E.type() === 44  )
+    Database.EntityTypes = Database.Entities.filter( E => E.type() === 47  )
+    Database.Accounts = Database.Entities.filter( E => E.type() === 5030 )
     Database.tx = Database.Entities.map( Entity => Entity.tx ).reverse()[0]
     Database.getEntity = entity => Database.Entities.filter( Entity => Entity.entity === entity )[0]
+    Database.attrName = attribute => Database.Attributes.filter( Entity => Entity.entity === attribute )[0].getAttributeValue("attr/name")
     
     return Database
   }
@@ -192,21 +200,10 @@ const sideEffects = {
           audience: "localhost:3000/api"
         }); //This call is for some reason never resolved..
         if(await sideEffects.auth0.isAuthenticated()){
-            console.log("Authenticated");      
-            let DB = await Database.init();
-            let S = {
-              UIstate: {
-                "currentPage": "timeline",
-                "selectedOrgnumber": null,
-                "companyDocPage/selectedVersion": 1,
-                "selectedEntityType" : 42,
-                "selectedCategory": null,
-                "selectedEntity": null,
-                "eventAttributeSearchString": "1920",
-              }
-            }
+            console.log("Authenticated");
 
-            update( S, DB )
+            init()
+            
             
         }else{
             try{
@@ -223,13 +220,13 @@ const sideEffects = {
     }
 }
 
-let updateCompanyMethods = (S, Company) => {
+let updateCompanyMethods = (DB, Company) => {
 
   Company.getEntity = entity => Company.Entities[entity]
   Company.getAttributeValue = attribute => Company.getEntity(1)[attribute]
   Company.getLatestEntityID = () => Number(Object.keys(Company.Entities)[ Object.keys(Company.Entities).length - 1 ])
   Company.getVersion = t => Company.previousVersions.filter( Company => Company.t === t  )[0]
-  Company.getReport = (report, t) => mergeArray( S.getEntity(report)["report/reportFields"].map( reportField => {
+  Company.getReport = (report, t) => mergeArray( DB.getEntity(report).getAttributeValue("report/reportFields").map( reportField => {
 
     let selectedCompanyVersion = ( typeof t === "undefined" || t === Company.t ) ? Company : Company.getVersion(t)
 
@@ -244,7 +241,7 @@ let updateCompanyMethods = (S, Company) => {
   return Company
 }
 
-let constructEvents = (S, storedEvents) => {
+let constructEvents = (DB, storedEvents) => {
 
   let initialCompany = {
     t: 0,
@@ -257,32 +254,32 @@ let constructEvents = (S, storedEvents) => {
     isValid: true
   }
 
-  console.log("storedEvents", storedEvents)
 
-  
 
   Company = storedEvents.reduce( (Company, Event) => {
 
     let t = Company.t + 1
 
-    let EventType = S.getEntity(  Event["event/eventTypeEntity"] )
+    let EventType = DB.getEntity(  Event.getAttributeValue("event/eventTypeEntity") )
 
     let isApplicable = [
       (Company, Event) => Company.isValid,
-      (Company, Event) => S.EntityTypes.map( E => E.entity).includes( Event["event/eventTypeEntity"] ),
-      (Company, Event) => EventType["eventType/eventAttributes"].every( attribute =>  new Function(`inputValue`, S.getEntity( attribute )["attribute/validatorFunctionString"] )( Event.getAttributeValue( S.getEntity( attribute )["attr/name"] ) ) ),
-      (Company, Event) => EventType["eventType/eventValidators"].every( eventValidator =>  new Function([`Q`], S.getEntity(eventValidator)["eventValidator/validatorFunctionString"])( Company ) ),
-    ].every( validatorFunction => validatorFunction(Company, Event) )
+      (Company, Event) => DB.EventTypes.map( E => E.entity).includes( Event.getAttributeValue("event/eventTypeEntity") ),
+      (Company, Event) => EventType.getAttributeValue("eventType/eventAttributes").every( attribute =>  new Function(`inputValue`, DB.getEntity( attribute ).getAttributeValue("attribute/validatorFunctionString") )( Event.getAttributeValue( DB.getEntity( attribute ).getAttributeValue("attr/name") ) ) ),
+      (Company, Event) => EventType.getAttributeValue("eventType/eventValidators").every( eventValidator =>  new Function([`Q`], DB.getEntity(eventValidator).getAttributeValue("eventValidator/validatorFunctionString"))( Company ) ),
+    ].every( validatorFunction => logThis(validatorFunction(Company, Event), "A") )
+
 
     if(isApplicable){
 
       let Q = {
-        userInput: entity => Event[ S.getEntity(entity)["attr/name"] ],
+        account: accountNumber => DB.Accounts.filter( Entity => Entity.label().startsWith(accountNumber) )[0].entity,
+        userInput: attribute => Event.getAttributeValue(DB.getEntity(attribute).getAttributeValue("attr/name") ),
         companyAttribute: attribute => Company.getAttributeValue(attribute),
         latestEntityID: () => Company.getLatestEntityID()
       }
 
-      let eventDatoms = EventType["eventType/newDatoms"].map( datomConstructor => returnObject({
+      let eventDatoms = EventType.getAttributeValue("eventType/newDatoms").map( datomConstructor => returnObject({
           "entity": new Function( [`Q`], datomConstructor["entity"] )( Q ),
           "attribute": datomConstructor.attribute,
           "value": new Function( [`Q`], datomConstructor["value"] )( Q ),
@@ -292,7 +289,7 @@ let constructEvents = (S, storedEvents) => {
 
       let Entities = eventDatoms.reduce( (updatedEntities, datom) => mergerino(
         updatedEntities,
-        createObject(datom.entity, {entity: datom.entity}),
+        createObject(datom.entity, {entity: datom.entity, t: datom.t}),
         createObject(datom.entity, createObject(datom.attribute, datom.value ))
       ), Company.Entities )
 
@@ -305,11 +302,11 @@ let constructEvents = (S, storedEvents) => {
         isValid: true
       }
 
-      return updateCompanyMethods(S, updatedCompany);
+      return updateCompanyMethods(DB, updatedCompany);
 
     }else{return mergerino(Company, {isValid: false}) }
 
-  }, updateCompanyMethods(S, initialCompany) )
+  }, updateCompanyMethods(DB, initialCompany) )
 
   return Company
 
@@ -339,7 +336,7 @@ let getUserActions = (S, DB) => returnObject({
     },
     retractEntity: async entity => {
 
-      let updatedDB = await S.getEntity(entity).retract()
+      let updatedDB = await DB.getEntity(entity).retract()
 
       let updatedState = mergerino(S, {UIstate: {"selectedEntity": null}})
 
@@ -351,8 +348,8 @@ let getUserActions = (S, DB) => returnObject({
 
       let eventDatoms = [
         newDatom("newEntity", "event/eventTypeEntity", newEventTypeEntity),
-        newDatom("newEntity", S.getEntity(1005).getAttributeValue("attr/name"), prevEvent.getAttributeValue( S.getEntity(1005).getAttributeValue("attr/name") ) ),
-        newDatom("newEntity", S.getEntity(1000).getAttributeValue("attr/name"), prevEvent.getAttributeValue( S.getEntity(1000).getAttributeValue("attr/name") ) + 1 )
+        newDatom("newEntity", DB.getEntity(1005).getAttributeValue("attr/name"), prevEvent.getAttributeValue( DB.getEntity(1005).getAttributeValue("attr/name") ) ),
+        newDatom("newEntity", DB.getEntity(1000).getAttributeValue("attr/name"), prevEvent.getAttributeValue( DB.getEntity(1000).getAttributeValue("attr/name") ) + 1 )
       ]
       let updatedDB = await DB.createEntity(46, eventDatoms )
 
@@ -363,8 +360,8 @@ let getUserActions = (S, DB) => returnObject({
 
       let eventDatoms = [
         newDatom("newEntity", "event/eventTypeEntity", 5000),
-        newDatom("newEntity", S.getEntity(1005).getAttributeValue("attr/name"), randBetween(800000000, 1000000000) ),
-        newDatom("newEntity", S.getEntity(1000).getAttributeValue("attr/name"), 1 )
+        newDatom("newEntity", DB.getEntity(1005).getAttributeValue("attr/name"), randBetween(800000000, 1000000000) ),
+        newDatom("newEntity", DB.getEntity(1000).getAttributeValue("attr/name"), 1 )
       ]
       let updatedDB = await DB.createEntity(46, eventDatoms )
       update( S, updatedDB )
@@ -385,7 +382,14 @@ let update = ( S, DB ) => {
     S.ValueTypes = DB.Entities.filter( E => E.type() === 44  )
     S.EntityTypes = DB.Entities.filter( E => E.type() === 47  )
     S.accounts = DB.Entities.filter( Entity =>  Entity.getAttributeValue('entity/entityType') === 5030).map(E=>E.entity)
-    S.orgNumbers = DB.Entities.filter( Entity => Entity.type() === 46 ).map( E => E.getAttributeValue("eventAttribute/1005") ).filter( filterUniqueValues )
+    S.Events = DB.Entities.filter( Entity => Entity.type() === 46 )
+    S.Reports = DB.Entities.filter( Entity => Entity.type() === 49 )
+    S.orgNumbers = S.Events.map( E => E.getAttributeValue("eventAttribute/1005") ).filter( filterUniqueValues )
+
+
+    
+
+    S.attrName = attribute => Database.attrName(attribute)
     
     S.selectedCategories = DB.Entities.filter( e => e.type() === S["UIstate"].selectedEntityType )
     S.selectedEntities = DB.Entities.filter( e => e.type() === S["UIstate"].selectedEntityType && e.getAttributeValue("entity/category") === S["UIstate"].selectedCategory )
@@ -394,12 +398,11 @@ let update = ( S, DB ) => {
     Admin.S = S;
     Admin.DB = DB
 
-
-    S.getUserEvents = () => DB.Entities.filter( Entity => Entity.type() === 46 )
+    try {S.selectedCompany = constructEvents(DB, S.Events
       .filter( Event => Event.getAttributeValue("eventAttribute/1005") === Number(S["UIstate"].selectedOrgnumber) )
-      .sort( (EventA, EventB) => EventA.getAttributeValue("eventAttribute/1000") - EventB.getAttributeValue("eventAttribute/1000")  )
-
-    try {S.selectedCompany = constructEvents(S, S.getUserEvents())} catch (error) {console.log(error)}
+      .sort( (EventA, EventB) => EventA.getAttributeValue("eventAttribute/1000") - EventB.getAttributeValue("eventAttribute/1000")  ) 
+      )
+    } catch (error) {console.log(error)}
 
     console.log("State: ", S)
     let A = getUserActions(S, DB)
@@ -418,3 +421,31 @@ let Admin = {
 
 //Archive
 let getRetractionDatomsWithoutChildren = Entities => Entities.map( Entity =>  Object.entries( Entity ).filter( entry => typeof entry[1] !== "function" ).map( e => newDatom(Entity.getAttributeValue("entity"), e[0], e[1], false) ).filter( d => d["attribute"] !== "entity" ) ).flat() //Need to also get children
+
+
+
+let init = async () => {
+
+
+  let DB = await Database.init();
+
+
+
+      let S = {
+        UIstate: {
+          "currentPage": "timeline",
+          "selectedOrgnumber": null,
+          "companyDocPage/selectedVersion": 1,
+          "selectedEntityType" : 42,
+          "selectedCategory": null,
+          "selectedEntity": null,
+          "selectedReport": 5575,
+          "eventAttributeSearchString": "1920",
+        }
+      }
+
+    update( S, DB )
+
+
+
+}
