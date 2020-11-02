@@ -274,6 +274,7 @@ let constructEvents = (DB, storedEvents) => {
 
       let Q = {
         account: accountNumber => DB.Accounts.filter( Entity => Entity.label().startsWith(accountNumber) )[0].entity,
+        Account:  accountNumber => DB.Accounts.filter( Entity => Entity.label().startsWith(accountNumber) )[0].entity,
         userInput: attribute => Event.getAttributeValue(DB.getEntity(attribute).getAttributeValue("attr/name") ),
         companyAttribute: attribute => Company.getAttributeValue(attribute),
         latestEntityID: () => Company.getLatestEntityID()
