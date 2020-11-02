@@ -390,7 +390,8 @@ let genericEntityView = (S, A, entity) =>  {if( entity ){
     h3(Entity.label()),
     entityView(S, A, entity),
     d(attributeViews),
-    retractEntityButton(S, A, entity)
+    retractEntityButton(S, A, entity),
+    submitButton("Legg til", e => A.createEntity( selectedEntityType.entity ) )
   ], {class: "feedContainer"} )
 
 }else{return d("Ingen entitet valgt.", {class: "feedContainer"})}}

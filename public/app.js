@@ -193,22 +193,15 @@ const sideEffects = {
         }); //This call is for some reason never resolved..
         if(await sideEffects.auth0.isAuthenticated()){
             console.log("Authenticated");      
-
-
             let DB = await Database.init();
-            
-
-            
-
             let S = {
               UIstate: {
                 "currentPage": "timeline",
                 "selectedOrgnumber": null,
                 "companyDocPage/selectedVersion": 1,
                 "selectedEntityType" : 42,
-                "selectedCategory": "[db] Entitet",
+                "selectedCategory": null,
                 "selectedEntity": null,
-                "selectedReport": 10439,
                 "eventAttributeSearchString": "1920",
               }
             }
@@ -229,7 +222,6 @@ const sideEffects = {
     
     }
 }
-
 
 let updateCompanyMethods = (S, Company) => {
 
