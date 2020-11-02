@@ -147,6 +147,7 @@ let headerBarView = (S) => d([
 let companySelectionMenuRow = (S, A) => d( S.orgNumbers.map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
 let pageSelectionMenuRow = (S, A) => d( ["timeline", "Rapporter", "Admin/DB", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 //"Admin/Hendelsesattributter", "Admin/Hendelsestyper", 
+
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
   companySelectionMenuRow(S, A),
@@ -229,9 +230,6 @@ let entityInspectorPopup = (S, A, entity) => d([
       d(`Kategori: ${S.getEntity(entity).getAttributeValue("entity/category")}`),
       d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: S.getEntity(entity).type(), selectedCategory:  S.getEntity(entity).category(), selectedEntity: entity }))
     ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-
-
-
 
 let newDatomsView = (S, A, Datoms) => d([
   h3("Nye selskapsdatomer generert av hendelsen:"),
@@ -367,11 +365,6 @@ let entityView = (S, A, entity) => d([
     d( `${new Date(S.getEntity(entity).tx).toLocaleDateString()} ${new Date(S.getEntity(entity).tx).toLocaleTimeString()}`, {style: `text-align: right;`} )
   ], {class: "columns_1_1"}),
 ]) 
-
-
-
-
-
 
 
 //Entity view
@@ -524,13 +517,9 @@ let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
       dropdown(datom.attribute, S.Attributes
         .sort( sortEntitiesAlphabeticallyByLabel  )
         .map( E => returnObject({value: E.entity, label: E.label()}) ), async e => {
-
           let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}})
-
-          A.update( await S.getEntity(entity).submitDatoms( [{attribute: attribute, value: updatedValue}, {attribute: 8, value: S.getEntity(entity).getAttributeValue("eventType/eventAttributes").concat(Number(submitInputValue(e))) }])  )
-
-
-          A.update( await S.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}}) )  )
+          let newDB = await S.getEntity(entity).update("eventType/eventAttributes", S.getEntity(entity).getAttributeValue("eventType/eventAttributes").concat( Number(submitInputValue(e)) )  )
+          A.update( await S.getEntity(entity).update( attribute, updatedValue )  )
         } 
         ),
       textArea(datom.value, {class:"textArea_code"}, async e => A.update( await S.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}}) )  )
@@ -570,7 +559,6 @@ let valueTypeView_reportFields = (S, A, entity, attribute, value) => {
   ])
 
 }
-
 
 let valueTypeView_staticDropdown = (S, A, entity, attribute, value)  => {
 
