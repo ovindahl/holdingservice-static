@@ -33,13 +33,29 @@ const Database = {
 
 
 
-    Entity.getDatom = attributeName => Entity.Datoms.filter( Datom => Datom.attribute === attributeName ).reverse()[0]
+    Entity.getDatom = (attributeName, version) => {
+
+      let D = Entity.Datoms
+      .filter( Datom => Datom.attribute === attributeName )
+      .filter( Datom => version ? Datom.tx <= version : true )
+      .reverse()[0] 
+
+      if(D){
+        D.update = async submittedValue => update(DB.S, await Database.updateEntity( Entity.entity, D.attribute, submittedValue ) ) 
+      }
+      return D
+
+    } 
+
     Entity.getAttributeValue = attributeName => Entity.getDatom(attributeName) 
       ? Entity.getDatom(attributeName).isAddition
         ? Entity.getDatom(attributeName).value 
         : undefined //To be verified....
       : undefined
     Entity.getAttributeVersion = attributeName => Entity.getDatom(attributeName) ? Entity.getDatom(attributeName).tx : undefined
+
+
+
     Entity.type = () => Entity.getAttributeValue("entity/entityType")
     Entity.label = () => Entity.getAttributeValue("entity/label") ? Entity.getAttributeValue("entity/label") : `[${Entity.entity}] mangler visningsnavn.`
     Entity.category = () => Entity.getAttributeValue("entity/category")
@@ -48,6 +64,18 @@ const Database = {
 
     Entity.update = ( attribute, newValue ) => Database.updateEntity( Entity.entity, attribute, newValue )
     Entity.retract = ( ) => Database.retractEntity( Entity.entity )
+
+
+
+    Entity.localState = {tx: Entity.tx }
+    Entity.setLocalState = (S, newState) => {
+      Entity.localState = newState
+      update(S, Database)
+    } 
+    Entity.getLocalState = () => Entity.localState
+
+
+    
     
     return Entity
   },
@@ -136,8 +164,10 @@ const Database = {
 
 
   },
+  submitDatoms: async datoms => await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) ),
   init: async () => { 
     let serverResponse = await sideEffects.APIRequest("GET", "Entities", null)
+    
     Database.Entities = serverResponse
       .filter( serverEntity => Object.keys(serverEntity).length > 1 )
       .map( serverEntity => Database.applyEntityMethods(serverEntity) )
@@ -156,6 +186,8 @@ const Database = {
     Database.Accounts = Database.Entities.filter( E => E.type() === 5030 )
     Database.tx = Database.Entities.map( Entity => Entity.tx ).reverse()[0]
     Database.getEntity = entity => Database.Entities.filter( Entity => Entity.entity === entity )[0]
+    
+    Database.attr = attrName => serverResponse.filter( Entity => Entity.current["attr/name"] === attrName )[0].entity
     Database.attrName = attribute => Database.Attributes.filter( Entity => Entity.entity === attribute )[0].getAttributeValue("attr/name")
     
     return Database
@@ -267,7 +299,7 @@ let constructEvents = (DB, storedEvents) => {
       (Company, Event) => DB.EventTypes.map( E => E.entity).includes( Event.getAttributeValue("event/eventTypeEntity") ),
       (Company, Event) => EventType.getAttributeValue("eventType/eventAttributes").every( attribute =>  new Function(`inputValue`, DB.getEntity( attribute ).getAttributeValue("attribute/validatorFunctionString") )( Event.getAttributeValue( DB.getEntity( attribute ).getAttributeValue("attr/name") ) ) ),
       (Company, Event) => EventType.getAttributeValue("eventType/eventValidators").every( eventValidator =>  new Function([`Q`], DB.getEntity(eventValidator).getAttributeValue("eventValidator/validatorFunctionString"))( Company ) ),
-    ].every( validatorFunction => logThis(validatorFunction(Company, Event), "A") )
+    ].every( validatorFunction => validatorFunction(Company, Event) )
 
 
     if(isApplicable){
@@ -391,11 +423,12 @@ let update = ( S, DB ) => {
     
 
     S.attrName = attribute => Database.attrName(attribute)
+    S.attr = attrName => Database.attr(attrName)
     
     S.selectedCategories = DB.Entities.filter( e => e.type() === S["UIstate"].selectedEntityType )
     S.selectedEntities = DB.Entities.filter( e => e.type() === S["UIstate"].selectedEntityType && e.getAttributeValue("entity/category") === S["UIstate"].selectedCategory )
     
-
+    DB.S = S;
     Admin.S = S;
     Admin.DB = DB
 
@@ -439,8 +472,9 @@ let init = async () => {
           "companyDocPage/selectedVersion": 1,
           "selectedEntityType" : 42,
           "selectedCategory": null,
-          "selectedEntity": null,
+          "selectedEntity": 6,
           "selectedReport": 5575,
+          "selectedVersion": 0,
           "eventAttributeSearchString": "1920",
         }
       }

@@ -70,6 +70,12 @@ body {background-color: #F2F3F5;}
     grid-template-columns: 1fr 1fr 1fr 1fr;
 }
 
+.columns_1_1_1_1_1 {
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+}
+
+
 .columns_2_2_2_1 {
     display:grid;
     grid-template-columns: 2fr 2fr 2fr 1fr;
