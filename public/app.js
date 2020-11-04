@@ -36,9 +36,9 @@ const Database = {
 
 
     Entity.type = Entity.getAttributeValue("entity/entityType")
-    Entity.Type = Database.getEntity ? Database.getEntity(Entity.type) : null
+    Entity.Type = () => Database.getEntity(Entity.type)
     Entity.label = Entity.getAttributeValue("entity/label") ? Entity.getAttributeValue("entity/label") : `[${Entity.entity}] mangler visningsnavn.`
-    Entity.color = Entity.Type ? Entity.Type.getAttributeValue("entityType/color") : "lightgray"
+    Entity.color = "lightgray"
 
     Entity.getRetractionDatoms = () => Entity.getActiveDatoms().map( Datom => newDatom(Entity.entity, Datom.attribute, Datom.value, false) )
 
@@ -167,7 +167,7 @@ const Database = {
     Datom.attr = Datom.Attribute ? Datom.Attribute.entity : undefined
 
     Datom.valueType = Datom.Attribute.getAttributeValue("attribute/valueType")
-    Datom.ValueType = Database.getEntity( Datom.valueType )
+    Datom.ValueType = Database.getEntity( Database.attr(Datom.attribute) )
 
     Datom.update = async submittedValue => {
       let updatedEntity = await Database.updateEntity( Datom.entity, Datom.attribute, submittedValue )

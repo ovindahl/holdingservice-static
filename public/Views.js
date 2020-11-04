@@ -484,13 +484,11 @@ let genericEntityWithHistoryView = (S, A, entity) =>  {if( entity ){
 
   let Entity = S.getEntity(entity)
 
-  let selectedTx = Entity.localState.tx
+  let EntityType = Entity.Type()
 
-  let selectedEntityType = S.getEntity(Entity.type)
-  let selectedEntityAttribtues = selectedEntityType.getAttributeValue("entityType/attributes")
-
-  let attributeViews = selectedEntityAttribtues.map( attribute => {
-    let Datom = Database.getDatom( entity, attribute , selectedTx )
+  let attributeViews = EntityType.getAttributeValue("entityType/attributes").map( attribute => {
+    
+    let Datom = Database.getDatom( entity, attribute , Entity.localState.tx )
 
 
 
@@ -504,7 +502,7 @@ let genericEntityWithHistoryView = (S, A, entity) =>  {if( entity ){
     entityView(Entity),
     d(attributeViews),
     retractEntityButton(S, A, entity),
-    submitButton("Legg til", e => A.createEntity( selectedEntityType.entity ) )
+    submitButton("Legg til", e => A.createEntity( EntityType.entity ) )
   ], {class: "feedContainer"} )
 
 }else{return d("Ingen entitet valgt.", {class: "feedContainer"})}}
