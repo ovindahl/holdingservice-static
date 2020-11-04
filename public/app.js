@@ -3,10 +3,9 @@ const Database = {
   Entities: [],
   applyEntityMethods: serverEntity => {
 
-    let Entity = {
-      entity: serverEntity.entity,
+    let Entity = mergerino(serverEntity, {
       Datoms: serverEntity.Datoms.map( Datom => typeof Datom.tx === "undefined" ? mergerino(Datom, {tx: 0}) : Datom ),
-    }
+    } ) 
 
     Entity.versions = Entity.Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues )
 
@@ -66,6 +65,18 @@ const Database = {
     }
     return Entity
   },
+  setLocalState: (entity, newState) => {
+
+    let updatedEntity = Database.getEntity(entity)
+    updatedEntity.localState = newState
+    Database.updateDatabaseEntity(updatedEntity)
+    update(Database.S)
+
+
+
+
+  },
+  getLocalState: entity => Database.getEntity(entity).localState,
   updateEntity: async (entity, attribute, value) => {
 
     let Attribute = Database.getEntity( Database.attr(attribute) )
@@ -82,13 +93,16 @@ const Database = {
     if( isValid_existingEntity && isValid_valueType && isValid_attribute && isValid_notNaN  ){
       let Datom = newDatom(entity, Attribute.getAttributeValue("attr/name"), value )
       let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( [Datom] ) )
+      console.log("serverResponse", serverResponse)
       Database.updateDatabaseEntity(serverResponse[0])
+      Database.setLocalState(entity, {tx: serverResponse[0].Datoms.reverse()[0] })
+      console.log("Database", Database)
     }else{
 
       console.log("Database.updateEntity did not pass validation.", {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN })
-      return Database
 
     }
+    update(Database.S)
 
   },
   createEntity: async (entityType, newEntityDatoms) => {
@@ -113,39 +127,21 @@ const Database = {
     let retractDatoms = Entity.getRetractionDatoms()
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractDatoms ) )
     Database.updateDatabaseEntity(serverResponse[0])
+    update( Database.S )
   },
-  updateDatabaseEntity: serverEntity => {
-
-    let updatedEntity = Database.applyEntityMethods(serverEntity)
-    Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
-
-    Database.find = filterFunction => Database.Entities.filter( filterFunction )
-    Database.attrName = attribute => isNumber(attribute) ? Database.find( Entity => Entity.entity === attribute )[0].getAttributeValue("attr/name") : attribute
-    Database.attr = attrName => isNumber(attrName) ? attrName : Database.find( Entity => Entity.type === 42 ).filter( Entity => Entity.getAttributeValue("attr/name") === attrName )[0].entity
-    Database.tx = Database.find( Entity => true ).map( Entity => Entity.tx ).reverse()[0]
-    Database.getEntity = entity => Database.find( E => E.entity === entity  )[0]
-    
-    return Database
+  updateDatabaseEntity: updatedEntity => {
+    Database.updateEntities( Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( Database.applyEntityMethods(updatedEntity) ) )
+    return;
   },
   updateEntities: Entitites => {
 
-    Database.Entities = Entitites.map( serverEntity => Database.applyEntityMethods(serverEntity) )
+    Database.Entities = Entitites //.map( serverEntity => Database.applyEntityMethods(serverEntity) )
     Database.find = filterFunction => Database.Entities.filter( filterFunction )
-    Database.attrName = attribute => isNumber(attribute)
-      ? Database.find( Entity => Entity.entity === attribute )[0].getAttributeValue("attr/name")
-      : attribute
-    Database.attr = attrName => {
-
-      let result = isNumber(attrName)
-      ? attrName
-      : Database.find( Entity => Entity.type === 42 )
-        .filter( Entity => Entity.getAttributeValue("attr/name") === attrName )
-
-
-      return result.length > 0 ? result[0].entity : undefined
-    } 
     Database.tx = Database.find( Entity => true ).map( Entity => Entity.tx ).reverse()[0]
-    Database.getEntity = entity => Database.find( E => E.entity === entity  )[0]
+    Database.getEntity = entity => Database.applyEntityMethods( Database.find( E => E.entity === entity  )[0] )
+
+    
+
     Database.getDatom = (entity, attributeName, version) => {
 
       let serverDatom = Database.serverDatoms
@@ -159,9 +155,16 @@ const Database = {
       return Datom
 
     } 
+
+    Database.getEntityVersions = entity => Database.getEntity(entity).Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues )
     
-    
-    Database.get = (entity, attribute, version) => Database.getDatom(entity, Database.attrName(attribute), version).value
+    Database.get = (entity, attribute, version) => {
+
+      let Datom = Database.getDatom(entity, Database.attrName(attribute), version)
+
+      let Value = isUndefined(Datom) ? undefined : Datom.value
+      return Value
+    } 
     
     return Database
   },
@@ -186,9 +189,19 @@ const Database = {
 
   },
   init: async () => { 
+    
     let serverResponse = await sideEffects.APIRequest("GET", "Entities", null)
+    let startTime = Date.now()
+    Database.serverEntities = serverResponse
+    Database.Attributes = serverResponse.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 )
+    const attrNameToEntity = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) )) 
+    const attrEntityToName = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.entity, serverEntity.current["attr/name"]) ))
+    Database.attrName = attribute => isNumber(attribute) ? attrEntityToName[attribute] : attribute
+    Database.attr = attrName => isNumber(attrName) ? attrName : attrNameToEntity[attrName]
+
     Database.updateEntities( serverResponse )
-    Database.serverDatoms = serverResponse.map( serverEntity => serverEntity.Datoms ).flat()
+    Database.serverDatoms = serverResponse.map( serverEntity => serverEntity.Datoms ).flat().map( serverDatom => isUndefined(serverDatom.tx) ? mergerino(serverDatom, {tx: 0}) : serverDatom )
+    console.log(`DB.init() finished in ${Date.now() - startTime} ms`)
     return;
   }
 }
@@ -413,25 +426,23 @@ let update = ( S ) => {
 
     console.log("Database", Database)
 
-    //DB queries
-    S.getEntity = entity => Database.getEntity(entity)
-    S.get = (entity, attribute, version) => Database.get(entity, attribute, version)
+    console.log("S", S)
 
+    S.Events = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 46 ).map( serverEntity => Database.getEntity(serverEntity.entity) )
+    S.EntityTypes = [42, 43, 44, 45, 47, 48, 49, 50, 5030, 5590] //, 46
+    
+    S.orgNumbers = S.Events.map( Entity => Database.get(Entity.entity, "eventAttribute/1005" ) ).filter( filterUniqueValues )
+    S.userEvents = S.Events.filter( Event => Database.get(Event.entity, "eventAttribute/1005") === Number(S["UIstate"].selectedOrgnumber) )
+      .sort( (EventA, EventB) => Database.get(EventA.entity, "eventAttribute/1000") - Database.get(EventB.entity, "eventAttribute/1000")  )
 
     
-
-
-
-    S.Events = Database.find( Entity => Entity.type === 46 )
-    S.orgNumbers = S.Events.map( Entity => Entity.getAttributeValue("eventAttribute/1005") ).filter( filterUniqueValues )
-    S.userEvents = S.Events
-    .filter( Event => Event.getAttributeValue("eventAttribute/1005") === Number(S["UIstate"].selectedOrgnumber) )
-    .sort( (EventA, EventB) => EventA.getAttributeValue("eventAttribute/1000") - EventB.getAttributeValue("eventAttribute/1000")  )
+    S.selectedCategories = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType ).map( serverEntity => Database.get(serverEntity.entity, "entity/category" ) ).filter(filterUniqueValues)
     
-    S.selectedCategories = Database.find( Entity => Entity.type === S["UIstate"].selectedEntityType ).map( Entity => Entity.getAttributeValue("entity/category") ).filter(filterUniqueValues)
-    S.selectedEntities = Database.find( Entity => Entity.type === S["UIstate"].selectedEntityType && Entity.getAttributeValue("entity/category") === S["UIstate"].selectedCategory )
+    S.selectedEntities = Database.Entities
+      .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
+      .filter( serverEntity => serverEntity.current["entity/category"] === S["UIstate"].selectedCategory )
+      .map( serverEntity => serverEntity.entity )
     
-    Database.S = S;
     Database.S = S;
     Admin.S = S;
     Admin.DB = Database
@@ -441,8 +452,10 @@ let update = ( S ) => {
     console.log("State: ", S)
     let A = getUserActions(S, Database)
 
+    let startTime = Date.now()
     S.elementTree = generateHTMLBody(S, A )
     sideEffects.updateDOM( S.elementTree )
+    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 }
 
 sideEffects.configureClient();
@@ -471,7 +484,7 @@ let init = async () => {
           "selectedOrgnumber": null,
           "companyDocPage/selectedVersion": 1,
           "selectedEntityType" : 42,
-          "selectedCategory": null,
+          "selectedCategory": undefined,
           "selectedEntity": 6,
           "selectedReport": 5575,
           "selectedVersion": 0,
