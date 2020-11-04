@@ -106,6 +106,7 @@ const Database = {
     if(Array.isArray(newEntityDatoms)){Datoms = Datoms.concat(newEntityDatoms)}
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
     Database.updateDatabaseEntity(serverResponse[0])
+    update( Database.S )
   },
   retractEntity: async entity => {
     let Entity = Database.getEntity(entity)
@@ -119,8 +120,8 @@ const Database = {
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
 
     Database.find = filterFunction => Database.Entities.filter( filterFunction )
-    Database.attrName = attribute => Database.find( Entity => Entity.entity === attribute )[0].getAttributeValue("attr/name")
-    Database.attr = attrName => Database.find( Entity => Entity.type === 42 ).filter( Entity => Entity.getAttributeValue("attr/name") === attrName )[0].entity
+    Database.attrName = attribute => isNumber(attribute) ? Database.find( Entity => Entity.entity === attribute )[0].getAttributeValue("attr/name") : attribute
+    Database.attr = attrName => isNumber(attrName) ? attrName : Database.find( Entity => Entity.type === 42 ).filter( Entity => Entity.getAttributeValue("attr/name") === attrName )[0].entity
     Database.tx = Database.find( Entity => true ).map( Entity => Entity.tx ).reverse()[0]
     Database.getEntity = entity => Database.find( E => E.entity === entity  )[0]
     
@@ -145,12 +146,19 @@ const Database = {
     } 
     Database.tx = Database.find( Entity => true ).map( Entity => Entity.tx ).reverse()[0]
     Database.getEntity = entity => Database.find( E => E.entity === entity  )[0]
-    Database.getDatom = (entity, attributeName, version) => Database.applyDatomMethods( Database.serverDatoms
+    Database.getDatom = (entity, attributeName, version) => {
+
+      let serverDatom = Database.serverDatoms
       .filter( serverDatom => serverDatom.entity === entity )
       .filter( serverDatom => serverDatom.attribute === Database.attrName(attributeName) )
-      .filter( serverDatom => serverDatom.tx ? serverDatom.tx <= version : true )
+      .filter( serverDatom => version ? serverDatom.tx <= version : true )
       .reverse()[0]
-    )
+
+      let Datom = serverDatom ? Database.applyDatomMethods( serverDatom ) : undefined
+
+      return Datom
+
+    } 
     
     
     Database.get = (entity, attribute, version) => Database.getDatom(entity, Database.attrName(attribute), version).value
