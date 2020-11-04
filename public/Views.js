@@ -112,6 +112,26 @@ let entityLabel = (S, A, entity, onClick) => d( [
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
+let entityLabel2 = Entity => d( [
+  d([
+    span( `${ Entity.label}`, `[${Entity.entity}] ${Entity.getAttributeValue("entity/category")}`, {class: "entityLabel", style: `background-color: ${Entity.color};`}),
+    entityInspectorPopup2(Entity),
+  ], {class: "popupContainer", style:"display: inline-flex;"})
+], {style:"display: inline-flex;"} )
+
+
+let entityInspectorPopup2 = Entity => d([
+  h3(`[${Entity.entity}] ${Entity.label}`, {style: `background-color: ${Entity.color}; padding: 3px;`}),
+  d("<br>"),
+  d(`Type: ${Entity.type}`),
+  d(`Kategori: ${Entity.getAttributeValue("entity/category")}`),
+  d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Entity.type, selectedCategory:  Entity.getAttributeValue("entity/category"), selectedEntity: Entity.entity }))
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+
+
+
+
 let entityLabelWithCategory = (S, A, entity, onClick) => d( [
   d([
     span( `[${ S.getEntity(entity).getAttributeValue("entity/category")}] / ${ S.getEntity(entity).label}`, `[${entity}] ${S.getEntity(entity).getAttributeValue("entity/category")}`, {class: "entityLabel", style: `background-color: ${getEntityColor(S, entity)};`}, (typeof onClick === "undefined") ? null : "click", onClick ),
@@ -209,7 +229,7 @@ let entityInspectorPopup = (S, A, entity) => d([
       d("<br>"),
       d(`Type: ${S.getEntity(S.getEntity(entity).getAttributeValue("entity/entityType")).label}`),
       d(`Kategori: ${S.getEntity(entity).getAttributeValue("entity/category")}`),
-      d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: S.getEntity(entity).type, selectedCategory:  S.getEntity(entity).category, selectedEntity: entity }))
+      d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: S.getEntity(entity).type, selectedCategory:  S.getEntity(entity).getAttributeValue("entity/category"), selectedEntity: entity }))
     ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 let newDatomsView = (S, A, Datoms) => d([
@@ -223,13 +243,13 @@ let newDatomsView = (S, A, Datoms) => d([
 let timelineView = (S, A) => d([
   d(""),
   (S.selectedCompany.Events.length > 0)
-  ? d( S.selectedCompany.Events.map( Event => newEventView(S, A, S.getEntity(Event.entity)) )) // eventView( S, Event, A )   )) 
+  ? d( S.selectedCompany.Events.map( Event => newEventView( S.getEntity(Event.entity) ) ))
   : d("Noe er galt med selskapets tidslinje"),
   d("")
 ], {class: "pageContainer"})
 
 
-let newEventView = (S, A, Event) => {
+let newEventView = Event => {
 
   return d([
     h3( Event.EventType().label ),
@@ -237,45 +257,28 @@ let newEventView = (S, A, Event) => {
     //entityLabelAndValue(S, A, 27, Event.getAttributeValue("event/eventTypeEntity") ),
     d( Event.EventType().getAttributeValue("eventType/eventAttributes").map( attribute => {
 
-      let Attribute = S.getEntity(attribute)
-      let attrName = Attribute.getAttributeValue("attr/name")
       let selectedVersion = Event.localState.tx
 
-      let Datom = Event.getDatom( attrName, selectedVersion )
+      let Datom = Database.getDatom( Event.entity, attribute, selectedVersion )
       return isUndefined(Datom)
         ? d([
-            entityLabel(S, A,  isString(attribute) ? Database.attr(attribute) : attribute ),
+            entityLabel2( Datom.Attribute ),
             d("[ Manglende verdi ]")
           ], {class: "columns_1_1"})
-        : datomView(S, A, Datom  )
-    }   )),
+        : datomView( Datom  )
+    })),
+    d("<br>"),
+    /* S["selectedCompany"]["t"] >= Event.getAttributeValue("eventAttribute/1000") 
+      ? newDatomsView(S, A, S["selectedCompany"].Datoms.filter( datom => datom.t === Event.getAttributeValue("eventAttribute/1000") )) 
+      : d("Kan ikke vise hendelsens output"),
+    d("<br>"),
+    retractEntityButton(S, A, Event["entity"]),
+    newEventDropdown(S, A, Event) */
 
   ], {class: "feedContainer"} )
 
 }
 
-let eventView = (S, Event , A) => S.getEntity(Event.getAttributeValue("event/eventTypeEntity")) 
-  ? d([
-    h3( S.getEntity(Event.getAttributeValue("event/eventTypeEntity")).label ),
-    entityView(Event),
-    entityLabelAndValue(S, A, 27, Event.getAttributeValue("event/eventTypeEntity") ),
-    d(S.getEntity(Event.getAttributeValue("event/eventTypeEntity")).getAttributeValue("eventType/eventAttributes").map( attribute => datomView(S, A, Event.getDatom( S.getEntity(attribute).getAttributeValue("attr/name"), Event.localState.tx ) )  )),
-    d("<br>"),
-    S["selectedCompany"]["t"] >= Event.getAttributeValue("eventAttribute/1000") 
-      ? newDatomsView(S, A, S["selectedCompany"].Datoms.filter( datom => datom.t === Event.getAttributeValue("eventAttribute/1000") )) 
-      : d("Kan ikke vise hendelsens output"),
-    d("<br>"),
-    retractEntityButton(S, A, Event["entity"]),
-    newEventDropdown(S, A, Event)
-  ], {class: "feedContainer"} ) 
-  : d([
-    entityView(Event),
-    d("<br>"),
-    d(` Hendelsestypen [${Event.getAttributeValue("event/eventTypeEntity")}]  finnes ikke.`),
-    d("<br>"),
-    d( JSON.stringify(Event.current) ),
-    retractEntityButton(S, A, Event["entity"]),
-], {class: "feedContainer"})
 
 let reportsPage = (S, A) => d([
   d( //Left sidebar
@@ -404,7 +407,7 @@ let entityView = Entity => {
 
 //Entity view
 
-let datomView = (S, A, Datom) => {
+let datomView = Datom => {
 
   let genericValueTypeViews = {
     "30": input_text, //Tekst
@@ -423,7 +426,10 @@ let datomView = (S, A, Datom) => {
     
   }
 
-  return singleRowLabel(S, A, Database.attr(Datom.attribute) , genericValueTypeViews[ S.getEntity( Database.attr(Datom.attribute) ).getAttributeValue("attribute/valueType")  ]( Datom )   ) 
+  return d([
+    entityLabel2( Datom.Attribute ),
+    genericValueTypeViews[ Datom.valueType  ]( Datom )
+  ], {class: "columns_1_1"})
 }
 
 let input_text = Datom => input(
@@ -484,12 +490,12 @@ let genericEntityWithHistoryView = (S, A, entity) =>  {if( entity ){
   let selectedEntityAttribtues = selectedEntityType.getAttributeValue("entityType/attributes")
 
   let attributeViews = selectedEntityAttribtues.map( attribute => {
-    let Datom = Entity.getDatom( S.getEntity(attribute).getAttributeValue("attr/name") , selectedTx )
+    let Datom = Database.getDatom( entity, attribute , selectedTx )
 
 
 
     if(isUndefined(Datom)){return singleRowLabel(S, A, attribute, d("Verdi mangler"))}
-    return datomView(S, A, Datom )
+    return datomView( Datom )
   } )
 
 

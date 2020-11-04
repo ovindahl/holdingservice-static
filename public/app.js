@@ -31,41 +31,14 @@ const Database = {
     
     Entity.Entity = () => Entity.getEntityVersion( Entity.tx )
 
-
-
-    Entity.getDatom = (attributeName, version) => {
-
-      let D = Entity.Datoms
-      .filter( Datom => Datom.attribute === attributeName )
-      .filter( Datom => version ? Datom.tx <= version : true )
-      .reverse()[0] 
-
-      if(D){
-        D.update = async submittedValue => {
-          let updatedEntity = await Database.updateEntity( Entity.entity, D.attribute, submittedValue )
-          update(Database.S)
-        } 
-
-        //D.Attribute = () => Database.getEntity(  )
-
-
-
-      }
-      return D
-
-    } 
-
-    Entity.getAttributeValue = attributeName => Entity.getDatom(attributeName) 
-      ? Entity.getDatom(attributeName).isAddition
-        ? Entity.getDatom(attributeName).value 
-        : undefined //To be verified....
-      : undefined
+    Entity.getAttributeValue = attributeName => Entity.Entity()[attributeName]
 
 
 
     Entity.type = Entity.getAttributeValue("entity/entityType")
+    Entity.Type = Database.getEntity ? Database.getEntity(Entity.type) : null
     Entity.label = Entity.getAttributeValue("entity/label") ? Entity.getAttributeValue("entity/label") : `[${Entity.entity}] mangler visningsnavn.`
-    Entity.category = Entity.getAttributeValue("entity/category")
+    Entity.color = Entity.Type ? Entity.Type.getAttributeValue("entityType/color") : "lightgray"
 
     Entity.getRetractionDatoms = () => Entity.getActiveDatoms().map( Datom => newDatom(Entity.entity, Datom.attribute, Datom.value, false) )
 
@@ -95,8 +68,7 @@ const Database = {
   },
   updateEntity: async (entity, attribute, value) => {
 
-    let attr =  typeof attribute === "string" ? Database.attr(attribute) : attribute
-    let Attribute = Database.getEntity( attr )
+    let Attribute = Database.getEntity( Database.attr(attribute) )
     let ValueType = Database.getEntity( Attribute.getAttributeValue("attribute/valueType") )
 
     let isValid_existingEntity = typeof Database.getEntity(entity) === "object"
@@ -158,17 +130,57 @@ const Database = {
 
     Database.Entities = Entitites.map( serverEntity => Database.applyEntityMethods(serverEntity) )
     Database.find = filterFunction => Database.Entities.filter( filterFunction )
-    Database.attrName = attribute => Database.find( Entity => Entity.entity === attribute )[0].getAttributeValue("attr/name")
-    Database.attr = attrName => Database.find( Entity => Entity.type === 42 ).filter( Entity => Entity.getAttributeValue("attr/name") === attrName )[0].entity
+    Database.attrName = attribute => isNumber(attribute)
+      ? Database.find( Entity => Entity.entity === attribute )[0].getAttributeValue("attr/name")
+      : attribute
+    Database.attr = attrName => {
+
+      let result = isNumber(attrName)
+      ? attrName
+      : Database.find( Entity => Entity.type === 42 )
+        .filter( Entity => Entity.getAttributeValue("attr/name") === attrName )
+
+
+      return result.length > 0 ? result[0].entity : undefined
+    } 
     Database.tx = Database.find( Entity => true ).map( Entity => Entity.tx ).reverse()[0]
     Database.getEntity = entity => Database.find( E => E.entity === entity  )[0]
+    Database.getDatom = (entity, attributeName, version) => Database.applyDatomMethods( Database.serverDatoms
+      .filter( serverDatom => serverDatom.entity === entity )
+      .filter( serverDatom => serverDatom.attribute === Database.attrName(attributeName) )
+      .filter( serverDatom => serverDatom.tx ? serverDatom.tx <= version : true )
+      .reverse()[0]
+    )
+    
+    
+    Database.get = (entity, attribute, version) => Database.getDatom(entity, Database.attrName(attribute), version).value
     
     return Database
   },
   submitDatoms: async datoms => await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) ),
+  applyDatomMethods: serverDatom => {
+
+    let Datom = serverDatom
+
+    Datom.Attribute = Database.getEntity( Database.attr(Datom.attribute) )
+
+    Datom.attr = Datom.Attribute ? Datom.Attribute.entity : undefined
+
+    Datom.valueType = Datom.Attribute.getAttributeValue("attribute/valueType")
+    Datom.ValueType = Database.getEntity( Datom.valueType )
+
+    Datom.update = async submittedValue => {
+      let updatedEntity = await Database.updateEntity( Datom.entity, Datom.attribute, submittedValue )
+      update(Database.S)
+    }
+
+    return Datom
+
+  },
   init: async () => { 
     let serverResponse = await sideEffects.APIRequest("GET", "Entities", null)
     Database.updateEntities( serverResponse )
+    Database.serverDatoms = serverResponse.map( serverEntity => serverEntity.Datoms ).flat()
     return;
   }
 }
@@ -395,6 +407,7 @@ let update = ( S ) => {
 
     //DB queries
     S.getEntity = entity => Database.getEntity(entity)
+    S.get = (entity, attribute, version) => Database.get(entity, attribute, version)
 
 
     
