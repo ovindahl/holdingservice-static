@@ -62,21 +62,17 @@ const Database = {
 
     if(Array.isArray(newEntityDatoms)){Datoms = Datoms.concat(newEntityDatoms)}
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
-    Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( serverResponse[0] )
+    let updatedEntity = serverResponse[0]
+    Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
     update( Database.S )
   },
   retractEntity: async entity => {
-    let activeDatoms = Database.getEntity(entity).Datoms.filter( Datom => Entity.Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
+    let Datoms = Database.getEntity(entity).Datoms
+    let activeDatoms = Datoms.filter( Datom => Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
     let retractionDatoms = activeDatoms.map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== entity ).concat( serverResponse[0] )
     update( Database.S )
-  },
-  updateEntities: Entitites => {
-
-    
-    
-    return Database
   },
   submitDatoms: async datoms => await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) ),
   getEntityColor: entity => Database.get( Database.get(entity, "entity/entityType" ), Database.attrName(20) ),

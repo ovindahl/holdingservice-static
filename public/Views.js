@@ -101,8 +101,8 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
   onClick(e)
 }  )
 
-let retractEntityButton = Entity => submitButton("Slett", e => Entity.retract() )
-let createEntityButton = Entity => submitButton("Legg til", e => Database.createEntity(Entity.type) )    
+let retractEntityButton = entity => submitButton("Slett", e => Database.retractEntity(entity) )
+let createEntityButton = entityType => submitButton("Legg til", e => Database.createEntity(entityType) )    
 
 //Basic entity views
 
@@ -503,8 +503,8 @@ let adminEntityView = entity => {
         ? datomView( Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) )
         : d([ entityLabel( attribute ), d("na.") ]) 
         )),
-      retractEntityButton(Database.getEntity(entity)),
-      createEntityButton(Database.getEntity(entity)),
+      retractEntityButton(entity),
+      createEntityButton(Database.get(entity, "entity/entityType")),
     ], {class: "feedContainer"} )
 }
 
