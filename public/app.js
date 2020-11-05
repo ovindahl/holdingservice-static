@@ -76,14 +76,11 @@ const Database = {
       let Datom = newDatom("newEntity", Database.attrName(attribute), value )  
       return Datom
     } ).filter( Datom => Datom.attribute !== "eventAttribute/1000" )
-
     let Datoms = [
       newDatom("newEntity", "event/eventTypeEntity", eventType),
       newDatom("newEntity", "eventAttribute/1005", orgNumber),
       newDatom("newEntity", "eventAttribute/1000", eventIndex),
     ].concat(eventTypeDatoms)
-
-    console.log(Datoms)
     if(Datoms.every( Datom => isString(Datom.entity) && isString(Datom.attribute) && !isUndefined(Datom.value) )){Database.createEntity(46, Datoms)}else{log("Datoms not valid: ", Datoms)}
   } ,
   retractEntity: async entity => {
@@ -104,6 +101,7 @@ const Database = {
       .filter( Attr => Attr.entity >= 1000 )
       .filter( Attr => Attr.current["entity/label"] !== "Ubenyttet hendelsesattributt")
       .map( Attr => Attr.entity ) //To be fixed..    
+     Database.ValueTypes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 44 ).map( E => E.entity)
     const attrNameToEntity = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) )) 
     const attrEntityToName = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.entity, serverEntity.current["attr/name"]) ))
     Database.attrName = attribute => isNumber(attribute) ? attrEntityToName[attribute] : attribute

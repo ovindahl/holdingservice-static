@@ -428,11 +428,13 @@ let input_object = Datom => textArea(
 )
 
 let input_singleEntity = Datom => d([
-  htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( Datom.options.map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) )) ),
+  htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( log(Datom).options.map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) )) ),
   input(
     {value: Database.get(Datom.value, "entity/label"), list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
     "change", 
-    async e => await Database.updateEntity(Datom.entity, Datom.attribute,  Number(submitInputValue(e)) )
+    async e => Datom.options.includes(Number(submitInputValue(e))) 
+      ? await Database.updateEntity(Datom.entity, Datom.attribute,  Number(submitInputValue(e)))
+      : log("Selected option not valid: ", Datom, Number(submitInputValue(e)))
   )
 ]) 
 
