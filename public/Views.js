@@ -459,10 +459,11 @@ let input_datomConstructor = Datom => {
           {value: Database.get( Database.attr(datom.attribute), "entity/label"), list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
           "change", 
           async e => {
-
+            if(!isUndefined(submitInputValue(e))){
             let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}})
             await Database.updateEntity(Datom.entity, Datom.attribute, updatedValue  )
             await Database.updateEntity(Datom.entity, "eventType/eventAttributes", Database.get(Datom.entity, "eventType/eventAttributes").concat( Number(submitInputValue(e)) ).filter(filterUniqueValues)  )
+            }
 
           } 
         )
@@ -489,7 +490,7 @@ let input_multipleSelect = Datom => d([
       input(
         {value: "Legg til (søk)", list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
         "change", 
-        async e => await Database.updateEntity(Datom.entity, Datom.attribute,  Datom.value.concat( Number(submitInputValue(e)) ) )
+        async e => options.includes( Number(submitInputValue(e)) ) ? await Database.updateEntity(Datom.entity, Datom.attribute,  Datom.value.concat( Number(submitInputValue(e)) ) ) : console.log("Option not allowed: ", submitInputValue(e) )
       )
     ])
   ], {class: "eventAttributeRow"})
