@@ -290,6 +290,8 @@ let reportFieldView = (attribute, value) => {
     "5579": reportFieldView_Entities
   }
 
+  console.log(attribute, value)
+
   return customReportFieldViews[attribute] 
     ? customReportFieldViews[attribute](value) 
     : d(JSON.stringify(value))

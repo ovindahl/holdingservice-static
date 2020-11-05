@@ -307,6 +307,8 @@ let updateCompanyMethods = Company => {
   Company.getVersion = t => Company.previousVersions.filter( Company => Company.t === t  )[0]
   Company.getReport = (report, t) => mergeArray( Database.get(report, "report/reportFields").map( reportField => {
 
+    
+
     let selectedCompanyVersion = ( typeof t === "undefined" || t === Company.t ) ? Company : Company.getVersion(t)
 
 
@@ -320,9 +322,11 @@ let updateCompanyMethods = Company => {
             calculatedReport = "ERROR"
           }
 
+          console.log(reportField)
+
     //let ReportField = createObject(reportField.attribute, new Function( [`Company`], reportField["value"] )( selectedCompanyVersion ) )
 
-    return calculatedReport
+    return createObject(reportField.attribute, calculatedReport ) 
   }))
 
   Company.getEntities = (filterFunction) => Object.values(Company.Entities).filter( filterFunction )
