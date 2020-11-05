@@ -528,9 +528,10 @@ let update = ( S ) => {
 
 
 let backgroundDataSync = S => {
-  let savedState = Database.get(5614, 5615)
+  let userEntity = S.UIstate.user === "ovindahl@gmail.com" ? 5614 : 5613
+  let savedState = Database.get(userEntity, 5615)
   let hasChanged = JSON.stringify(savedState) !== JSON.stringify(S.UIstate)
-  if( hasChanged ){Database.updateEntityInBackground( 5614, 5615, S.UIstate )}
+  if( hasChanged ){Database.updateEntityInBackground( userEntity, 5615, S.UIstate )}
 }
 
 
