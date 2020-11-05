@@ -135,14 +135,19 @@ const Database = {
 
     let Datom = versionFilterDatoms.reverse()[0]
 
-    //Datom.Attribute = Database.getEntity( Database.attr(Datom.attribute) )
-    Datom.ValueType = Database.getEntity(Database.attr(Datom.attribute))
-    Datom.valueType = Datom.ValueType.current["attribute/valueType"]
+    if(!isUndefined(Datom)){
 
-    if(Datom.valueType === 37){
-      Datom.options = new Function( "Database" , Database.get(Database.attr(Datom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )
-      console.log("37", Datom)
+      Datom.ValueType = Datom ? Database.getEntity(Database.attr(Datom.attribute)) : undefined
+      Datom.valueType = Datom ? Datom.ValueType.current["attribute/valueType"] : undefined
+
+      if(Datom.valueType === 37){
+        Datom.options = new Function( "Database" , Database.get(Database.attr(Datom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )
+      }
+
     }
+
+    //Datom.Attribute = Database.getEntity( Database.attr(Datom.attribute) )
+    
 
 
     return Datom
@@ -381,7 +386,7 @@ let update = ( S ) => {
     S.Reports =  Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 49 ).map( serverEntity => serverEntity.entity )
     
     
-    S.orgNumbers = S.Events.map( Entity => Database.get(logThis(Entity).entity, "eventAttribute/1005" ) ).filter( filterUniqueValues )
+    S.orgNumbers = S.Events.map( Entity => Database.get(Entity.entity, "eventAttribute/1005" ) ).filter( filterUniqueValues )
     S.userEvents = S.Events.filter( Event => Database.get(Event.entity, "eventAttribute/1005") === Number(S["UIstate"].selectedOrgnumber) )
       .sort( (EventA, EventB) => Database.get(EventA.entity, "eventAttribute/1000") - Database.get(EventB.entity, "eventAttribute/1000")  )
 

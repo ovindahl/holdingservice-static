@@ -28,7 +28,7 @@ let mergeArray = (array) => array.every( object => typeof object === "object") ?
 //Utils
 let createObject = (keyName, value) => Object.assign({}, {[keyName]: value} ) 
 let returnObject = (something) => something // a -> a
-let logThis = (something, label) => {
+let log = (something, label) => {
 console.log( (label) ? label : "Logging this: ", something )
 return something
 }
