@@ -490,7 +490,7 @@ let input_multipleSelect = Datom => d([
       input(
         {value: "Legg til (søk)", list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
         "change", 
-        async e => options.includes( Number(submitInputValue(e)) ) ? await Database.updateEntity(Datom.entity, Datom.attribute,  Datom.value.concat( Number(submitInputValue(e)) ) ) : console.log("Option not allowed: ", submitInputValue(e) )
+        async e => Datom.options.includes( Number(submitInputValue(e)) ) ? await Database.updateEntity(Datom.entity, Datom.attribute,  Datom.value.concat( Number(submitInputValue(e)) ) ) : console.log("Option not allowed: ", submitInputValue(e) )
       )
     ])
   ], {class: "eventAttributeRow"})
