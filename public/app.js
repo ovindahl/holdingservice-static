@@ -75,7 +75,7 @@ const Database = {
       let value = func(Database)
       let Datom = newDatom("newEntity", Database.attrName(attribute), value )  
       return Datom
-    } )
+    } ).filter( Datom => Datom.attribute !== "eventAttribute/1000" )
 
     let Datoms = [
       newDatom("newEntity", "event/eventTypeEntity", eventType),
