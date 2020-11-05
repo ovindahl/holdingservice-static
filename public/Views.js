@@ -197,10 +197,19 @@ let sidebar_left = (S, A) => d([
 
 let newDatomsView = Datoms => d([
   h3("Nye selskapsdatomer generert av hendelsen:"),
-  d( Datoms.map( datom => d([
-    span( `Selskapsentitet ${ datom.entity }`, ``, {class: "entityLabel", style: `background-color: lightgray;`} ),
-    d(JSON.stringify(datom)),
-  ], {class: "columns_1_3"} )) )
+  d( Datoms.sort( (a,b) => a.entity - b.entity ).map( Datom => {
+
+      let valueType = Database.get(Database.attr(Datom.attribute), "attribute/valueType")
+
+      let valueView = valueType === 32 ? entityLabel(Number(Datom.value)) : d( JSON.stringify(Datom.value) )
+
+    return d([
+      span( `Selskapsentitet ${ Datom.entity }`, ``, {class: "entityLabel", style: `background-color: lightgray;`} ),
+      entityLabel(Database.attr(Datom.attribute)),
+      valueView,
+    ], {class: "columns_1_1_1"})
+
+  } ))
 ])
 
 let timelineView = (S, A) => d([
@@ -219,11 +228,14 @@ let newEventView =  (S,Event) => {
   return d([
     h3( Database.get(eventType, "entity/label") ),
     entityView(Event.entity),
-    //entityLabelAndValue(S, A, 27, Event.getAttributeValue("event/eventTypeEntity") ),
-    d( Database.get(eventType, "eventType/eventAttributes").map( attribute => Database.getDatom( Event.entity, attribute, Event.localState.tx ) 
-      ? datomView( Database.getDatom( Event.entity, attribute, Event.localState.tx )  )
-      : d( "Datom mangler, attribute: " + attribute )
-    )),
+    d([
+      entityLabel(27),
+      entityLabel(eventType),
+    ], {class: "columns_1_1"}),
+    d( Database.get(eventType, "eventType/eventAttributes").map( attribute => {
+      let Datom = Database.getDatom( Event.entity, Database.attrName(attribute), Database.getLocalState(Event.entity).tx ) ? Database.getDatom( Event.entity, Database.attrName(attribute), Database.getLocalState(Event.entity).tx ) : newDatom(Event.entity, attribute, undefined)
+      return datomView( Datom  )
+    })),
     d("<br>"),
     S["selectedCompany"]["t"] >= Database.get(Event.entity, "eventAttribute/1000")
       ? newDatomsView( S["selectedCompany"].Datoms.filter( datom => datom.t === Database.get(Event.entity, "eventAttribute/1000") ) ) 
@@ -255,7 +267,7 @@ let reportsPage = (S, A) => d([
 //Report view
 
 let genericReportView = (S, A, selectedReport) => {
-  let companyReport = S["selectedCompany"].getReport(selectedReport, S["UIstate"].selectedCompanyDocVersion )
+  let companyReport = S["selectedCompany"].getReport(log(selectedReport), log(S["UIstate"].selectedCompanyDocVersion) )
   return d([
     d([
       submitButton("<<", e => A.updateLocalState({"selectedCompanyDocVersion": 0}) ),
@@ -381,7 +393,7 @@ let datomView = Datom => {
     "37": input_multipleSelect, //Entiteter
     "34": input_function, //Funksjonstekst
     "35": input_object, //Objekt
-    "36": input_object, //Bool
+    "36": input_boolean, //Bool
     "38": input_datomConstructor, //valueTypeView_newDatoms,
     "39": input_object, //valueTypeView_reportFields,
     "40": input_object, //valueTypeView_staticDropdown,
@@ -423,6 +435,12 @@ let input_object = Datom => textArea(
   JSON.stringify(Datom.value),
   {class:"textArea_code"}, 
   async e => await Database.updateEntity(Datom.entity, Datom.attribute,  JSON.parse( submitInputValue(e) ) )
+)
+
+let input_boolean = Datom => input(
+  {value: log(Datom, "A").value ? "1" : "0", style: `text-align: right;`}, 
+  "change", 
+  async e => await Database.updateEntity(Datom.entity, Datom.attribute,  submitInputValue(e) === "1" ? true : false )
 )
 
 let input_singleEntity = Datom => d([

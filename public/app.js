@@ -126,7 +126,13 @@ const Database = {
       .filter( Attr => Attr.entity >= 1000 )
       .filter( Attr => Attr.current["entity/label"] !== "Ubenyttet hendelsesattributt")
       .map( Attr => Attr.entity ) //To be fixed..    
+      .concat(29) //Entitetstype i selskapsdokumentet
      Database.ValueTypes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 44 ).map( E => E.entity)
+
+     Database.Accounts = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 5030 )
+     Database.accounts = Database.Accounts.map( E => E.entity)
+     Database.accountEntities = mergeArray( Database.Accounts.map( E => createObject(E.current["entity/label"].substr(0, 4), E.entity ) ) ) 
+
     const attrNameToEntity = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) )) 
     const attrEntityToName = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.entity, serverEntity.current["attr/name"]) ))
     Database.attrName = attribute => isNumber(attribute) ? attrEntityToName[attribute] : attribute
@@ -303,9 +309,20 @@ let updateCompanyMethods = Company => {
 
     let selectedCompanyVersion = ( typeof t === "undefined" || t === Company.t ) ? Company : Company.getVersion(t)
 
-    let ReportField = createObject(reportField.attribute, new Function( [`Company`], reportField["value"] )( selectedCompanyVersion ) )
 
-    return ReportField
+    let reportFunction = new Function( [`Company`], reportField["value"] )
+          let calculatedReport;
+          try {
+            calculatedReport = reportFunction( selectedCompanyVersion )
+            
+          } catch (error) {
+            console.log("reportFunction error", error, Company, reportField )
+            calculatedReport = "ERROR"
+          }
+
+    //let ReportField = createObject(reportField.attribute, new Function( [`Company`], reportField["value"] )( selectedCompanyVersion ) )
+
+    return calculatedReport
   }))
 
   Company.getEntities = (filterFunction) => Object.values(Company.Entities).filter( filterFunction )
@@ -346,7 +363,7 @@ let constructEvents = Events => {
       if(isApplicable){
   
         let Q = {
-          account: accountNumber => accountNumber, //Database.find( Entity => Entity.type === 5030 ).filter( Entity => Entity.label.startsWith(accountNumber) )[0].entity,
+          account: accountNumber => Database.accountEntities[accountNumber] , //Database.find( Entity => Entity.type === 5030 ).filter( Entity => Entity.label.startsWith(accountNumber) )[0].entity,
           userInput: attribute => Database.get(Event.entity, attribute ),
           getActorEntity: actorID => Object.values(Company.Entities)
             .filter( Entity => Object.keys(Entity).includes("1112")  )
