@@ -340,6 +340,24 @@ let entityView = entity => {
 
 //Entity view
 
+
+
+let adminEntityView = entity => {
+
+  return (isNull(entity) || isUndefined( Database.getEntity(entity) ))
+  ? d("Ingen entitet valgt.", {class: "feedContainer"})
+  : d([
+      h3( Database.get(entity, "entity/label")),
+      entityView(entity),
+      d( Database.get( Database.get(entity, "entity/entityType"), "entityType/attributes", Database.getLocalState(entity).tx).map( attribute => Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx )
+        ? datomView( Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) )
+        : d([ entityLabel( attribute ), d("na.") ]) 
+        )),
+      retractEntityButton(entity),
+      createEntityButton(Database.get(entity, "entity/entityType")),
+    ], {class: "feedContainer"} )
+}
+
 let datomView = Datom => {
 
   let genericValueTypeViews = {
@@ -347,7 +365,7 @@ let datomView = Datom => {
     "31": input_number, //Tall
     "32": input_singleEntity, //Entitet
     "33": input_object, //Array
-    "37": input_object, //Entiteter
+    "37": input_multipleSelect, //Entiteter
     "34": input_function, //Funksjonstekst
     "35": input_object, //Objekt
     "36": input_object, //Bool
@@ -359,14 +377,18 @@ let datomView = Datom => {
     
   }
 
+  console.log(Datom)
+
   let valueType = Database.get( Database.attr(Datom.attribute), "attribute/valueType")
 
   return isUndefined(Datom)
-    ? d("Finner ikke datom")
+  ? d("Finner ikke datom")
+  : [37, 38, 39].includes(valueType)
+    ? genericValueTypeViews[ valueType  ]( Datom )
     : d([
-    entityLabel( Database.attr(Datom.attribute) ),
-    genericValueTypeViews[ valueType  ]( Datom )
-  ], {class: "columns_1_1"})
+      entityLabel( Database.attr(Datom.attribute) ),
+      genericValueTypeViews[ valueType  ]( Datom )
+    ], {class: "columns_1_1"})
 }
 
 let input_text = Datom => input(
@@ -445,68 +467,26 @@ let input_datomConstructor = Datom => {
 
 } 
 
+let input_multipleSelect = Datom => d([
+  entityLabel(Database.attr(Datom.attribute)),
+  d([
+    d( Datom.value.map( attr => d([
+      entityLabel(attr), 
+      submitButton("[X]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, Datom.value.filter( e => e !== attr )  ) )
+      ], {class: "columns_3_1"} ) 
+    ).concat( dropdown(
+      0,
+      Datom.options
+        //.sort( sortEntitiesAlphabeticallyByLabel )
+        //.filter( Entity => !Database.get(entity, attributeName).includes( Entity.entity ) )
+        .map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") })).concat({value: 0, label: "Legg til"}), 
+        async e => await Database.updateEntity(Datom.entity, Datom.attribute, Datom.value.concat( Number(submitInputValue(e)) )  )
+      )  ) 
+    )
+  ], {class: "eventAttributeRow"})
+], {class: "columns_1_1"})
 
 
-
-
-let valueTypeView_newDatoms = (S, A, entity, attribute, value) => {
-
-
-  let datoms = Database.get(entity, Database.getEntity(attribute).getAttributeValue("attr/name")) ? Database.get(entity, Database.getEntity(attribute).getAttributeValue("attr/name")) : []
-
-
-  
-
-  return d([
-    entityLabel(S, A, attribute),
-    d([
-      d("EntitetID"),
-      d("Attributt"),
-      d("Verdi")
-    ], {class: "columns_2_2_2_1"}),
-    d(datoms.map( (datom, index) => d([
-      dropdown(
-        datom.entity, 
-        [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, , {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}],
-        async e => A.update( await Database.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {entity: submitInputValue(e)}}) )  )
-        ),
-      dropdown(datom.attribute, S.Attributes
-        .sort( sortEntitiesAlphabeticallyByLabel  )
-        .map( E => returnObject({value: E.entity, label: E.label}) ), async e => {
-          let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}})
-          
-          let newDB = await Database.getEntity(entity).update("eventType/eventAttributes", Database.get(entity, "eventType/eventAttributes").concat( Number(submitInputValue(e)) )  )
-          A.update( await Database.getEntity(entity).update( attribute, updatedValue )  )
-        } 
-        ),
-      textArea(datom.value, {class:"textArea_code"}, async e => A.update( await Database.getEntity(entity).update( attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}}) )  )
-      ),
-      submitButton("[Slett]", async e => A.update( await Database.getEntity(entity).update( attribute, datoms.filter( (d, i) => i !== index  ) )  )
-      ),
-    ], {class: "columns_2_2_2_1"}) )),
-    submitButton("Legg til", async e => A.update( await Database.getEntity(entity).update( attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1000, value: `return ''` }) )  )
-    ),
-  ], {style: "padding:1em;border: solid 1px lightgray;"})
-}
-
-
-
-
-let adminEntityView = entity => {
-
-  return (isNull(entity) || isUndefined( Database.getEntity(entity) ))
-  ? d("Ingen entitet valgt.", {class: "feedContainer"})
-  : d([
-      h3( Database.get(entity, "entity/label")),
-      entityView(entity),
-      d( Database.get( Database.get(entity, "entity/entityType"), "entityType/attributes", Database.getLocalState(entity).tx).map( attribute => Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx )
-        ? datomView( Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) )
-        : d([ entityLabel( attribute ), d("na.") ]) 
-        )),
-      retractEntityButton(entity),
-      createEntityButton(Database.get(entity, "entity/entityType")),
-    ], {class: "feedContainer"} )
-}
 
 
 

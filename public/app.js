@@ -121,13 +121,35 @@ const Database = {
 
   },
   getEntityVersions: entity => Database.getEntity(entity).Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues ),
-  getDatom: (entity, attributeName, version) => Database.Entities
+  getDatom: (entity, attributeName, version) => {
+
+    let allEntityAttributeDatoms = Database.Entities
     .filter( Entity => Entity.entity === entity )
     .map( Entity => Entity.Datoms ).flat()
     .map( serverDatom => isUndefined(serverDatom.tx) ? mergerino(serverDatom, {tx: 0}) : serverDatom )
     .filter( serverDatom => serverDatom.attribute === Database.attrName(attributeName) )
-    .filter( serverDatom => version ? serverDatom.tx <= version : true )
-    .reverse()[0],
+
+    let versionFilterDatoms = version 
+    ? allEntityAttributeDatoms.filter( serverDatom => version ? serverDatom.tx <= version : true )
+    : allEntityAttributeDatoms
+
+    let Datom = versionFilterDatoms.reverse()[0]
+
+    //Datom.Attribute = Database.getEntity( Database.attr(Datom.attribute) )
+    Datom.ValueType = Database.getEntity(Database.attr(Datom.attribute))
+    Datom.valueType = Datom.ValueType.current["attribute/valueType"]
+
+    if(Datom.valueType === 37){
+      Datom.options = new Function( "Database" , Database.get(Database.attr(Datom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )
+      console.log("37", Datom)
+    }
+
+
+    return Datom
+
+    
+
+  } ,
   get: (entity, attribute, version) => {
     let Datom = Database.getDatom(entity, Database.attrName(attribute), version)
     let Value = isUndefined(Datom) ? undefined : Datom.value
@@ -258,6 +280,10 @@ let constructEvents = Events => {
       let Q = {
         account: accountNumber => accountNumber, //Database.find( Entity => Entity.type === 5030 ).filter( Entity => Entity.label.startsWith(accountNumber) )[0].entity,
         userInput: attribute => Database.get(Event.entity, attribute ),
+        getActorEntity: actorID => Object.values(Company.Entities)
+          .filter( Entity => Object.keys(Entity).includes("1112")  )
+          .filter( Entity => Entity["1112"] === actorID  )
+          [0].entity,
         get: (entity, attribute) => Company.getEntity(entity)[attribute],
         companyAttribute: attribute => Company.getAttributeValue(attribute),
         latestEntityID: () => Company.getLatestEntityID()
@@ -355,12 +381,15 @@ let update = ( S ) => {
     S.Reports =  Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 49 ).map( serverEntity => serverEntity.entity )
     
     
-    S.orgNumbers = S.Events.map( Entity => Database.get(Entity.entity, "eventAttribute/1005" ) ).filter( filterUniqueValues )
+    S.orgNumbers = S.Events.map( Entity => Database.get(logThis(Entity).entity, "eventAttribute/1005" ) ).filter( filterUniqueValues )
     S.userEvents = S.Events.filter( Event => Database.get(Event.entity, "eventAttribute/1005") === Number(S["UIstate"].selectedOrgnumber) )
       .sort( (EventA, EventB) => Database.get(EventA.entity, "eventAttribute/1000") - Database.get(EventB.entity, "eventAttribute/1000")  )
 
     
-    S.selectedCategories = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType ).map( serverEntity => Database.get(serverEntity.entity, "entity/category" ) ).filter(filterUniqueValues)
+    S.selectedCategories = Database.Entities
+      .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
+      .map( serverEntity => Database.get(serverEntity.entity, "entity/category" ) )
+      .filter(filterUniqueValues)
     
     S.selectedEntities = Database.Entities
       .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
