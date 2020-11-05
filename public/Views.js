@@ -467,9 +467,6 @@ let input_datomConstructor = Datom => {
           } 
         )
       ]),
-
-
-
       textArea(datom.value, {class:"textArea_code"}, async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}})  )),
       submitButton("[Slett]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, datoms.filter( (d, i) => i !== index  )  )),
     ], {class: "columns_2_2_2_1"}) )),

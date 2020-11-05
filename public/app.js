@@ -85,7 +85,10 @@ const Database = {
   init: async () => { 
     Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
     Database.Attributes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 )
-    Database.eventAttributes = Database.Attributes.filter( Attr => Attr.entity >= 1000 ).map( Attr => Attr.entity ) //To be fixed..    
+    Database.eventAttributes = Database.Attributes
+      .filter( Attr => Attr.entity >= 1000 )
+      .filter( Attr => Attr.current["entity/label"] !== "Ubenyttet hendelsesattributt")
+      .map( Attr => Attr.entity ) //To be fixed..    
     const attrNameToEntity = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) )) 
     const attrEntityToName = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.entity, serverEntity.current["attr/name"]) ))
     Database.attrName = attribute => isNumber(attribute) ? attrEntityToName[attribute] : attribute
