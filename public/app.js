@@ -14,10 +14,8 @@ const Database = {
   getLocalState: entity => Database.getEntity(entity).localState,
   updateEntity: async (entity, attribute, value) => {
 
-
     let valueType = Database.get( Database.attr(attribute), "attribute/valueType")
-
-    let isValid_existingEntity = typeof Database.getEntity(entity) === "object"
+    let isValid_existingEntity = Database.Entities.map( E => E.entity).includes(entity)
     let isValid_valueType = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") ) ( value )
     let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attribute), "attribute/validatorFunctionString") ) ( value )
     let isValid_notNaN = !Number.isNaN(value)
@@ -43,10 +41,37 @@ const Database = {
     }else{
 
       console.log("Database.updateEntity did not pass validation.", {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN })
+      update(Database.S)
 
     }
-    update(Database.S)
+    
 
+  },
+  updateEntityInBackground: async (entity, attribute, value) => {
+
+    let valueType = Database.get( Database.attr(attribute), "attribute/valueType")
+    let isValid_existingEntity = Database.Entities.map( E => E.entity).includes(entity)
+    let isValid_valueType = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") ) ( value )
+    let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attribute), "attribute/validatorFunctionString") ) ( value )
+    let isValid_notNaN = !Number.isNaN(value)
+
+
+    //Add checks for whether attribtue is valid for the entity type?
+
+    if( isValid_existingEntity && isValid_valueType && isValid_attribute && isValid_notNaN  ){
+
+      let Datom = newDatom(entity, Database.attrName(attribute), value )
+      let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( [Datom] ) )
+      let updatedEntity = serverResponse[0]
+      let latestTx = serverResponse[0].Datoms.map( Datom => Datom.tx ).filter( tx => !isUndefined(tx) ).sort().reverse()[0]
+      updatedEntity.localState = {tx: latestTx }
+      Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
+
+    }else{
+
+      console.log("Database.updateEntity did not pass validation.", {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN })
+
+    }
   },
   createEntity: async (entityType, newEntityDatoms) => {
 
@@ -111,7 +136,10 @@ const Database = {
   find: filterFunction => Database.Entities.filter( filterFunction ),
   getEntity: entity => {
     let Entity = Database.Entities.filter(  Entity => Entity.entity === entity   )[0]
-    Entity.Datoms = Entity.Datoms.map( Datom => typeof Datom.tx === "undefined" ? mergerino(Datom, {tx: 0}) : Datom )
+
+    Entity.Datoms = isUndefined(Entity.Datoms)
+      ? []
+      : Entity.Datoms.map( Datom => typeof Datom.tx === "undefined" ? mergerino(Datom, {tx: 0}) : Datom )
     
     Entity.getEntityVersion = tx => Entity.Datoms
       .filter( Datom => Datom.tx <= tx )
@@ -288,8 +316,6 @@ let updateCompanyMethods = Company => {
 
 let constructEvents = Events => {
 
-  console.log(Events)
-
   let initialCompany = {
     t: 0,
     Events: Events,
@@ -398,9 +424,17 @@ let constructEvents = Events => {
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
 let getUserActions = (S, Database) => returnObject({
-    updateLocalState: (patch) => update({
-      UIstate: mergerino( S["UIstate"], patch )
-    }),
+    updateLocalState: (patch) => {
+
+      update({
+        UIstate: mergerino( S["UIstate"], patch )
+      })
+
+
+
+
+      //Database.updateEntity(5614, 5615, JSON.stringify({}))
+    } ,
     createEntity: async entityTypeEntity => {
 
       let updatedDB = await Database.createEntity(entityTypeEntity)
@@ -482,7 +516,25 @@ let update = ( S ) => {
     S.elementTree = generateHTMLBody(S, A )
     sideEffects.updateDOM( S.elementTree )
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
+
+
+    
+
+    backgroundDataSync(S)
+    
+
 }
+
+
+
+let backgroundDataSync = S => {
+  let savedState = Database.get(5614, 5615)
+  let hasChanged = JSON.stringify(savedState) !== JSON.stringify(S.UIstate)
+  if( hasChanged ){Database.updateEntityInBackground( 5614, 5615, S.UIstate )}
+}
+
+
+
 
 sideEffects.configureClient();
 
@@ -497,25 +549,26 @@ let Admin = {
 
 let init = async () => {
 
-
   await Database.init();
+  let user = await sideEffects.auth0.getUser()
+  let userEntity = user.name === "ovindahl@gmail.com" ? 5614 : 5613
+  let userState = Database.get(userEntity, 5615 )
 
-
-
-      let S = {
-        UIstate: {
-          "currentPage": "timeline",
-          "selectedOrgnumber": null,
-          "companyDocPage/selectedVersion": 1,
-          "selectedEntityType" : 42,
-          "selectedCategory": undefined,
-          "selectedEntity": 6,
-          "selectedReport": 5575,
-          "selectedVersion": 0,
-          "eventAttributeSearchString": "1920",
-          "selectedCompanyDocVersion": 1
-        }
-      }
+  let S = {
+    UIstate: userState ? userState : {
+      "user": user.name,
+      "currentPage": "timeline",
+      "selectedOrgnumber": null,
+      "companyDocPage/selectedVersion": 1,
+      "selectedEntityType" : 42,
+      "selectedCategory": undefined,
+      "selectedEntity": 6,
+      "selectedReport": 5575,
+      "selectedVersion": 0,
+      "eventAttributeSearchString": "1920",
+      "selectedCompanyDocVersion": 1
+    }
+  }
 
     update( S )
 

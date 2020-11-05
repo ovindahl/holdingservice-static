@@ -278,8 +278,6 @@ let reportFieldView = (attribute, value) => {
     "5579": reportFieldView_Entities
   }
 
-  console.log(attribute, value)
-
   return customReportFieldViews[attribute] 
     ? customReportFieldViews[attribute](value) 
     : d(JSON.stringify(value))
@@ -361,13 +359,13 @@ let adminEntityView = entity => {
   : d([
       h3( Database.get(entity, "entity/label")),
       entityView(entity),
-      d( Database.get( Database.get(entity, "entity/entityType"), "entityType/attributes", Database.getLocalState(entity).tx).map( attribute => Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx )
-        ? datomView( Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) )
-        : d([ 
-          entityLabel( attribute ), 
-          input_function( {value: undefined} )
-        ]) 
-        )),
+      d( Database.get( Database.get(entity, "entity/entityType"), "entityType/attributes", Database.getLocalState(entity).tx).map( attribute => {
+
+        let Datom = Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) ? Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) : newDatom(entity, attribute, undefined)
+
+
+        return datomView( Datom )
+      })),
       retractEntityButton(entity),
       createEntityButton(Database.get(entity, "entity/entityType")),
     ], {class: "feedContainer"} )
@@ -387,19 +385,19 @@ let datomView = Datom => {
     "38": input_datomConstructor, //valueTypeView_newDatoms,
     "39": input_object, //valueTypeView_reportFields,
     "40": input_object, //valueTypeView_staticDropdown,
-    "41": input_object, //valueTypeView_companyEntityDropdown,
-
-    
+    "41": input_object, //valueTypeView_companyEntityDropdown,    
   }
+
+  let valueType = Database.get(Database.attr(Datom.attribute), "attribute/valueType")
 
 
   return isUndefined(Datom)
   ? d("Finner ikke datom")
-  : [37, 38, 39].includes(Datom.valueType)
+  : [37, 38, 39].includes(valueType)
     ? genericValueTypeViews[ Datom.valueType  ]( Datom )
     : d([
       entityLabel( Database.attr(Datom.attribute) ),
-      genericValueTypeViews[ Datom.valueType  ]( Datom )
+      genericValueTypeViews[ valueType  ]( Datom )
     ], {class: "columns_1_1"})
 }
 
@@ -428,7 +426,7 @@ let input_object = Datom => textArea(
 )
 
 let input_singleEntity = Datom => d([
-  htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( log(Datom).options.map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) )) ),
+  htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( Datom.options.map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) )) ),
   input(
     {value: Database.get(Datom.value, "entity/label"), list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
     "change", 
@@ -504,52 +502,6 @@ let input_multipleSelect = Datom => d([
 
 //Archive
 /* 
-let valueTypeView_singleEntity = (S, A, entity, attribute, value) => {
-
-  let options = new Function( "S" , Database.getEntity(attribute).getAttributeValue("attribute/selectableEntitiesFilterFunction") )( S )
-  
-  return dropdown(
-        value, 
-        options
-          .map( entity => Database.getEntity(entity) )
-          .sort( sortEntitiesAlphabeticallyByLabel )
-          .map( Entity => returnObject({value: Entity.entity, label: Entity.label})  ).concat({value: "", label: "[tom]"}),
-        async e => A.update( await Database.getEntity(entity).update( attribute, Number(submitInputValue(e)) )  )
-         )
-}
-
-let valueTypeView_multipleEntities = (S, A, entity, attribute, value) => {
-  
-  let options = new Function( "S" , Database.getEntity(attribute).getAttributeValue("attribute/selectableEntitiesFilterFunction") )( S )
-
-  let attributeName = Database.getEntity(attribute).getAttributeValue("attr/name")
-
-  return d([
-    entityLabel(S,A, attribute),
-    d([
-      d( Database.get(entity, attributeName).map( attr => d([
-        entityLabel(S, A, attr), 
-        submitButton("[X]", async e => A.update( await Database.getEntity(entity).update( attribute, value.filter( e => e !== attr ) )  ))
-        ], {class: "columns_3_1"} ) 
-      ).concat( dropdown(
-        0,
-        options
-          .sort( sortEntitiesAlphabeticallyByLabel )
-          .filter( Entity => !Database.get(entity, attributeName).includes( Entity.entity ) )
-          .map( Entity => returnObject({value: Entity.entity, label: Entity.label})).concat({value: 0, label: "Legg til"}), 
-        async e => A.update( await Database.getEntity(entity).update( attribute, Database.get(entity, attributeName).concat( Number(submitInputValue(e)) ) )  )
-        )  ) 
-      )
-    ], {class: "eventAttributeRow"})
-  ], {class: "columns_1_1"})
-}
-
-let valueTypeView_functionString = (S, A, entity, attribute, value) => d([
-  entityLabel(S,A, attribute),
-  textArea(value, {class:"textArea_code"}, async e => A.update( await Database.getEntity(entity).update( attribute, submitInputValue(e).replaceAll(`"`, `'`) )  ))
-], {class: "columns_1_1"})
-
-
 
 let valueTypeView_reportFields = (S, A, entity, attribute, value) => {
 
@@ -578,20 +530,4 @@ let valueTypeView_reportFields = (S, A, entity, attribute, value) => {
   ])
 
 }
-
-let valueTypeView_staticDropdown = (S, A, entity, attribute, value)  => {
-
-  let options = new Function( "S", Database.getEntity(attribute)["attribute/selectableEntitiesFilterFunction"] )( S )
-
-  return d([
-    entityLabel(S,A, attribute),
-    d([
-      dropdown(
-        value, 
-        options
-          .map( option => returnObject({value: option, label: option})  ),
-          async e => A.update( await Database.getEntity(entity).update( attribute, submitInputValue(e) )  )
-         )
-    ])
-  ], {class: "columns_1_1"})
-} */
+ */
