@@ -343,7 +343,7 @@ let constructEvents = Events => {
             calculatedEntity = entityFunction( Q )
             
           } catch (error) {
-            console.log("entityFunction error", Event, datomConstructor )
+            console.log("entityFunction error", error, Event, datomConstructor )
             calculatedEntity = "ERROR"
           }
 
@@ -353,7 +353,7 @@ let constructEvents = Events => {
             calculatedValue = valueFunction( Q )
             
           } catch (error) {
-            console.log("valueFunction error", Event, datomConstructor )
+            console.log("valueFunction error", error, Event, datomConstructor )
             calculatedValue = "ERROR"
           }
           
