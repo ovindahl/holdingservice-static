@@ -322,10 +322,6 @@ let updateCompanyMethods = Company => {
             calculatedReport = "ERROR"
           }
 
-          console.log(reportField)
-
-    //let ReportField = createObject(reportField.attribute, new Function( [`Company`], reportField["value"] )( selectedCompanyVersion ) )
-
     return createObject(reportField.attribute, calculatedReport ) 
   }))
 
