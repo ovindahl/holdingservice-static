@@ -351,7 +351,10 @@ let adminEntityView = entity => {
       entityView(entity),
       d( Database.get( Database.get(entity, "entity/entityType"), "entityType/attributes", Database.getLocalState(entity).tx).map( attribute => Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx )
         ? datomView( Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) )
-        : d([ entityLabel( attribute ), d("na.") ]) 
+        : d([ 
+          entityLabel( attribute ), 
+          input_function( {value: undefined} )
+        ]) 
         )),
       retractEntityButton(entity),
       createEntityButton(Database.get(entity, "entity/entityType")),

@@ -222,6 +222,25 @@ const sideEffects = {
 
 let updateCompanyMethods = Company => {
 
+  Company.ids = mergeArray( Object.entries(Company.Entities)
+    .map( Entry => Object.entries(Entry[1]).map( entry => returnObject({entity: Entry[0], attribute: Number(entry[0]), value: entry[1]}) ) ).flat()
+    .filter( Datom => [1112, 1131, 1080, 1086, 1097, 1137].includes( Datom.attribute )   )
+    .map( Datom => createObject( Datom.value, Datom.entity) )
+  )
+
+  
+
+  Company.getEntityFromID = id => Company.ids[id] ? Company.getEntity(Company.ids[id]) : undefined
+
+  Company.getEntityValueFromID = (id, attribute) => {
+    let entity = Company.ids[id] 
+    let Entity = Company.Entities[entity]
+    let value = Entity[attribute]
+    return value
+  } 
+
+
+
   Company.getEntity = entity => Company.Entities[entity]
   Company.getAttributeValue = attribute => Company.getEntity(1)[attribute]
   Company.getLatestEntityID = () => Number(Object.keys(Company.Entities)[ Object.keys(Company.Entities).length - 1 ])
@@ -262,16 +281,6 @@ let constructEvents = Events => {
 
     let eventType = Database.get(Event.entity, "event/eventTypeEntity")
 
-    
-
-
-    /* S.Attributes = DB.find( Entity => Entity.type === 42 )
-    S.allEventTypes = DB.find( Entity => Entity.type === 43 )
-    S.ValueTypes = DB.find( Entity => Entity.type === 44 )
-    S.EntityTypes = DB.find( Entity => Entity.type === 47 )
-    S.accounts = DB.find( Entity => Entity.type === 5030 )
-    S.Reports = DB.find( Entity => Entity.type === 49 ) */
-
     let isApplicable = [
       (Company, Event) => Company.isValid,
       //(Company, Event) => Database.find( Entity => Entity.type === 43 ).map( E => E.entity).includes( Event.getAttributeValue("event/eventTypeEntity") ),
@@ -289,6 +298,8 @@ let constructEvents = Events => {
           .filter( Entity => Object.keys(Entity).includes("1112")  )
           .filter( Entity => Entity["1112"] === actorID  )
           [0].entity,
+        getEntityFromID: id => Company.getEntityFromID(id),
+        getEntityValueFromID: (id, attribute) => Company.getEntityValueFromID(id, attribute),
         get: (entity, attribute) => Company.getEntity(entity)[attribute],
         companyAttribute: attribute => Company.getAttributeValue(attribute),
         latestEntityID: () => Company.getLatestEntityID()
@@ -382,7 +393,7 @@ let update = ( S ) => {
     console.log("S", S)
 
     S.Events = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 46 ).map( serverEntity => Database.getEntity(serverEntity.entity) )
-    S.EntityTypes = [42, 43, 44, 45, 47, 48, 49, 50, 5030, 5590] //, 46
+    S.EntityTypes = [42, 43, 44, 45, 47, 48, 49, 50, 5030, 5590, 5612] //, 46
     S.Reports =  Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 49 ).map( serverEntity => serverEntity.entity )
     
     
