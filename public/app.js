@@ -66,6 +66,11 @@ const Database = {
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
     update( Database.S )
   },
+  createEvent: (eventType, orgNumber, eventIndex) => Database.createEntity(46, [
+    newDatom("newEntity", "event/eventTypeEntity", eventType),
+    newDatom("newEntity", "eventAttribute/1005", orgNumber),
+    newDatom("newEntity", "eventAttribute/1000", eventIndex),
+  ]),
   retractEntity: async entity => {
     let Datoms = Database.getEntity(entity).Datoms
     let activeDatoms = Datoms.filter( Datom => Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
@@ -74,6 +79,7 @@ const Database = {
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== entity ).concat( serverResponse[0] )
     update( Database.S )
   },
+  getEventTypes: () => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 43 ).map( E => E.entity),
   submitDatoms: async datoms => await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) ),
   getEntityColor: entity => Database.get( Database.get(entity, "entity/entityType" ), Database.attrName(20) ),
   init: async () => { 
@@ -140,7 +146,7 @@ const Database = {
       Datom.ValueType = Datom ? Database.getEntity(Database.attr(Datom.attribute)) : undefined
       Datom.valueType = Datom ? Datom.ValueType.current["attribute/valueType"] : undefined
 
-      if(Datom.valueType === 37){
+      if([32, 37].includes(Datom.valueType)){
         Datom.options = new Function( "Database" , Database.get(Database.attr(Datom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )
       }
 
@@ -240,7 +246,6 @@ let updateCompanyMethods = Company => {
     if(isUndefined(entity)){return "Aktøren finnes ikke"}
     let value = Entity[attribute]
     if(isUndefined(value)){return "Aktøren har ikke den forespurte attributten"}
-    console.log(entity, Entity, value)
     return value
   } 
 

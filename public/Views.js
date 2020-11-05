@@ -60,7 +60,11 @@ let htmlElementObject = (tagName, attributesObject, innerHTML, eventType, action
 
   if( !isEither ){console.log("ERROR: innerHTML is not array or string:", tagName, attributesObject, innerHTML, eventType, action)} //should input null for void elements?
   
-  let id = getNewElementID()
+  let id = isUndefined(attributesObject) 
+    ?  getNewElementID()
+    : attributesObject.id 
+      ? attributesObject.id 
+      : getNewElementID()
   let attributes = mergerino(attributesObject, {id: id} )
   
   let children = Array.isArray(innerHTML) ? innerHTML : []
@@ -92,6 +96,10 @@ let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("sele
   dropdown.style = "background-color: darkgray;"
   updateFunction(e)
 }   )
+
+let optionsElement = optionObjects => optionObjects.map( o => `<option value="${o.value}">${o.label}</option>` ).join('')
+
+
 let checkBox = (isChecked, onClick) => input({type: "checkbox", value: isChecked}, "click", onClick)
 
 let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", e => {
@@ -221,11 +229,15 @@ let newEventView =  (S,Event) => {
       ? newDatomsView( S["selectedCompany"].Datoms.filter( datom => datom.t === Database.get(Event.entity, "eventAttribute/1000") ) ) 
       : d("Kan ikke vise hendelsens output"),
     d("<br>"),
-    /* retractEntityButton(Entity),
+    retractEntityButton(Event.entity),
     dropdown( 0, 
-    S.allEventTypes.map( Entity => returnObject({value: Entity.entity, label: Entity.label }) ).concat({value: 0, label: "Legg til hendelse etter denne"}),
-    e => A.createEvent(Event, Number(submitInputValue(e)) ) */
-
+    Database.getEventTypes().map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) ).concat({value: 0, label: "Legg til hendelse etter denne"}),
+    e => Database.createEvent( 
+      Number(submitInputValue(e)), 
+      Database.get(Event.entity, "eventAttribute/1005"),  
+      Database.get(Event.entity, "eventAttribute/1000") + 1 
+      )
+    )
   ], {class: "feedContainer"} )
 
 }
@@ -415,22 +427,14 @@ let input_object = Datom => textArea(
   async e => await Database.updateEntity(Datom.entity, Datom.attribute,  JSON.parse( submitInputValue(e) ) )
 )
 
-let input_singleEntity = Datom => {
-
-
-  return input(
-    {value: String(Datom.value), style: `text-align: right;`}, 
+let input_singleEntity = Datom => d([
+  htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( Datom.options.map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) )) ),
+  input(
+    {value: Database.get(Datom.value, "entity/label"), list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
     "change", 
     async e => await Database.updateEntity(Datom.entity, Datom.attribute,  Number(submitInputValue(e)) )
   )
-
-  /* dropdown(
-    Datom.value, 
-    logThis(logThis(Datom).options, "A"),
-    async e => await Database.updateEntity(Datom.entity, Datom.attribute,  Number(submitInputValue(e)) )
-  ) */
-
-} 
+]) 
 
 let input_datomConstructor = Datom => {
 
@@ -449,16 +453,23 @@ let input_datomConstructor = Datom => {
         [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, , {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}],
         async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(datoms, {[index]: {entity: submitInputValue(e)}})  )
         ),
-      dropdown(Database.attr(datom.attribute), Database.eventAttributes
-        //.sort( sortEntitiesAlphabeticallyByLabel  )
-        .map( entity => returnObject({value: entity, label:  Database.get(entity, "entity/label") }) ), async e => {
-          let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}})
+      d([
+        htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement(Database.eventAttributes.map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) )) ),
+        input(
+          {value: Database.get( Database.attr(datom.attribute), "entity/label"), list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
+          "change", 
+          async e => {
 
-          await Database.updateEntity(Datom.entity, Datom.attribute, updatedValue  )
-          await Database.updateEntity(Datom.entity, "eventType/eventAttributes", Database.get(Datom.entity, "eventType/eventAttributes").concat( Number(submitInputValue(e)) )  )
+            let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}})
+            await Database.updateEntity(Datom.entity, Datom.attribute, updatedValue  )
+            await Database.updateEntity(Datom.entity, "eventType/eventAttributes", Database.get(Datom.entity, "eventType/eventAttributes").concat( Number(submitInputValue(e)) ).filter(filterUniqueValues)  )
 
-        } 
-        ),
+          } 
+        )
+      ]),
+
+
+
       textArea(datom.value, {class:"textArea_code"}, async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}})  )),
       submitButton("[Slett]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, datoms.filter( (d, i) => i !== index  )  )),
     ], {class: "columns_2_2_2_1"}) )),
@@ -474,15 +485,16 @@ let input_multipleSelect = Datom => d([
       entityLabel(attr), 
       submitButton("[X]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, Datom.value.filter( e => e !== attr )  ) )
       ], {class: "columns_3_1"} ) 
-    ).concat( dropdown(
-      0,
-      Datom.options
-        //.sort( sortEntitiesAlphabeticallyByLabel )
-        //.filter( Entity => !Database.get(entity, attributeName).includes( Entity.entity ) )
-        .map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") })).concat({value: 0, label: "Legg til"}), 
-        async e => await Database.updateEntity(Datom.entity, Datom.attribute, Datom.value.concat( Number(submitInputValue(e)) )  )
-      )  ) 
-    )
+    )),
+    d("<br>"),
+    d([
+      htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( Datom.options.map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) )) ),
+      input(
+        {value: "Legg til (søk)", list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
+        "change", 
+        async e => await Database.updateEntity(Datom.entity, Datom.attribute,  Datom.value.concat( Number(submitInputValue(e)) ) )
+      )
+    ])
   ], {class: "eventAttributeRow"})
 ], {class: "columns_1_1"})
 
