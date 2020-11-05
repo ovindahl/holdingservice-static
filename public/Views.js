@@ -377,17 +377,14 @@ let datomView = Datom => {
     
   }
 
-  console.log(Datom)
-
-  let valueType = Database.get( Database.attr(Datom.attribute), "attribute/valueType")
 
   return isUndefined(Datom)
   ? d("Finner ikke datom")
-  : [37, 38, 39].includes(valueType)
-    ? genericValueTypeViews[ valueType  ]( Datom )
+  : [37, 38, 39].includes(Datom.valueType)
+    ? genericValueTypeViews[ Datom.valueType  ]( Datom )
     : d([
       entityLabel( Database.attr(Datom.attribute) ),
-      genericValueTypeViews[ valueType  ]( Datom )
+      genericValueTypeViews[ Datom.valueType  ]( Datom )
     ], {class: "columns_1_1"})
 }
 
