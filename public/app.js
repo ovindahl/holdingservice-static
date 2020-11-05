@@ -233,9 +233,14 @@ let updateCompanyMethods = Company => {
   Company.getEntityFromID = id => Company.ids[id] ? Company.getEntity(Company.ids[id]) : undefined
 
   Company.getEntityValueFromID = (id, attribute) => {
-    let entity = Company.ids[id] 
+    if(isUndefined(id)){return "Mangler id"}
+    let entity = Company.ids[id]
+    if(isUndefined(entity)){return "Aktøren finnes ikke"}
     let Entity = Company.Entities[entity]
+    if(isUndefined(entity)){return "Aktøren finnes ikke"}
     let value = Entity[attribute]
+    if(isUndefined(value)){return "Aktøren har ikke den forespurte attributten"}
+    console.log(entity, Entity, value)
     return value
   } 
 
