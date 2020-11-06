@@ -291,7 +291,10 @@ let reportFieldView = (attribute, value) => {
 
   return customReportFieldViews[attribute] 
     ? customReportFieldViews[attribute](value) 
-    : d(JSON.stringify(value))
+    : d([
+      entityLabel(attribute),
+      d(JSON.stringify(value))
+    ], {class: "columns_1_1"}) 
 }
 
 let reportFieldView_Datoms = Datoms => d([
@@ -440,18 +443,17 @@ let datomView = (entity, attribute, version) => {
     "39": input_reportFields, //valueTypeView_reportFields,
     "40": input_object, //valueTypeView_staticDropdown,
     "41": input_object, //valueTypeView_companyEntityDropdown,    
-  }
+  } 
 
-  let valueType = Database.get(Database.attr(Datom.attribute), "attribute/valueType")
 
 
   return isUndefined(Datom)
   ? d("Finner ikke datom")
-  : [37, 38, 39].includes(valueType)
+  : [37, 38, 39].includes(Database.get(Database.attr(Datom.attribute), "attribute/valueType"))
     ? genericValueTypeViews[ Datom.valueType  ]( Datom )
     : d([
       entityLabel( Database.attr(Datom.attribute) ),
-      genericValueTypeViews[ valueType  ]( Datom )
+      genericValueTypeViews[ Database.get(Database.attr(Datom.attribute), "attribute/valueType")  ]( Datom )
     ], {class: "columns_1_1"})
 }
 
@@ -551,12 +553,13 @@ let input_reportFields = Datom => {
     ], {class: "columns_2_2_1"}),
     d(reportFields.map( (reportField, index) => d([
       d([
-        htmlElementObject("datalist", {id:`entity/${reportField.entity}/options`}, optionsElement( Database.getAll(42)
+        htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( Database.getAll(42)
           .filter( attr => attr >= 1000 ).concat(29)
           .filter( attr => Database.get(attr, "entity/label") !== "Ubenyttet hendelsesattributt")
+          .map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }))
         )),
         input(
-          {value: Database.get( Database.attr(reportField.attribute), "entity/label"), list:`entity/${reportField.entity}/options`, style: `text-align: right;`}, 
+          {value: Database.get( Database.attr(reportField.attribute), "entity/label"), list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
           "change", 
           async e => {
             if(!isUndefined(submitInputValue(e))){

@@ -17,9 +17,6 @@ const Database = {
       ? serverEntity.localState
       : {tx: serverEntity.Datoms.map( Datom => Datom.tx ).filter( tx => !isUndefined(tx) ).sort().slice(-1)[0]}
     
-    console.log(entity, serverEntity, localState)
-
-
     return localState
 
 
@@ -165,6 +162,7 @@ const Database = {
   },
   getDatom: (entity, attribute, version) => {
     let selectedDatom = Database.getServerDatom(entity, attribute, version)
+    if(isUndefined(selectedDatom)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Datom does not exist`)}
     selectedDatom.attr = Database.attr(selectedDatom.attribute)
     selectedDatom.valueType = Database.getServerEntity(selectedDatom.attr).current["attribute/valueType"] //Should not need validation?
     if([32, 37].includes(selectedDatom.valueType)){
@@ -302,6 +300,8 @@ let constructEvents = Events => {
     isValid: true
   }
 
+  let Company = initialCompany
+
   try {
 
     Company = Events.reduce( (Company, Event) => {
@@ -383,7 +383,7 @@ let constructEvents = Events => {
   
       }else{return mergerino(Company, {isValid: false}) }
   
-    }, updateCompanyMethods(initialCompany) )
+    }, updateCompanyMethods(Company) )
     
   } catch (error) {
     console.log(error)
