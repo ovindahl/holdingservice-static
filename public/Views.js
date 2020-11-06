@@ -381,7 +381,6 @@ let entityView = entity => {
 
   let versions = Database.getServerEntity(entity).Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues ).filter( tx => isNumber(tx) )
   let selectedVersion = Database.getLocalState(entity).tx
-  console.log(entity, versions, selectedVersion)
   let firstVersion = versions[0]
   let lastVersion = versions[versions.length - 1]
   let prevVersion = versions.filter( tx => tx < selectedVersion ).length > 0 ? versions.filter( tx => tx < selectedVersion ).reverse()[0] : selectedVersion
