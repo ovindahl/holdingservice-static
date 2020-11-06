@@ -259,6 +259,19 @@ let updateCompanyMethods = Company => {
 
   Company.getEntity = entity => Company.Entities[entity]
   Company.getAttributeValue = attribute => Company.getEntity(1)[attribute]
+
+  Company.getAccountEntity = accountNumber => mergeArray( Database.getAll(5030).map( entity => createObject( Database.get(entity, "entity/label").substr(0, 4), entity ) ) )[accountNumber]
+
+  Company.getAccountBalance = accountNumber => {
+    let accountEntity = Company.getAccountEntity(accountNumber)
+    return `[Placeholder: Saldobalanse på konto ${accountNumber}]`;
+  }
+
+  Company.sumAccountBalance = accountNumbers => {
+    let accountEntities = accountNumbers.map( accountNumber => Company.getAccountEntity(accountNumber) )
+    return `[Placeholder: Sum saldobalanse på kontoene ${accountNumbers}]`;
+  } 
+
   Company.getLatestEntityID = () => Number(Object.keys(Company.Entities)[ Object.keys(Company.Entities).length - 1 ])
   Company.getVersion = t => Company.previousVersions.filter( Company => Company.t === t  )[0]
   Company.getReport = (report, t) => mergeArray( Database.get(report, "report/reportFields").map( reportField => {
@@ -320,7 +333,7 @@ let constructEvents = Events => {
       if(isApplicable){
   
         let Q = {
-          account: accountNumber => mergeArray( Database.getAll(5030).map( entity => createObject( Database.get(entity, "entity/label").substr(0, 4), entity ) ) )[accountNumber] ,
+          account: accountNumber => Company.getAccountEntity(accountNumber),
           userInput: attribute => Database.get(Event.entity, attribute ),
           getActorEntity: actorID => Object.values(Company.Entities)
             .filter( Entity => Object.keys(Entity).includes("1112")  )
