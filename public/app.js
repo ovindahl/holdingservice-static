@@ -261,9 +261,10 @@ let updateCompanyMethods = Company => {
     return value
   } 
 
+  Company.getEntityValueFromEntity = (entity, attribute) => Company.getEntity(entity)[attribute] ? Company.getEntity(entity)[attribute] : "Aktøren har ikke den forespurte attributten"
 
-
-  Company.getEntity = entity => Company.Entities[entity]
+  Company.getEntity = entity => Company.Entities[entity] ? Company.Entities[entity] : "Entiteten finnes ikke"
+  
   Company.getAttributeValue = attribute => Company.getEntity(1)[attribute]
 
   Company.getAccountEntity = accountNumber => mergeArray( Database.getAll(5030).map( entity => createObject( Database.get(entity, "entity/label").substr(0, 4), entity ) ) )[accountNumber]
