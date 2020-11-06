@@ -116,30 +116,19 @@ const Database = {
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== entity ).concat( serverResponse[0] )
     update( Database.S )
   },
-  getEventTypes: () => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 43 ).map( E => E.entity),
   submitDatoms: async datoms => await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) ),
   getEntityColor: entity => Database.get( Database.get(entity, "entity/entityType" ), Database.attrName(20) ),
   init: async () => { 
     Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
-    Database.Attributes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 )
-    Database.eventAttributes = Database.Attributes
-      .filter( Attr => Attr.entity >= 1000 )
-      .filter( Attr => Attr.current["entity/label"] !== "Ubenyttet hendelsesattributt")
-      .map( Attr => Attr.entity ) //To be fixed..    
-      .concat(29) //Entitetstype i selskapsdokumentet
-     Database.ValueTypes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 44 ).map( E => E.entity)
-
-     Database.Accounts = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 5030 )
-     Database.accounts = Database.Accounts.map( E => E.entity)
-     Database.accountEntities = mergeArray( Database.Accounts.map( E => createObject(E.current["entity/label"].substr(0, 4), E.entity ) ) ) 
-
-    const attrNameToEntity = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) )) 
-    const attrEntityToName = mergeArray(Database.Attributes.map( serverEntity => createObject(serverEntity.entity, serverEntity.current["attr/name"]) ))
-    Database.attrName = attribute => isNumber(attribute) ? attrEntityToName[attribute] : attribute
+    const attrNameToEntity = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
     Database.attr = attrName => isNumber(attrName) ? attrName : attrNameToEntity[attrName]
     return;
   },
-  find: filterFunction => Database.Entities.filter( filterFunction ),
+  attrName: attribute => isNumber(attribute) 
+    ? Database.get(attribute, "attr/name") 
+    : Database.attr(attribute)
+      ? attribute
+      : log(undefined, `[ Database.attrName(${attribute}) ]: Attribute ${attribute} does not exist`),
   getEntity: entity => {
     let Entity = Database.Entities.filter(  Entity => Entity.entity === entity   )[0]
 
@@ -177,27 +166,25 @@ const Database = {
 
   },
   getEntityVersions: entity => Database.getEntity(entity).Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues ),
-  getDatom: (entity, attributeName, version) => {
+  getDatom: (entity, attribute, version) => {
+    let serverEntity = Database.Entities.find( serverEntity => serverEntity.entity === entity  )
+    if(isUndefined(serverEntity)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not exist`)}
+    if(isUndefined(Database.attrName(attribute))){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Attribute ${attribute} does not exist`)}
+    let attributeDatoms = serverEntity.Datoms.filter( Datom => Datom.attribute === Database.attrName(attribute) )
+    if(attributeDatoms.length === 0){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not have any datoms with attribute ${Database.attrName(attribute)} [${Database.attr(attribute)}]`)}
+    let selectedDatom = isUndefined(version) 
+      ? attributeDatoms.slice(-1)[0]
+      : attributeDatoms.filter( serverDatom => serverDatom.tx <= version ).slice(-1)[0]
+    if(isUndefined(selectedDatom)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not have any datoms with attribute ${Database.attrName(attribute)} [${Database.attr(attribute)}] with version <= ${version}`)}
 
-    let allEntityAttributeDatoms = Database.Entities
-    .filter( Entity => Entity.entity === entity )
-    .map( Entity => Entity.Datoms ).flat()
-    .map( serverDatom => isUndefined(serverDatom.tx) ? mergerino(serverDatom, {tx: 0}) : serverDatom )
-    .filter( serverDatom => serverDatom.attribute === Database.attrName(attributeName) )
 
-    let versionFilterDatoms = version 
-    ? allEntityAttributeDatoms.filter( serverDatom => version ? serverDatom.tx <= version : true )
-    : allEntityAttributeDatoms
+    if(!isUndefined(selectedDatom)){
 
-    let Datom = versionFilterDatoms.reverse()[0]
+      selectedDatom.ValueType = selectedDatom ? Database.getEntity(Database.attr(selectedDatom.attribute)) : undefined
+      selectedDatom.valueType = selectedDatom ? selectedDatom.ValueType.current["attribute/valueType"] : undefined
 
-    if(!isUndefined(Datom)){
-
-      Datom.ValueType = Datom ? Database.getEntity(Database.attr(Datom.attribute)) : undefined
-      Datom.valueType = Datom ? Datom.ValueType.current["attribute/valueType"] : undefined
-
-      if([32, 37].includes(Datom.valueType)){
-        Datom.options = new Function( "Database" , Database.get(Database.attr(Datom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )
+      if([32, 37].includes(selectedDatom.valueType)){
+        selectedDatom.options = new Function( "Database" , Database.get(Database.attr(selectedDatom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )
       }
 
     }
@@ -206,16 +193,17 @@ const Database = {
     
 
 
-    return Datom
+    return selectedDatom
 
     
 
-  } ,
+  },
   get: (entity, attribute, version) => {
-    let Datom = Database.getDatom(entity, Database.attrName(attribute), version)
+    let Datom = Database.getDatom(entity, attribute, version)
     let Value = isUndefined(Datom) ? undefined : Datom.value
     return Value
-  } 
+  },
+  getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity)
 }
 
 const sideEffects = {
@@ -354,7 +342,6 @@ let constructEvents = Events => {
   
       let isApplicable = [
         (Company, Event) => Company.isValid,
-        //(Company, Event) => Database.find( Entity => Entity.type === 43 ).map( E => E.entity).includes( Event.getAttributeValue("event/eventTypeEntity") ),
         (Company, Event) => Database.get(eventType, "eventType/eventAttributes").every( attribute =>  new Function(`inputValue`, Database.get( attribute, "attribute/validatorFunctionString") )( Database.get(Event.entity, attribute ) ) ),
         (Company, Event) => Database.get(eventType, "eventType/eventValidators").every( eventValidator =>  new Function([`Q`], Database.get(eventValidator, "eventValidator/validatorFunctionString")( Company ) )),
       ].every( validatorFunction => validatorFunction(Company, Event) )
@@ -363,7 +350,7 @@ let constructEvents = Events => {
       if(isApplicable){
   
         let Q = {
-          account: accountNumber => Database.accountEntities[accountNumber] , //Database.find( Entity => Entity.type === 5030 ).filter( Entity => Entity.label.startsWith(accountNumber) )[0].entity,
+          account: accountNumber => mergeArray( Database.getAll(5030).map( entity => createObject( Database.get(entity, "entity/label").substr(0, 4), entity ) ) )[accountNumber] ,
           userInput: attribute => Database.get(Event.entity, attribute ),
           getActorEntity: actorID => Object.values(Company.Entities)
             .filter( Entity => Object.keys(Entity).includes("1112")  )

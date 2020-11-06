@@ -243,7 +243,7 @@ let newEventView =  (S,Event) => {
     d("<br>"),
     retractEntityButton(Event.entity),
     dropdown( 0, 
-    Database.getEventTypes().map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) ).concat({value: 0, label: "Legg til hendelse etter denne"}),
+    Database.getAll(43).map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) ).concat({value: 0, label: "Legg til hendelse etter denne"}),
     e => Database.createEvent( 
       Number(submitInputValue(e)), 
       Database.get(Event.entity, "eventAttribute/1005"),  
@@ -267,7 +267,7 @@ let reportsPage = (S, A) => d([
 //Report view
 
 let genericReportView = (S, A, selectedReport) => {
-  let companyReport = S["selectedCompany"].getReport(log(selectedReport), log(S["UIstate"].selectedCompanyDocVersion) )
+  let companyReport = S["selectedCompany"].getReport(selectedReport, S["UIstate"].selectedCompanyDocVersion )
   return d([
     d([
       submitButton("<<", e => A.updateLocalState({"selectedCompanyDocVersion": 0}) ),
@@ -287,10 +287,10 @@ let reportFieldView = (attribute, value) => {
 
   let customReportFieldViews = {
     "5578": reportFieldView_Datoms, //Tekst
-    "5579": reportFieldView_Entities
+    "5579": reportFieldView_Entities,
+    "5648": reportFieldView_accountingTransactions,
+    "5651": reportFieldView_actors
   }
-
-  console.log(attribute, value)
 
   return customReportFieldViews[attribute] 
     ? customReportFieldViews[attribute](value) 
@@ -304,25 +304,71 @@ let reportFieldView_Datoms = Datoms => d([
     d( "Verdi" ),
     d( "Hendelse #" ),
   ], {class: "columns_1_1_1_1"}),
-  d(Datoms.map( Datom => d([
-    d( String( Datom.entity ) ),
-    entityLabel(Database.attr(Datom.attribute)),
-    d( JSON.stringify(Datom.value) ),
-    d( String( Datom.t ) ),
-  ], {class: "columns_1_1_1_1"}) ))
+  d( isArray(Datoms) 
+      ? Datoms.map( Datom => d([
+        d( String( Datom.entity ) ),
+        entityLabel(Database.attr(Datom.attribute)),
+        d( JSON.stringify(Datom.value) ),
+        d( String( Datom.t ) ),
+      ], {class: "columns_1_1_1_1"}) )
+      : d("Error")
+    )
 ])
 
 let reportFieldView_Entities = Entities => d([
-  d(Entities.map( Entity => d([
-    d(String( Entity.entity )),
-    d(Object.keys(Entity)
-      .filter( key => key !== "entity" && key !== "t" )
-      .map( attribute => d([
-        entityLabel( Number(attribute) ),
-        d( JSON.stringify(Entity[attribute] ) ),
-    ], {class: "columns_1_1"}) )),
-    d("<br>"),
-  ])   ))
+  d( isArray(Entities) 
+      ? Entities.map( Entity => d([
+      d(String( Entity.entity )),
+      d(Object.keys(Entity)
+        .filter( key => key !== "entity" && key !== "t" )
+        .map( attribute => d([
+          entityLabel( Number(attribute) ),
+          d( JSON.stringify(Entity[attribute] ) ),
+      ], {class: "columns_1_1"}) )),
+      d("<br>"),
+    ]))
+  : d("Error")
+  )
+])
+
+let reportFieldView_accountingTransactions = Entities => d([
+  d([
+    d( "Transaksjonsnr" ),
+    d( "Selskapsentitet" ),
+    d( "Konto" ),
+    d( "Beløp" ),
+    d( "Kilde (Hendelse #)" ),
+  ], {class: "columns_1_1_1_1_1"}),
+  d( isArray(Entities) 
+      ? Entities.map( (Entity, index) => d([
+        d( String(index+1) ),
+        d( String(Entity.entity) ),
+        entityLabel(Entity[1653]),
+        d( String(Entity[1083])),
+        d( String(Entity["t"]) ),
+      ], {class: "columns_1_1_1_1_1"}))
+  : d("Error")
+  )
+])
+
+let reportFieldView_actors = Entities => d([
+  d([
+    d( "AktørID" ),
+    d( "Selskapsentitet" ),
+    d( "Navn" ),
+    d( "Roller" ),
+    d( "Kilde (Hendelse #)" ),
+  ], {class: "columns_1_1_1_1_1"}),
+  d( isArray(Entities) 
+      ? Entities.map( (Entity, index) => d([
+        d( String(Entity[1112]) ),
+        d( String(Entity.entity) ),
+        d( String(Entity[1113]) ),
+        d( String(Entity[1113])),
+        d( String(Entity["t"]) ),
+      ], {class: "columns_1_1_1_1_1"}))
+  : d("Error")
+  )
 ])
 
 let adminPage = (S, A) => d([
@@ -474,7 +520,10 @@ let input_datomConstructor = Datom => {
         async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(datoms, {[index]: {entity: submitInputValue(e)}})  )
         ),
       d([
-        htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement(Database.eventAttributes.map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) )) ),
+        htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( Database.getAll(42)
+          .filter( attr => attr >= 1000 ).concat(29)
+          .filter( attr => Database.get(attr, "entity/label") !== "Ubenyttet hendelsesattributt")
+        )),
         input(
           {value: Database.get( Database.attr(datom.attribute), "entity/label"), list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
           "change", 
