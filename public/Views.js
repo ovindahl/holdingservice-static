@@ -286,7 +286,8 @@ let reportFieldView = (attribute, value) => {
     "5578": reportFieldView_Datoms, //Tekst
     "5579": reportFieldView_Entities,
     "5648": reportFieldView_accountingTransactions,
-    "5651": reportFieldView_actors
+    "5651": reportFieldView_actors,
+    "5662": reportFieldView_accountBalance,
   }
 
   return customReportFieldViews[attribute] 
@@ -350,6 +351,24 @@ let reportFieldView_accountingTransactions = Entities => d([
   : d("Error")
   )
 ])
+
+let reportFieldView_accountBalance = accountBalanceObject => d([
+  d( isObject(accountBalanceObject) 
+      ? Object.entries(accountBalanceObject).map( entry => d([
+        entityLabel(entry),
+      d(String( Entity.entity )),
+      d(Object.keys(Entity)
+        .filter( key => key !== "entity" && key !== "t" )
+        .map( attribute => d([
+          entityLabel( Number(attribute) ),
+          d( JSON.stringify(Entity[attribute] ) ),
+      ], {class: "columns_1_1"}) )),
+      d("<br>"),
+    ]))
+  : d("Error")
+  )
+])
+
 
 let reportFieldView_actors = Entities => d([
   d([
@@ -512,7 +531,7 @@ let input_datomConstructor = Datom => {
     d(datoms.map( (datom, index) => d([
       dropdown(
         datom.entity, 
-        [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, , {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}],
+        [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}, , {value: `return Q.latestEntityID() + 4;`, label: `Ny entitet nr. 4`}, , {value: `return Q.latestEntityID() + 5;`, label: `Ny entitet nr. 5`}],
         async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(datoms, {[index]: {entity: submitInputValue(e)}})  )
         ),
       d([
