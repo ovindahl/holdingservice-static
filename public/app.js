@@ -142,9 +142,11 @@ const Database = {
       : log(undefined, `[ Database.attrName(${attribute}) ]: Attribute ${attribute} does not exist`),
   getServerEntity: entity => {
     let serverEntity = Database.Entities.find( serverEntity => serverEntity.entity === entity  );
-    serverEntity.Datoms = serverEntity.Datoms.map( serverDatom => isUndefined(serverDatom.tx) ? mergerino(serverDatom, {tx: 0}) : serverDatom )
+    
     if(isUndefined(serverEntity)){return log(undefined, `[ Database.getServerEntity(${entity}) ]: Entity ${entity} does not exist`)}
-    else{return serverEntity}
+    else{
+      serverEntity.Datoms = serverEntity.Datoms.map( serverDatom => isUndefined(serverDatom.tx) ? mergerino(serverDatom, {tx: 0}) : serverDatom )
+      return serverEntity}
   },
   getServerDatom: (entity, attribute, version) => {
     let serverEntity = Database.getServerEntity(entity)
@@ -265,7 +267,7 @@ let updateCompanyMethods = Company => {
 
   Company.getEntity = entity => Company.Entities[entity] ? Company.Entities[entity] : "Entiteten finnes ikke"
   
-  Company.getAttributeValue = attribute => Company.getEntity(1)[attribute]
+  Company.getAttributeValue = attribute => Company.getEntityValueFromEntity(1, attribute)
 
   Company.getAccountEntity = accountNumber => mergeArray( Database.getAll(5030).map( entity => createObject( Database.get(entity, "entity/label").substr(0, 4), entity ) ) )[accountNumber]
 

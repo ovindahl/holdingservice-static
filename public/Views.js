@@ -114,11 +114,13 @@ let createEntityButton = entityType => submitButton("Legg til", e => Database.cr
 
 //Basic entity views
 
-let entityLabel = (entity, onClick) => d( [
-  d([
-    span( `${Database.get(entity, "entity/label")}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
-    entityInspectorPopup(entity),], {class: "popupContainer", style:"display: inline-flex;"})
-], {style:"display: inline-flex;"} )
+let entityLabel = (entity, onClick) => Database.getServerEntity(entity) 
+? d( [
+    d([
+      span( `${Database.get(entity, "entity/label")}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
+      entityInspectorPopup(entity),], {class: "popupContainer", style:"display: inline-flex;"})
+  ], {style:"display: inline-flex;"} )
+: d(`[${entity}] Entiteten finnes ikke`)
 
 
 let entityInspectorPopup = entity => d([
