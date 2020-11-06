@@ -10,7 +10,22 @@ const Database = {
     
     return;
   },
-  getLocalState: entity => Database.getServerEntity(entity).localState ? Database.getServerEntity(entity).localState : returnObject({tx: Database.getServerEntity(entity).Datoms.map( Datom => Datom.tx ).sort().reverse()[0] }),
+  getLocalState: entity => {
+
+    let serverEntity = Database.getServerEntity(entity)
+    let localState = serverEntity.localState 
+      ? serverEntity.localState
+      : {tx: serverEntity.Datoms.map( Datom => Datom.tx ).filter( tx => !isUndefined(tx) ).sort().slice(-1)[0]}
+    
+    console.log(entity, serverEntity, localState)
+
+
+    return localState
+
+
+
+
+  },
   updateEntity: async (entity, attribute, value) => {
 
     let valueType = Database.get( Database.attr(attribute), "attribute/valueType")
@@ -128,23 +143,24 @@ const Database = {
     : Database.attr(attribute)
       ? attribute
       : log(undefined, `[ Database.attrName(${attribute}) ]: Attribute ${attribute} does not exist`),
-  
   getServerEntity: entity => {
     let serverEntity = Database.Entities.find( serverEntity => serverEntity.entity === entity  );
+    serverEntity.Datoms = serverEntity.Datoms.map( serverDatom => isUndefined(serverDatom.tx) ? mergerino(serverDatom, {tx: 0}) : serverDatom )
     if(isUndefined(serverEntity)){return log(undefined, `[ Database.getServerEntity(${entity}) ]: Entity ${entity} does not exist`)}
     else{return serverEntity}
   },
-  getEntityVersions: entity => Database.getServerEntity(entity).Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues ),
   getServerDatom: (entity, attribute, version) => {
     let serverEntity = Database.getServerEntity(entity)
-    if(isUndefined(serverEntity)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not exist`)}
-    if(isUndefined(Database.attrName(attribute))){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Attribute ${attribute} does not exist`)}
+    if(isUndefined(serverEntity)){return log(undefined, `[ Database.getServerDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not exist`)}
+    if(isUndefined(Database.attrName(attribute))){return log(undefined, `[ Database.getServerDatom(${entity},${attribute}, ${version}) ]: Attribute ${attribute} does not exist`)}
     let attributeDatoms = serverEntity.Datoms.filter( Datom => Datom.attribute === Database.attrName(attribute) )
-    if(attributeDatoms.length === 0){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not have any datoms with attribute ${Database.attrName(attribute)} [${Database.attr(attribute)}]`)}
+    if(attributeDatoms.length === 0){return log(undefined, `[ Database.getServerDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not have any datoms with attribute ${Database.attrName(attribute)} [${Database.attr(attribute)}]`)}
     let selectedDatom = isUndefined(version) 
       ? attributeDatoms.slice(-1)[0]
-      : attributeDatoms.filter( serverDatom => serverDatom.tx <= version ).slice(-1)[0]
-    if(isUndefined(selectedDatom)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not have any datoms with attribute ${Database.attrName(attribute)} [${Database.attr(attribute)}] with version <= ${version}`)}
+      : attributeDatoms
+        .map( serverDatom => isUndefined(serverDatom.tx) ? mergerino(serverDatom, {tx: 0}) : serverDatom ) //NB: Some early datoms lacks tx.....
+        .filter( serverDatom => serverDatom.tx <= version ).slice(-1)[0]
+    if(isUndefined(selectedDatom)){return log(undefined, `[ Database.getServerDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not have any datoms with attribute ${Database.attrName(attribute)} [${Database.attr(attribute)}] with version <= ${version}`)}
     return selectedDatom
   },
   getDatom: (entity, attribute, version) => {
@@ -158,7 +174,8 @@ const Database = {
     return selectedDatom
   },
   get: (entity, attribute, version) => Database.getServerDatom(entity, attribute, version).value,
-  getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity)
+  getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity),
+  selectEntity: entity => update( mergerino(Database.S, {"UIstate": {"selectedEntity": entity}})  )
 }
 
 const sideEffects = {
@@ -171,8 +188,6 @@ const sideEffects = {
     applyHTML: elementTree => document.getElementById(sideEffects.appContainer).innerHTML = elementTree.map( element => element.html ).join(''),
     applyEventListeners: elementTree => elementTree.map( element => Array.isArray(element.eventListeners) ? element.eventListeners : [] ).flat().forEach( eventListener => document.getElementById( eventListener.id ).addEventListener(eventListener.eventType, eventListener.action) ),
     APIRequest: async (type, endPoint, stringBody) => {
-
-
       if(sideEffects.isIdle){
         sideEffects.isIdle = false;
         let startTime = Date.now()
@@ -383,57 +398,9 @@ let constructEvents = Events => {
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
 let getUserActions = (S, Database) => returnObject({
-    updateLocalState: (patch) => {
-
-      update({
-        UIstate: mergerino( S["UIstate"], patch )
-      })
-
-
-
-
-      //Database.updateEntity(5614, 5615, JSON.stringify({}))
-    } ,
-    createEntity: async entityTypeEntity => {
-
-      let updatedDB = await Database.createEntity(entityTypeEntity)
-
-      let newEntity = updatedDB.getLatestModifiedEntity()
-
-      let updatedState = mergerino(S, {UIstate: {"selectedEntity": newEntity}})
-
-      if(entityTypeEntity === 42){updatedState["UIstate"]["eventAttributeSearchString"] = "[Attributt uten navn]" }
-
-
-
-      update(updatedState )
-
-
-    },
-    createEvent: async ( prevEvent, newEventTypeEntity ) => {
-
-      let eventDatoms = [
-        newDatom("newEntity", "event/eventTypeEntity", newEventTypeEntity),
-        newDatom("newEntity", Database.attrName(1005), Database.get( prevEvent.entity, Database.attrName(1005) ) ),
-        newDatom("newEntity",  Database.attrName(1000), Database.get( prevEvent.entity, Database.attrName(1000) ) + 1 )
-      ]
-      let updatedDB = await Database.createEntity(46, eventDatoms )
-
-      update( S )
-
-    },
-    createCompany: async () => {
-
-      let eventDatoms = [
-        newDatom("newEntity", "event/eventTypeEntity", 5000),
-        newDatom("newEntity", Database.attrName(1005), randBetween(800000000, 1000000000) ),
-        newDatom("newEntity", Database.attrName(1000), 1 )
-      ]
-      let updatedDB = await Database.createEntity(46, eventDatoms )
-      update( S )
-
-    },
-    update: newDB => update({UIstate: S["UIstate"]})
+    updateLocalState: (patch) => update({
+      UIstate: mergerino( S["UIstate"], patch )
+    })
 })
 
 let update = ( S ) => {

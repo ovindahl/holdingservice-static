@@ -116,7 +116,7 @@ let createEntityButton = entityType => submitButton("Legg til", e => Database.cr
 
 let entityLabel = (entity, onClick) => d( [
   d([
-    span( `${Database.get(entity, "entity/label")}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, (typeof onClick === "undefined") ? null : "click", onClick ),
+    span( `${Database.get(entity, "entity/label")}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
     entityInspectorPopup(entity),], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
@@ -190,7 +190,7 @@ let sidebar_left = (S, A) => d([
         ? d("Ingen kategori valgt") 
         : d( S.selectedEntities
           .sort( sortEntitiesAlphabeticallyByLabel )
-          .map( entity => entityLabel( entity, e => A.updateLocalState(  {selectedEntity : entity} ) ))
+          .map( entity => entityLabel( entity, e => Database.selectEntity(entity) ))
         )
   ], {style: "display:flex;"})
 
@@ -232,10 +232,7 @@ let newEventView =  (S, entity) => {
       entityLabel(27),
       entityLabel(eventType),
     ], {class: "columns_1_1"}),
-    d( Database.get(eventType, "eventType/eventAttributes").map( attribute => {
-      let Datom = Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) ? Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) : newDatom(entity, attribute, undefined)
-      return datomView( Datom  )
-    })),
+    d( Database.get(eventType, "eventType/eventAttributes").map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx ))),
     d("<br>"),
     S["selectedCompany"]["t"] >= Database.get(entity, "eventAttribute/1000")
       ? newDatomsView( S["selectedCompany"].Datoms.filter( datom => datom.t === Database.get(entity, "eventAttribute/1000") ) ) 
@@ -379,8 +376,9 @@ let adminPage = (S, A) => d([
 
 let entityView = entity => {
 
-  let versions = Database.getEntityVersions(entity)
+  let versions = Database.getServerEntity(entity).Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues ).filter( tx => isNumber(tx) )
   let selectedVersion = Database.getLocalState(entity).tx
+  console.log(entity, versions, selectedVersion)
   let firstVersion = versions[0]
   let lastVersion = versions[versions.length - 1]
   let prevVersion = versions.filter( tx => tx < selectedVersion ).length > 0 ? versions.filter( tx => tx < selectedVersion ).reverse()[0] : selectedVersion
@@ -419,19 +417,15 @@ let adminEntityView = entity => {
   : d([
       h3( Database.get(entity, "entity/label")),
       entityView(entity),
-      d( Database.get( Database.get(entity, "entity/entityType"), "entityType/attributes", Database.getLocalState(entity).tx).map( attribute => {
-
-        let Datom = Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) ? Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) : newDatom(entity, attribute, undefined)
-
-
-        return datomView( Datom )
-      })),
+      d( Database.get( Database.get(entity, "entity/entityType"), "entityType/attributes", Database.getLocalState(entity).tx).map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx ) )),
       retractEntityButton(entity),
       createEntityButton(Database.get(entity, "entity/entityType")),
     ], {class: "feedContainer"} )
 }
 
-let datomView = Datom => {
+let datomView = (entity, attribute, version) => {
+
+  let Datom = Database.getDatom( entity, attribute, version )
 
   let genericValueTypeViews = {
     "30": input_text, //Tekst
@@ -443,7 +437,7 @@ let datomView = Datom => {
     "35": input_object, //Objekt
     "36": input_boolean, //Bool
     "38": input_datomConstructor, //valueTypeView_newDatoms,
-    "39": input_object, //valueTypeView_reportFields,
+    "39": input_reportFields, //valueTypeView_reportFields,
     "40": input_object, //valueTypeView_staticDropdown,
     "41": input_object, //valueTypeView_companyEntityDropdown,    
   }
@@ -543,6 +537,41 @@ let input_datomConstructor = Datom => {
     submitButton("Legg til", async e => await Database.updateEntity(Datom.entity, Datom.attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1000, value: `return ''` })  ))
   ])
 
+}
+
+let input_reportFields = Datom => {
+
+  let reportFields = Datom.value
+
+  return d([
+    entityLabel(Database.attr(Datom.attribute)),
+    d([
+      d("Attributt"),
+      d("Verdi")
+    ], {class: "columns_2_2_1"}),
+    d(reportFields.map( (reportField, index) => d([
+      d([
+        htmlElementObject("datalist", {id:`entity/${reportField.entity}/options`}, optionsElement( Database.getAll(42)
+          .filter( attr => attr >= 1000 ).concat(29)
+          .filter( attr => Database.get(attr, "entity/label") !== "Ubenyttet hendelsesattributt")
+        )),
+        input(
+          {value: Database.get( Database.attr(reportField.attribute), "entity/label"), list:`entity/${reportField.entity}/options`, style: `text-align: right;`}, 
+          "change", 
+          async e => {
+            if(!isUndefined(submitInputValue(e))){
+            let updatedValue = mergerino(reportFields, {[index]: {attribute: Number(submitInputValue(e)), value: `return Company.getAttributeValue(${ Number(submitInputValue(e))})`}})
+            await Database.updateEntity(Datom.entity, Datom.attribute, updatedValue  )
+            }
+
+          } 
+        )
+      ]),
+      textArea(reportField.value, {class:"textArea_code"}, async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(reportFields, {[index]: {value: submitInputValue(e)}})  )),
+      submitButton("[Slett]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, reportFields.filter( (d, i) => i !== index  )  )),
+    ], {class: "columns_2_2_1"}) )),
+    submitButton("Legg til", async e => await Database.updateEntity(Datom.entity, Datom.attribute, reportFields.concat({attribute: 1001, value: `return Company.getAttributeValue(1001)` })  ))
+  ])
 } 
 
 let input_multipleSelect = Datom => d([
