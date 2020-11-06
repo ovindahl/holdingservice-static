@@ -467,7 +467,10 @@ let datomView = (entity, attribute, version) => {
 
 
   return isUndefined(Datom)
-  ? d("Finner ikke datom")
+  ? d([
+    entityLabel( attribute ),
+    input_undefined( entity, attribute )
+  ], {class: "columns_1_1"})
   : [37, 38, 39].includes(Database.get(Database.attr(Datom.attribute), "attribute/valueType"))
     ? genericValueTypeViews[ Datom.valueType  ]( Datom )
     : d([
@@ -475,6 +478,12 @@ let datomView = (entity, attribute, version) => {
       genericValueTypeViews[ Database.get(Database.attr(Datom.attribute), "attribute/valueType")  ]( Datom )
     ], {class: "columns_1_1"})
 }
+
+let input_undefined = (entity, attribute) => input(
+  {value: "", style: `background-color: #de171761;`},
+  "change", 
+  async e => await Database.updateEntity(entity, attribute,  submitInputValue(e) )
+)
 
 let input_text = Datom => input(
   {value: Datom.value, style: ``},
