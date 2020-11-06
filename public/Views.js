@@ -357,16 +357,9 @@ let reportFieldView_accountingTransactions = Entities => d([
 let reportFieldView_accountBalance = accountBalanceObject => d([
   d( isObject(accountBalanceObject) 
       ? Object.entries(accountBalanceObject).map( entry => d([
-        entityLabel(entry),
-      d(String( Entity.entity )),
-      d(Object.keys(Entity)
-        .filter( key => key !== "entity" && key !== "t" )
-        .map( attribute => d([
-          entityLabel( Number(attribute) ),
-          d( JSON.stringify(Entity[attribute] ) ),
-      ], {class: "columns_1_1"}) )),
-      d("<br>"),
-    ]))
+        entityLabel(Number(entry[0])),
+        d(String(entry[1])),
+    ], {class: "columns_1_1"}))
   : d("Error")
   )
 ])

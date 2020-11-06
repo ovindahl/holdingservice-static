@@ -244,9 +244,12 @@ let updateCompanyMethods = Company => {
 
   let companyEntities = Object.values(Company.Entities)
 
-  Company.accounts = companyEntities.filter( Entity => Entity[29] === 5637  ).map(  Entity => Entity[1653] ).filter( filterUniqueValues )
+  
 
+  Company.accounts = companyEntities.filter( Entity => Entity[29] === 5637  ).map(  Entity => Entity[1653] ).filter( filterUniqueValues )
+  
   Company.accountBalanceObject = mergeArray( Company.accounts.map( accountEntity => createObject(accountEntity, companyEntities
+    .filter( Entity => Entity[29] === 5637  )
     .filter( Entity => Entity[1653] === accountEntity  )
     .reduce( (Sum, recordEntity) => Sum + recordEntity[1083], 0  )  ) )   )   
 
