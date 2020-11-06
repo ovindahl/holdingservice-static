@@ -200,8 +200,9 @@ let newDatomsView = Datoms => d([
   d( Datoms.sort( (a,b) => a.entity - b.entity ).map( Datom => {
 
       let valueType = Database.get(Database.attr(Datom.attribute), "attribute/valueType")
-
-      let valueView = valueType === 32 ? entityLabel(Number(Datom.value)) : d( JSON.stringify(Datom.value) )
+      let valueView = (valueType === 32 && !isUndefined(Datom.value)) 
+        ? entityLabel(Number(Datom.value)) 
+        : d( JSON.stringify(Datom.value) )
 
     return d([
       span( `Selskapsentitet ${ Datom.entity }`, ``, {class: "entityLabel", style: `background-color: lightgray;`} ),
@@ -215,39 +216,38 @@ let newDatomsView = Datoms => d([
 let timelineView = (S, A) => d([
   d(""),
   (S.selectedCompany.Events.length > 0)
-  ? d( S.selectedCompany.Events.map( Event => newEventView( S, Database.getEntity(Event.entity) ) ))
+  ? d( S.selectedCompany.Events.map( Event => newEventView( S, Event.entity ) ))
   : d("Noe er galt med selskapets tidslinje"),
   d("")
 ], {class: "pageContainer"})
 
 
-let newEventView =  (S,Event) => {
-
-  let eventType = Database.get(Event.entity, "event/eventTypeEntity")
+let newEventView =  (S, entity) => {
+  let eventType = Database.get(entity, "event/eventTypeEntity")
 
   return d([
     h3( Database.get(eventType, "entity/label") ),
-    entityView(Event.entity),
+    entityView(entity),
     d([
       entityLabel(27),
       entityLabel(eventType),
     ], {class: "columns_1_1"}),
     d( Database.get(eventType, "eventType/eventAttributes").map( attribute => {
-      let Datom = Database.getDatom( Event.entity, Database.attrName(attribute), Database.getLocalState(Event.entity).tx ) ? Database.getDatom( Event.entity, Database.attrName(attribute), Database.getLocalState(Event.entity).tx ) : newDatom(Event.entity, attribute, undefined)
+      let Datom = Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) ? Database.getDatom( entity, Database.attrName(attribute), Database.getLocalState(entity).tx ) : newDatom(entity, attribute, undefined)
       return datomView( Datom  )
     })),
     d("<br>"),
-    S["selectedCompany"]["t"] >= Database.get(Event.entity, "eventAttribute/1000")
-      ? newDatomsView( S["selectedCompany"].Datoms.filter( datom => datom.t === Database.get(Event.entity, "eventAttribute/1000") ) ) 
+    S["selectedCompany"]["t"] >= Database.get(entity, "eventAttribute/1000")
+      ? newDatomsView( S["selectedCompany"].Datoms.filter( datom => datom.t === Database.get(entity, "eventAttribute/1000") ) ) 
       : d("Kan ikke vise hendelsens output"),
     d("<br>"),
-    retractEntityButton(Event.entity),
+    retractEntityButton(entity),
     dropdown( 0, 
     Database.getAll(43).map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) ).concat({value: 0, label: "Legg til hendelse etter denne"}),
     e => Database.createEvent( 
       Number(submitInputValue(e)), 
-      Database.get(Event.entity, "eventAttribute/1005"),  
-      Database.get(Event.entity, "eventAttribute/1000") + 1 
+      Database.get(entity, "eventAttribute/1005"),  
+      Database.get(entity, "eventAttribute/1000") + 1 
       )
     )
   ], {class: "feedContainer"} )
@@ -414,7 +414,7 @@ let entityView = entity => {
 
 let adminEntityView = entity => {
 
-  return (isNull(entity) || isUndefined( Database.getEntity(entity) ))
+  return (isNull(entity) || isUndefined( Database.getServerEntity(entity) ))
   ? d("Ingen entitet valgt.", {class: "feedContainer"})
   : d([
       h3( Database.get(entity, "entity/label")),
@@ -568,35 +568,3 @@ let input_multipleSelect = Datom => d([
 
 
 
-
-//Archive
-/* 
-
-let valueTypeView_reportFields = (S, A, entity, attribute, value) => {
-
-  let reportFields = Database.get(entity, S.attrName(attribute)) ? Database.get(entity, S.attrName(attribute)) : []
-
-  return d([
-    entityLabel(S, A, attribute),
-    d([
-      d("Attributt"),
-      d("Verdi")
-    ], {class: "columns_2_2_1"}),
-    d(reportFields.map( (reportField, index) => d([
-      dropdown(reportField.attribute, S.Attributes
-        .filter( E => !reportFields.map( reportField => reportField.attribute ).includes(E.entity)  )
-        .concat( Database.getEntity(reportField.attribute) )
-        .sort( sortEntitiesAlphabeticallyByLabel  )
-        .map( E => returnObject({value: E.entity, label: Database.getEntity(E.entity).label }) ), async e => A.update( await Database.getEntity(entity).update( S.attrName(attribute), mergerino(reportFields, {[index]: {attribute: Number(submitInputValue(e)), value: `return 0`}}) )  )
-        ),
-      textArea(reportField.value, {class:"textArea_code"}, async e => A.update( await Database.getEntity(entity).update( S.attrName(attribute), mergerino(reportFields, {[index]: {value: submitInputValue(e)}}) )  )
-      ),
-      submitButton("[Slett]", async e => A.update( await Database.getEntity(entity).update( S.attrName(attribute), reportFields.filter( (d, i) => i !== index  ) )  )
-      ),
-    ], {class: "columns_2_2_1"}) )),
-    submitButton("Legg til", async e => A.update( await Database.getEntity(entity).update( S.attrName(attribute), reportFields.concat({attribute: 1001, value: `return '${Database.getEntity(entity).label}';` }) )  )
-    ),
-  ])
-
-}
- */

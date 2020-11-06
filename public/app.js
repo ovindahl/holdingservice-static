@@ -3,15 +3,14 @@ const Database = {
   Entities: [],
   setLocalState: (entity, newState) => {
 
-    let updatedEntity = Database.getEntity(entity)
+    let updatedEntity = Database.getServerEntity(entity)
     updatedEntity.localState = newState
-
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
     update( Database.S )
     
     return;
   },
-  getLocalState: entity => Database.getEntity(entity).localState,
+  getLocalState: entity => Database.getServerEntity(entity).localState ? Database.getServerEntity(entity).localState : returnObject({tx: Database.getServerEntity(entity).Datoms.map( Datom => Datom.tx ).sort().reverse()[0] }),
   updateEntity: async (entity, attribute, value) => {
 
     let valueType = Database.get( Database.attr(attribute), "attribute/valueType")
@@ -109,7 +108,7 @@ const Database = {
     if(Datoms.every( Datom => isString(Datom.entity) && isString(Datom.attribute) && !isUndefined(Datom.value) )){Database.createEntity(46, Datoms)}else{log("Datoms not valid: ", Datoms)}
   } ,
   retractEntity: async entity => {
-    let Datoms = Database.getEntity(entity).Datoms
+    let Datoms = Database.getServerEntity(entity).Datoms
     let activeDatoms = Datoms.filter( Datom => Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
     let retractionDatoms = activeDatoms.map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
@@ -129,45 +128,15 @@ const Database = {
     : Database.attr(attribute)
       ? attribute
       : log(undefined, `[ Database.attrName(${attribute}) ]: Attribute ${attribute} does not exist`),
-  getEntity: entity => {
-    let Entity = Database.Entities.filter(  Entity => Entity.entity === entity   )[0]
-
-    Entity.Datoms = isUndefined(Entity.Datoms)
-      ? []
-      : Entity.Datoms.map( Datom => typeof Datom.tx === "undefined" ? mergerino(Datom, {tx: 0}) : Datom )
-    
-    Entity.getEntityVersion = tx => Entity.Datoms
-      .filter( Datom => Datom.tx <= tx )
-      .reduce( 
-        (Entity, Datom) => mergerino(
-          Entity, 
-          createObject(
-            Datom.attribute, 
-            Datom.isAddition 
-              ? Datom.value
-              : undefined 
-          ) 
-        ),
-        {entity: Entity.entity, tx}
-      )
-    
-    Entity.Entity = () => Entity.getEntityVersion( Entity.tx )
-    Entity.type = Entity.current["entity/entityType"]
-    Entity.label = Entity.current["entity/label"] ? Entity.current["entity/label"] : `[${Entity.entity}] mangler visningsnavn.`
-    Entity.color = "lightgray"
-
-    Entity.localState = Entity.localState ? Entity.localState : {tx: Entity.Datoms.map( Datom => Datom.tx ).sort().reverse()[0] }
-
-    return Entity
-
-
-
-
-
+  
+  getServerEntity: entity => {
+    let serverEntity = Database.Entities.find( serverEntity => serverEntity.entity === entity  );
+    if(isUndefined(serverEntity)){return log(undefined, `[ Database.getServerEntity(${entity}) ]: Entity ${entity} does not exist`)}
+    else{return serverEntity}
   },
-  getEntityVersions: entity => Database.getEntity(entity).Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues ),
-  getDatom: (entity, attribute, version) => {
-    let serverEntity = Database.Entities.find( serverEntity => serverEntity.entity === entity  )
+  getEntityVersions: entity => Database.getServerEntity(entity).Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues ),
+  getServerDatom: (entity, attribute, version) => {
+    let serverEntity = Database.getServerEntity(entity)
     if(isUndefined(serverEntity)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not exist`)}
     if(isUndefined(Database.attrName(attribute))){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Attribute ${attribute} does not exist`)}
     let attributeDatoms = serverEntity.Datoms.filter( Datom => Datom.attribute === Database.attrName(attribute) )
@@ -176,33 +145,19 @@ const Database = {
       ? attributeDatoms.slice(-1)[0]
       : attributeDatoms.filter( serverDatom => serverDatom.tx <= version ).slice(-1)[0]
     if(isUndefined(selectedDatom)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Entity ${entity} does not have any datoms with attribute ${Database.attrName(attribute)} [${Database.attr(attribute)}] with version <= ${version}`)}
-
-
-    if(!isUndefined(selectedDatom)){
-
-      selectedDatom.ValueType = selectedDatom ? Database.getEntity(Database.attr(selectedDatom.attribute)) : undefined
-      selectedDatom.valueType = selectedDatom ? selectedDatom.ValueType.current["attribute/valueType"] : undefined
-
-      if([32, 37].includes(selectedDatom.valueType)){
-        selectedDatom.options = new Function( "Database" , Database.get(Database.attr(selectedDatom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )
-      }
-
-    }
-
-    //Datom.Attribute = Database.getEntity( Database.attr(Datom.attribute) )
-    
-
-
     return selectedDatom
-
-    
-
   },
-  get: (entity, attribute, version) => {
-    let Datom = Database.getDatom(entity, attribute, version)
-    let Value = isUndefined(Datom) ? undefined : Datom.value
-    return Value
+  getDatom: (entity, attribute, version) => {
+    let selectedDatom = Database.getServerDatom(entity, attribute, version)
+    selectedDatom.attr = Database.attr(selectedDatom.attribute)
+    selectedDatom.valueType = Database.getServerEntity(selectedDatom.attr).current["attribute/valueType"] //Should not need validation?
+    if([32, 37].includes(selectedDatom.valueType)){
+      try {selectedDatom.options = new Function( "Database" , Database.get(Database.attr(selectedDatom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )} 
+      catch (error) {selectedDatom.options = log([], error)}
+    }
+    return selectedDatom
   },
+  get: (entity, attribute, version) => Database.getServerDatom(entity, attribute, version).value,
   getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity)
 }
 
@@ -307,7 +262,7 @@ let updateCompanyMethods = Company => {
             
           } catch (error) {
             console.log("reportFunction error", error, Company, reportField )
-            calculatedReport = "ERROR"
+            calculatedReport = undefined
           }
 
     return createObject(reportField.attribute, calculatedReport ) 
@@ -372,7 +327,7 @@ let constructEvents = Events => {
             
           } catch (error) {
             console.log("entityFunction error", error, Event, datomConstructor )
-            calculatedEntity = "ERROR"
+            calculatedEntity = undefined
           }
 
           let valueFunction = new Function( [`Q`], datomConstructor["value"] )
@@ -382,7 +337,7 @@ let constructEvents = Events => {
             
           } catch (error) {
             console.log("valueFunction error", error, Event, datomConstructor )
-            calculatedValue = "ERROR"
+            calculatedValue = undefined
           }
           
           return returnObject({
@@ -487,13 +442,14 @@ let update = ( S ) => {
 
     console.log("S", S)
 
-    S.Events = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 46 ).map( serverEntity => Database.getEntity(serverEntity.entity) )
+    S.Events = Database.getAll( 46 ).map( entity => Database.getServerEntity(entity) )
     S.EntityTypes = [42, 43, 44, 45, 47, 48, 49, 50, 5030, 5590, 5612] //, 46
     S.Reports =  Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 49 ).map( serverEntity => serverEntity.entity )
     
     
     S.orgNumbers = S.Events.map( Entity => Database.get(Entity.entity, "eventAttribute/1005" ) ).filter( filterUniqueValues )
-    S.userEvents = S.Events.filter( Event => Database.get(Event.entity, "eventAttribute/1005") === Number(S["UIstate"].selectedOrgnumber) )
+    S.userEvents = S.Events
+      .filter( Event => Database.get(Event.entity, "eventAttribute/1005") === Number(S["UIstate"].selectedOrgnumber) )
       .sort( (EventA, EventB) => Database.get(EventA.entity, "eventAttribute/1000") - Database.get(EventB.entity, "eventAttribute/1000")  )
 
     
