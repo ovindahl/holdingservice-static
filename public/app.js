@@ -389,7 +389,7 @@ let constructEvents = Events => {
 
     Company = Events.reduce( (Company, Event) => {
 
-      let t = Company.t + 1
+      let t = Company.t + 1 
   
       let eventType = Database.get(Event.entity, "event/eventTypeEntity")
   
