@@ -314,6 +314,7 @@ let updateCompanyMethods = Company => {
     .reduce( (Sum, recordEntity) => Sum + recordEntity[1083], 0  )  ) )   )   
 
   Company.getEntityFromID = id => Company.ids[id] ? Company.getEntity(Company.ids[id]) : undefined
+  Company.getEntityNumberFromID = id => Company.ids[id] ? Company.getEntity(Company.ids[id]).entity : undefined
 
   Company.getEntityValueFromID = (id, attribute) => {
     if(isUndefined(id)){return "Mangler id"}
@@ -430,6 +431,7 @@ let constructEvents = Events => {
             .filter( Entity => Entity["1112"] === actorID  )
             [0].entity,
           getEntityFromID: id => Company.getEntityFromID(id),
+          getEntityNumberFromID: id => Company.getEntityNumberFromID(id),
           getEntityValueFromID: (id, attribute) => Company.getEntityValueFromID(id, attribute),
           get: (entity, attribute) => Company.getEntity(entity)[attribute],
           companyAttribute: attribute => Company.getAttributeValue(attribute),

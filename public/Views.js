@@ -548,7 +548,7 @@ let input_datomConstructor = Datom => {
           "change", 
           async e => {
             if(!isUndefined(submitInputValue(e))){
-            let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Q.userInput(${Number(submitInputValue(e))})`}})
+            let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Event.get(${Number(submitInputValue(e))})`}})
             await Database.updateEntity(Datom.entity, Datom.attribute, updatedValue  )
             await Database.updateEntity(Datom.entity, "eventType/eventAttributes", Database.get(Datom.entity, "eventType/eventAttributes").concat( Number(submitInputValue(e)) ).filter(filterUniqueValues)  )
             }
