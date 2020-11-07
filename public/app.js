@@ -175,7 +175,67 @@ const Database = {
   },
   get: (entity, attribute, version) => Database.getServerDatom(entity, attribute, version).value,
   getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity),
-  selectEntity: entity => update( mergerino(Database.S, {"UIstate": {"selectedEntity": entity}})  )
+  selectEntity: entity => update( mergerino(Database.S, {"UIstate": {"selectedEntity": entity}})  ),
+  getEvent: entity => {
+    
+    let serverEntity = Database.getServerEntity(entity)
+    let Event = {
+      userInput: attribute => serverEntity.current[Database.attrName(attribute)] ? serverEntity.current[Database.attrName(attribute)] : undefined,
+      get: attribute => serverEntity.current[Database.attrName(attribute)] ? serverEntity.current[Database.attrName(attribute)] : undefined,
+      latestEntityID: () => 0,
+      companyAttribute: () => "TBD",
+      account: () => "TBD",
+    }
+
+    return Event
+  },
+  getCompanyDatoms: (orgNumber, version) => {
+    let companyDatoms =  Database.getAll( 46 )
+      .filter( event => Database.get(event, "eventAttribute/1005") === orgNumber )
+      .sort( (eventA, eventB) => Database.get(eventA, "eventAttribute/1000") - Database.get(eventB, "eventAttribute/1000")  )
+      .reduce( (companyDatoms, event, index) => {
+        let eventDatoms = Database.get( Database.get(event, "event/eventTypeEntity") , "eventType/newDatoms").map( datomConstructor => {
+          let datom;
+
+          let Q = {
+            account: accountNumber => "TBD",
+            userInput: attribute => "TBD",
+            getActorEntity: actorID => "TBD",
+            getEntityFromID: id => "TBD",
+            getEntityValueFromID: (id, attribute) => "TBD",
+            get: attribute => "TBD",
+            companyAttribute: attribute => "TBD",
+            latestEntityID: () => "TBD",
+          }
+
+
+
+          let Event = Database.getEvent(event);
+          let Company = constructCompany(companyDatoms);
+
+
+          try {datom = {"entity": new Function( [`Q`, `Event`], datomConstructor["entity"] )( Q, Event ), "attribute": datomConstructor.attribute, "value": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["value"] )( Q, Database, Company, Event ),"t": index + 1 }}
+          catch (error) {datom = {"entity": "","attribute": datomConstructor.attribute,"value": error,"t": index + 1}}
+          finally{return datom}
+        })
+        return companyDatoms.concat( eventDatoms )
+      } , []  )
+      return companyDatoms;
+  }
+}
+
+let constructCompany = companyDatoms => {
+
+  let Company = {}
+
+  Company.latestEntityID = () => companyDatoms.map( Datom => Datom.entity ).sort( (a, b) => a-b ).slice(-1)[0] //???
+  Company.companyAttribute = () => "TBD"
+  Company.getDatom = (entity, attribute) => companyDatoms
+  .filter( Datom => Datom.entity === entity )
+  .filter( Datom => Datom.attribute === attribute )
+  Company.get = (entity, attribute) => Company.getDatom(entity, attribute).value
+  
+
 }
 
 const sideEffects = {
@@ -350,9 +410,9 @@ let constructEvents = Events => {
             [0].entity,
           getEntityFromID: id => Company.getEntityFromID(id),
           getEntityValueFromID: (id, attribute) => Company.getEntityValueFromID(id, attribute),
-          get: (entity, attribute) => Company.getEntity(entity)[attribute],
+          get: attribute => Database.get(Event.entity, attribute ),
           companyAttribute: attribute => Company.getAttributeValue(attribute),
-          latestEntityID: () => Company.getLatestEntityID()
+          latestEntityID: () => Company.getLatestEntityID(),
         }
 
         let dbObject = {
@@ -361,6 +421,7 @@ let constructEvents = Events => {
 
         let eventObject = {
           userInput: attribute => Database.get(Event.entity, attribute ),
+          get: attribute => Database.get(Event.entity, attribute ),
         }
 
         let companyObject = {
@@ -377,20 +438,20 @@ let constructEvents = Events => {
   
         let eventDatoms = Database.get(eventType, "eventType/newDatoms").map( datomConstructor => {
 
-          let entityFunction = new Function( [`Q`], datomConstructor["entity"] )
+          let entityFunction = new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )
           let calculatedEntity;
           try {
-            calculatedEntity = entityFunction( Q )
+            calculatedEntity = entityFunction( Q, dbObject, companyObject, eventObject )
             
           } catch (error) {
             console.log("entityFunction error", error, Event, datomConstructor )
             calculatedEntity = undefined
           }
 
-          let valueFunction = new Function( [`Q`], datomConstructor["value"] )
+          let valueFunction = new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["value"] )
           let calculatedValue;
           try {
-            calculatedValue = valueFunction( Q )
+            calculatedValue = valueFunction( Q, dbObject, companyObject, eventObject )
             
           } catch (error) {
             console.log("valueFunction error", error, Event, datomConstructor )
@@ -479,6 +540,9 @@ let update = ( S ) => {
     Admin.DB = Database
 
     S.selectedCompany = constructEvents( S.userEvents )
+
+    let getCompanyDatoms = Database.getCompanyDatoms( Number(S["UIstate"].selectedOrgnumber) )
+    console.log("getCompanyDatoms", getCompanyDatoms)
 
     console.log("State: ", S)
     let A = getUserActions(S, Database)
