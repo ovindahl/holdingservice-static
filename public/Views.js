@@ -258,36 +258,29 @@ let newEventView =  (S, entity) => {
 
 }
 
-let reportsPage = (S, A) => d([
-  d( //Left sidebar
-    Database.getAll( 49 ).map( entity => d([
-      entityLabel(entity, e => A.updateLocalState({selectedReport: entity} ))
-    ])  )
-    ),
-  genericReportView(S, A, S["UIstate"]["selectedReport"]),
-  d("")
-], {class: "pageContainer"})
+let reportsPage = (S, A) => {
+  if(isUndefined(Database.getServerEntity(S["UIstate"]["selectedReport"]) )){return d("Rapporten er ikke tilgjengelig") }
 
-//Report view
-
-let genericReportView = (S, A, selectedReport) => {
-  let companyReport = S["selectedCompany"].getReport(selectedReport, S["UIstate"].selectedCompanyDocVersion )
   return d([
+    d( //Left sidebar
+      Database.getAll( 49 ).map( entity => entityLabel(entity, e => A.updateLocalState({selectedReport: entity} )) )),
     d([
-      submitButton("<<", e => A.updateLocalState({"selectedCompanyDocVersion": 0}) ),
-      submitButton("<", e => A.updateLocalState({"selectedCompanyDocVersion": Math.max(S["UIstate"].selectedCompanyDocVersion - 1, 0) })),
-      d(`${S["UIstate"].selectedCompanyDocVersion} / ${S["selectedCompany"]["t"]}`),
-      submitButton(">", e => A.updateLocalState({"selectedCompanyDocVersion": Math.min(S["UIstate"].selectedCompanyDocVersion + 1, S["selectedCompany"]["t"])})),
-      submitButton(">>", e => A.updateLocalState({"selectedCompanyDocVersion": S["selectedCompany"]["t"]})),
-    ], {class: "columns_1_1_1_1_1"}),
-    h3(Database.get(selectedReport, "entity/label")),
-    companyReport 
-      ? d( Database.get(selectedReport, "report/reportFields").map( reportField => reportFieldView(reportField.attribute, companyReport[reportField.attribute]) ) ) 
-      : d("Rapporten er ikke tilgjengelig")
-  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+      d([
+        submitButton("<<", e => A.updateLocalState({"selectedCompanyDocVersion": 0}) ),
+        submitButton("<", e => A.updateLocalState({"selectedCompanyDocVersion": Math.max(S["UIstate"].selectedCompanyDocVersion - 1, 0) })),
+        d(`${S["UIstate"].selectedCompanyDocVersion} / ${S["selectedCompany"]["t"]}`),
+        submitButton(">", e => A.updateLocalState({"selectedCompanyDocVersion": Math.min(S["UIstate"].selectedCompanyDocVersion + 1, S["selectedCompany"]["t"])})),
+        submitButton(">>", e => A.updateLocalState({"selectedCompanyDocVersion": S["selectedCompany"]["t"]})),
+      ], {class: "columns_1_1_1_1_1"}),
+      h3(Database.get(S["UIstate"]["selectedReport"], "entity/label")),
+      d( Database.get(S["UIstate"]["selectedReport"], "report/reportFields").map( reportField => reportFieldView(S, reportField) ) ),
+    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d("")
+  ], {class: "pageContainer"})
 } 
 
-let reportFieldView = (attribute, value) => {
+
+let reportFieldView = (S, reportField) => {
 
   let customReportFieldViews = {
     "5578": reportFieldView_Datoms, //Tekst
@@ -296,11 +289,14 @@ let reportFieldView = (attribute, value) => {
     "5651": reportFieldView_actors,
     "5662": reportFieldView_accountBalance,
   }
+  
 
-  return customReportFieldViews[attribute] 
-    ? customReportFieldViews[attribute](value) 
+  let value = Database.getCompanyReportFieldValue( Number(S["UIstate"].selectedOrgnumber), reportField, S["UIstate"].selectedCompanyDocVersion )
+
+  return customReportFieldViews[reportField.attribute] 
+    ? customReportFieldViews[reportField.attribute](value)
     : d([
-      entityLabel(attribute),
+      entityLabel(reportField.attribute),
       d(JSON.stringify(value))
     ], {class: "columns_1_1"}) 
 }
@@ -389,6 +385,23 @@ let reportFieldView_actors = Entities => d([
   : d("Error")
   )
 ])
+
+
+//Report view
+
+let genericReportView = (S, A, selectedReport) => {
+  let companyReport = S["selectedCompany"].getReport(selectedReport, S["UIstate"].selectedCompanyDocVersion )
+
+  //let companyReport = Database.getCompanyReportField( Number(S["UIstate"].selectedOrgnumber), S["UIstate"].selectedCompanyDocVersion, selectedReport, reportField )
+
+  return d([
+    h3(Database.get(selectedReport, "entity/label")),
+    companyReport 
+      ? d( Database.get(selectedReport, "report/reportFields").map( reportField => reportFieldView(reportField.attribute, companyReport[reportField.attribute]) ) ) 
+      : d("Rapporten er ikke tilgjengelig")
+  ])
+} 
+
 
 let adminPage = (S, A) => d([
   sidebar_left(S, A),

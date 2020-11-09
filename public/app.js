@@ -199,7 +199,7 @@ const Database = {
 
     return Event
   },
-  createCompany: (orgNumber, version) => {
+  createCompany: orgNumber => {
     let companyEvents = Database.getAll( 46 )
     .filter( event => Database.get(event, "eventAttribute/1005") === orgNumber )
     .sort( (eventA, eventB) => Database.get(eventA, "eventAttribute/1000") - Database.get(eventB, "eventAttribute/1000")  )
@@ -264,7 +264,58 @@ const Database = {
       }  )
       return companyDatoms;
   },
-  getCompany: orgNumber => Database.Companies.find( Company => Company.orgNumber === orgNumber )
+  getCompany: orgNumber => Database.Companies.find( Company => Company.orgNumber === orgNumber ),
+  getCompanyVersion: (orgNumber, t) => {
+
+    let latestCompany = Database.getCompany( orgNumber )
+
+
+    let Company = {
+      orgNumber: latestCompany.orgNumber,
+      events: latestCompany.events.filter( event => Database.get(event, "eventAttribute/1000") <= t  ),
+      Datoms: latestCompany.Datoms.filter( Datom => Datom.t <= t ),
+    }
+
+
+    Company.getDatom = (entity, attribute) => Company.Datoms
+      .filter( Datom => Datom.entity === entity )
+      .filter( Datom => Datom.attribute === attribute )
+      .slice( -1 )[0]
+
+    Company.get = (entity, attribute) => Company.getDatom(entity, attribute).value
+
+    Company.idents = mergeArray( Company.Datoms
+      .filter( Datom => isDefined( Company.getDatom(Datom.entity, 29) )   )
+      .filter( Datom => [1112, 1131, 1080, 1086, 1097, 1137].includes( Datom.attribute ) )
+      .map( Datom => createObject(Datom.value, Datom.entity) )
+      )
+
+    Company.id = id => Company.idents[id]
+
+    Company.getEntityValueFromID = (id, attribute) => Company.get( Company.id(id), attribute )
+
+    Company.latestEntityID = Company.Datoms.length === 0 
+      ? 0 
+      : Company.Datoms
+        .map( Datom => Datom.entity )
+        .sort( (a, b) => a - b )
+        .slice( -1 )[0]
+
+    
+
+      return Company
+
+
+  },
+  getCompanyReportFieldValue: (orgNumber, reportField, t) => {
+
+    let Company = Database.getCompanyVersion(orgNumber, t)
+    let reportFieldFunction = new Function( [`Company`], reportField["value"] )
+    let value;
+    try {value = reportFieldFunction( Company )} 
+    catch (error) {value = "ERROR"}
+    return value
+  }
 }
 
 
@@ -374,6 +425,7 @@ let updateCompanyMethods = Company => {
 
   Company.getLatestEntityID = () => Number(Object.keys(Company.Entities)[ Object.keys(Company.Entities).length - 1 ])
   Company.getVersion = t => Company.previousVersions.filter( Company => Company.t === t  )[0]
+
   Company.getReport = (report, t) => mergeArray( Database.get(report, "report/reportFields").map( reportField => {
 
     
