@@ -36,6 +36,7 @@ return something
 
 
 let isUndefined = value => typeof value === "undefined"
+let isDefined = value => !isUndefined(value)
 let isNull = value => value === null
 let isString = value => typeof value === "string"
 let isNumber = value => typeof value === "number"
@@ -215,16 +216,22 @@ let newDatomsView = Datoms => d([
   } ))
 ])
 
-let timelineView = (S, A) => d([
-  d(""),
-  (S.selectedCompany.Events.length > 0)
-  ? d( S.selectedCompany.Events.map( Event => newEventView( S, Event.entity ) ))
-  : d("Noe er galt med selskapets tidslinje"),
-  d("")
-], {class: "pageContainer"})
+let timelineView = (S, A) => {
+
+  let selectedCompanyEvents = Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events
+
+  return d([
+    d(""),
+    (S.selectedCompany.Events.length > 0)
+    ? d( selectedCompanyEvents.map( event => newEventView( S, event ) ))
+    : d("Noe er galt med selskapets tidslinje"),
+    d("")
+  ], {class: "pageContainer"})
+} 
 
 
 let newEventView =  (S, entity) => {
+  
   let eventType = Database.get(entity, "event/eventTypeEntity")
 
   return d([
@@ -236,9 +243,7 @@ let newEventView =  (S, entity) => {
     ], {class: "columns_1_1"}),
     d( Database.get(eventType, "eventType/eventAttributes").map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx ))),
     d("<br>"),
-    S["selectedCompany"]["t"] >= Database.get(entity, "eventAttribute/1000")
-      ? newDatomsView( S["selectedCompany"].Datoms.filter( datom => datom.t === Database.get(entity, "eventAttribute/1000") ) ) 
-      : d("Kan ikke vise hendelsens output"),
+    newDatomsView( Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).Datoms.filter( datom => datom.t === Database.get(entity, "eventAttribute/1000") ) ),
     d("<br>"),
     retractEntityButton(entity),
     dropdown( 0, 
@@ -255,7 +260,7 @@ let newEventView =  (S, entity) => {
 
 let reportsPage = (S, A) => d([
   d( //Left sidebar
-    S.Reports.map( entity => d([
+    Database.getAll( 49 ).map( entity => d([
       entityLabel(entity, e => A.updateLocalState({selectedReport: entity} ))
     ])  )
     ),
