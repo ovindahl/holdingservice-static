@@ -46,6 +46,7 @@ const Database = {
       updatedEntity.localState = {tx: latestTx }
 
       Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
+      Database.recalculateCompanies()
 
       update( Database.S )
 
@@ -77,7 +78,7 @@ const Database = {
       let latestTx = serverResponse[0].Datoms.map( Datom => Datom.tx ).filter( tx => !isUndefined(tx) ).sort().reverse()[0]
       updatedEntity.localState = {tx: latestTx }
       Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
-
+      Database.recalculateCompanies()
     }else{
 
       console.log("Database.updateEntity did not pass validation.", {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN })
@@ -100,6 +101,7 @@ const Database = {
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
     let updatedEntity = serverResponse[0]
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
+    Database.recalculateCompanies()
     update( Database.S )
   },
   createEvent: (eventType, orgNumber, eventIndex) => {
@@ -125,6 +127,7 @@ const Database = {
     let retractionDatoms = activeDatoms.map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== entity ).concat( serverResponse[0] )
+    Database.recalculateCompanies()
     update( Database.S )
   },
   submitDatoms: async datoms => await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) ),
@@ -138,10 +141,7 @@ const Database = {
       .map( entity => createObject( Database.get(entity, "entity/label").substr(0, 4), entity ) ) 
     )[accountNumber]
 
-    Database.Companies = Database.getAll( 46 )
-      .map( event => Database.get(event, "eventAttribute/1005") )
-      .filter( filterUniqueValues )
-      .map( orgNumber => Database.createCompany(orgNumber) )
+    Database.recalculateCompanies()
 
     return;
   },
@@ -199,18 +199,50 @@ const Database = {
 
     return Event
   },
+  recalculateCompanies: () => {
+
+    Database.Companies = Database.getAll( 46 )
+      .map( event => Database.get(event, "eventAttribute/1005") )
+      .filter( filterUniqueValues )
+      .map( orgNumber => Database.createCompany(orgNumber) )
+
+  },
   createCompany: orgNumber => {
     let companyEvents = Database.getAll( 46 )
     .filter( event => Database.get(event, "eventAttribute/1005") === orgNumber )
     .sort( (eventA, eventB) => Database.get(eventA, "eventAttribute/1000") - Database.get(eventB, "eventAttribute/1000")  )
-    let companyDatoms = companyEvents.reduce( (Company, event, index) => {
-
+    let Company = companyEvents.reduce( (Company, event, index) => {
         let Event = Database.getEvent(event);
 
+        let t = index + 1
+
+        let Q = {
+          latestEntityID: () => Company.latestEntityID,
+          account: accountNumber => Database.account(accountNumber)
+        }
+
+        let eventDatoms = Database.get( Database.get(event, "event/eventTypeEntity") , "eventType/newDatoms").map( datomConstructor => {
+                    
+          let datom;
+          try {
+            datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ), "attribute": datomConstructor.attribute, "value": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["value"] )( Q, Database, Company, Event ),"t": t }
+            
+          
+          }
+          catch (error) {datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ),"attribute": datomConstructor.attribute,"value": "ERROR" ,"t": t, "error": String(error)}}
+          finally{
+            if( [1112, 1131, 1080, 1086, 1097, 1137].includes( datom.attribute ) ){
+              Company.idents[ datom.value ] = datom.entity
+            }
+            return datom
+          }
+        }).sort( (datomA, datomB) => datomA.entity - datomB.entity )
+        Company.Datoms = Company.Datoms.concat(eventDatoms)
         Company.getDatom = (entity, attribute) => Company.Datoms
-        .filter( Datom => Datom.entity === entity )
-        .filter( Datom => Datom.attribute === attribute )
-        .slice( -1 )[0]
+          .filter( Datom => Datom.entity === entity )
+          .filter( Datom => Datom.attribute === attribute )
+          .filter( Datom => Datom.t <= t )
+          .slice( -1 )[0]
 
         Company.get = (entity, attribute) => Company.getDatom(entity, attribute).value
 
@@ -224,98 +256,53 @@ const Database = {
 
         Company.getEntityValueFromID = (id, attribute) => Company.get( Company.id(id), attribute )
 
-        Company.latestEntityID = Company.Datoms.length === 0 
-          ? 0 
-          : Company.Datoms
+        Company.latestEntityID = Company.Datoms
             .map( Datom => Datom.entity )
             .sort( (a, b) => a - b )
             .slice( -1 )[0]
 
-        
+        Company.Reportfields = Database.getAll( 49 )
+        .map( report => Database.get(report, "report/reportFields").map( reportField => mergerino(reportField, {report}) ) ).flat()
+        .reduce( (Reportfields, reportField) => {
 
-        let Q = {
-          latestEntityID: () => Company.latestEntityID,
-          account: accountNumber => Database.account(accountNumber)
-        }
+            let prevReportField = Company.Reportfields
+              .filter( ReportField => ReportField.report === reportField.report )
+              .filter( ReportField => ReportField.attribute === reportField.attribute )
+              .slice( -1 )[0]
 
-        let eventDatoms = Database.get( Database.get(event, "event/eventTypeEntity") , "eventType/newDatoms").map( datomConstructor => {
-                    
-          let datom;
-          try {
-            datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ), "attribute": datomConstructor.attribute, "value": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["value"] )( Q, Database, Company, Event ),"t": index + 1 }
-            
-          
-          }
-          catch (error) {datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ),"attribute": datomConstructor.attribute,"value": "ERROR" ,"t": index + 1, "error": String(error)}}
-          finally{
-            if( [1112, 1131, 1080, 1086, 1097, 1137].includes( datom.attribute ) ){
-              Company.idents[ datom.value ] = datom.entity
-            }
-            return datom
-          }
-        }).sort( (datomA, datomB) => datomA.entity - datomB.entity )
-        Company.Datoms = Company.Datoms.concat(eventDatoms)
+            let value;
+            try {value = new Function( [`Company`], reportField["value"] )( Company )} 
+            catch (error) {value = "ERROR"}
+            return (prevReportField && prevReportField ? value === prevReportField.value : false )
+              ? Reportfields
+              :  Reportfields.concat({
+                report: reportField.report, 
+                attribute: reportField.attribute, 
+                function: reportField.value,
+                value: value,
+                t: t
+              })
+        }, Company.Reportfields )
+
+        Company.getReportField = (report, attribute) => Company.Reportfields
+          .filter( Reportfield => Reportfield.report === report )
+          .filter( Reportfield => Reportfield.attribute === attribute )
+          .slice( -1 )[0]
+
+
         return Company
       } , {
         orgNumber: orgNumber,
         events: companyEvents,
         Datoms: [],
+        Entities: {},
+        Reportfields: [],
+        latestEntityID: 0,
         idents: {}
       }  )
-      return companyDatoms;
+      return Company;
   },
   getCompany: orgNumber => Database.Companies.find( Company => Company.orgNumber === orgNumber ),
-  getCompanyVersion: (orgNumber, t) => {
-
-    let latestCompany = Database.getCompany( orgNumber )
-
-
-    let Company = {
-      orgNumber: latestCompany.orgNumber,
-      events: latestCompany.events.filter( event => Database.get(event, "eventAttribute/1000") <= t  ),
-      Datoms: latestCompany.Datoms.filter( Datom => Datom.t <= t ),
-    }
-
-
-    Company.getDatom = (entity, attribute) => Company.Datoms
-      .filter( Datom => Datom.entity === entity )
-      .filter( Datom => Datom.attribute === attribute )
-      .slice( -1 )[0]
-
-    Company.get = (entity, attribute) => Company.getDatom(entity, attribute).value
-
-    Company.idents = mergeArray( Company.Datoms
-      .filter( Datom => isDefined( Company.getDatom(Datom.entity, 29) )   )
-      .filter( Datom => [1112, 1131, 1080, 1086, 1097, 1137].includes( Datom.attribute ) )
-      .map( Datom => createObject(Datom.value, Datom.entity) )
-      )
-
-    Company.id = id => Company.idents[id]
-
-    Company.getEntityValueFromID = (id, attribute) => Company.get( Company.id(id), attribute )
-
-    Company.latestEntityID = Company.Datoms.length === 0 
-      ? 0 
-      : Company.Datoms
-        .map( Datom => Datom.entity )
-        .sort( (a, b) => a - b )
-        .slice( -1 )[0]
-
-    
-
-      return Company
-
-
-  },
-  getCompanyReportFieldValue: (orgNumber, reportField, t) => {
-
-    let Company = Database.getCompanyVersion(orgNumber, t)
-    let reportFieldFunction = new Function( [`Company`], reportField["value"] )
-    let value;
-    try {value = reportFieldFunction( Company )} 
-    catch (error) {value = "ERROR"}
-    return value
-  }
 }
 
 
@@ -375,6 +362,124 @@ const sideEffects = {
     }
 }
 
+let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
+
+let getUserActions = (S, Database) => returnObject({
+    updateLocalState: (patch) => update({
+      UIstate: mergerino( S["UIstate"], patch )
+    })
+})
+
+
+let update = ( S ) => {
+
+    console.log("Database", Database)
+
+    console.log("S", S)
+    
+    S.selectedCategories = Database.Entities
+      .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
+      .map( serverEntity => Database.get(serverEntity.entity, "entity/category" ) )
+      .filter(filterUniqueValues)
+    
+    S.selectedEntities = Database.Entities
+      .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
+      .filter( serverEntity => serverEntity.current["entity/category"] === S["UIstate"].selectedCategory )
+      .map( serverEntity => serverEntity.entity )
+    
+    Database.S = S;
+    Admin.S = S;
+    Admin.DB = Database
+    
+    console.log("State: ", S)
+    let A = getUserActions(S, Database)
+
+    let startTime = Date.now()
+    S.elementTree = generateHTMLBody(S, A )
+    sideEffects.updateDOM( S.elementTree )
+    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
+
+
+    
+
+    backgroundDataSync(S)
+    
+
+}
+
+let backgroundDataSync = S => {
+  let userEntity = S.UIstate.user === "ovindahl@gmail.com" ? 5614 : 5613
+  let savedState = Database.get(userEntity, 5615)
+  let hasChanged = JSON.stringify(savedState) !== JSON.stringify(S.UIstate)
+  if( hasChanged ){Database.updateEntityInBackground( userEntity, 5615, S.UIstate )}
+}
+
+sideEffects.configureClient();
+
+let Admin = {
+    S: null,
+    updateClientRelease: (newVersion) => sideEffects.APIRequest("POST", "updateClientRelease", JSON.stringify({"clientVersion": newVersion})),
+    resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
+}
+
+//Archive
+
+
+let init = async () => {
+
+  await Database.init();
+  let user = await sideEffects.auth0.getUser()
+  let userEntity = user.name === "ovindahl@gmail.com" ? 5614 : 5613
+  let userState = Database.get(userEntity, 5615 )
+
+  let S = {
+    UIstate: userState ? userState : {
+      "user": user.name,
+      "currentPage": "timeline",
+      "selectedOrgnumber": null,
+      "companyDocPage/selectedVersion": 1,
+      "selectedEntityType" : 42,
+      "selectedCategory": undefined,
+      "selectedEntity": 6,
+      "selectedReport": 5575,
+      "selectedVersion": 0,
+      "eventAttributeSearchString": "1920",
+      "selectedCompanyDocVersion": 1
+    }
+  }
+
+    update( S )
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//let newAttributes = []
+    //let datoms = prepareImportDatoms(newAttributes)
+    //let serverResponse = Database.submitDatoms(datoms)
+    //console.log("serverResponse", serverResponse)
+
+  //let prepareImportDatoms = newAttributesArray => newAttributesArray.map( attrObject =>  Object.entries(attrObject).filter(entry => entry[0] !== "entity" ).map( entry => newDatom(attrObject.entity, entry[0], entry[1] ) )   ).flat()
+
+
+
+  
 let updateCompanyMethods = Company => {
 
   Company.ids = mergeArray( Object.entries(Company.Entities)
@@ -385,14 +490,12 @@ let updateCompanyMethods = Company => {
 
   let companyEntities = Object.values(Company.Entities)
 
-  
-
   Company.accounts = companyEntities.filter( Entity => Entity[29] === 5637  ).map(  Entity => Entity[1653] ).filter( filterUniqueValues )
   
   Company.accountBalanceObject = mergeArray( Company.accounts.map( accountEntity => createObject(accountEntity, companyEntities
     .filter( Entity => Entity[29] === 5637  )
     .filter( Entity => Entity[1653] === accountEntity  )
-    .reduce( (Sum, recordEntity) => Sum + recordEntity[1083], 0  )  ) )   )   
+    .reduce( (Sum, recordEntity) => Sum + recordEntity[1083], 0  )  ) )   )
 
   Company.getEntityFromID = id => Company.ids[id] ? Company.getEntity(Company.ids[id]) : undefined
   Company.getEntityNumberFromID = id => Company.ids[id] ? Company.getEntity(Company.ids[id]).entity : undefined
@@ -581,136 +684,3 @@ let constructEvents = Events => {
   return Company
 
 }
-
-let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
-
-let getUserActions = (S, Database) => returnObject({
-    updateLocalState: (patch) => update({
-      UIstate: mergerino( S["UIstate"], patch )
-    })
-})
-
-
-
-let update = ( S ) => {
-
-    console.log("Database", Database)
-
-    console.log("S", S)
-
-    S.Events = Database.getAll( 46 ).map( entity => Database.getServerEntity(entity) )
-    S.EntityTypes = [42, 43, 44, 45, 47, 48, 49, 50, 5030, 5590, 5612] //, 46
-    
-    
-    S.orgNumbers = S.Events.map( Entity => Database.get(Entity.entity, "eventAttribute/1005" ) ).filter( filterUniqueValues )
-    S.userEvents = S.Events
-      .filter( Event => Database.get(Event.entity, "eventAttribute/1005") === Number(S["UIstate"].selectedOrgnumber) )
-      .sort( (EventA, EventB) => Database.get(EventA.entity, "eventAttribute/1000") - Database.get(EventB.entity, "eventAttribute/1000")  )
-
-    
-    S.selectedCategories = Database.Entities
-      .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
-      .map( serverEntity => Database.get(serverEntity.entity, "entity/category" ) )
-      .filter(filterUniqueValues)
-    
-    S.selectedEntities = Database.Entities
-      .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
-      .filter( serverEntity => serverEntity.current["entity/category"] === S["UIstate"].selectedCategory )
-      .map( serverEntity => serverEntity.entity )
-    
-    Database.S = S;
-    Admin.S = S;
-    Admin.DB = Database
-
-    S.selectedCompany = constructEvents( S.userEvents )
-
-    console.log("State: ", S)
-    let A = getUserActions(S, Database)
-
-    let startTime = Date.now()
-    S.elementTree = generateHTMLBody(S, A )
-    sideEffects.updateDOM( S.elementTree )
-    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
-
-
-    
-
-    backgroundDataSync(S)
-    
-
-}
-
-
-
-let backgroundDataSync = S => {
-  let userEntity = S.UIstate.user === "ovindahl@gmail.com" ? 5614 : 5613
-  let savedState = Database.get(userEntity, 5615)
-  let hasChanged = JSON.stringify(savedState) !== JSON.stringify(S.UIstate)
-  if( hasChanged ){Database.updateEntityInBackground( userEntity, 5615, S.UIstate )}
-}
-
-
-
-
-sideEffects.configureClient();
-
-let Admin = {
-    S: null,
-    updateClientRelease: (newVersion) => sideEffects.APIRequest("POST", "updateClientRelease", JSON.stringify({"clientVersion": newVersion})),
-    resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
-}
-
-//Archive
-
-
-let init = async () => {
-
-  await Database.init();
-  let user = await sideEffects.auth0.getUser()
-  let userEntity = user.name === "ovindahl@gmail.com" ? 5614 : 5613
-  let userState = Database.get(userEntity, 5615 )
-
-  let S = {
-    UIstate: userState ? userState : {
-      "user": user.name,
-      "currentPage": "timeline",
-      "selectedOrgnumber": null,
-      "companyDocPage/selectedVersion": 1,
-      "selectedEntityType" : 42,
-      "selectedCategory": undefined,
-      "selectedEntity": 6,
-      "selectedReport": 5575,
-      "selectedVersion": 0,
-      "eventAttributeSearchString": "1920",
-      "selectedCompanyDocVersion": 1
-    }
-  }
-
-    update( S )
-
-
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//let newAttributes = []
-    //let datoms = prepareImportDatoms(newAttributes)
-    //let serverResponse = Database.submitDatoms(datoms)
-    //console.log("serverResponse", serverResponse)
-
-  //let prepareImportDatoms = newAttributesArray => newAttributesArray.map( attrObject =>  Object.entries(attrObject).filter(entry => entry[0] !== "entity" ).map( entry => newDatom(attrObject.entity, entry[0], entry[1] ) )   ).flat()

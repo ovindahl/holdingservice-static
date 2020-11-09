@@ -147,7 +147,7 @@ let headerBarView = (S) => d([
   ], {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
-let companySelectionMenuRow = (S, A) => d( S.orgNumbers.map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
+let companySelectionMenuRow = (S, A) => d( Database.getAll( 46 ).map( entity => Database.getServerEntity(entity) ).map( Entity => Database.get(Entity.entity, "eventAttribute/1005" ) ).filter( filterUniqueValues ).map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
 let pageSelectionMenuRow = (S, A) => d( ["timeline", "Rapporter", "Admin/DB", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 //"Admin/Hendelsesattributter", "Admin/Hendelsestyper", 
 
@@ -171,7 +171,8 @@ let pageRouter = {
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
 
 let sidebar_left = (S, A) => d([
-      d( S.EntityTypes
+      d( Database.getAll(47)
+        .filter( entity => ![46].includes(entity) )
         .sort( sortEntitiesAlphabeticallyByLabel )
         .map( entity => entityLabel(entity, e => A.updateLocalState(  {
           selectedEntityType : entity, 
@@ -222,7 +223,7 @@ let timelineView = (S, A) => {
 
   return d([
     d(""),
-    (S.selectedCompany.Events.length > 0)
+    (selectedCompanyEvents.length > 0)
     ? d( selectedCompanyEvents.map( event => newEventView( S, event ) ))
     : d("Noe er galt med selskapets tidslinje"),
     d("")
@@ -268,19 +269,23 @@ let reportsPage = (S, A) => {
       d([
         submitButton("<<", e => A.updateLocalState({"selectedCompanyDocVersion": 0}) ),
         submitButton("<", e => A.updateLocalState({"selectedCompanyDocVersion": Math.max(S["UIstate"].selectedCompanyDocVersion - 1, 0) })),
-        d(`${S["UIstate"].selectedCompanyDocVersion} / ${S["selectedCompany"]["t"]}`),
-        submitButton(">", e => A.updateLocalState({"selectedCompanyDocVersion": Math.min(S["UIstate"].selectedCompanyDocVersion + 1, S["selectedCompany"]["t"])})),
-        submitButton(">>", e => A.updateLocalState({"selectedCompanyDocVersion": S["selectedCompany"]["t"]})),
+        d(`${S["UIstate"].selectedCompanyDocVersion} / ${Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length}`),
+        submitButton(">", e => A.updateLocalState({"selectedCompanyDocVersion": Math.min(S["UIstate"].selectedCompanyDocVersion + 1, Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length)})),
+        submitButton(">>", e => A.updateLocalState({"selectedCompanyDocVersion": Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length})),
       ], {class: "columns_1_1_1_1_1"}),
       h3(Database.get(S["UIstate"]["selectedReport"], "entity/label")),
-      d( Database.get(S["UIstate"]["selectedReport"], "report/reportFields").map( reportField => reportFieldView(S, reportField) ) ),
+      d( Database.getCompany(Number(S["UIstate"].selectedOrgnumber))
+        .Reportfields
+        .filter( Reportfield => Reportfield.report === S["UIstate"]["selectedReport"] )
+        .filter( Reportfield => Reportfield.t === S["UIstate"].selectedCompanyDocVersion )
+        .map( Reportfield => reportFieldView(Reportfield) ) ),
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
     d("")
   ], {class: "pageContainer"})
-} 
+}
 
 
-let reportFieldView = (S, reportField) => {
+let reportFieldView = (Reportfield) => {
 
   let customReportFieldViews = {
     "5578": reportFieldView_Datoms, //Tekst
@@ -289,15 +294,12 @@ let reportFieldView = (S, reportField) => {
     "5651": reportFieldView_actors,
     "5662": reportFieldView_accountBalance,
   }
-  
 
-  let value = Database.getCompanyReportFieldValue( Number(S["UIstate"].selectedOrgnumber), reportField, S["UIstate"].selectedCompanyDocVersion )
-
-  return customReportFieldViews[reportField.attribute] 
-    ? customReportFieldViews[reportField.attribute](value)
+  return customReportFieldViews[Reportfield.attribute] 
+    ? customReportFieldViews[Reportfield.attribute](Reportfield.value)
     : d([
-      entityLabel(reportField.attribute),
-      d(JSON.stringify(value))
+      entityLabel(Reportfield.attribute),
+      d(JSON.stringify(Reportfield.value))
     ], {class: "columns_1_1"}) 
 }
 
