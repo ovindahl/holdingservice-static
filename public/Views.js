@@ -263,8 +263,6 @@ let companyDocPage = (S,A) => {
 
   let Company = Database.getCompany(Number(S["UIstate"].selectedOrgnumber))
 
-  log(Company)
-
   return d([
     d([
       d( //Left sidebar
@@ -575,7 +573,7 @@ let input_object = Datom => textArea(
 )
 
 let input_boolean = Datom => input(
-  {value: log(Datom, "A").value ? "1" : "0", style: `text-align: right;`}, 
+  {value: Datom.value ? "1" : "0", style: `text-align: right;`}, 
   "change", 
   async e => await Database.updateEntity(Datom.entity, Datom.attribute,  submitInputValue(e) === "1" ? true : false )
 )
