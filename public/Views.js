@@ -161,7 +161,7 @@ let generateHTMLBody = (S, A) => [
 
 let pageRouter = {
   "timeline": (S, A) => timelineView(S, A),
-  "Rapporter": (S, A) => reportsPage( S, A ),
+  "Rapporter": (S, A) => companyDocPage( S, A ),
   "Admin/DB": (S, A) => adminPage( S, A ),
   "Admin/Hendelsesattributter": (S, A) => eventAttributesPage( S, A ),
   "Admin/Hendelsestyper": (S, A) => eventTypesPage( S, A ),
@@ -256,6 +256,56 @@ let newEventView =  (S, entity) => {
       )
     )
   ], {class: "feedContainer"} )
+
+}
+
+let companyDocPage = (S,A) => {
+
+  let Company = Database.getCompany(Number(S["UIstate"].selectedOrgnumber))
+
+  log(Company)
+
+  return d([
+    d([
+      d( //Left sidebar
+        Database.getAll( 50 ).map( entity => entityLabel(entity, e => A.updateLocalState({selectedCompanyDocEntityType: entity} )) )
+        ),
+      d(
+        Company.Entities 
+          .filter( Entity => Entity[29] === S["UIstate"]["selectedCompanyDocEntityType"]  ) 
+          .map( Entity => d( 
+            String(Entity.entity), 
+            {class: Entity.entity === S["UIstate"].selectedCompanyDocEntity ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, 
+            "click", 
+            e => A.updateLocalState({selectedCompanyDocEntity: Entity.entity} )
+            )
+            )
+        )
+    ], {class: "columns_1_1"}),
+    d([
+      /* d([
+        submitButton("<<", e => A.updateLocalState({"selectedCompanyDocVersion": 0}) ),
+        submitButton("<", e => A.updateLocalState({"selectedCompanyDocVersion": Math.max(S["UIstate"].selectedCompanyDocVersion - 1, 0) })),
+        d(`${S["UIstate"].selectedCompanyDocVersion} / ${Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length}`),
+        submitButton(">", e => A.updateLocalState({"selectedCompanyDocVersion": Math.min(S["UIstate"].selectedCompanyDocVersion + 1, Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length)})),
+        submitButton(">>", e => A.updateLocalState({"selectedCompanyDocVersion": Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length})),
+      ], {class: "columns_1_1_1_1_1"}), */
+
+      d( 
+        Object.keys(Company.Entities.find( Entity => Entity.entity === S["UIstate"].selectedCompanyDocEntity ))
+        .filter( key => !["entity", "t"].includes(key))
+        .map( key => Number(key))
+        .map( attribute => d([
+          entityLabel(attribute),
+          input( 
+            {value: Company.get(S["UIstate"].selectedCompanyDocEntity, attribute), style: ``, disabled: "disabled"},
+          )
+        ], {class: "columns_1_1"}) )
+        )
+
+    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    d("")
+  ], {class: "pageContainer"})
 
 }
 

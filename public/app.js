@@ -238,6 +238,14 @@ const Database = {
           }
         }).sort( (datomA, datomB) => datomA.entity - datomB.entity )
         Company.Datoms = Company.Datoms.concat(eventDatoms)
+
+        Company.Entities = Object.values(Company.Datoms.reduce( (Entities, Datom) => mergerino(
+          Entities,
+          createObject(Datom.entity, {entity: Datom.entity, t: Datom.t}),
+          createObject(Datom.entity, createObject(Datom.attribute, Datom.value ))
+        ), [] ));
+
+
         Company.getDatom = (entity, attribute) => Company.Datoms
           .filter( Datom => Datom.entity === entity )
           .filter( Datom => Datom.attribute === attribute )
@@ -255,6 +263,9 @@ const Database = {
         Company.id = id => Company.idents[id]
 
         Company.getEntityValueFromID = (id, attribute) => Company.get( Company.id(id), attribute )
+
+        Company.getAccountBalance = accountNumber => `[Saldobalanse for ${accountNumber}]`
+        Company.sumAccountBalance = accountNumbers => `[Saldobalanse for ${accountNumbers}]`
 
         Company.latestEntityID = Company.Datoms
             .map( Datom => Datom.entity )
@@ -295,7 +306,7 @@ const Database = {
         orgNumber: orgNumber,
         events: companyEvents,
         Datoms: [],
-        Entities: {},
+        Entities: [],
         Reportfields: [],
         latestEntityID: 0,
         idents: {}
