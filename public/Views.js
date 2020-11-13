@@ -379,18 +379,28 @@ let datomView = (entity, attribute, version) => {
   } 
 
 
+  let view = {}
 
-  return isUndefined(Datom)
-  ? d([
-    entityLabel( attribute ),
-    input_undefined( entity, attribute )
-  ], {class: "columns_1_1"})
-  : [37, 38, 39].includes(Database.get(Database.attr(Datom.attribute), "attribute/valueType"))
-    ? genericValueTypeViews[ Datom.valueType  ]( Datom )
-    : d([
-      entityLabel( Database.attr(Datom.attribute) ),
-      genericValueTypeViews[ Database.get(Database.attr(Datom.attribute), "attribute/valueType")  ]( Datom )
+  try {
+
+    view = isUndefined(Datom)
+    ? d([
+      entityLabel( attribute ),
+      input_undefined( entity, attribute )
     ], {class: "columns_1_1"})
+    : [37, 38].includes(Database.get(Database.attr(Datom.attribute), "attribute/valueType"))
+      ? genericValueTypeViews[ Datom.valueType  ]( Datom )
+      : d([
+        entityLabel( Database.attr(Datom.attribute) ),
+        genericValueTypeViews[ Database.get(Database.attr(Datom.attribute), "attribute/valueType")  ]( Datom )
+      ], {class: "columns_1_1"})
+    
+  } catch (error) {
+    view = d(error)
+  }
+
+
+  return view
 }
 
 let input_undefined = (entity, attribute) => input(
