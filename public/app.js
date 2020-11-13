@@ -177,9 +177,19 @@ const Database = {
     if(isUndefined(selectedDatom)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Datom does not exist`)}
     selectedDatom.attr = Database.attr(selectedDatom.attribute)
     selectedDatom.valueType = Database.getServerEntity(selectedDatom.attr).current["attribute/valueType"] //Should not need validation?
+    return selectedDatom
+  },
+  getOptions: (entity, attribute, version) => {
+    let selectedDatom = Database.getServerDatom(entity, attribute, version)
+    if(isUndefined(selectedDatom)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Datom does not exist`)}
+    selectedDatom.attr = Database.attr(selectedDatom.attribute)
+    selectedDatom.valueType = Database.getServerEntity(selectedDatom.attr).current["attribute/valueType"] //Should not need validation?
     if([32, 37].includes(selectedDatom.valueType)){
-      try {selectedDatom.options = new Function( "Database" , Database.get(Database.attr(selectedDatom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )} 
-      catch (error) {selectedDatom.options = log([], error)}
+      try {
+        let optionObjects = new Function( ["Database"] , Database.get(Database.attr(selectedDatom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )
+        //Should return array of [{value: x, label: y}]
+        return optionObjects
+      } catch (error) {return log([], error)}
     }
     return selectedDatom
   },
@@ -246,16 +256,32 @@ const Database = {
         ), [] ));
 
 
-        Company.getDatom = (entity, attribute) => Company.Datoms
+        Company.getDatom = (entity, attribute, t) => Company.Datoms
           .filter( Datom => Datom.entity === entity )
           .filter( Datom => Datom.attribute === attribute )
-          .filter( Datom => Datom.t <= t )
+          .filter( Datom => isDefined(t) ? Datom.t <= t : true )
           .slice( -1 )[0]
 
-        Company.get = (entity, attribute) => Company.getDatom(entity, attribute).value
+        Company.get = (entity, attribute, t) => Company.getDatom(entity, attribute, t).value
+
+        Company.getAll = (entityType, t) => Company.Entities
+          .filter( companyEntity => companyEntity["19"] === entityType )
+          .filter( Datom => isDefined(t) ? Datom.t <= t : true )
+          .map( companyEntity => companyEntity.entity )
+
+        Company.getOptions = (attribute, t) => {
+
+          let options = [];
+
+          try {options = new Function( ["Database", "Company", "t"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Database, Company, t )} 
+          catch (error) { log(error) }
+
+          return options
+
+        }
 
         Company.idents = mergeArray( Company.Datoms
-          .filter( Datom => isDefined( Company.getDatom(Datom.entity, 29) )   )
+          .filter( Datom => isDefined( Company.getDatom(Datom.entity, 19) )   )
           .filter( Datom => [1112, 1131, 1080, 1086, 1097, 1137].includes( Datom.attribute ) )
           .map( Datom => createObject(Datom.value, Datom.entity) )
           )
@@ -271,35 +297,6 @@ const Database = {
             .map( Datom => Datom.entity )
             .sort( (a, b) => a - b )
             .slice( -1 )[0]
-
-        Company.Reportfields = Database.getAll( 49 )
-        .map( report => Database.get(report, "report/reportFields").map( reportField => mergerino(reportField, {report}) ) ).flat()
-        .reduce( (Reportfields, reportField) => {
-
-            let prevReportField = Company.Reportfields
-              .filter( ReportField => ReportField.report === reportField.report )
-              .filter( ReportField => ReportField.attribute === reportField.attribute )
-              .slice( -1 )[0]
-
-            let value;
-            try {value = new Function( [`Company`], reportField["value"] )( Company )} 
-            catch (error) {value = "ERROR"}
-            return (prevReportField && prevReportField ? value === prevReportField.value : false )
-              ? Reportfields
-              :  Reportfields.concat({
-                report: reportField.report, 
-                attribute: reportField.attribute, 
-                function: reportField.value,
-                value: value,
-                t: t
-              })
-        }, Company.Reportfields )
-
-        Company.getReportField = (report, attribute) => Company.Reportfields
-          .filter( Reportfield => Reportfield.report === report )
-          .filter( Reportfield => Reportfield.attribute === attribute )
-          .slice( -1 )[0]
-
 
         return Company
       } , {
@@ -501,10 +498,10 @@ let updateCompanyMethods = Company => {
 
   let companyEntities = Object.values(Company.Entities)
 
-  Company.accounts = companyEntities.filter( Entity => Entity[29] === 5637  ).map(  Entity => Entity[1653] ).filter( filterUniqueValues )
+  Company.accounts = companyEntities.filter( Entity => Entity[19] === 5672  ).map(  Entity => Entity[1653] ).filter( filterUniqueValues )
   
   Company.accountBalanceObject = mergeArray( Company.accounts.map( accountEntity => createObject(accountEntity, companyEntities
-    .filter( Entity => Entity[29] === 5637  )
+    .filter( Entity => Entity[19] === 5672  )
     .filter( Entity => Entity[1653] === accountEntity  )
     .reduce( (Sum, recordEntity) => Sum + recordEntity[1083], 0  )  ) )   )
 
