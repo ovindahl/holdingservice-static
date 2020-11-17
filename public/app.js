@@ -407,6 +407,7 @@ let update = ( S ) => {
     
     console.log("State: ", S)
     let A = getUserActions(S, Database)
+    Admin.A = A;
 
     let startTime = Date.now()
     S.elementTree = generateHTMLBody(S, A )
@@ -432,6 +433,7 @@ sideEffects.configureClient();
 
 let Admin = {
     S: null,
+    A: null,
     updateClientRelease: (newVersion) => sideEffects.APIRequest("POST", "updateClientRelease", JSON.stringify({"clientVersion": newVersion})),
     resetServer: () => sideEffects.APIRequest("GET", "resetServer", null),
 }
