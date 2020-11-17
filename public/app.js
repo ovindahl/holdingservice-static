@@ -26,6 +26,7 @@ const Database = {
   updateEntity: async (entity, attribute, value) => {
 
     let valueType = Database.get( Database.attr(attribute), "attribute/valueType")
+
     let isValid_existingEntity = Database.Entities.map( E => E.entity).includes(entity)
     let isValid_valueType = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") ) ( value )
     let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attribute), "attribute/validatorFunctionString") ) ( value )
@@ -104,7 +105,7 @@ const Database = {
     Database.recalculateCompanies()
     update( Database.S )
   },
-  createEvent: (eventType, orgNumber, eventIndex) => {
+  createEvent: (eventType, orgNumber, eventIndex, parentProcess) => {
 
     let eventTypeAttributes = Database.get(eventType, "eventType/eventAttributes" )
     let eventTypeDatoms = eventTypeAttributes.map( attribute => {
@@ -113,14 +114,15 @@ const Database = {
       let value = func(Database)
       let Datom = newDatom("newEntity", Database.attrName(attribute), value )  
       return Datom
-    } ).filter( Datom => Datom.attribute !== "eventAttribute/1000" )
+    } ).filter( Datom => Datom.attribute !== "eventAttribute/1000" ).filter( Datom => Datom.attribute !== "event/process" )
     let Datoms = [
       newDatom("newEntity", "event/eventTypeEntity", eventType),
       newDatom("newEntity", "eventAttribute/1005", orgNumber),
       newDatom("newEntity", "eventAttribute/1000", eventIndex),
+      newDatom("newEntity", "event/process", parentProcess),
     ].concat(eventTypeDatoms)
     if(Datoms.every( Datom => isString(Datom.entity) && isString(Datom.attribute) && !isUndefined(Datom.value) )){Database.createEntity(46, Datoms)}else{log("Datoms not valid: ", Datoms)}
-  } ,
+  },
   retractEntity: async entity => {
     let Datoms = Database.getServerEntity(entity).Datoms
     let activeDatoms = Datoms.filter( Datom => Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
@@ -193,7 +195,9 @@ const Database = {
     }
     return selectedDatom
   },
-  get: (entity, attribute, version) => Database.getServerDatom(entity, attribute, version).value,
+  get: (entity, attribute, version) => isUndefined(attribute) 
+    ? Database.getServerEntity(entity)
+    : Database.getServerDatom(entity, attribute, version).value,
   getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity),
   selectEntity: entity => update( mergerino(Database.S, {"UIstate": {"selectedEntity": entity}})  ),
   getEvent: entity => {
@@ -225,6 +229,7 @@ const Database = {
         let Event = Database.getEvent(event);
 
         let t = index + 1
+        Company.t = t;
 
         let Q = {
           latestEntityID: () => Company.latestEntityID,
@@ -255,6 +260,7 @@ const Database = {
           createObject(Datom.entity, createObject(Datom.attribute, Datom.value ))
         ), [] ));
 
+        
 
         Company.getDatom = (entity, attribute, t) => Company.Datoms
           .filter( Datom => Datom.entity === entity )

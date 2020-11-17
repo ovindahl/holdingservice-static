@@ -148,8 +148,7 @@ let headerBarView = (S) => d([
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
 let companySelectionMenuRow = (S, A) => d( Database.getAll( 46 ).map( entity => Database.getServerEntity(entity) ).map( Entity => Database.get(Entity.entity, "eventAttribute/1005" ) ).filter( filterUniqueValues ).map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
-let pageSelectionMenuRow = (S, A) => d( ["timeline", "Rapporter", "Admin/DB", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
-//"Admin/Hendelsesattributter", "Admin/Hendelsestyper", 
+let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Hendelseslogg", "Rapporter", "Admin/DB", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -158,9 +157,9 @@ let generateHTMLBody = (S, A) => [
   pageRouter[ S["UIstate"].currentPage ]( S, A ),
 ]
 
-
 let pageRouter = {
-  "timeline": (S, A) => timelineView(S, A),
+  "Prosesser": (S, A) => processesView(S, A),
+  "Hendelseslogg": (S, A) => timelineView(S, A),
   "Rapporter": (S, A) => companyDocPage( S, A ),
   "Admin/DB": (S, A) => adminPage( S, A ),
   "Admin/Entitet": (S, A) => adminEntityView( S["UIstate"]["selectedEntity"] ),
@@ -169,7 +168,7 @@ let pageRouter = {
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
 
 let sidebar_left = (S, A) => d([
-      d( [42, 43, 44, 45, 47, 5030, 5590, 5612]
+      d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687]
         .map( entity => entityLabel(entity, e => A.updateLocalState(  {
           selectedEntityType : entity, 
           selectedCategory: null,
@@ -193,7 +192,6 @@ let sidebar_left = (S, A) => d([
           .map( entity => entityLabel( entity, e => Database.selectEntity(entity) ))
         )
   ], {style: "display:flex;"})
-
 
 let newDatomsView = Datoms => d([
   h3("Nye selskapsdatomer generert av hendelsen:"),
@@ -225,7 +223,6 @@ let timelineView = (S, A) => {
     d("")
   ], {class: "pageContainer"})
 } 
-
 
 let newEventView =  (S, entity) => {
   
@@ -344,6 +341,122 @@ let entityView = entity => {
   ]) 
 } 
 
+//Processes view
+
+let processesView = ( S , A ) => {
+
+  let Company = Database.getCompany(Number(S["UIstate"].selectedOrgnumber))
+
+  let selectedProcess = Database.getServerEntity(Number(S["UIstate"].selectedProcess))
+
+  return d([
+    d([
+      d( //Left sidebar
+        Database.getAll(5692)
+        .map( entity => entityLabel(entity, e => A.updateLocalState({selectedProcess: entity} )) )
+        )
+    ], {class: "columns_1_1"}),
+    processView( S , A ,selectedProcess.entity)
+  ], {class: "pageContainer"})
+
+}
+
+
+let processView =  (S , A, entity) => {
+
+  let Company = Database.getCompany(Number(S["UIstate"].selectedOrgnumber))
+  let selectedProcess = Database.get(entity)
+  
+
+  let selectedStep = isDefined(Database.getLocalState(entity).step)
+    ? Database.getLocalState(entity).step
+    : 0
+
+
+  
+
+  let processType = Database.get(entity, "process/processType")
+  let processTypeEvents = Database.get(processType, 5688)
+  let processTypeEventTypes = processTypeEvents.map( obj =>  Number( Object.keys(obj)[0] ) )
+
+
+  let processEvents = Database.getAll(46)
+    .filter( event => Database.get(event).current["event/process"] === entity )
+
+  let selectedEvent = processEvents[selectedStep]
+  let selectedEventType = processTypeEventTypes[selectedStep]
+
+  let acceptsMultiple = mergeArray( processTypeEvents )[Database.get(selectedEvent, "event/eventTypeEntity")]
+
+  console.log({processEvents, processTypeEvents, selectedStep, selectedEvent, acceptsMultiple})
+
+
+  
+
+  
+
+  return (isNull(entity) || isUndefined( Database.getServerEntity(entity) ))
+  ? d("Ingen prosess valgt.", {class: "feedContainer"})
+  : d([
+      h3( Database.get(entity, "entity/label")),
+      d([
+        entityLabel(5687),
+        entityLabel(processType),
+      ], {class: "columns_1_1"}),
+      //entityView(entity),
+      d([
+        d([span( `Steg`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
+        d([
+          (selectedStep > 0 )
+            ? submitButton("<", e => Database.setLocalState(entity, {step: selectedStep - 1}))
+            : d("["),
+          d( processTypeEventTypes.map( e => (e === selectedEventType ) 
+            ? entityLabel( e )
+            : d( Database.get( e, "entity/label" ) )
+              ), {style: "display: grid;"} ),
+          
+          (selectedStep < processTypeEventTypes.length - 1)
+            ? submitButton(">", e => Database.setLocalState(entity, {step: selectedStep + 1}))
+            : d("]")
+          
+        ], {class: "columns_1_2_1"}),
+      ], {class: "columns_1_2_1"}),
+      acceptsMultiple
+       ? multipleEventsView(S, log(entity, "1"), processEvents.filter( event => Database.get(event, "event/eventTypeEntity") === selectedEventType  )  )
+       : singleEventView(S, processEvents.find( event => Database.get(event, "event/eventTypeEntity") === selectedEventType  ) )
+    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
+}
+
+let singleEventView =  (S, entity) => {
+  
+  let eventType = Database.get(entity, "event/eventTypeEntity")
+
+  return d([
+    h3( Database.get(eventType, "entity/label") ),
+    d( Database.get(eventType, "eventType/eventAttributes").map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx ))),
+  ], {class: "feedContainer"} )
+
+}
+
+let multipleEventsView =  (S, parentProcess, entities ) => d([
+  h3( Database.get(Database.get(entities[0], "event/eventTypeEntity"), "entity/label") ),
+  d(entities.map( entity => d( Database.get( Database.get(entity, "event/eventTypeEntity") , "eventType/eventAttributes").map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx )), {class: "feedContainer"} ) )),
+  submitButton("Legg til", e => {
+
+    Database.createEvent( 
+      Database.get(entities[0], "event/eventTypeEntity"), 
+      Number(S["UIstate"].selectedOrgnumber), 
+      entities.map( entity => Database.get(entity, 1000) ).sort()[0],
+      log(parentProcess, "2")
+      )
+
+
+  }  )
+],{class: "feedContainer"} ) 
+
+
+// End ----
+
 //Entity view
 
 let adminEntityView = entity => {
@@ -374,9 +487,11 @@ let datomView = (entity, attribute, version) => {
     "35": input_object, //Objekt
     "36": input_boolean, //Bool
     "38": input_datomConstructor, //valueTypeView_newDatoms,
+    "39": input_eventConstructor, //valueTypeView_newDatoms,
     "40": input_object, //valueTypeView_staticDropdown,
     "41": input_singleCompanyEntity, //valueTypeView_companyEntityDropdown,    
   } 
+  
 
 
   let view = {}
@@ -388,7 +503,7 @@ let datomView = (entity, attribute, version) => {
       entityLabel( attribute ),
       input_undefined( entity, attribute )
     ], {class: "columns_1_1"})
-    : [37, 38].includes(Database.get(Database.attr(Datom.attribute), "attribute/valueType"))
+    : [37, 38, 39].includes(Database.get(Database.attr(Datom.attribute), "attribute/valueType"))
       ? genericValueTypeViews[ Datom.valueType  ]( Datom )
       : d([
         entityLabel( Database.attr(Datom.attribute) ),
@@ -406,7 +521,7 @@ let datomView = (entity, attribute, version) => {
 let input_undefined = (entity, attribute) => input(
   {value: "", style: `background-color: #de171761;`},
   "change", 
-  async e => await Database.updateEntity(entity, attribute,  submitInputValue(e) )
+  async e => await Database.updateEntity(entity, attribute, Number.isNaN( Number(submitInputValue(e)) ) ? submitInputValue(e) : Number(submitInputValue(e))  )
 )
 
 let input_text = Datom => input(
@@ -496,6 +611,53 @@ let input_datomConstructor = Datom => {
     submitButton("Legg til", async e => await Database.updateEntity(Datom.entity, Datom.attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1000, value: `return ''` })  ))
   ])
 
+}
+
+
+
+
+let input_eventConstructor = Datom => {
+
+  
+
+  console.log(Datom)
+
+  let eventConstructors = Datom.value
+
+  /* eventConstructors = [
+    {
+      step: 1,
+      eventType: 5000,
+      attributeAssignments: {
+        1001: "return ''"
+      }
+    }
+  ] */
+
+  return d([
+    d(eventConstructors.map( (eventConstructor, index) => d([
+      d([
+        entityLabel(43),
+        dropdown(eventConstructor.eventType,  Database.getAll(43).map( e => returnObject({value: e, label: Database.get(e, "entity/label") }) ), async e => {
+          let eventType = Number(submitInputValue(e))
+          let attributeAssignments = mergeArray(Database.get(eventType, "eventType/eventAttributes").map( attr => createObject(attr, "return processStep.getThisAttribute();" ) ))
+          let updatedEventConstructor = {eventType, attributeAssignments}
+          await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(eventConstructors, {[index]:updatedEventConstructor}) )
+        } )
+      ], {class: "columns_1_1"}),
+      d(Database.get(eventConstructor.eventType, "eventType/eventAttributes").map( attr => d([
+          entityLabel(attr),
+          textArea(eventConstructor.attributeAssignments[attr], {class:"textArea_code"}, async e => {
+            let updatedAttributeAssignment = {[attr]: submitInputValue(e)}
+            let updatedEventConstructor = mergerino(eventConstructor, {attributeAssignments: mergerino(eventConstructor.attributeAssignments, updatedAttributeAssignment) }  )
+            let updatedEventConstructors = mergerino(eventConstructors, {[index]: updatedEventConstructor})
+            await Database.updateEntity(Datom.entity, Datom.attribute, updatedEventConstructors )
+          } ),
+        ], {class: "columns_1_1"}) )),
+      submitButton("[Slett]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, eventConstructors.filter( (d, i) => i !== index  )  )),
+    ], {class: "feedContainer"}) )),
+    submitButton("Legg til hendelse i dette steget", async e => await Database.updateEntity(Datom.entity, Datom.attribute, eventConstructors.concat({eventType: 5000, attributeAssignments: mergeArray(Database.get(5000, "eventType/eventAttributes").map( attr => createObject(attr, "return processStep.getThisAttribute();" ) ))  })  ))
+  ])
 }
 
 
