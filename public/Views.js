@@ -363,42 +363,47 @@ let processesView = ( S , A ) => {
 
 }
 
+let processProgressView = (S, A, entity) => {
+
+  let selectedStep = isDefined(Database.getLocalState(entity).step)
+    ? Database.getLocalState(entity).step
+    : 0
+
+  let processSteps = Database.get(Database.get(entity, "process/processType"), "attribute/1605528219674")  
+
+  return d([
+    d([span( `Steg`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
+    d([
+      (selectedStep > 0 ) ? submitButton("<", e => Database.setLocalState(entity, {step: selectedStep - 1})) : d("["),
+      d( processSteps.map( (processStep, index) => (index === selectedStep ) 
+        ? entityLabel( processStep.eventType )
+        : d( processStep.stepName )
+          ), {style: "display: grid;"} ),
+      
+      (selectedStep < processSteps.length - 1) ? submitButton(">", e => Database.setLocalState(entity, {step: selectedStep + 1})) : d("]")
+      
+    ], {class: "columns_1_2_1"}),
+  ], {class: "columns_1_2_1"})
+} 
+
 
 let processView =  (S , A, entity) => {
 
-  let Company = Database.getCompany(Number(S["UIstate"].selectedOrgnumber))
 
   let selectedProcess = Database.get(entity)
-  
+  let processType = Database.get(entity, "process/processType")
 
   let selectedStep = isDefined(Database.getLocalState(entity).step)
     ? Database.getLocalState(entity).step
     : 0
 
 
-  
-
-  let processType = Database.get(entity, "process/processType")
-  let processTypeEvents = Database.get(processType, 5688)
-  let processTypeEventTypes = processTypeEvents.map( obj =>  Number( Object.keys(obj)[0] ) )
-
-  console.log({selectedProcess, selectedStep, processType, processTypeEvents, processTypeEventTypes})
+  let processSteps = Database.get(Database.get(entity, "process/processType"), "attribute/1605528219674")  
+  let Step = processSteps[selectedStep]
 
 
   let processEvents = Database.getAll(46)
     .filter( event => Database.get(event).current["event/process"] === entity )
-
-  let selectedEvent = processEvents[selectedStep]
-  let selectedEventType = processTypeEventTypes[selectedStep]
-
-  let acceptsMultiple = mergeArray( processTypeEvents )[Database.get(selectedEvent, "event/eventTypeEntity")]
-
-  console.log({processEvents, processTypeEvents, selectedStep, selectedEvent, selectedEventType, acceptsMultiple})
-
-
-  
-
-  
 
   return (isNull(entity) || isUndefined( Database.getServerEntity(entity) ))
   ? d("Ingen prosess valgt.", {class: "feedContainer"})
@@ -408,27 +413,11 @@ let processView =  (S , A, entity) => {
         entityLabel(5687),
         entityLabel(processType),
       ], {class: "columns_1_1"}),
-      d([
-        d([span( `Steg`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
-        d([
-          (selectedStep > 0 )
-            ? submitButton("<", e => Database.setLocalState(entity, {step: selectedStep - 1}))
-            : d("["),
-          d( processTypeEventTypes.map( e => (e === selectedEventType ) 
-            ? entityLabel( e )
-            : d( Database.get( e, "entity/label" ) )
-              ), {style: "display: grid;"} ),
-          
-          (selectedStep < processTypeEventTypes.length - 1)
-            ? submitButton(">", e => Database.setLocalState(entity, {step: selectedStep + 1}))
-            : d("]")
-          
-        ], {class: "columns_1_2_1"}),
-      ], {class: "columns_1_2_1"}),
+      processProgressView(S, A, entity),
       br(),
-      acceptsMultiple
-       ? multipleEventsView(S, log(entity, "1"), processEvents.filter( event => Database.get(event, "event/eventTypeEntity") === selectedEventType  )  )
-       : singleEventView(S, processEvents.find( event => Database.get(event, "event/eventTypeEntity") === selectedEventType  ) )
+      Step.acceptsMultiple
+       ? multipleEventsView(S, entity, processEvents.filter( event => Database.get(event, "event/eventTypeEntity") === Step.eventType  )  )
+       : singleEventView(S, processEvents.find( event => Database.get(event, "event/eventTypeEntity") === Step.eventType  ) )
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
 }
 
@@ -640,7 +629,17 @@ let input_eventConstructor = Datom => {
   ] */
 
   return d([
+    h3("Steg i hendelsen:"),
     d(eventConstructors.map( (eventConstructor, index) => d([
+      d([
+        d("Navn på steg"),
+        input(
+          {value: eventConstructor.stepName}, 
+          "change", 
+          async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(eventConstructors, {[index]: {stepName: submitInputValue(e)} }) )
+        )
+      ], {class: "columns_1_1"}),
+      br(),
       d([
         entityLabel(43),
         dropdown(eventConstructor.eventType,  Database.getAll(43).map( e => returnObject({value: e, label: Database.get(e, "entity/label") }) ), async e => {
@@ -650,18 +649,15 @@ let input_eventConstructor = Datom => {
           await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(eventConstructors, {[index]:updatedEventConstructor}) )
         } )
       ], {class: "columns_1_1"}),
-      d(Database.get(eventConstructor.eventType, "eventType/eventAttributes").map( attr => d([
-          entityLabel(attr),
-          textArea(eventConstructor.attributeAssignments[attr], {class:"textArea_code"}, async e => {
-            let updatedAttributeAssignment = {[attr]: submitInputValue(e)}
-            let updatedEventConstructor = mergerino(eventConstructor, {attributeAssignments: mergerino(eventConstructor.attributeAssignments, updatedAttributeAssignment) }  )
-            let updatedEventConstructors = mergerino(eventConstructors, {[index]: updatedEventConstructor})
-            await Database.updateEntity(Datom.entity, Datom.attribute, updatedEventConstructors )
-          } ),
-        ], {class: "columns_1_1"}) )),
+      d([
+        d("Mulighet for >1 instans av hendelsestypen?"),
+        dropdown(eventConstructor.acceptsMultiple,  
+        [{value: false, label: "Nei"}, {value: true, label: "ja"}], 
+        async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(eventConstructors, {[index]: {acceptsMultiple: (submitInputValue(e) === "true" ? true : false) } }) ))
+      ], {class: "columns_1_1"}),
       submitButton("[Slett]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, eventConstructors.filter( (d, i) => i !== index  )  )),
     ], {class: "feedContainer"}) )),
-    submitButton("Legg til hendelse i dette steget", async e => await Database.updateEntity(Datom.entity, Datom.attribute, eventConstructors.concat({eventType: 5000, attributeAssignments: mergeArray(Database.get(5000, "eventType/eventAttributes").map( attr => createObject(attr, "return processStep.getThisAttribute();" ) ))  })  ))
+    submitButton("Legg til steg", async e => await Database.updateEntity(Datom.entity, Datom.attribute, eventConstructors.concat({eventType: 5000, stepName: "[Nytt steg uten navn]", acceptsMultiple: false  })  ))
   ])
 }
 
