@@ -119,19 +119,51 @@ let createEntityButton = entityType => submitButton("Legg til", e => Database.cr
 let entityLabel = (entity, onClick) => Database.getServerEntity(entity) 
 ? d( [
     d([
-      span( `${Database.get(entity, "entity/label")}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
+      span( `${Database.get(entity, "entity/label") ? Database.get(entity, "entity/label") : "[Visningsnavn mangler]"}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
       entityInspectorPopup(entity),], {class: "popupContainer", style:"display: inline-flex;"})
   ], {style:"display: inline-flex;"} )
 : d(`[${entity}] Entiteten finnes ikke`)
 
 
-let entityInspectorPopup = entity => d([
-  h3(`[${entity}] ${Database.get(entity, "entity/label")}`, {style: `background-color: {Entity.color}; padding: 3px;`}),
-  d("<br>"),
-  d(`Type: ${Database.get( Database.get(entity, "entity/entityType"), "entity/label") }`),
-  d(`Kategori: ${Database.get(entity, "entity/category")}`),
-  //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
-], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+let entityInspectorPopup = entity => {
+
+  let entityType = Database.get(entity, "entity/entityType")
+
+  let S = Admin.S
+
+
+  let entityAttributes = Object.keys(Database.get(entity).current).filter( key => key !== "entity" )
+
+  
+
+  let view = entityAttributes.map( attrName => d([
+      span( `${Database.get( Database.attr(attrName) , "entity/label")}`, ``, {class: "entityLabel", style: `background-color:${Database.getEntityColor(Database.attr(attrName))};`} ),
+      
+      Database.get( Database.attr(attrName) , "attribute/valueType") === 32
+        ? span( `${Database.get( Database.get( entity, attrName) , "entity/label")}`, ``, {class: "entityLabel", style: `background-color:${Database.getEntityColor(Database.get( entity, attrName))};`} )
+        : input( {value: String( Database.get( entity, attrName)  ), style: `text-align: right;`, disabled: "disabled" }   )
+    ], {class: "columns_1_1"})  )
+  
+  
+  /* (entityType === 46)
+    ? newEventView(S, entity)
+    : d([
+      h3(`[${entity}] ${Database.get(entity, "entity/label")}`, {style: `background-color: {Entity.color}; padding: 3px;`}),
+      d("<br>"),
+      d(`Type: ${Database.get( Database.get(entity, "entity/entityType"), "entity/label") }`),
+      d(`Kategori: ${Database.get(entity, "entity/category")}`),
+      //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
+    ]) */
+
+  return d([
+    h3( Database.get( entity , "entity/label") ),
+    d([
+      d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
+      d(String(entity), {style: `text-align: right;`} )
+    ], {class: "columns_1_1"}),
+    d(view)
+  ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+} 
 
 let entityRedlinedValue = (value, prevValue) => d( [
   span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
@@ -149,7 +181,7 @@ let headerBarView = (S) => d([
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
 let companySelectionMenuRow = (S, A) => d( Database.getAll( 46 ).map( entity => Database.getServerEntity(entity) ).map( Entity => Database.get(Entity.entity, "eventAttribute/1005" ) ).filter( filterUniqueValues ).map( orgnumber => d( String(orgnumber), {class: orgnumber === S["UIstate"].selectedOrgnumber ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {selectedOrgnumber : orgnumber} ) )  ).concat(submitButton( "+", e => A.createCompany() )), {style: "display:flex;"}) 
-let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Hendelseslogg", "Rapporter", "Admin/DB", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Hendelseslogg", "timeline", "Rapporter", "Admin/DB", "Admin/Entitet"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -160,7 +192,8 @@ let generateHTMLBody = (S, A) => [
 
 let pageRouter = {
   "Prosesser": (S, A) => processesView(S, A),
-  "Hendelseslogg": (S, A) => timelineView(S, A),
+  "Hendelseslogg": (S, A) => eventLogView(S, A),
+  "timeline": (S, A) => timelineView(S, A),
   "Rapporter": (S, A) => companyDocPage( S, A ),
   "Admin/DB": (S, A) => adminPage( S, A ),
   "Admin/Entitet": (S, A) => adminEntityView( S["UIstate"]["selectedEntity"] ),
@@ -223,6 +256,30 @@ let timelineView = (S, A) => {
     : d("Noe er galt med selskapets tidslinje"),
     d("")
   ], {class: "pageContainer"})
+} 
+
+let eventLogView = (S, A) => {
+
+  let selectedCompanyEvents = Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events
+
+  return d([
+    d([
+      d("#"),
+      d("Dato"),
+      d("Hendelse"),
+      d("Prosess"),
+      d("Status"),
+    ], {class: "columns_1_1_1_1_1"}),
+    d(
+      selectedCompanyEvents.map( (event, index) => d([
+        d(String(index)),
+        d( "DD/MM/YYYY" ),
+        entityLabel(event),
+        entityLabel( Database.get(event, 5708) ),
+        d("Aktiv/Kladd"),
+      ], {class: "columns_1_1_1_1_1"})  )
+    )
+  ], {class: "feedContainer"})
 } 
 
 let newEventView =  (S, entity) => {

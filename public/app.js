@@ -197,7 +197,9 @@ const Database = {
   },
   get: (entity, attribute, version) => isUndefined(attribute) 
     ? Database.getServerEntity(entity)
-    : Database.getServerDatom(entity, attribute, version).value,
+    : isDefined( Database.getServerDatom(entity, attribute, version) )
+      ? Database.getServerDatom(entity, attribute, version).value
+      : undefined,
   getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity),
   selectEntity: entity => update( mergerino(Database.S, {"UIstate": {"selectedEntity": entity}})  ),
   getEvent: entity => {
