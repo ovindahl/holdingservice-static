@@ -120,16 +120,28 @@ let entityLabel = (entity, onClick) => Database.getServerEntity(entity)
 ? d( [
     d([
       span( `${Database.get(entity, "entity/label") ? Database.get(entity, "entity/label") : "[Visningsnavn mangler]"}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
-      entityInspectorPopup(entity),], {class: "popupContainer", style:"display: inline-flex;"})
+      entityInspectorPopup_small(entity),], {class: "popupContainer", style:"display: inline-flex;"})
   ], {style:"display: inline-flex;"} )
 : d(`[${entity}] Entiteten finnes ikke`)
 
+let entityInspectorPopup_small = entity => d([
+  h3(`[${entity}] ${Database.get(entity, "entity/label")}`, {style: `background-color: {Entity.color}; padding: 3px;`}),
+  d("<br>"),
+  d(`Type: ${Database.get(entity, "entity/entityType")}`),
+  d(`Kategori: ${Database.get(entity, "entity/category")}`),
+  //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-let entityInspectorPopup = entity => {
+let entityLabel_largePopup = (entity, onClick) => Database.getServerEntity(entity) 
+? d( [
+    d([
+      span( `${Database.get(entity, "entity/label") ? Database.get(entity, "entity/label") : "[Visningsnavn mangler]"}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
+      entityInspectorPopup_large(entity),], {class: "popupContainer", style:"display: inline-flex;"})
+  ], {style:"display: inline-flex;"} )
+: d(`[${entity}] Entiteten finnes ikke`)
 
-  let entityType = Database.get(entity, "entity/entityType")
+let entityInspectorPopup_large = entity => {
 
-  let S = Admin.S
 
 
   let entityAttributes = Object.keys(Database.get(entity).current).filter( key => key !== "entity" )
@@ -144,16 +156,6 @@ let entityInspectorPopup = entity => {
         : input( {value: String( Database.get( entity, attrName)  ), style: `text-align: right;`, disabled: "disabled" }   )
     ], {class: "columns_1_1"})  )
   
-  
-  /* (entityType === 46)
-    ? newEventView(S, entity)
-    : d([
-      h3(`[${entity}] ${Database.get(entity, "entity/label")}`, {style: `background-color: {Entity.color}; padding: 3px;`}),
-      d("<br>"),
-      d(`Type: ${Database.get( Database.get(entity, "entity/entityType"), "entity/label") }`),
-      d(`Kategori: ${Database.get(entity, "entity/category")}`),
-      //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
-    ]) */
 
   return d([
     h3( Database.get( entity , "entity/label") ),
@@ -163,7 +165,7 @@ let entityInspectorPopup = entity => {
     ], {class: "columns_1_1"}),
     d(view)
   ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-} 
+}
 
 let entityRedlinedValue = (value, prevValue) => d( [
   span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
@@ -274,8 +276,8 @@ let eventLogView = (S, A) => {
       selectedCompanyEvents.map( (event, index) => d([
         d(String(index)),
         d( "DD/MM/YYYY" ),
-        entityLabel(event),
-        entityLabel( Database.get(event, 5708) ),
+        entityLabel_largePopup(event),
+        entityLabel_largePopup( Database.get(event, 5708) ),
         d("Aktiv/Kladd"),
       ], {class: "columns_1_1_1_1_1"})  )
     )
