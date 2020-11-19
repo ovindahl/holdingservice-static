@@ -104,8 +104,9 @@ const Database = {
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
     Database.recalculateCompanies()
     update( Database.S )
+    return updatedEntity
   },
-  createEvent: (eventType, orgNumber, eventIndex, parentProcess) => {
+  createEvent: (eventType, parentProcess) => {
 
     let eventTypeAttributes = Database.get(eventType, "eventType/eventAttributes" )
     let eventTypeDatoms = eventTypeAttributes.map( attribute => {
@@ -117,8 +118,6 @@ const Database = {
     } ).filter( Datom => Datom.attribute !== "eventAttribute/1000" ).filter( Datom => Datom.attribute !== "event/process" )
     let Datoms = [
       newDatom("newEntity", "event/eventTypeEntity", eventType),
-      newDatom("newEntity", "eventAttribute/1005", orgNumber),
-      newDatom("newEntity", "eventAttribute/1000", eventIndex),
       newDatom("newEntity", "event/process", parentProcess),
     ].concat(eventTypeDatoms)
     if(Datoms.every( Datom => isString(Datom.entity) && isString(Datom.attribute) && !isUndefined(Datom.value) )){Database.createEntity(46, Datoms)}else{log("Datoms not valid: ", Datoms)}
@@ -212,6 +211,20 @@ const Database = {
       companyAttribute: () => "TBD",
       account: () => "TBD",
     }
+
+    Event.isValid = () => {
+
+      let Company = Database.getCompany( Database.get( entity, "eventAttribute/1005") )
+
+      let eventValidators = Database.get( Database.get(entity, "event/eventTypeEntity"), "eventType/eventValidators" )
+
+      console.log({Event: Database.get( entity ), eventValidators})
+
+      let isValid = eventValidators.every( eventValidator => new Function( [`Database`, `Company`, `Event`], Database.get( eventValidator, "eventValidator/validatorFunctionString")  )( Database, Company, Event ) )
+
+      return isValid
+
+    } 
 
     return Event
   },
