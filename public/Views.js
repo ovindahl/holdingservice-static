@@ -284,44 +284,16 @@ let eventLogView = (S, A) => {
         d( moment( Database.get(event, "event/date") ).format("DD/MM/YYYY") ),
         entityLabel_largePopup(event),
         entityLabel_largePopup( Database.get(event, 5708) ),
-        d("[TBD]"),
+        Database.getEvent(event).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
       ], {class: "columns_1_1_1_1_1"})  )
     )
   ], {class: "feedContainer"})
 } 
 
-let newEventView =  (S, entity) => {
-  
-  let eventType = Database.get(entity, "event/eventTypeEntity")
-
-  return d([
-    h3( Database.get(eventType, "entity/label") ),
-    entityView(entity),
-    d([
-      entityLabel(27),
-      entityLabel(eventType),
-    ], {class: "columns_1_1"}),
-    d( Database.get(eventType, "eventType/eventAttributes").map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx ))),
-    d("<br>"),
-    newDatomsView( Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).Datoms.filter( datom => datom.t === Database.get(entity, "eventAttribute/1000") ) ),
-    d("<br>"),
-    retractEntityButton(entity),
-    dropdown( 0, 
-    Database.getAll(43).map( entity => returnObject({value: entity, label: Database.get(entity, "entity/label") }) ).concat({value: 0, label: "Legg til hendelse etter denne"}),
-    e => Database.createEvent( 
-      Number(submitInputValue(e)), 
-      Database.get(entity, "eventAttribute/1005"),  
-      Database.get(entity, "eventAttribute/1000") + 1,
-      Database.get(entity, 5708)
-      )
-    )
-  ], {class: "feedContainer"} )
-
-}
 
 let companyDocPage = (S,A) => {
 
-  let Company = Database.getCompany(Number(S["UIstate"].selectedOrgnumber))
+  let Company = Database.getCompany(Number(S["UIstate"].selectedCompany))
 
   return d([
     d([
@@ -498,7 +470,10 @@ let processView =  (S , A, process) => {
   return (isNull(process) || isUndefined( Database.getServerEntity(process) ))
   ? d("Ingen prosess valgt.", {class: "feedContainer"})
   : d([
-      entityLabel(process),
+      d([
+        entityLabel(5692),
+        entityLabel(process),
+      ], {class: "columns_1_1"}),
       d([
         entityLabel(5687),
         entityLabel(Database.get(process, "process/processType")),
@@ -507,9 +482,15 @@ let processView =  (S , A, process) => {
       br(),
       singleEventView(S, selectedEvent ),
       d([
-        d("Legg til hendelse:"),
-        d( allowedNextEventTypes.map( eventType => entityLabel(eventType, async e => Database.createEvent( eventType , process ) ) ) )
-      ]),
+        d("Status på hendelse"),
+        Database.getEvent(selectedEvent).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
+      ], {class: "columns_1_1"}),
+      Database.getEvent(selectedEvent).isValid()
+        ? d([
+          d("Legg til hendelse:"),
+          d( allowedNextEventTypes.map( eventType => entityLabel(eventType, async e => Database.createEvent( eventType , process ) ) ) )
+        ])
+        : d("Kan ikke legge til nye hendelser før denne hendelsen er gyldig"),
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
 }
 
@@ -523,23 +504,6 @@ let singleEventView =  (S, entity) => {
   ], {class: "feedContainer"} )
 
 }
-
-let multipleEventsView =  (S, parentProcess, entities ) => d([
-  h3( Database.get(Database.get(entities[0], "event/eventTypeEntity"), "entity/label") ),
-  d(entities.map( entity => d( Database.get( Database.get(entity, "event/eventTypeEntity") , "eventType/eventAttributes").map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx )), {class: "feedContainer"} ) )),
-  submitButton("Legg til", e => {
-
-    Database.createEvent( 
-      Database.get(entities[0], "event/eventTypeEntity"), 
-      Number(S["UIstate"].selectedOrgnumber), 
-      entities.map( entity => Database.get(entity, 1000) ).sort()[0],
-      log(parentProcess, "2")
-      )
-
-
-  }  )
-],{class: "feedContainer"} ) 
-
 
 // End ----
 
@@ -701,13 +665,10 @@ let input_datomConstructor = Datom => {
       textArea(datom.value, {class:"textArea_code"}, async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}})  )),
       submitButton("[Slett]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, datoms.filter( (d, i) => i !== index  )  )),
     ], {class: "columns_2_2_2_1"}) )),
-    submitButton("Legg til", async e => await Database.updateEntity(Datom.entity, Datom.attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1000, value: `return ''` })  ))
+    submitButton("Legg til", async e => await Database.updateEntity(Datom.entity, Datom.attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1001, value: `return ''` })  ))
   ])
 
 }
-
-
-
 
 let input_eventConstructor = Datom => {
 
@@ -754,7 +715,6 @@ let input_eventConstructor = Datom => {
   ])
 }
 
-
 let input_multipleSelect = Datom => d([
   entityLabel(Database.attr(Datom.attribute)),
   d([
@@ -775,12 +735,10 @@ let input_multipleSelect = Datom => d([
   ], {class: "eventAttributeRow"})
 ], {class: "columns_1_1"})
 
-
-
 let input_singleCompanyEntity = Datom => {
   let Company = Database.getCompany(Number(Database.S["UIstate"].selectedOrgnumber))
 
-  let t = Database.get(Datom.entity, 1000)
+  let t = 5 // Database.get(Datom.entity, 1000)
 
   let optionObjects = Company.getOptions( Database.attr(Datom.attribute), t )
   let selectedOption = optionObjects.find( Option => Option.value === Datom.value)
@@ -804,154 +762,3 @@ let input_singleCompanyEntity = Datom => {
     ) */
   ])
 } 
-
-
-
-
-//Archive
-
-/* 
-let reportsPage = (S, A) => {
-  if(isUndefined(Database.getServerEntity(S["UIstate"]["selectedReport"]) )){return d("Rapporten er ikke tilgjengelig") }
-
-  return d([
-    d( //Left sidebar
-      Database.getAll( 49 ).map( entity => entityLabel(entity, e => A.updateLocalState({selectedReport: entity} )) )),
-    d([
-      d([
-        submitButton("<<", e => A.updateLocalState({"selectedCompanyDocVersion": 0}) ),
-        submitButton("<", e => A.updateLocalState({"selectedCompanyDocVersion": Math.max(S["UIstate"].selectedCompanyDocVersion - 1, 0) })),
-        d(`${S["UIstate"].selectedCompanyDocVersion} / ${Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length}`),
-        submitButton(">", e => A.updateLocalState({"selectedCompanyDocVersion": Math.min(S["UIstate"].selectedCompanyDocVersion + 1, Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length)})),
-        submitButton(">>", e => A.updateLocalState({"selectedCompanyDocVersion": Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length})),
-      ], {class: "columns_1_1_1_1_1"}),
-      h3(Database.get(S["UIstate"]["selectedReport"], "entity/label")),
-      d( Database.getCompany(Number(S["UIstate"].selectedOrgnumber))
-        .Reportfields
-        .filter( Reportfield => Reportfield.report === S["UIstate"]["selectedReport"] )
-        .filter( Reportfield => Reportfield.t === S["UIstate"].selectedCompanyDocVersion )
-        .map( Reportfield => reportFieldView(Reportfield) ) ),
-    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-    d("")
-  ], {class: "pageContainer"})
-}
-
-
-let reportFieldView = (Reportfield) => {
-
-  let customReportFieldViews = {
-    "5578": reportFieldView_Datoms, //Tekst
-    "5579": reportFieldView_Entities,
-    "5648": reportFieldView_accountingTransactions,
-    "5651": reportFieldView_actors,
-    "5662": reportFieldView_accountBalance,
-  }
-
-  return customReportFieldViews[Reportfield.attribute] 
-    ? customReportFieldViews[Reportfield.attribute](Reportfield.value)
-    : d([
-      entityLabel(Reportfield.attribute),
-      d(JSON.stringify(Reportfield.value))
-    ], {class: "columns_1_1"}) 
-}
-
-let reportFieldView_Datoms = Datoms => d([
-  d([
-    d( "Entitet" ),
-    d( "Attributt" ),
-    d( "Verdi" ),
-    d( "Hendelse #" ),
-  ], {class: "columns_1_1_1_1"}),
-  d( isArray(Datoms) 
-      ? Datoms.map( Datom => d([
-        d( String( Datom.entity ) ),
-        entityLabel(Database.attr(Datom.attribute)),
-        d( JSON.stringify(Datom.value) ),
-        d( String( Datom.t ) ),
-      ], {class: "columns_1_1_1_1"}) )
-      : d("Error")
-    )
-])
-
-let reportFieldView_Entities = Entities => d([
-  d( isArray(Entities) 
-      ? Entities.map( Entity => d([
-      d(String( Entity.entity )),
-      d(Object.keys(Entity)
-        .filter( key => key !== "entity" && key !== "t" )
-        .map( attribute => d([
-          entityLabel( Number(attribute) ),
-          d( JSON.stringify(Entity[attribute] ) ),
-      ], {class: "columns_1_1"}) )),
-      d("<br>"),
-    ]))
-  : d("Error")
-  )
-])
-
-let reportFieldView_accountingTransactions = Entities => d([
-  d([
-    d( "Transaksjonsnr" ),
-    d( "Selskapsentitet" ),
-    d( "Konto" ),
-    d( "Beløp" ),
-    d( "Kilde (Hendelse #)" ),
-  ], {class: "columns_1_1_1_1_1"}),
-  d( isArray(Entities) 
-      ? Entities.map( (Entity, index) => d([
-        d( String(index+1) ),
-        d( String(Entity.entity) ),
-        entityLabel(Entity[1653]),
-        d( String(Entity[1083])),
-        d( String(Entity["t"]) ),
-      ], {class: "columns_1_1_1_1_1"}))
-  : d("Error")
-  )
-])
-
-let reportFieldView_accountBalance = accountBalanceObject => d([
-  d( isObject(accountBalanceObject) 
-      ? Object.entries(accountBalanceObject).map( entry => d([
-        entityLabel(Number(entry[0])),
-        d(String(entry[1])),
-    ], {class: "columns_1_1"}))
-  : d("Error")
-  )
-])
-
-
-let reportFieldView_actors = Entities => d([
-  d([
-    d( "AktørID" ),
-    d( "Selskapsentitet" ),
-    d( "Navn" ),
-    d( "Roller" ),
-    d( "Kilde (Hendelse #)" ),
-  ], {class: "columns_1_1_1_1_1"}),
-  d( isArray(Entities) 
-      ? Entities.map( (Entity, index) => d([
-        d( String(Entity[1112]) ),
-        d( String(Entity.entity) ),
-        d( String(Entity[1113]) ),
-        d( String(Entity[1113])),
-        d( String(Entity["t"]) ),
-      ], {class: "columns_1_1_1_1_1"}))
-  : d("Error")
-  )
-])
-
-
-//Report view
-
-let genericReportView = (S, A, selectedReport) => {
-  let companyReport = S["selectedCompany"].getReport(selectedReport, S["UIstate"].selectedCompanyDocVersion )
-
-  //let companyReport = Database.getCompanyReportField( Number(S["UIstate"].selectedOrgnumber), S["UIstate"].selectedCompanyDocVersion, selectedReport, reportField )
-
-  return d([
-    h3(Database.get(selectedReport, "entity/label")),
-    companyReport 
-      ? d( Database.get(selectedReport, "report/reportFields").map( reportField => reportFieldView(reportField.attribute, companyReport[reportField.attribute]) ) ) 
-      : d("Rapporten er ikke tilgjengelig")
-  ])
-}  */

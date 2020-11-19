@@ -203,54 +203,36 @@ const Database = {
   selectEntity: entity => update( mergerino(Database.S, {"UIstate": {"selectedEntity": entity}})  ),
   getEvent: entity => {
     
-    let serverEntity = Database.getServerEntity(entity)
-    let Event = {
-      userInput: attribute => serverEntity.current[Database.attrName(attribute)] ? serverEntity.current[Database.attrName(attribute)] : undefined,
-      get: attribute => serverEntity.current[Database.attrName(attribute)] ? serverEntity.current[Database.attrName(attribute)] : undefined,
-      latestEntityID: () => 0,
-      companyAttribute: () => "TBD",
-      account: () => "TBD",
-    }
+    let Event = {get: attribute => Database.get(entity, attribute)}
 
     Event.isValid = () => {
 
       let Company = Database.getCompany( Database.get( entity, "eventAttribute/1005") )
-
       let eventValidators = Database.get( Database.get(entity, "event/eventTypeEntity"), "eventType/eventValidators" )
-
-      console.log({Event: Database.get( entity ), eventValidators})
-
       let isValid = eventValidators.every( eventValidator => new Function( [`Database`, `Company`, `Event`], Database.get( eventValidator, "eventValidator/validatorFunctionString")  )( Database, Company, Event ) )
 
       return isValid
-
     } 
 
     return Event
   },
-  recalculateCompanies: () => {
+  recalculateCompanies: () => Database.Companies = Database.getAll( 5722 ).map( company => Database.createCompany(company) ),
+  createCompany: company => {
 
-    Database.Companies = Database.getAll( 46 )
-      .map( event => Database.get(event, "eventAttribute/1005") )
-      .filter( filterUniqueValues )
-      .map( orgNumber => Database.createCompany(orgNumber) )
 
-  },
-  createCompany: orgNumber => {
-    let companyEvents = Database.getAll( 46 )
-    .filter( event => Database.get(event, "eventAttribute/1005") === orgNumber )
-    .sort( (eventA, eventB) => Database.get(eventA, "eventAttribute/1000") - Database.get(eventB, "eventAttribute/1000")  )
-    let Company = companyEvents.reduce( (Company, event, index) => {
+    let companyProcesses = Database.getAll(5692)
+    .filter( e => Database.get(e, "process/company" ) === company )
+
+    let events = Database.getAll(46)
+    .filter( event => companyProcesses.includes( Database.get(event, "event/process") )  )
+    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
+
+
+    let Company = events.reduce( (Company, event, index) => {
         let Event = Database.getEvent(event);
-
         let t = index + 1
         Company.t = t;
-
-        let Q = {
-          latestEntityID: () => Company.latestEntityID,
-          account: accountNumber => Database.account(accountNumber)
-        }
-
+        let Q = {latestEntityID: () => Company.latestEntityID}
         let eventDatoms = Database.get( Database.get(event, "event/eventTypeEntity") , "eventType/newDatoms").map( datomConstructor => {
                     
           let datom;
@@ -321,18 +303,20 @@ const Database = {
 
         return Company
       } , {
-        orgNumber: orgNumber,
-        events: companyEvents,
+        entity: company,
+        events: events,
         Datoms: [],
         Entities: [],
-        Reportfields: [],
         latestEntityID: 0,
         idents: {}
       }  )
-      return Company;
+    
+    return Company;
   },
-  getCompany: orgNumber => Database.Companies.find( Company => Company.orgNumber === orgNumber ),
+  getCompany: company => Database.Companies.find( Company => Company.entity === company ),
 }
+
+let D = Database
 
 
 const sideEffects = {
@@ -419,7 +403,8 @@ let update = ( S ) => {
     Database.S = S;
     Admin.S = S;
     Admin.DB = Database
-    
+    D = Database
+
     console.log("State: ", S)
     let A = getUserActions(S, Database)
     Admin.A = A;
@@ -492,15 +477,6 @@ let init = async () => {
 
 
 
-
-
-
-
-
-
-
-
-
 //let newAttributes = []
     //let datoms = prepareImportDatoms(newAttributes)
     //let serverResponse = Database.submitDatoms(datoms)
@@ -508,210 +484,3 @@ let init = async () => {
 
   //let prepareImportDatoms = newAttributesArray => newAttributesArray.map( attrObject =>  Object.entries(attrObject).filter(entry => entry[0] !== "entity" ).map( entry => newDatom(attrObject.entity, entry[0], entry[1] ) )   ).flat()
 
-
-
-  
-let updateCompanyMethods = Company => {
-
-  Company.ids = mergeArray( Object.entries(Company.Entities)
-    .map( Entry => Object.entries(Entry[1]).map( entry => returnObject({entity: Entry[0], attribute: Number(entry[0]), value: entry[1]}) ) ).flat()
-    .filter( Datom => [1112, 1131, 1080, 1086, 1097, 1137].includes( Datom.attribute )   )
-    .map( Datom => createObject( Datom.value, Datom.entity) )
-  )
-
-  let companyEntities = Object.values(Company.Entities)
-
-  Company.accounts = companyEntities.filter( Entity => Entity[19] === 5672  ).map(  Entity => Entity[1653] ).filter( filterUniqueValues )
-  
-  Company.accountBalanceObject = mergeArray( Company.accounts.map( accountEntity => createObject(accountEntity, companyEntities
-    .filter( Entity => Entity[19] === 5672  )
-    .filter( Entity => Entity[1653] === accountEntity  )
-    .reduce( (Sum, recordEntity) => Sum + recordEntity[1083], 0  )  ) )   )
-
-  Company.getEntityFromID = id => Company.ids[id] ? Company.getEntity(Company.ids[id]) : undefined
-  Company.getEntityNumberFromID = id => Company.ids[id] ? Company.getEntity(Company.ids[id]).entity : undefined
-
-  Company.getEntityValueFromID = (id, attribute) => {
-    if(isUndefined(id)){return "Mangler id"}
-    let entity = Company.ids[id]
-    if(isUndefined(entity)){return "Aktøren finnes ikke"}
-    let Entity = Company.Entities[entity]
-    if(isUndefined(entity)){return "Aktøren finnes ikke"}
-    let value = Entity[attribute]
-    if(isUndefined(value)){return "Aktøren har ikke den forespurte attributten"}
-    return value
-  } 
-
-  Company.getEntityValueFromEntity = (entity, attribute) => Company.getEntity(entity)[attribute] ? Company.getEntity(entity)[attribute] : "Aktøren har ikke den forespurte attributten"
-
-  Company.getEntity = entity => Company.Entities[entity] ? Company.Entities[entity] : "Entiteten finnes ikke"
-  
-  Company.getAttributeValue = attribute => Company.getEntityValueFromEntity(1, attribute)
-
-  Company.getAccountEntity = accountNumber => mergeArray( Database.getAll(5030).map( entity => createObject( Database.get(entity, "entity/label").substr(0, 4), entity ) ) )[accountNumber]
-
-  Company.getAccountBalance = accountNumber => {
-    let accountEntity = Company.getAccountEntity(accountNumber)
-    return Company.accountBalanceObject[accountEntity] ? Company.accountBalanceObject[accountEntity] : 0;
-  }
-
-  Company.sumAccountBalance = accountNumbers => accountNumbers.reduce( (sum, accountNumber) => sum + Company.getAccountBalance(accountNumber), 0 )
-
-  Company.getLatestEntityID = () => Number(Object.keys(Company.Entities)[ Object.keys(Company.Entities).length - 1 ])
-  Company.getVersion = t => Company.previousVersions.filter( Company => Company.t === t  )[0]
-
-  Company.getReport = (report, t) => mergeArray( Database.get(report, "report/reportFields").map( reportField => {
-
-    
-
-    let selectedCompanyVersion = ( typeof t === "undefined" || t === Company.t ) ? Company : Company.getVersion(t)
-
-
-    let reportFunction = new Function( [`Company`], reportField["value"] )
-          let calculatedReport;
-          try {
-            calculatedReport = reportFunction( selectedCompanyVersion )
-            
-          } catch (error) {
-            console.log("reportFunction error", error, Company, reportField )
-            calculatedReport = undefined
-          }
-
-    return createObject(reportField.attribute, calculatedReport ) 
-  }))
-
-  Company.getEntities = (filterFunction) => Object.values(Company.Entities).filter( filterFunction )
-  
-
-  return Company
-}
-
-let constructEvents = Events => {
-
-  let initialCompany = {
-    t: 0,
-    Events: Events,
-    Datoms: [],
-    Entities: {
-      "1": {}
-    },
-    previousVersions: [],
-    isValid: true
-  }
-
-  let Company = initialCompany
-
-  try {
-
-    Company = Events.reduce( (Company, Event) => {
-
-      let t = Company.t + 1 
-  
-      let eventType = Database.get(Event.entity, "event/eventTypeEntity")
-  
-      let isApplicable = [
-        (Company, Event) => Company.isValid,
-        (Company, Event) => Database.get(eventType, "eventType/eventAttributes").every( attribute =>  new Function(`inputValue`, Database.get( attribute, "attribute/validatorFunctionString") )( Database.get(Event.entity, attribute ) ) ),
-        (Company, Event) => Database.get(eventType, "eventType/eventValidators").every( eventValidator =>  new Function([`Q`], Database.get(eventValidator, "eventValidator/validatorFunctionString")( Company ) )),
-      ].every( validatorFunction => validatorFunction(Company, Event) )
-  
-  
-      if(isApplicable){
-  
-        let Q = {
-          account: accountNumber => Company.getAccountEntity(accountNumber),
-          userInput: attribute => Database.get(Event.entity, attribute ),
-          getActorEntity: actorID => Object.values(Company.Entities)
-            .filter( Entity => Object.keys(Entity).includes("1112")  )
-            .filter( Entity => Entity["1112"] === actorID  )
-            [0].entity,
-          getEntityFromID: id => Company.getEntityFromID(id),
-          getEntityValueFromID: (id, attribute) => Company.getEntityValueFromID(id, attribute),
-          get: attribute => Database.get(Event.entity, attribute ),
-          companyAttribute: attribute => Company.getAttributeValue(attribute),
-          latestEntityID: () => Company.getLatestEntityID(),
-        }
-
-        let dbObject = {
-          account: accountNumber => Company.getAccountEntity(accountNumber),
-        }
-
-        let eventObject = {
-          userInput: attribute => Database.get(Event.entity, attribute ),
-          get: attribute => Database.get(Event.entity, attribute ),
-        }
-
-        let companyObject = {
-          getActorEntity: actorID => Object.values(Company.Entities)
-            .filter( Entity => Object.keys(Entity).includes("1112")  )
-            .filter( Entity => Entity["1112"] === actorID  )
-            [0].entity,
-          getEntityFromID: id => Company.getEntityFromID(id),
-          getEntityNumberFromID: id => Company.getEntityNumberFromID(id),
-          getEntityValueFromID: (id, attribute) => Company.getEntityValueFromID(id, attribute),
-          get: (entity, attribute) => Company.getEntity(entity)[attribute],
-          companyAttribute: attribute => Company.getAttributeValue(attribute),
-          latestEntityID: () => Company.getLatestEntityID()
-        }
-  
-        let eventDatoms = Database.get(eventType, "eventType/newDatoms").map( datomConstructor => {
-
-          let entityFunction = new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )
-          let calculatedEntity;
-          try {
-            calculatedEntity = entityFunction( Q, dbObject, companyObject, eventObject )
-            
-          } catch (error) {
-            console.log("entityFunction error", error, Event, datomConstructor )
-            calculatedEntity = undefined
-          }
-
-          let valueFunction = new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["value"] )
-          let calculatedValue;
-          try {
-            calculatedValue = valueFunction( Q, dbObject, companyObject, eventObject )
-            
-          } catch (error) {
-            console.log("valueFunction error", error, Event, datomConstructor )
-            calculatedValue = undefined
-          }
-          
-          return returnObject({
-            "entity": calculatedEntity,
-            "attribute": datomConstructor.attribute,
-            "value": calculatedValue,
-            "t": t
-          })
-        } 
-        )
-  
-        let Entities = eventDatoms.reduce( (updatedEntities, datom) => mergerino(
-          updatedEntities,
-          createObject(datom.entity, {entity: datom.entity, t: datom.t}),
-          createObject(datom.entity, createObject(datom.attribute, datom.value ))
-        ), Company.Entities )
-  
-        let updatedCompany = {
-          t: t,
-          Events: Company.Events,
-          Datoms: Company.Datoms.concat(eventDatoms),
-          Entities: Entities,
-          previousVersions: Company.previousVersions.concat(Company),
-          isValid: true
-        }
-  
-        return updateCompanyMethods(updatedCompany);
-  
-      }else{return mergerino(Company, {isValid: false}) }
-  
-    }, updateCompanyMethods(Company) )
-    
-  } catch (error) {
-    console.log(error)
-  }
-
-  
-
-  return Company
-
-}
