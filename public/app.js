@@ -267,7 +267,9 @@ const Database = {
           .filter( Datom => isDefined(t) ? Datom.t <= t : true )
           .slice( -1 )[0]
 
-        Company.get = (entity, attribute, t) => Company.getDatom(entity, attribute, t).value
+        Company.get = (entity, attribute, t) => isDefined(Company.getDatom(entity, attribute, t))
+          ? Company.getDatom(entity, attribute, t).value
+          : undefined
 
         Company.getAll = (entityType, t) => Company.Entities
           .filter( companyEntity => companyEntity["19"] === entityType )
@@ -295,8 +297,16 @@ const Database = {
 
         Company.getEntityValueFromID = (id, attribute) => Company.get( Company.id(id), attribute )
 
-        Company.getAccountBalance = accountNumber => `[Saldobalanse for ${accountNumber}]`
-        Company.sumAccountBalance = accountNumbers => `[Saldobalanse for ${accountNumbers}]`
+        Company.getAccountBalance = accountNumber => Company.getAll( 5672 )
+          .filter( e => isNumber( Company.get(e, 1653) ) )
+          .filter( e => Company.get(e, 1653) === Database.account(accountNumber) )
+          .reduce( (sum, e) => sum + Company.get(e, 1083), 0 )
+
+
+        Company.sumAccountBalance = accountNumbers => Company.getAll( 5672 )
+        .filter( e => isNumber( Company.get(e, 1653) ) )
+        .filter( e => accountNumbers.map( accountNumber => Database.account(accountNumber)  ).includes( Company.get(e, 1653) )  )
+        .reduce( (sum, e) => sum + Company.get(e, 1083), 0 )
 
         Company.latestEntityID = Company.Datoms
             .map( Datom => Datom.entity )
