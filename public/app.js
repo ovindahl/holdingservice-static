@@ -414,11 +414,8 @@ let update = ( S ) => {
     
     
     S.elementTree = generateHTMLBody(S, A )
-    log("AA")
     sideEffects.updateDOM( S.elementTree )
-    log("BB")
     
-
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 
 
