@@ -119,7 +119,7 @@ let createEntityButton = entityType => submitButton("Legg til", e => Database.cr
 let entityLabel = (entity, onClick) => Database.getServerEntity(entity) 
 ? d( [
     d([
-      span( `${Database.get(entity, "entity/label") ? Database.get(entity, "entity/label") : "[Visningsnavn mangler]"}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
+      span( `${Database.get(entity, "entity/label") ? Database.get(entity, "entity/label") : "[Visningsnavn mangler]"}`, ``, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
       entityInspectorPopup_small(entity),], {class: "popupContainer", style:"display: inline-flex;"})
   ], {style:"display: inline-flex;"} )
 : d(`[${entity}] Entiteten finnes ikke`)
@@ -132,19 +132,24 @@ let entityInspectorPopup_small = entity => d([
   //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-let entityLabel_largePopup = (entity, onClick) => Database.getServerEntity(entity) 
+let entityLabel_largePopup = entity => isDefined( Database.get(entity) ) 
 ? d( [
     d([
-      span( `${Database.get(entity, "entity/label") ? Database.get(entity, "entity/label") : "[Visningsnavn mangler]"}`, `[${entity}] ${Database.get(entity, "entity/category")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
-      entityInspectorPopup_large(entity),], {class: "popupContainer", style:"display: inline-flex;"})
+      span( `${Database.get(entity, "entity/label")}`, ``, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}),
+      entityInspectorPopup_large(entity)
+    ], {class: "popupContainer", style:"display: inline-flex;"})
   ], {style:"display: inline-flex;"} )
 : d(`[${entity}] Entiteten finnes ikke`)
 
 let entityInspectorPopup_large = entity => {
 
+  let entityType = Database.get(entity, "entity/entityType")
 
 
-  let entityAttributes = Object.keys(Database.get(entity).current).filter( key => key !== "entity" )
+
+  let entityAttributes = ( entityType === 46)
+    ? Database.get( Database.get(entity, "event/eventTypeEntity") , 8 )
+    : Database.get( entityType, 17 )
 
   
 
@@ -159,16 +164,16 @@ let entityInspectorPopup_large = entity => {
   return d([
     h3( Database.get( entity , "entity/label") ),
     d([
-      d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
+      d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`} )], {style:"display: inline-flex;"}),
       d(String(entity), {style: `text-align: right;`} )
     ], {class: "columns_1_1"}),
 
     d([
-      d([span( `Gyldighet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
-      d( (Database.get( entity , "entity/entityType") === 46)
+      d([span( `Gyldighet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`} )], {style:"display: inline-flex;"}),
+      /* d( (Database.get( entity , "entity/entityType") === 46)
           ? String( Database.getEvent(entity).isValid() )
           : "na."
-        ), {style: `text-align: right;`}
+        ), {style: `text-align: right;`} */
     ], {class: "columns_1_1"}),
     d(view)
   ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
@@ -269,6 +274,7 @@ let eventLogView = (S, A) => {
   let companyEvents = Database.getAll(46)
     .filter(  e => companyProcesses.includes( Database.get(e, "event/process" ) )   )
     .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
+
 
   return d([
     d([
@@ -449,12 +455,10 @@ let processView =  (S , A, process) => {
   let processEvents = Database.getAll(46)
     .filter( event => Database.get(event, "event/process") === process )
     .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
-
   
   let selectedEvent = isDefined(Database.getLocalState(process).selectedEvent)
   ? Database.getLocalState(process).selectedEvent
   : processEvents[0]
-
 
   let Process = Database.get(process)
 
@@ -463,9 +467,6 @@ let processView =  (S , A, process) => {
   let processType = Database.get(process, "process/processType")
   let nextEventsFunctionString = Database.get( processType, "attribute/1605528219674").find( Step => Step.eventType === Database.get(selectedEvent, "event/eventTypeEntity") ).nextEventsFunction
   let allowedNextEventTypes = new Function( ["Database", "Process"] , nextEventsFunctionString  )( Database, Process )
-
-  console.log({process, processType, nextEventsFunctionString, allowedNextEventTypes})
-
 
   return (isNull(process) || isUndefined( Database.getServerEntity(process) ))
   ? d("Ingen prosess valgt.", {class: "feedContainer"})
@@ -496,11 +497,11 @@ let processView =  (S , A, process) => {
 
 let singleEventView =  (S, entity) => {
   
-  let eventType = Database.get(log(entity), "event/eventTypeEntity")
+  let eventType = Database.get(entity, "event/eventTypeEntity")
 
   return d([
     h3( Database.get(eventType, "entity/label") ),
-    d( Database.get(eventType, "eventType/eventAttributes").map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx ))),
+    d( Database.get(eventType, "eventType/eventAttributes").map( attribute => datomView( entity, attribute ))),
   ], {class: "feedContainer"} )
 
 }
@@ -736,9 +737,9 @@ let input_multipleSelect = Datom => d([
 ], {class: "columns_1_1"})
 
 let input_singleCompanyEntity = Datom => {
-  let Company = Database.getCompany(Number(Database.S["UIstate"].selectedOrgnumber))
+  let Company = Database.getCompany(Number(Database.S["UIstate"].selectedCompany))
 
-  let t = 5 // Database.get(Datom.entity, 1000)
+  let t =  Company.events.findIndex( e => e === Datom.entity ) // 5 // Database.get(Datom.entity, 1000)
 
   let optionObjects = Company.getOptions( Database.attr(Datom.attribute), t )
   let selectedOption = optionObjects.find( Option => Option.value === Datom.value)

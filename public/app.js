@@ -136,14 +136,14 @@ const Database = {
   init: async () => { 
     Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
     const attrNameToEntity = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
+    
     Database.attr = attrName => isNumber(attrName) ? attrName : attrNameToEntity[attrName]
     Database.account = accountNumber => mergeArray( Database
       .getAll(5030)
       .map( entity => createObject( Database.get(entity, "entity/label").substr(0, 4), entity ) ) 
     )[accountNumber]
-
+    
     Database.recalculateCompanies()
-
     return;
   },
   attrName: attribute => isNumber(attribute) 
@@ -216,7 +216,7 @@ const Database = {
 
     return Event
   },
-  recalculateCompanies: () => Database.Companies = Database.getAll( 5722 ).map( company => Database.createCompany(company) ),
+  recalculateCompanies: () => Database.Companies = Database.getAll( 5722 ).map( company => Database.createCompany( company) ),
   createCompany: company => {
 
 
@@ -233,8 +233,8 @@ const Database = {
         let t = index + 1
         Company.t = t;
         let Q = {latestEntityID: () => Company.latestEntityID}
+        
         let eventDatoms = Database.get( Database.get(event, "event/eventTypeEntity") , "eventType/newDatoms").map( datomConstructor => {
-                    
           let datom;
           try {
             datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ), "attribute": datomConstructor.attribute, "value": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["value"] )( Q, Database, Company, Event ),"t": t }
@@ -249,6 +249,8 @@ const Database = {
             return datom
           }
         }).sort( (datomA, datomB) => datomA.entity - datomB.entity )
+        
+        
         Company.Datoms = Company.Datoms.concat(eventDatoms)
 
         Company.Entities = Object.values(Company.Datoms.reduce( (Entities, Datom) => mergerino(
@@ -386,9 +388,7 @@ let getUserActions = (S, Database) => returnObject({
 
 let update = ( S ) => {
 
-    console.log("Database", Database)
-
-    console.log("S", S)
+  
     
     S.selectedCategories = Database.Entities
       .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
@@ -410,14 +410,22 @@ let update = ( S ) => {
     Admin.A = A;
 
     let startTime = Date.now()
+
+    
+    
     S.elementTree = generateHTMLBody(S, A )
+    log("AA")
     sideEffects.updateDOM( S.elementTree )
+    log("BB")
+    
+
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 
 
     
 
     backgroundDataSync(S)
+
     
 
 }
