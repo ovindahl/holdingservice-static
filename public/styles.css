@@ -236,3 +236,22 @@ body {background-color: #F2F3F5;}
     z-index: 10;
     width: 600px;
 }
+
+
+
+.searchResultsContainer {
+    position: relative;
+    background-color: white;
+}
+
+.searchResultsContainer:hover > .searchResults {
+    display: block
+}
+
+.searchResults {
+    position: absolute;
+    top: 5px;
+    background-color: #eee;
+    z-index: 10;
+    width: auto;
+}

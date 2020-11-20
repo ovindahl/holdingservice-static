@@ -251,14 +251,14 @@ let newDatomsView = Datoms => d([
   h3("Nye selskapsdatomer generert av hendelsen:"),
   d( Datoms.sort( (a,b) => a.entity - b.entity ).map( Datom => {
 
-      let valueType = Database.get(Database.attr(Datom.attribute), "attribute/valueType")
+      let valueType = Database.get(attribute, "attribute/valueType")
       let valueView = (valueType === 32 && !isUndefined(Datom.value)) 
         ? entityLabel(Number(Datom.value)) 
         : d( JSON.stringify(Datom.value) )
 
     return d([
       span( `Selskapsentitet ${ Datom.entity }`, ``, {class: "entityLabel", style: `background-color: lightgray;`} ),
-      entityLabel(Database.attr(Datom.attribute)),
+      entityLabel(attribute),
       valueView,
     ], {class: "columns_1_1_1"})
 
@@ -547,13 +547,10 @@ let adminEntityView = entity => {
 
 let datomView = (entity, attribute, version) => {
 
-  
-
-
   let genericValueTypeViews = {
     "30": input_text, //Tekst
     "31": input_number, //Tall
-    "32": input_singleEntity, //Entitet
+    "32": input_Entity, //Entitet
     "33": input_object, //Array
     "37": input_multipleSelect, //Entiteter
     "34": input_function, //Funksjonstekst
@@ -566,33 +563,24 @@ let datomView = (entity, attribute, version) => {
     "5721": input_date
   } 
 
-
-  let Datom = Database.getDatom( entity, attribute, version )
+  let valueType = Database.get(attribute, "attribute/valueType")
   
-
-
-  let view = {}
 
   try {
 
-    view = isUndefined(Datom)
+    return isUndefined(Database.get( entity, attribute, version ))
     ? d([
       entityLabel( attribute ),
       input_undefined( entity, attribute )
     ], {class: "columns_1_1"})
-    : [37, 38, 39].includes(Database.get(Database.attr(Datom.attribute), "attribute/valueType"))
-      ? genericValueTypeViews[ Datom.valueType  ]( Datom )
+    : [37, 38, 39].includes( valueType )
+      ? genericValueTypeViews[ valueType  ]( entity, attribute, version )
       : d([
-        entityLabel( Database.attr(Datom.attribute) ),
-        genericValueTypeViews[ Database.get(Database.attr(Datom.attribute), "attribute/valueType")  ]( Datom )
+        entityLabel( attribute ),
+        genericValueTypeViews[ valueType ]( entity, attribute, version )
       ], {class: "columns_1_1"})
     
-  } catch (error) {
-    view = d(error)
-  }
-
-
-  return view
+  } catch (error) {return d(error) }
 }
 
 let input_undefined = (entity, attribute) => input(
@@ -601,64 +589,97 @@ let input_undefined = (entity, attribute) => input(
   async e => await Database.updateEntity(entity, attribute, Number.isNaN( Number(submitInputValue(e)) ) ? submitInputValue(e) : Number(submitInputValue(e))  )
 )
 
-let input_text = Datom => input(
-  {value: Datom.value, style: ``},
+let input_text = (entity, attribute, version) => input(
+  {value: Database.get( entity, attribute, version ), style: ``},
   "change", 
-  async e => await Database.updateEntity(Datom.entity, Datom.attribute,  submitInputValue(e) )
+  async e => await Database.updateEntity(entity, attribute,  submitInputValue(e) )
 )
 
-let input_number = Datom => input(
-    {value: String(Datom.value), style: `text-align: right;`}, 
+let input_number = (entity, attribute, version) => input(
+    {value: String(Database.get( entity, attribute, version )), style: `text-align: right;`}, 
     "change", 
-    async e => await Database.updateEntity(Datom.entity, Datom.attribute,  Number(submitInputValue(e)) )
+    async e => await Database.updateEntity(entity, attribute,  Number(submitInputValue(e)) )
 )
 
-let input_date = Datom => input(
-  {value: moment(Datom.value).format("DD/MM/YYYY"), style: `text-align: right;`}, 
+let input_date = (entity, attribute, version) => input(
+  {value: moment(Database.get( entity, attribute, version )).format("DD/MM/YYYY"), style: `text-align: right;`}, 
   "change", 
-  async e => await Database.updateEntity(Datom.entity, Datom.attribute, Number( moment(submitInputValue(e), "DD/MM/YYYY").format("x") )   )
+  async e => await Database.updateEntity(entity, attribute, Number( moment(submitInputValue(e), "DD/MM/YYYY").format("x") )   )
 )
 
-let input_function = Datom => textArea(
-  Datom.value, 
+let input_function = (entity, attribute, version) => textArea(
+  Database.get( entity, attribute, version ), 
   {class:"textArea_code"}, 
-  async e => await Database.updateEntity(Datom.entity, Datom.attribute,  submitInputValue(e).replaceAll(`"`, `'`) )
+  async e => await Database.updateEntity(entity, attribute,  submitInputValue(e).replaceAll(`"`, `'`) )
 )
 
-let input_object = Datom => textArea(
-  JSON.stringify(Datom.value),
+let input_object = (entity, attribute, version) => textArea(
+  JSON.stringify(Database.get( entity, attribute, version )),
   {class:"textArea_code"}, 
-  async e => await Database.updateEntity(Datom.entity, Datom.attribute,  JSON.parse( submitInputValue(e) ) )
+  async e => await Database.updateEntity(entity, attribute,  JSON.parse( submitInputValue(e) ) )
 )
 
-let input_boolean = Datom => input(
-  {value: Datom.value ? "1" : "0", style: `text-align: right;`}, 
+let input_boolean = (entity, attribute, version) => input(
+  {value: Database.get( entity, attribute, version ) ? "1" : "0", style: `text-align: right;`}, 
   "change", 
-  async e => await Database.updateEntity(Datom.entity, Datom.attribute,  submitInputValue(e) === "1" ? true : false )
+  async e => await Database.updateEntity(entity, attribute,  submitInputValue(e) === "1" ? true : false )
 )
 
-let input_singleEntity = Datom => d([
-  htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( Database.getOptions(Datom.entity, Database.attr(Datom.attribute), Datom.tx )) ),
-  input(
-    {value: Database.getOptions(Datom.entity, Database.attr(Datom.attribute), Datom.tx ).find( Option => Option.value === Datom.value)
-       ? Database.getOptions(Datom.entity, Database.attr(Datom.attribute), Datom.tx ).find( Option => Option.value === Datom.value).label
-       : "Ingen entitet valgt", 
-      list:`entity/${Datom.entity}/options`, 
-      style: `text-align: right;`
-    }, 
-    "change", 
-    async e => Database.getOptions(Datom.entity, Database.attr(Datom.attribute), Datom.tx ).map( Option => Option.value ).includes(Number(submitInputValue(e))) 
-      ? await Database.updateEntity(Datom.entity, Datom.attribute,  Number(submitInputValue(e)))
-      : log("Selected option not valid: ", Datom, Number(submitInputValue(e)))
-  )
-]) 
+let input_Entity = (entity, attribute, version) => {
 
-let input_datomConstructor = Datom => {
+  let currentSelection = Database.get(entity, attribute, version)
 
-  let datoms = Datom.value
+
 
   return d([
-    entityLabel(Database.attr(Datom.attribute)),
+    d([
+      entityLabel(currentSelection),
+      input(
+        {
+          id: `searchBox/${entity}/${attribute}`, 
+          value: Database.getLocalState(entity)[`searchstring/${attribute}`] ? Database.getLocalState(entity)[`searchstring/${attribute}`] : ""
+        }, 
+        "input", 
+        e => {
+  
+        Database.setLocalState(entity, {[`searchstring/${attribute}`]: e.srcElement.value  })
+
+        let searchBoxElement = document.getElementById(`searchBox/${entity}/${attribute}`)
+        searchBoxElement.focus()
+        let val = searchBoxElement.value
+        searchBoxElement.value = ""
+        searchBoxElement.value = val
+
+  
+      })
+    ]),
+    isDefined( Database.getLocalState(entity)[`searchstring/${attribute}`] )
+       ? d([
+            d(Database.getLocalState(entity)[`searchstring/${attribute}`] ),
+            d(
+                new Function( ["Database"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Database )
+                .map( optionObject => optionObject.value )
+                .filter( e => {
+                  let searchString = Database.getLocalState(entity)[`searchstring/${attribute}`]
+                  let label = Database.get(e, "entity/label")
+                  let isMatch = label.toUpperCase().includes(searchString.toUpperCase())
+                  return isMatch
+
+                }  )
+                .map( ent => d([entityLabel(ent, async e => await Database.updateEntity(entity, attribute,  ent ) )] )  )
+                
+              , {class: "searchResults"})
+          ], {class: "searchResultsContainer"})
+      : d("")
+  ]) 
+} 
+
+let input_datomConstructor = (entity, attribute, version) => {
+
+  let datoms = Database.get( entity, attribute, version )
+
+  return d([
+    entityLabel(attribute),
     d([
       d("EntitetID"),
       d("Attributt"),
@@ -666,39 +687,39 @@ let input_datomConstructor = Datom => {
     ], {class: "columns_2_2_2_1"}),
     d(datoms.map( (datom, index) => d([
       dropdown(
-        datom.entity, 
+        entity, 
         [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}, , {value: `return Q.latestEntityID() + 4;`, label: `Ny entitet nr. 4`}, , {value: `return Q.latestEntityID() + 5;`, label: `Ny entitet nr. 5`}],
-        async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(datoms, {[index]: {entity: submitInputValue(e)}})  )
+        async e => await Database.updateEntity(entity, attribute, mergerino(datoms, {[index]: {entity: submitInputValue(e)}})  )
         ),
       d([
-        htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( Database.getAll(42)
+        htmlElementObject("datalist", {id:`entity/${entity}/options`}, optionsElement( Database.getAll(42)
           .filter( attr => attr >= 1000 ).concat(19)
           .filter( attr => Database.get(attr, "entity/label") !== "Ubenyttet hendelsesattributt")
         )),
         input(
-          {value: Database.get( Database.attr(datom.attribute), "entity/label"), list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
+          {value: Database.get( attribute, "entity/label"), list:`entity/${entity}/options`, style: `text-align: right;`}, 
           "change", 
           async e => {
             if(!isUndefined(submitInputValue(e))){
             let updatedValue = mergerino(datoms, {[index]: {attribute: Number(submitInputValue(e)), value: `return Event.get(${Number(submitInputValue(e))})`}})
-            await Database.updateEntity(Datom.entity, Datom.attribute, updatedValue  )
-            await Database.updateEntity(Datom.entity, "eventType/eventAttributes", Database.get(Datom.entity, "eventType/eventAttributes").concat( Number(submitInputValue(e)) ).filter(filterUniqueValues)  )
+            await Database.updateEntity(entity, attribute, updatedValue  )
+            await Database.updateEntity(entity, "eventType/eventAttributes", Database.get(entity, "eventType/eventAttributes").concat( Number(submitInputValue(e)) ).filter(filterUniqueValues)  )
             }
 
           } 
         )
       ]),
-      textArea(datom.value, {class:"textArea_code"}, async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}})  )),
-      submitButton("[Slett]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, datoms.filter( (d, i) => i !== index  )  )),
+      textArea(Database.get( entity, attribute, version ), {class:"textArea_code"}, async e => await Database.updateEntity(entity, attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}})  )),
+      submitButton("[Slett]", async e => await Database.updateEntity(entity, attribute, datoms.filter( (d, i) => i !== index  )  )),
     ], {class: "columns_2_2_2_1"}) )),
-    submitButton("Legg til", async e => await Database.updateEntity(Datom.entity, Datom.attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1001, value: `return ''` })  ))
+    submitButton("Legg til", async e => await Database.updateEntity(entity, attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1001, value: `return ''` })  ))
   ])
 
 }
 
-let input_eventConstructor = Datom => {
+let input_eventConstructor = (entity, attribute, version) => {
 
-  let eventConstructors = Datom.value
+  let eventConstructors = Database.get( entity, attribute, version )
 
   return d([
     entityLabel(5690),
@@ -714,46 +735,46 @@ let input_eventConstructor = Datom => {
         let eventType = Number(submitInputValue(e))
         let nextEventsFunction = `return [${eventType}];`
         let updatedEventConstructor = {eventType, nextEventsFunction}
-        await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(eventConstructors, {[index]:updatedEventConstructor}) )
+        await Database.updateEntity(entity, attribute, mergerino(eventConstructors, {[index]:updatedEventConstructor}) )
       } ),
       textArea(
         eventConstructor.nextEventsFunction, 
         {class:"textArea_code"}, 
-        async e => await Database.updateEntity(Datom.entity, Datom.attribute, mergerino(eventConstructors, {[index]: {nextEventsFunction: submitInputValue(e).replaceAll(`"`, `'`)} }) )
+        async e => await Database.updateEntity(entity, attribute, mergerino(eventConstructors, {[index]: {nextEventsFunction: submitInputValue(e).replaceAll(`"`, `'`)} }) )
       ),
-      submitButton("[Slett]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, eventConstructors.filter( (d, i) => i !== index  )  )),
+      submitButton("[Slett]", async e => await Database.updateEntity(entity, attribute, eventConstructors.filter( (d, i) => i !== index  )  )),
     ], {class: "columns_1_2_4_1"}) )),
-    submitButton("Legg til steg", async e => await Database.updateEntity(Datom.entity, Datom.attribute, eventConstructors.concat({eventType: 5000, nextEventsFunction: "return [5000];" })  ))
+    submitButton("Legg til steg", async e => await Database.updateEntity(entity, attribute, eventConstructors.concat({eventType: 5000, nextEventsFunction: "return [5000];" })  ))
   ])
 }
 
-let input_multipleSelect = Datom => d([
-  entityLabel(Database.attr(Datom.attribute)),
+let input_multipleSelect = (entity, attribute, version) => d([
+  entityLabel(attribute),
   d([
-    d( Datom.value.map( attr => d([
+    d( Database.get( entity, attribute, version ).map( attr => d([
       entityLabel(attr), 
-      submitButton("[X]", async e => await Database.updateEntity(Datom.entity, Datom.attribute, Datom.value.filter( e => e !== attr )  ) )
+      submitButton("[X]", async e => await Database.updateEntity(entity, attribute, Database.get( entity, attribute, version ).filter( e => e !== attr )  ) )
       ], {class: "columns_3_1"} ) 
     )),
     d("<br>"),
     d([
-      htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( Database.getOptions(Datom.entity, Database.attr(Datom.attribute), Datom.tx )) ),
+      htmlElementObject("datalist", {id:`entity/${entity}/options`}, optionsElement( Database.getOptions(entity, attribute, version )) ),
       input(
-        {value: "Legg til (søk)", list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
+        {value: "Legg til (søk)", list:`entity/${entity}/options`, style: `text-align: right;`}, 
         "change", 
-        async e => Database.getOptions(Datom.entity, Database.attr(Datom.attribute), Datom.tx ).map( Option => Option.value ).includes( Number(submitInputValue(e)) ) ? await Database.updateEntity(Datom.entity, Datom.attribute,  Datom.value.concat( Number(submitInputValue(e)) ) ) : console.log("Option not allowed: ", submitInputValue(e) )
+        async e => Database.getOptions(entity, attribute, version ).map( Option => Option.value ).includes( Number(submitInputValue(e)) ) ? await Database.updateEntity(entity, attribute,  Database.get( entity, attribute, version ).concat( Number(submitInputValue(e)) ) ) : console.log("Option not allowed: ", submitInputValue(e) )
       )
     ])
   ], {class: "eventAttributeRow"})
 ], {class: "columns_1_1"})
 
-let input_singleCompanyEntity = Datom => {
+let input_singleCompanyEntity = (entity, attribute, version) => {
   let Company = Database.getCompany(Number(Database.S["UIstate"].selectedCompany))
 
-  let t =  Company.events.findIndex( e => e === Datom.entity ) // 5 // Database.get(Datom.entity, 1000)
+  let t =  Company.events.findIndex( e => e === entity ) // 5 // Database.get(entity, 1000)
 
-  let optionObjects = Company.getOptions( Database.attr(Datom.attribute), t )
-  let selectedOption = optionObjects.find( Option => Option.value === Datom.value)
+  let optionObjects = Company.getOptions( attribute, t )
+  let selectedOption = optionObjects.find( Option => Option.value === Database.get( entity, attribute, version ))
   let value = isDefined(selectedOption)
   ? selectedOption.value
   : "Ingen entitet valgt"
@@ -761,15 +782,15 @@ let input_singleCompanyEntity = Datom => {
   return d([
     
     dropdown( Number(value), optionObjects, async e => optionObjects.map( Option => Number(Option.value) ).includes( Number(e.srcElement.value) ) 
-    ? await Database.updateEntity(Datom.entity, Datom.attribute,  Number(submitInputValue(e)))
-    : log("Selected option not valid: ", Datom, Number(e.srcElement.value))  )
+    ? await Database.updateEntity(entity, attribute,  Number(submitInputValue(e)))
+    : log("Selected option not valid: ", {entity, attribute, version}, Number(e.srcElement.value))  )
     /* 
-    htmlElementObject("datalist", {id:`entity/${Datom.entity}/options`}, optionsElement( optionObjects ) ),
+    htmlElementObject("datalist", {id:`entity/${entity}/options`}, optionsElement( optionObjects ) ),
     input(
-      {value: value, list:`entity/${Datom.entity}/options`, style: `text-align: right;`}, 
+      {value: value, list:`entity/${entity}/options`, style: `text-align: right;`}, 
       "change", 
       async e => optionObjects.map( Option => Number(Option.value) ).includes( Number(e.srcElement.value) ) 
-        ? await Database.updateEntity(Datom.entity, Datom.attribute,  Number(submitInputValue(e)))
+        ? await Database.updateEntity(entity, attribute,  Number(submitInputValue(e)))
         : log("Selected option not valid: ", Datom, Number(e.srcElement.value))
     ) */
   ])
