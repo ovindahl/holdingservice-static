@@ -86,6 +86,25 @@ const Database = {
 
     }
   },
+  createEntityWithoutUpdate: async (entityType, newEntityDatoms) => {
+
+    let Datoms = Database.get( entityType, "entityType/attributes")
+      .map( attribute => newDatom("newEntity", Database.attrName(attribute), new Function("S", Database.get(attribute, "attribute/startValue") )( Database )))
+      .filter( datom => datom.attribute !== "entity/entityType" )
+      .filter( datom => datom.attribute !== "entity/label" )
+      .concat([
+        newDatom("newEntity", "entity/entityType", entityType ),
+        newDatom("newEntity", "entity/label", `[${Database.get(entityType, "entity/label")} uten navn]` ),
+        newDatom("newEntity", "entity/category", `Mangler kategori` )
+      ])
+
+    if(Array.isArray(newEntityDatoms)){Datoms = Datoms.concat(newEntityDatoms)}
+    let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
+    let updatedEntity = serverResponse[0]
+    Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
+    Database.recalculateCompanies()
+    return updatedEntity
+  },
   createEntity: async (entityType, newEntityDatoms) => {
 
     let Datoms = Database.get( entityType, "entityType/attributes")

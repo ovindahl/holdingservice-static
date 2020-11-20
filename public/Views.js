@@ -397,22 +397,15 @@ let processesView = ( S , A ) => d([
       ),
       br(),
       dropdown(0, [{value: 0, label: "Legg til prosess"}].concat( Database.getAll(5687).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ) ) , async e => {
-
         let processType = Number( submitInputValue(e) )
-
-        let newProcess = await Database.createEntity(5692, [
+        let processDatoms = [
           newDatom( "newEntity" , "process/company", S["UIstate"].selectedCompany  ),
           newDatom( "newEntity" , "process/processType", processType ),
           newDatom( "newEntity" , "entity/label", `${Database.get(processType, "entity/label")} for ${Database.get(S["UIstate"].selectedCompany, "entity/label")}`  ),
-        ] )
-
-
+        ]
+        let newProcess = await Database.createEntityWithoutUpdate(5692, processDatoms )
         let eventType = Database.get(processType, "attribute/1605528219674")[0].eventType
-
-
-
-        let firstEvent = Database.createEvent(eventType, newProcess.entity)
-
+        Database.createEvent(eventType, newProcess.entity)
       } )
   ]),
   processView( S , A ,Number(S["UIstate"].selectedProcess) )
@@ -451,7 +444,7 @@ let processView =  (S , A, process) => {
   let processEvents = Database.getAll(46)
     .filter( event => Database.get(event, "event/process") === process )
     .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
-  
+
   let selectedEvent = isDefined(Database.getLocalState(process).selectedEvent)
   ? Database.getLocalState(process).selectedEvent
   : processEvents[0]
@@ -461,6 +454,7 @@ let processView =  (S , A, process) => {
   Process.getEvents = () => processEvents
 
   let processType = Database.get(process, "process/processType")
+
   let nextEventsFunctionString = Database.get( processType, "attribute/1605528219674").find( Step => Step.eventType === Database.get(selectedEvent, "event/eventTypeEntity") ).nextEventsFunction
   let allowedNextEventTypes = new Function( ["Database", "Process"] , nextEventsFunctionString  )( Database, Process )
 
