@@ -696,7 +696,8 @@ let input_datomConstructor = (entity, attribute, version) => {
       d([
         htmlElementObject("datalist", {id:`entity/${entity}/options`}, optionsElement( Database.getAll(42)
           .filter( attr => attr >= 1000 ).concat(19)
-          .filter( attr => Database.get(attr, "entity/label") !== "Ubenyttet hendelsesattributt")
+          .filter( attr => Database.get( attr, "entity/label") !== "Ubenyttet hendelsesattributt")
+          .map( attr => returnObject({value: attr, label: Database.get( attr, "entity/label")})  )
         )),
         input(
           {value: Database.get(datom.attribute, "entity/label"), list:`entity/${entity}/options`, style: `text-align: right;`}, 
