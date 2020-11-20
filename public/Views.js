@@ -299,8 +299,7 @@ let eventLogView = (S, A) => {
       ], {class: "columns_1_1_1_1_1"})  )
     )
   ], {class: "feedContainer"})
-} 
-
+}
 
 let companyDocPage = (S,A) => {
 
@@ -437,7 +436,6 @@ let processProgressView = (S, A, process) => {
   ])
 } 
 
-
 let processView =  (S , A, process) => {
 
   let processEvents = Database.getAll(46)
@@ -489,6 +487,7 @@ let singleEventView =  (S, entity) => {
           Database.getEvent(entity).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
         ], {class: "columns_1_1"}),
         newDatomsView(entity),
+        br(),
         (eventIndex === processEvents.length - 1)
           ? retractEntityButton(entity)
           : d("Slett etterfølgende hendelser for å slette hendelsen")

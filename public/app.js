@@ -270,12 +270,7 @@ const Database = {
           
           }
           catch (error) {datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ),"attribute": datomConstructor.attribute,"value": "ERROR" ,"t": t, "error": String(error)}}
-          finally{
-            if( [1112, 1131, 1080, 1086, 1097, 1137].includes( datom.attribute ) ){
-              Company.idents[ datom.value ] = datom.entity
-            }
-            return datom
-          }
+          finally{return datom}
         }).sort( (datomA, datomB) => datomA.entity - datomB.entity )
         
         
@@ -315,13 +310,18 @@ const Database = {
 
         }
 
-        Company.idents = mergeArray( Company.Datoms
-          .filter( Datom => isDefined( Company.getDatom(Datom.entity, 19) )   )
-          .filter( Datom => [1112, 1131, 1080, 1086, 1097, 1137].includes( Datom.attribute ) )
-          .map( Datom => createObject(Datom.value, Datom.entity) )
-          )
+        Company.id = id => {
 
-        Company.id = id => Company.idents[id]
+          let matchingDatoms = Company.Datoms
+          .filter( Datom => isDefined( Company.getDatom(Datom.entity, 19) ) )
+          .filter( Datom => [1112, 1131, 1080, 1086, 1097, 1137, 5811, 5812].includes( Datom.attribute ) )
+          .filter( Datom => Datom.value === id )
+
+          return matchingDatoms.length > 0
+            ? matchingDatoms[ 0 ].entity
+            : undefined
+        } 
+          
 
         Company.getEntityValueFromID = (id, attribute) => Company.get( Company.id(id), attribute )
 
@@ -347,8 +347,7 @@ const Database = {
         events: events,
         Datoms: [],
         Entities: [],
-        latestEntityID: 0,
-        idents: {}
+        latestEntityID: 0
       }  )
     
     return Company;
