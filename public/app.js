@@ -75,6 +75,7 @@ const Database = {
 
       let Datom = newDatom(entity, Database.attrName(attribute), value )
       let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( [Datom] ) )
+      if( isNull(serverResponse) ){ return log({entity, attribute, value}, "Background sync unsuccesfull due to ongoning http request.") }
       let updatedEntity = serverResponse[0]
       let latestTx = serverResponse[0].Datoms.map( Datom => Datom.tx ).filter( tx => !isUndefined(tx) ).sort().reverse()[0]
       updatedEntity.localState = {tx: latestTx }
@@ -226,7 +227,10 @@ const Database = {
 
     Event.isValid = () => {
 
-      let Company = Database.getCompany( Database.get( entity, "eventAttribute/1005") )
+      let eventProcess = Database.get( entity, "event/process" )
+      let processCompany = Database.get( eventProcess, "process/company" )
+
+      let Company = Database.getCompany( processCompany )
       let eventValidators = Database.get( Database.get(entity, "event/eventTypeEntity"), "eventType/eventValidators" )
       let isValid = eventValidators.every( eventValidator => new Function( [`Database`, `Company`, `Event`], Database.get( eventValidator, "eventValidator/validatorFunctionString")  )( Database, Company, Event ) )
 
@@ -374,7 +378,7 @@ const sideEffects = {
         sideEffects.isIdle = true;
         return parsedResponse;
       }else{
-        console.log("Declined HTTP request, another in progress:", type, endPoint, stringBody )
+        log( {type, endPoint, stringBody}, "Declined HTTP request, another in progress:")
         return null;
       }
     },
