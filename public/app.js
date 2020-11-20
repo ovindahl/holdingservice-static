@@ -47,7 +47,8 @@ const Database = {
       updatedEntity.localState = {tx: latestTx }
 
       Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
-      Database.recalculateCompanies()
+
+      if( updatedEntity.current["entity/entityType"] === 46  ){ Database.recalculateCompanies() }
 
       update( Database.S )
 
