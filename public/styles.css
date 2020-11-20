@@ -229,7 +229,7 @@ body {background-color: #F2F3F5;}
 .entityInspectorPopup {
     display: none;
     position: absolute;
-    bottom: -50%;
+    top: 5px;
     left: 80%;
     border: 1px solid red;
     background-color: #eee;
