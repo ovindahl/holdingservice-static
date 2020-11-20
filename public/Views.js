@@ -488,7 +488,7 @@ let singleEventView =  (S, entity) => {
           d("Status på hendelse"),
           Database.getEvent(entity).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
         ], {class: "columns_1_1"}),
-        newDatomsView(entity),
+        newDatomsView(entity)
         (eventIndex === processEvents.length - 1)
           ? retractEntityButton(entity)
           : d("Slett etterfølgende hendelser for å slette hendelsen")
