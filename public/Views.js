@@ -684,6 +684,8 @@ let input_datomConstructor = (entity, attribute, version) => {
 
   let datoms = Database.get( entity, attribute, version )
 
+  log(datoms)
+
   return d([
     entityLabel(attribute),
     d([
@@ -693,7 +695,7 @@ let input_datomConstructor = (entity, attribute, version) => {
     ], {class: "columns_2_2_2_1"}),
     d(datoms.map( (datom, index) => d([
       dropdown(
-        entity, 
+        datom.entity, 
         [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}, , {value: `return Q.latestEntityID() + 4;`, label: `Ny entitet nr. 4`}, , {value: `return Q.latestEntityID() + 5;`, label: `Ny entitet nr. 5`}],
         async e => await Database.updateEntity(entity, attribute, mergerino(datoms, {[index]: {entity: submitInputValue(e)}})  )
         ),
@@ -703,7 +705,7 @@ let input_datomConstructor = (entity, attribute, version) => {
           .filter( attr => Database.get(attr, "entity/label") !== "Ubenyttet hendelsesattributt")
         )),
         input(
-          {value: Database.get( attribute, "entity/label"), list:`entity/${entity}/options`, style: `text-align: right;`}, 
+          {value: Database.get(datom.attribute, "entity/label"), list:`entity/${entity}/options`, style: `text-align: right;`}, 
           "change", 
           async e => {
             if(!isUndefined(submitInputValue(e))){
@@ -715,7 +717,7 @@ let input_datomConstructor = (entity, attribute, version) => {
           } 
         )
       ]),
-      textArea(Database.get( entity, attribute, version ), {class:"textArea_code"}, async e => await Database.updateEntity(entity, attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}})  )),
+      textArea(datom.value, {class:"textArea_code"}, async e => await Database.updateEntity(entity, attribute, mergerino(datoms, {[index]: {value: submitInputValue(e)}})  )),
       submitButton("[Slett]", async e => await Database.updateEntity(entity, attribute, datoms.filter( (d, i) => i !== index  )  )),
     ], {class: "columns_2_2_2_1"}) )),
     submitButton("Legg til", async e => await Database.updateEntity(entity, attribute, datoms.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1001, value: `return ''` })  ))
