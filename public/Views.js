@@ -167,15 +167,11 @@ let entityInspectorPopup_large = entity => {
       d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`} )], {style:"display: inline-flex;"}),
       d(String(entity), {style: `text-align: right;`} )
     ], {class: "columns_1_1"}),
-
-    d([
-      d([span( `Gyldighet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`} )], {style:"display: inline-flex;"}),
-      /* d( (Database.get( entity , "entity/entityType") === 46)
-          ? String( Database.getEvent(entity).isValid() )
-          : "na."
-        ), {style: `text-align: right;`} */
-    ], {class: "columns_1_1"}),
-    d(view)
+    d(view),
+    ( entityType === 46)
+      ? newDatomsView( entity )
+      : d("")
+    
   ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 }
 
@@ -247,23 +243,32 @@ let sidebar_left = (S, A) => d([
         )
   ], {style: "display:flex;"})
 
-let newDatomsView = Datoms => d([
-  h3("Nye selskapsdatomer generert av hendelsen:"),
-  d( Datoms.sort( (a,b) => a.entity - b.entity ).map( Datom => {
+let newDatomsView = event => {
 
-      let valueType = Database.get(attribute, "attribute/valueType")
-      let valueView = (valueType === 32 && !isUndefined(Datom.value)) 
-        ? entityLabel(Number(Datom.value)) 
-        : d( JSON.stringify(Datom.value) )
+  let Company = Database.getCompany(5723)
 
-    return d([
-      span( `Selskapsentitet ${ Datom.entity }`, ``, {class: "entityLabel", style: `background-color: lightgray;`} ),
-      entityLabel(attribute),
-      valueView,
-    ], {class: "columns_1_1_1"})
+  let t = Company.events.findIndex( e => e === event ) + 1
 
-  } ))
-])
+  let Datoms = Database.getCompany(5723).Datoms.filter( Datom => Datom.t === t )
+
+  return d([
+    h3("Nye selskapsdatomer generert av hendelsen:"),
+    d( Datoms.sort( (a,b) => a.entity - b.entity ).map( Datom => {
+  
+        let valueType = Database.get(Datom.attribute, "attribute/valueType")
+        let valueView = (valueType === 32 && !isUndefined(Datom.value)) 
+          ? entityLabel(Number(Datom.value)) 
+          : d( JSON.stringify(Datom.value) )
+  
+      return d([
+        span( `Selskapsentitet ${ Datom.entity }`, ``, {class: "entityLabel", style: `background-color: lightgray;`} ),
+        entityLabel(Datom.attribute),
+        valueView,
+      ], {class: "columns_1_1_1"})
+  
+    } ))
+  ])
+} 
 
 let eventLogView = (S, A) => {
 
@@ -483,6 +488,7 @@ let singleEventView =  (S, entity) => {
           d("Status på hendelse"),
           Database.getEvent(entity).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
         ], {class: "columns_1_1"}),
+        newDatomsView(entity),
         (eventIndex === processEvents.length - 1)
           ? retractEntityButton(entity)
           : d("Slett etterfølgende hendelser for å slette hendelsen")
