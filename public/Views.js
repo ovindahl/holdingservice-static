@@ -634,9 +634,6 @@ let input_boolean = (entity, attribute, version) => input(
 let input_Entity = (entity, attribute, version) => {
 
   let currentSelection = Database.get(entity, attribute, version)
-
-
-
   return d([
     d([
       entityLabel(currentSelection),
@@ -683,8 +680,6 @@ let input_Entity = (entity, attribute, version) => {
 let input_datomConstructor = (entity, attribute, version) => {
 
   let datoms = Database.get( entity, attribute, version )
-
-  log(datoms)
 
   return d([
     entityLabel(attribute),
@@ -764,16 +759,45 @@ let input_multipleSelect = (entity, attribute, version) => d([
       submitButton("[X]", async e => await Database.updateEntity(entity, attribute, Database.get( entity, attribute, version ).filter( e => e !== attr )  ) )
       ], {class: "columns_3_1"} ) 
     )),
-    d("<br>"),
-    d([
-      htmlElementObject("datalist", {id:`entity/${entity}/options`}, optionsElement( Database.getOptions(entity, attribute, version )) ),
-      input(
-        {value: "Legg til (søk)", list:`entity/${entity}/options`, style: `text-align: right;`}, 
-        "change", 
-        async e => Database.getOptions(entity, attribute, version ).map( Option => Option.value ).includes( Number(submitInputValue(e)) ) ? await Database.updateEntity(entity, attribute,  Database.get( entity, attribute, version ).concat( Number(submitInputValue(e)) ) ) : console.log("Option not allowed: ", submitInputValue(e) )
-      )
-    ])
-  ], {class: "eventAttributeRow"})
+
+
+    input(
+      {
+        id: `searchBox/${entity}/${attribute}`, 
+        value: Database.getLocalState(entity)[`searchstring/${attribute}`] ? Database.getLocalState(entity)[`searchstring/${attribute}`] : ""
+      }, 
+      "input", 
+      e => {
+
+      Database.setLocalState(entity, {[`searchstring/${attribute}`]: e.srcElement.value  })
+
+      let searchBoxElement = document.getElementById(`searchBox/${entity}/${attribute}`)
+      searchBoxElement.focus()
+      let val = searchBoxElement.value
+      searchBoxElement.value = ""
+      searchBoxElement.value = val
+
+
+    }),
+    isDefined( Database.getLocalState(entity)[`searchstring/${attribute}`] )
+        ? d([
+            d(Database.getLocalState(entity)[`searchstring/${attribute}`] ),
+            d(
+                new Function( ["Database"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Database )
+                .map( optionObject => optionObject.value )
+                .filter( e => {
+                  let searchString = Database.getLocalState(entity)[`searchstring/${attribute}`]
+                  let label = Database.get(e, "entity/label")
+                  let isMatch = label.toUpperCase().includes(searchString.toUpperCase())
+                  return isMatch
+
+                }  )
+                .map( ent => d([entityLabel(ent, async e => await Database.updateEntity(entity, attribute,  Database.get( entity, attribute, version ).concat( ent ) ) )] )  )
+                
+              , {class: "searchResults"})
+          ], {class: "searchResultsContainer"})
+      : d(""),
+  ])
 ], {class: "columns_1_1"})
 
 let input_singleCompanyEntity = (entity, attribute, version) => {
