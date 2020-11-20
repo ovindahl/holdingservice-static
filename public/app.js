@@ -214,11 +214,15 @@ const Database = {
     }
     return selectedDatom
   },
-  get: (entity, attribute, version) => isUndefined(attribute) 
-    ? Database.getServerEntity(entity)
-    : isDefined( Database.getServerDatom(entity, attribute, version) )
-      ? Database.getServerDatom(entity, attribute, version).value
-      : undefined,
+  get: (entity, attribute, version) => ( isUndefined(entity) || isUndefined( Database.getServerEntity(entity) ) )
+    ? undefined
+    : isUndefined(attribute) 
+        ? Object.keys(Database.getServerEntity(entity).current).length > 1
+          ? Database.getServerEntity(entity)
+          : undefined
+      : isDefined( Database.getServerDatom(entity, attribute, version) )
+        ? Database.getServerDatom(entity, attribute, version).value
+        : undefined,
   getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity),
   selectEntity: entity => update( mergerino(Database.S, {"UIstate": {"selectedEntity": entity}})  ),
   getEvent: entity => {

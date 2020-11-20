@@ -396,17 +396,11 @@ let processesView = ( S , A ) => d([
         .map( entity => entityLabel(entity, e => A.updateLocalState({selectedProcess: entity} )) )
       ),
       br(),
-      dropdown(0, [{value: 0, label: "Legg til prosess"}].concat( Database.getAll(5687).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ) ) , async e => {
-        let processType = Number( submitInputValue(e) )
-        let processDatoms = [
-          newDatom( "newEntity" , "process/company", S["UIstate"].selectedCompany  ),
-          newDatom( "newEntity" , "process/processType", processType ),
-          newDatom( "newEntity" , "entity/label", `${Database.get(processType, "entity/label")} for ${Database.get(S["UIstate"].selectedCompany, "entity/label")}`  ),
-        ]
-        let newProcess = await Database.createEntityWithoutUpdate(5692, processDatoms )
-        let eventType = Database.get(processType, "attribute/1605528219674")[0].eventType
-        Database.createEvent(eventType, newProcess.entity)
-      } )
+      dropdown(0, [{value: 0, label: "Legg til prosess"}].concat( Database.getAll(5687).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ) ) , async e => await Database.createEntity(5692, [
+        newDatom( "newEntity" , "process/company", S["UIstate"].selectedCompany  ),
+        newDatom( "newEntity" , "process/processType", Number( submitInputValue(e) ) ),
+        newDatom( "newEntity" , "entity/label", `${Database.get(Number( submitInputValue(e) ), "entity/label")} for ${Database.get(S["UIstate"].selectedCompany, "entity/label")}`  ),
+      ] ) )
   ]),
   processView( S , A ,Number(S["UIstate"].selectedProcess) )
 ], {class: "pageContainer"})
@@ -449,14 +443,6 @@ let processView =  (S , A, process) => {
   ? Database.getLocalState(process).selectedEvent
   : processEvents[0]
 
-  let Process = Database.get(process)
-
-  Process.getEvents = () => processEvents
-
-  let processType = Database.get(process, "process/processType")
-
-  let nextEventsFunctionString = Database.get( processType, "attribute/1605528219674").find( Step => Step.eventType === Database.get(selectedEvent, "event/eventTypeEntity") ).nextEventsFunction
-  let allowedNextEventTypes = new Function( ["Database", "Process"] , nextEventsFunctionString  )( Database, Process )
 
   return (isNull(process) || isUndefined( Database.get(process) ))
   ? d("Ingen prosess valgt.", {class: "feedContainer"})
@@ -472,27 +458,71 @@ let processView =  (S , A, process) => {
       processProgressView(S, A, process),
       br(),
       singleEventView(S, selectedEvent ),
-      d([
-        d("Status på hendelse"),
-        Database.getEvent(selectedEvent).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
-      ], {class: "columns_1_1"}),
-      Database.getEvent(selectedEvent).isValid()
-        ? d([
-          d("Legg til hendelse:"),
-          d( allowedNextEventTypes.map( eventType => entityLabel(eventType, async e => Database.createEvent( eventType , process ) ) ) )
-        ])
-        : d("Kan ikke legge til nye hendelser før denne hendelsen er gyldig"),
+      nextActionsView(S, process)
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
 }
 
 let singleEventView =  (S, entity) => {
+
+  let process = Database.get(entity, "event/process")
+
+  let processEvents = Database.getAll(46)
+    .filter( event => Database.get(event, "event/process") === process )
+    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
+
+  let eventIndex = processEvents.findIndex( e => e === entity )
   
-  let eventType = Database.get(entity, "event/eventTypeEntity")
+
+  return (isNull(entity) || isUndefined( Database.get(entity) ))
+    ? d("Ingen hendelse valgt.", {class: "feedContainer"})
+    : d([
+        h3( Database.get(Database.get(entity, "event/eventTypeEntity"), "entity/label") ),
+        d( Database.get(Database.get(entity, "event/eventTypeEntity"), "eventType/eventAttributes").map( attribute => datomView( entity, attribute ))),
+        br(),
+        d([
+          d("Status på hendelse"),
+          Database.getEvent(entity).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
+        ], {class: "columns_1_1"}),
+        (eventIndex === processEvents.length - 1)
+          ? retractEntityButton(entity)
+          : d("Slett etterfølgende hendelser for å slette hendelsen")
+        
+      ], {class: "feedContainer"} )
+
+}
+
+let nextActionsView =  (S, process) => {
+
+  
+
+  let processEvents = Database.getAll(46)
+    .filter( event => Database.get(event, "event/process") === process )
+    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
+
+  let selectedEvent = isDefined(Database.getLocalState(process).selectedEvent)
+    ? Database.getLocalState(process).selectedEvent
+    : processEvents[0]
+
+  let Process = {
+    entity: process,
+    getEvents: () => processEvents
+  }
+
+
+  let allowedNextEventTypes = isDefined(selectedEvent)
+    ? new Function( ["Database", "Process"] , Database.get( Database.get(process, "process/processType"), "attribute/1605528219674").find( Step => Step.eventType === Database.get(selectedEvent, "event/eventTypeEntity") ).nextEventsFunction  )( Database, Process )
+    : [ Database.get(Database.get(process, "process/processType"), "attribute/1605528219674")[0].eventType ]
+  
 
   return d([
-    h3( Database.get(eventType, "entity/label") ),
-    d( Database.get(eventType, "eventType/eventAttributes").map( attribute => datomView( entity, attribute ))),
-  ], {class: "feedContainer"} )
+        d("Handlinger:"),
+        d( allowedNextEventTypes.length > 0
+            ? allowedNextEventTypes.map( eventType => entityLabel(eventType, async e => Database.createEvent( eventType , process ) ) ) 
+            : "Ingen tilgjengelige handlinger" ),
+        processEvents.length === 0
+          ? retractEntityButton(process)
+          : d("Slett alle hendelser for å slette prosessen")
+      ])
 
 }
 
