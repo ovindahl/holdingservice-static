@@ -678,6 +678,8 @@ let input_Entity = (entity, attribute, version) => {
 
 let input_datomConstructor = (entity, attribute, version) => {
 
+  
+
   let datoms = Database.get( entity, attribute, version )
 
   return d([
