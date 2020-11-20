@@ -458,7 +458,7 @@ let update = ( S ) => {
 
     
 
-    backgroundDataSync(S)
+    //backgroundDataSync(S)
 
     
 
