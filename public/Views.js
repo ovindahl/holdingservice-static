@@ -548,7 +548,8 @@ let datomView = (entity, attribute, version) => {
     "39": input_eventConstructor, //valueTypeView_newDatoms,
     "40": input_object, //valueTypeView_staticDropdown,
     "41": input_singleCompanyEntity, //valueTypeView_companyEntityDropdown,    
-    "5721": input_date
+    "5721": input_date,
+    "5824": input_file,
   } 
 
   let valueType = Database.get(attribute, "attribute/valueType")
@@ -593,6 +594,25 @@ let input_date = (entity, attribute, version) => input(
   {value: moment(Database.get( entity, attribute, version )).format("DD/MM/YYYY"), style: `text-align: right;`}, 
   "change", 
   async e => await Database.updateEntity(entity, attribute, Number( moment(submitInputValue(e), "DD/MM/YYYY").format("x") )   )
+)
+
+let input_file = (entity, attribute, version) => isArray(Database.get(entity, attribute))
+  ? d( Database.get(entity, attribute).map( row => d(JSON.stringify(row)) ) )
+  : input(
+  {type: "file", style: `text-align: right;`}, 
+  "change", 
+  e => {
+
+    let file = e.srcElement.files[0]
+
+    Papa.parse(file, {
+      header: true,
+      complete: results => Database.updateEntity(entity, attribute, results.data )
+    })
+
+    
+
+  } 
 )
 
 let input_function = (entity, attribute, version) => textArea(

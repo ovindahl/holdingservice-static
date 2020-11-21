@@ -88,25 +88,6 @@ const Database = {
 
     }
   },
-  createEntityWithoutUpdate: async (entityType, newEntityDatoms) => {
-
-    let Datoms = Database.get( entityType, "entityType/attributes")
-      .map( attribute => newDatom("newEntity", Database.attrName(attribute), new Function("S", Database.get(attribute, "attribute/startValue") )( Database )))
-      .filter( datom => datom.attribute !== "entity/entityType" )
-      .filter( datom => datom.attribute !== "entity/label" )
-      .concat([
-        newDatom("newEntity", "entity/entityType", entityType ),
-        newDatom("newEntity", "entity/label", `[${Database.get(entityType, "entity/label")} uten navn]` ),
-        newDatom("newEntity", "entity/category", `Mangler kategori` )
-      ])
-
-    if(Array.isArray(newEntityDatoms)){Datoms = Datoms.concat(newEntityDatoms)}
-    let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
-    let updatedEntity = serverResponse[0]
-    Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
-    Database.recalculateCompanies()
-    return updatedEntity
-  },
   createEntity: async (entityType, newEntityDatoms) => {
 
     let Datoms = Database.get( entityType, "entityType/attributes")
@@ -232,113 +213,6 @@ const Database = {
   getEvent: event => Database.Events.find( Event => Event.entity === event ),
   recalculateCompanies: () => Database.Companies = Database.getAll( 5722 ).map( company => Database.constructCompany( company) ),
   recalculateCompany: company => Database.Companies.filter( Company => Company.entity !== company ).concat( Database.constructCompany( company )  ),
-  createCompany: company => {
-
-
-    let companyProcesses = Database.getAll(5692)
-    .filter( e => Database.get(e, "process/company" ) === company )
-
-    let events = Database.getAll(46)
-    .filter( event => companyProcesses.includes( Database.get(event, "event/process") )  )
-    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
-
-
-    let Company = events.reduce( (Company, event, index) => {
-        let Event = Database.getEvent(event);
-        let t = index + 1
-        Company.t = t;
-        let Q = {latestEntityID: () => Company.latestEntityID}
-        
-        let eventDatoms = Database.get( Database.get(event, "event/eventTypeEntity") , "eventType/newDatoms").map( datomConstructor => {
-          let datom;
-          try {
-            datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ), "attribute": datomConstructor.attribute, "value": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["value"] )( Q, Database, Company, Event ),"t": t }
-            
-          
-          }
-          catch (error) {datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ),"attribute": datomConstructor.attribute,"value": "ERROR" ,"t": t, "error": String(error)}}
-          finally{return datom}
-        }).sort( (datomA, datomB) => datomA.entity - datomB.entity )
-        
-        
-        Company.Datoms = Company.Datoms.concat(eventDatoms)
-
-        Company.Entities = Object.values(Company.Datoms.reduce( (Entities, Datom) => mergerino(
-          Entities,
-          createObject(Datom.entity, {entity: Datom.entity, t: Datom.t}),
-          createObject(Datom.entity, createObject(Datom.attribute, Datom.value ))
-        ), [] ));
-
-        
-
-        Company.getDatom = (entity, attribute, t) => Company.Datoms
-          .filter( Datom => Datom.entity === entity )
-          .filter( Datom => Datom.attribute === attribute )
-          .filter( Datom => isDefined(t) ? Datom.t <= t : true )
-          .slice( -1 )[0]
-
-        Company.get = (entity, attribute, t) => isDefined(Company.getDatom(entity, attribute, t))
-          ? Company.getDatom(entity, attribute, t).value
-          : undefined
-
-        Company.getAll = (entityType, t) => Company.Entities
-          .filter( companyEntity => companyEntity["19"] === entityType )
-          .filter( Datom => isDefined(t) ? Datom.t <= t : true )
-          .map( companyEntity => companyEntity.entity )
-
-        Company.getOptions = (attribute, t) => {
-
-          let options = [];
-
-          try {options = new Function( ["Database", "Company", "t"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Database, Company, t )} 
-          catch (error) { log(error) }
-
-          return options
-
-        }
-
-        Company.id = id => {
-
-          let matchingDatoms = Company.Datoms
-          .filter( Datom => isDefined( Company.getDatom(Datom.entity, 19) ) )
-          .filter( Datom => [1112, 1131, 1080, 1086, 1097, 1137, 5811, 5812].includes( Datom.attribute ) )
-          .filter( Datom => Datom.value === id )
-
-          return matchingDatoms.length > 0
-            ? matchingDatoms[ 0 ].entity
-            : undefined
-        } 
-          
-
-        Company.getEntityValueFromID = (id, attribute) => Company.get( Company.id(id), attribute )
-
-        Company.getAccountBalance = accountNumber => Company.getAll( 5672 )
-          .filter( e => isNumber( Company.get(e, 1653) ) )
-          .filter( e => Company.get(e, 1653) === Database.account(accountNumber) )
-          .reduce( (sum, e) => sum + Company.get(e, 1083), 0 )
-
-
-        Company.sumAccountBalance = accountNumbers => Company.getAll( 5672 )
-        .filter( e => isNumber( Company.get(e, 1653) ) )
-        .filter( e => accountNumbers.map( accountNumber => Database.account(accountNumber)  ).includes( Company.get(e, 1653) )  )
-        .reduce( (sum, e) => sum + Company.get(e, 1083), 0 )
-
-        Company.latestEntityID = Company.Datoms
-            .map( Datom => Datom.entity )
-            .sort( (a, b) => a - b )
-            .slice( -1 )[0]
-
-        return Company
-      } , {
-        entity: company,
-        events: events,
-        Datoms: [],
-        Entities: [],
-        latestEntityID: 0
-      }  )
-    
-    return Company;
-  },
   constructCompany: company => {
     let starttime = Date.now()
     let Company = Database.get(company)
@@ -597,7 +471,115 @@ let init = async () => {
 
 
 
+/* 
+createCompany: company => {
 
+
+    let companyProcesses = Database.getAll(5692)
+    .filter( e => Database.get(e, "process/company" ) === company )
+
+    let events = Database.getAll(46)
+    .filter( event => companyProcesses.includes( Database.get(event, "event/process") )  )
+    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
+
+
+    let Company = events.reduce( (Company, event, index) => {
+        let Event = Database.getEvent(event);
+        let t = index + 1
+        Company.t = t;
+        let Q = {latestEntityID: () => Company.latestEntityID}
+        
+        let eventDatoms = Database.get( Database.get(event, "event/eventTypeEntity") , "eventType/newDatoms").map( datomConstructor => {
+          let datom;
+          try {
+            datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ), "attribute": datomConstructor.attribute, "value": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["value"] )( Q, Database, Company, Event ),"t": t }
+            
+          
+          }
+          catch (error) {datom = {"entity": new Function( [`Q`, `Database`, `Company`, `Event`], datomConstructor["entity"] )( Q, Database, Company, Event ),"attribute": datomConstructor.attribute,"value": "ERROR" ,"t": t, "error": String(error)}}
+          finally{return datom}
+        }).sort( (datomA, datomB) => datomA.entity - datomB.entity )
+        
+        
+        Company.Datoms = Company.Datoms.concat(eventDatoms)
+
+        Company.Entities = Object.values(Company.Datoms.reduce( (Entities, Datom) => mergerino(
+          Entities,
+          createObject(Datom.entity, {entity: Datom.entity, t: Datom.t}),
+          createObject(Datom.entity, createObject(Datom.attribute, Datom.value ))
+        ), [] ));
+
+        
+
+        Company.getDatom = (entity, attribute, t) => Company.Datoms
+          .filter( Datom => Datom.entity === entity )
+          .filter( Datom => Datom.attribute === attribute )
+          .filter( Datom => isDefined(t) ? Datom.t <= t : true )
+          .slice( -1 )[0]
+
+        Company.get = (entity, attribute, t) => isDefined(Company.getDatom(entity, attribute, t))
+          ? Company.getDatom(entity, attribute, t).value
+          : undefined
+
+        Company.getAll = (entityType, t) => Company.Entities
+          .filter( companyEntity => companyEntity["19"] === entityType )
+          .filter( Datom => isDefined(t) ? Datom.t <= t : true )
+          .map( companyEntity => companyEntity.entity )
+
+        Company.getOptions = (attribute, t) => {
+
+          let options = [];
+
+          try {options = new Function( ["Database", "Company", "t"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Database, Company, t )} 
+          catch (error) { log(error) }
+
+          return options
+
+        }
+
+        Company.id = id => {
+
+          let matchingDatoms = Company.Datoms
+          .filter( Datom => isDefined( Company.getDatom(Datom.entity, 19) ) )
+          .filter( Datom => [1112, 1131, 1080, 1086, 1097, 1137, 5811, 5812].includes( Datom.attribute ) )
+          .filter( Datom => Datom.value === id )
+
+          return matchingDatoms.length > 0
+            ? matchingDatoms[ 0 ].entity
+            : undefined
+        } 
+          
+
+        Company.getEntityValueFromID = (id, attribute) => Company.get( Company.id(id), attribute )
+
+        Company.getAccountBalance = accountNumber => Company.getAll( 5672 )
+          .filter( e => isNumber( Company.get(e, 1653) ) )
+          .filter( e => Company.get(e, 1653) === Database.account(accountNumber) )
+          .reduce( (sum, e) => sum + Company.get(e, 1083), 0 )
+
+
+        Company.sumAccountBalance = accountNumbers => Company.getAll( 5672 )
+        .filter( e => isNumber( Company.get(e, 1653) ) )
+        .filter( e => accountNumbers.map( accountNumber => Database.account(accountNumber)  ).includes( Company.get(e, 1653) )  )
+        .reduce( (sum, e) => sum + Company.get(e, 1083), 0 )
+
+        Company.latestEntityID = Company.Datoms
+            .map( Datom => Datom.entity )
+            .sort( (a, b) => a - b )
+            .slice( -1 )[0]
+
+        return Company
+      } , {
+        entity: company,
+        events: events,
+        Datoms: [],
+        Entities: [],
+        latestEntityID: 0
+      }  )
+    
+    return Company;
+  },
+*/
 
 //let newAttributes = []
     //let datoms = prepareImportDatoms(newAttributes)
