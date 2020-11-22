@@ -27,8 +27,18 @@ const Database = {
 
     let valueType = Database.get( Database.attr(attribute), "attribute/valueType")
 
+    let attributeIsArray = isDefined( Database.get(attribute, 5823) )
+      ? Database.get(attribute, 5823)
+      : false
+
+    let valueInArray = attributeIsArray ? value : [value]
+
+    console.log({attribute, attributeIsArray})
+
     let isValid_existingEntity = Database.Entities.map( E => E.entity).includes(entity)
-    let isValid_valueType = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") ) ( value )
+    let valueTypeValidatorFunction = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") )
+    let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
+
     let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attribute), "attribute/validatorFunctionString") ) ( value )
     let isValid_notNaN = !Number.isNaN(value)
 
@@ -108,7 +118,7 @@ const Database = {
     update( Database.S )
     return updatedEntity
   },
-  createEvent: (eventType, parentProcess) => {
+  createEvent: (eventType, parentProcess, optionalDatoms) => {
 
     let eventTypeAttributes = Database.get(eventType, "eventType/eventAttributes" )
     let eventTypeDatoms = eventTypeAttributes.map( attribute => {
@@ -122,6 +132,11 @@ const Database = {
       newDatom("newEntity", "event/eventTypeEntity", eventType),
       newDatom("newEntity", "event/process", parentProcess),
     ].concat(eventTypeDatoms)
+    if(Array.isArray(optionalDatoms)){
+      Datoms = Datoms
+      .filter( Datom => !optionalDatoms.map( D => D.attribute ).includes(Datom.attribute) )
+      .concat(optionalDatoms)
+    }
     if(Datoms.every( Datom => isString(Datom.entity) && isString(Datom.attribute) && !isUndefined(Datom.value) )){Database.createEntity(46, Datoms)}else{log("Datoms not valid: ", Datoms)}
   },
   retractEntity: async entity => {

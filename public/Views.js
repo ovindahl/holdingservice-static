@@ -496,16 +496,81 @@ let nextActionsView =  (S, process) => {
     getEvents: () => processEvents
   }
 
+  let actionButtons;
 
-  let allowedNextEventTypes = isDefined(selectedEvent)
-    ? new Function( ["Database", "Process"] , Database.get( Database.get(process, "process/processType"), "attribute/1605528219674").find( Step => Step.eventType === Database.get(selectedEvent, "event/eventTypeEntity") ).nextEventsFunction  )( Database, Process )
-    : [ Database.get(Database.get(process, "process/processType"), "attribute/1605528219674")[0].eventType ]
+  if( selectedEvent === 5825  ){
+
+    
+
+    actionButtons = [
+      entityLabel(5705, async e => Database.createEvent( 5705, process ) ),
+      submitButton( "Importer banktransaksjoner", async e => {
+        let rows = Database.get(5825, 1759).sort( (rowA,rowB) => Number( moment( rowA["Dato (DD.MM.YYYY)"], "DD.MM.YYYY" ).format("x") ) - Number( moment( rowB["Dato (DD.MM.YYYY)"], "DD.MM.YYYY" ).format("x") )  )
+
+        let isValid = rows.every( row => isString(row["Transaksjonsref."]) && isString(row["Dato (DD.MM.YYYY)"]) && isString("Transaksjonsref.") && !isNaN(row["Beløp (+/-) [100000.00]"]) )
+
+        console.log(isValid)
+
+        if(isValid){
+
+          let entityType = 46
+          let eventType = 5705
+          let eventTypeAttributes = Database.get(eventType, "eventType/eventAttributes" )
+          let entityTypeAttributes = Database.get( entityType, "entityType/attributes")
+
+          let Datoms = rows.map( (row, index) => [
+            newDatom(`newEntity${index}`, "entity/entityType", entityType ),
+            newDatom(`newEntity${index}`, "entity/label", `${Database.get(eventType, "entity/label")} ${row["Transaksjonsref."]}` ),
+            newDatom(`newEntity${index}`, "entity/category", Database.get(eventType, "entity/label") ),
+            newDatom(`newEntity${index}`, "event/eventTypeEntity", eventType),
+            newDatom(`newEntity${index}`, "event/process", process),
+            newDatom(`newEntity${index}`, "event/date", Number( moment( row["Dato (DD.MM.YYYY)"], "DD.MM.YYYY" ).format("x") ) ),
+            newDatom(`newEntity${index}`, "eventAttribute/1080", row["Transaksjonsref."] ),
+            newDatom(`newEntity${index}`, "eventAttribute/1082", Database.get(5825, 1082) ),
+            newDatom(`newEntity${index}`, "eventAttribute/1083", Number( row["Beløp (+/-) [100000.00]"] ) ),
+            newDatom(`newEntity${index}`, "eventAttribute/1139", row["Beskrivelse"] )
+          ] ).flat()
+          console.log(Datoms)
+          Database.submitDatoms(Datoms)
+
+        }else{
+          console.log("Imported rows not valid:", rows)
+        }
+        
+        
+
+        
+
+
+
+        
+        /* if(Datoms.every( Datom => isString(Datom.entity) && isString(Datom.attribute) && !isUndefined(Datom.value) )){Database.createEntity(46, Datoms)}else{log("Datoms not valid: ", Datoms)}
+
+        Database.createEvent( 5705, process, prefilledDatoms ) */
+
+      }  )
+    ]
+
+  }else{
+
+    let actionsFunc = isDefined(selectedEvent)
+    ? new Function( ["Database", "Process"] , Database.get( Database.get(process, "process/processType"), "attribute/1605528219674").find( Step => Step.eventType === Database.get(selectedEvent, "event/eventTypeEntity") ).nextEventsFunction  )
+    : () => [ Database.get(Database.get(process, "process/processType"), "attribute/1605528219674")[0].eventType ]
+  
+  
+    let allowedNextEventTypes = actionsFunc( Database, Process )
+
+    actionButtons = allowedNextEventTypes.map( eventType => entityLabel(eventType, async e => Database.createEvent( eventType, process ) ) )
+
+  }
+
+ 
   
 
   return d([
         d("Handlinger:"),
-        d( allowedNextEventTypes.length > 0
-            ? allowedNextEventTypes.map( eventType => entityLabel(eventType, async e => Database.createEvent( eventType , process ) ) ) 
+        d( actionButtons.length > 0
+            ? actionButtons
             : "Ingen tilgjengelige handlinger" ),
         processEvents.length === 0
           ? retractEntityButton(process)
