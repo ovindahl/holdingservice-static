@@ -218,7 +218,7 @@ let pageRouter = {
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
 
 let sidebar_left = (S, A) => d([
-      d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687, 5722]
+      d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687]
         .map( entity => entityLabel(entity, e => A.updateLocalState(  {
           selectedEntityType : entity, 
           selectedCategory: null,
@@ -404,13 +404,13 @@ let processProgressView = (S, A, process) => {
 
 
   return d([
-    d( Database.get(Database.get(process, "process/processType"), "attribute/1605528219674").map( (processStep, index) => d([
-          entityLabel( processStep.eventType, e => 0 ),
+    d( Database.get(Database.get(process, "process/processType"), 5926).map( (eventType, index) => d([
+          entityLabel( eventType ),
           d( Database.getAll(46)
           .filter( event => Database.get(event).current["event/process"] === process )
-          .filter( event => Database.get(event, "event/eventTypeEntity") === processStep.eventType  )
+          .filter( event => Database.get(event, "event/eventTypeEntity") === eventType  )
           .map( event => d(String(event), {style: event === selectedEvent ? "color: blue;" : ""}, "click", e => Database.setLocalState(process, {selectedEvent: event })  ) ) )
-        ], {style: processStep.eventType === Database.get(selectedEvent, "event/eventTypeEntity") ? "background-color: #bfbfbf;" : ""})
+        ], {style: eventType === Database.get(selectedEvent, "event/eventTypeEntity") ? "background-color: #bfbfbf;" : ""})
     ), {style: "display: flex;"} ),
     /* d( [
       selectedEventIndex > 0 ? submitButton("<", e => Database.setLocalState(process, {selectedEvent: processEvents[selectedEventIndex - 1] })) : d("["),
@@ -443,8 +443,10 @@ let processView =  (S , A, process) => {
       ], {class: "columns_1_1"}),
       processProgressView(S, A, process),
       br(),
+      nextActionsView(S, process),
+      br(),
       singleEventView(S, selectedEvent ),
-      nextActionsView(S, process)
+      
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
 }
 
@@ -487,94 +489,32 @@ let nextActionsView =  (S, process) => {
     .filter( event => Database.get(event, "event/process") === process )
     .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
 
-  let selectedEvent = isDefined(Database.getLocalState(process).selectedEvent)
-    ? Database.getLocalState(process).selectedEvent
-    : processEvents[0]
-
   let Process = {
     entity: process,
     getEvents: () => processEvents
   }
 
-  let actionButtons;
+  let processType =   Database.get(process, "process/processType" )
 
-  if( selectedEvent === 5825  ){
+  
 
+  
+
+
+
+  let actionButtons = Database.get(processType, "processType/actions")
+      .filter( action => new Function(["Database", "Process"], action[5848])(Database, Process) )
+      .map( action => submitButton(action[6], async e => new Function(["Database", "Process"], action[5850])(Database, Process) ) )
     
-
-    actionButtons = [
-      entityLabel(5705, async e => Database.createEvent( 5705, process ) ),
-      submitButton( "Importer banktransaksjoner", async e => {
-        let rows = Database.get(5825, 1759).sort( (rowA,rowB) => Number( moment( rowA["Dato (DD.MM.YYYY)"], "DD.MM.YYYY" ).format("x") ) - Number( moment( rowB["Dato (DD.MM.YYYY)"], "DD.MM.YYYY" ).format("x") )  )
-
-        let isValid = rows.every( row => isString(row["Transaksjonsref."]) && isString(row["Dato (DD.MM.YYYY)"]) && isString("Transaksjonsref.") && !isNaN(row["Beløp (+/-) [100000.00]"]) )
-
-        console.log(isValid)
-
-        if(isValid){
-
-          let entityType = 46
-          let eventType = 5705
-          let eventTypeAttributes = Database.get(eventType, "eventType/eventAttributes" )
-          let entityTypeAttributes = Database.get( entityType, "entityType/attributes")
-
-          let Datoms = rows.map( (row, index) => [
-            newDatom(`newEntity${index}`, "entity/entityType", entityType ),
-            newDatom(`newEntity${index}`, "entity/label", `${Database.get(eventType, "entity/label")} ${row["Transaksjonsref."]}` ),
-            newDatom(`newEntity${index}`, "entity/category", Database.get(eventType, "entity/label") ),
-            newDatom(`newEntity${index}`, "event/eventTypeEntity", eventType),
-            newDatom(`newEntity${index}`, "event/process", process),
-            newDatom(`newEntity${index}`, "event/date", Number( moment( row["Dato (DD.MM.YYYY)"], "DD.MM.YYYY" ).format("x") ) ),
-            newDatom(`newEntity${index}`, "eventAttribute/1080", row["Transaksjonsref."] ),
-            newDatom(`newEntity${index}`, "eventAttribute/1082", Database.get(5825, 1082) ),
-            newDatom(`newEntity${index}`, "eventAttribute/1083", Number( row["Beløp (+/-) [100000.00]"] ) ),
-            newDatom(`newEntity${index}`, "eventAttribute/1139", row["Beskrivelse"] )
-          ] ).flat()
-          console.log(Datoms)
-          Database.submitDatoms(Datoms)
-
-        }else{
-          console.log("Imported rows not valid:", rows)
-        }
-        
-        
-
-        
-
-
-
-        
-        /* if(Datoms.every( Datom => isString(Datom.entity) && isString(Datom.attribute) && !isUndefined(Datom.value) )){Database.createEntity(46, Datoms)}else{log("Datoms not valid: ", Datoms)}
-
-        Database.createEvent( 5705, process, prefilledDatoms ) */
-
-      }  )
-    ]
-
-  }else{
-
-    let actionsFunc = isDefined(selectedEvent)
-    ? new Function( ["Database", "Process"] , Database.get( Database.get(process, "process/processType"), "attribute/1605528219674").find( Step => Step.eventType === Database.get(selectedEvent, "event/eventTypeEntity") ).nextEventsFunction  )
-    : () => [ Database.get(Database.get(process, "process/processType"), "attribute/1605528219674")[0].eventType ]
-  
-  
-    let allowedNextEventTypes = actionsFunc( Database, Process )
-
-    actionButtons = allowedNextEventTypes.map( eventType => entityLabel(eventType, async e => Database.createEvent( eventType, process ) ) )
-
-  }
-
- 
-  
 
   return d([
         d("Handlinger:"),
-        d( actionButtons.length > 0
-            ? actionButtons
-            : "Ingen tilgjengelige handlinger" ),
         processEvents.length === 0
-          ? retractEntityButton(process)
-          : d("Slett alle hendelser for å slette prosessen")
+          ? d([
+            entityLabel( Database.get(processType, 5926)[0], async e => Database.createEvent( Database.get(processType, 5926)[0], process, {1757: Date.now()}) ),
+            retractEntityButton(process)
+          ]) 
+          : d(actionButtons.length > 0 ? actionButtons : "Ingen tilgjengelige handlinger" )
       ])
 
 }
@@ -615,6 +555,7 @@ let datomView = (entity, attribute, version) => {
     "41": input_singleCompanyEntity, //valueTypeView_companyEntityDropdown,    
     "5721": input_date,
     "5824": input_file,
+    "5849": input_eventConstructorsInProcessStep
   } 
 
   let valueType = Database.get(attribute, "attribute/valueType")
@@ -627,7 +568,7 @@ let datomView = (entity, attribute, version) => {
       entityLabel( attribute ),
       input_undefined( entity, attribute )
     ], {class: "columns_1_1"})
-    : [37, 38, 39].includes( valueType )
+    : [37, 38, 39, 5849].includes( valueType )
       ? genericValueTypeViews[ valueType  ]( entity, attribute, version )
       : d([
         entityLabel( attribute ),
@@ -792,34 +733,103 @@ let input_datomConstructor = (entity, attribute, version) => {
 
 let input_eventConstructor = (entity, attribute, version) => {
 
-  let eventConstructors = Database.get( entity, attribute, version )
+  let processSteps = Database.get( entity, attribute, version )
 
   return d([
     entityLabel(5690),
-    d([
-      d("Steg"),
-      d("Hendelsestype"),
-      d("Tillatte neste hendelser"),
-      d(" "),
-    ], {class: "columns_1_2_4_1"}),
-    d(eventConstructors.map( (eventConstructor, index) => d([
-      d(String(index)),
-      dropdown(eventConstructor.eventType,  Database.getAll(43).map( e => returnObject({value: e, label: Database.get(e, "entity/label") }) ), async e => {
-        let eventType = Number(submitInputValue(e))
-        let nextEventsFunction = `return [${eventType}];`
-        let updatedEventConstructor = {eventType, nextEventsFunction}
-        await Database.updateEntity(entity, attribute, mergerino(eventConstructors, {[index]:updatedEventConstructor}) )
-      } ),
-      textArea(
-        eventConstructor.nextEventsFunction, 
-        {class:"textArea_code"}, 
-        async e => await Database.updateEntity(entity, attribute, mergerino(eventConstructors, {[index]: {nextEventsFunction: submitInputValue(e).replaceAll(`"`, `'`)} }) )
-      ),
-      submitButton("[Slett]", async e => await Database.updateEntity(entity, attribute, eventConstructors.filter( (d, i) => i !== index  )  )),
-    ], {class: "columns_1_2_4_1"}) )),
-    submitButton("Legg til steg", async e => await Database.updateEntity(entity, attribute, eventConstructors.concat({eventType: 5000, nextEventsFunction: "return [5000];" })  ))
+    d(processSteps.map( (processStep, index) => d([
+      d([
+        h3(`Steg ${index}`),
+        dropdown(processStep.eventType,  Database.getAll(43).map( e => returnObject({value: e, label: Database.get(e, "entity/label") }) ), async e => {
+          let eventType = Number(submitInputValue(e))
+          let nextEventsFunction = `return [${eventType}];`
+          let updatedEventConstructor = {eventType, nextEventsFunction}
+          await Database.updateEntity(entity, attribute, mergerino(processSteps, {[index]:updatedEventConstructor}) )
+        } ),
+      ]),
+      d([
+        d("Gammel funksjon"),
+        textArea(
+          processStep.nextEventsFunction, 
+          {class:"textArea_code"}, 
+          async e => await Database.updateEntity(entity, attribute, mergerino(processSteps, {[index]: {nextEventsFunction: submitInputValue(e).replaceAll(`"`, `'`)} }) )
+        ),
+      ]),
+      d([
+        d("Tillatte neste handlinger:"),
+        d([
+          d("Kriterium"),
+          d("Hendelsestype"),
+          d("Funksjon for å opprette"),
+        ], {class: "columns_2_2_2_1"}),
+        d(processStep[1761].map( (action, actionIndex) => d([
+          d([textArea(
+            action[5848], 
+            {class:"textArea_code"}, 
+            //async e => await Database.updateEntity(entity, attribute, mergerino(processSteps, {[index]: {nextEventsFunction: submitInputValue(e).replaceAll(`"`, `'`)} }) )
+          )]),
+          dropdown(action[5705],  Database.getAll(43).map( e => returnObject({value: e, label: Database.get(e, "entity/label") }) ), async e => {
+            let eventType = Number(submitInputValue(e))
+            let updatedAction = mergerino(action, {5705: eventType})
+            let updatedStepActions = processStep[1761].filter( (step, index) => index !== actionIndex ).concat(updatedAction)
+            let updatedStep = mergerino(processStep, {1761: updatedStepActions} )
+            let updatedProcessSteps = processSteps.filter( (step, i) => i !== index ).concat(updatedStep)
+            await Database.updateEntity(entity, attribute, updatedProcessSteps )
+          } ),
+          d([textArea(
+            action[5850], 
+            {class:"textArea_code"}, 
+            //async e => await Database.updateEntity(entity, attribute, mergerino(processSteps, {[index]: {nextEventsFunction: submitInputValue(e).replaceAll(`"`, `'`)} }) )
+          )]),
+        ], {class: "columns_2_2_2_1"}) ))
+      ]),
+      submitButton("[Slett]", async e => await Database.updateEntity(entity, attribute, processSteps.filter( (d, i) => i !== index  )  )),
+      br(),
+      br(),
+    ]) )),
+    submitButton("Legg til steg", async e => await Database.updateEntity(entity, attribute, processSteps.concat({eventType: 5000, nextEventsFunction: "return [5000];" })  ))
   ])
 }
+
+
+
+
+let input_eventConstructorsInProcessStep = (entity, attribute, version) => {
+
+  let eventConstructors = Database.get( entity, attribute, version )
+
+  return d([
+    entityLabel(attribute),
+    d([
+      d([
+        d("Navn på handling"),
+        d("Kriterium"),
+        d("Funksjon for å opprette"),
+        d("")
+      ], {class: "columns_1_3_3_1"}),
+      d(eventConstructors.map( (eventConstructor, eventConstructorIndex) => d([
+        input(
+          {value: eventConstructor[6], style: ``},
+          "change", 
+          async e => await Database.updateEntity(entity, attribute, eventConstructors.filter( (eventConstructor, i) => i !== eventConstructorIndex ).concat( mergerino(eventConstructor, {6: submitInputValue(e) }) ) )
+        ),
+        textArea(
+          eventConstructor[5848], 
+          {class:"textArea_code"}, 
+          async e => await Database.updateEntity(entity, attribute, eventConstructors.filter( (eventConstructor, i) => i !== eventConstructorIndex ).concat( mergerino(eventConstructor, {5848: submitInputValue(e).replaceAll(`"`, `'`)}) ) )
+        ),
+        textArea(
+          eventConstructor[5850], 
+          {class:"textArea_code"}, 
+          async e => await Database.updateEntity(entity, attribute, eventConstructors.filter( (eventConstructor, i) => i !== eventConstructorIndex ).concat( mergerino(eventConstructor, {5850: submitInputValue(e).replaceAll(`"`, `'`)}) ) )
+        ),
+        submitButton("[Slett]", async e => await Database.updateEntity(entity, attribute, eventConstructors.filter( (d, i) => i !== eventConstructorIndex  )  )),
+      ], {class: "columns_1_3_3_1"}) )),
+      submitButton("Legg til rad", async e => await Database.updateEntity(entity, attribute, eventConstructors.concat( {5848: "return true;", 5705: 5000, 5850: "Database.createEvent(5000, Process.entity);"} )  )),
+    ])
+  ])
+}
+
 
 let input_multipleSelect = (entity, attribute, version) => d([
   entityLabel(attribute),

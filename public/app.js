@@ -4,7 +4,7 @@ const Database = {
   setLocalState: (entity, newState) => {
 
     let updatedEntity = Database.getServerEntity(entity)
-    updatedEntity.localState = newState
+    updatedEntity.localState = mergerino(updatedEntity.localState, newState) 
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
     update( Database.S )
     
@@ -33,11 +33,11 @@ const Database = {
 
     let valueInArray = attributeIsArray ? value : [value]
 
-    console.log({attribute, attributeIsArray})
+    console.log({attribute, attributeIsArray, valueInArray})
 
     let isValid_existingEntity = Database.Entities.map( E => E.entity).includes(entity)
     let valueTypeValidatorFunction = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") )
-    let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
+    let isValid_valueType = valueInArray.every( arrayValue => log(valueTypeValidatorFunction)(arrayValue) ) 
 
     let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attribute), "attribute/validatorFunctionString") ) ( value )
     let isValid_notNaN = !Number.isNaN(value)
@@ -115,29 +115,40 @@ const Database = {
     let updatedEntity = serverResponse[0]
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
     Database.recalculateCompanies()
+
     update( Database.S )
     return updatedEntity
   },
-  createEvent: (eventType, parentProcess, optionalDatoms) => {
+  createEvent: (eventType, parentProcess, attributeAssertions) => Database.createEvents(eventType, parentProcess, [attributeAssertions]),
+  createEvents: async (eventType, parentProcess, attributeAssertions) => {
+
+    
 
     let eventTypeAttributes = Database.get(eventType, "eventType/eventAttributes" )
-    let eventTypeDatoms = eventTypeAttributes.map( attribute => {
-      let functionString = Database.get(attribute, "attribute/startValue" )
-      let func = new Function( ["Database"], functionString )
-      let value = func(Database)
-      let Datom = newDatom("newEntity", Database.attrName(attribute), value )  
-      return Datom
-    } ).filter( Datom => Datom.attribute !== "eventAttribute/1000" ).filter( Datom => Datom.attribute !== "event/process" )
-    let Datoms = [
-      newDatom("newEntity", "event/eventTypeEntity", eventType),
-      newDatom("newEntity", "event/process", parentProcess),
-    ].concat(eventTypeDatoms)
-    if(Array.isArray(optionalDatoms)){
-      Datoms = Datoms
-      .filter( Datom => !optionalDatoms.map( D => D.attribute ).includes(Datom.attribute) )
-      .concat(optionalDatoms)
-    }
-    if(Datoms.every( Datom => isString(Datom.entity) && isString(Datom.attribute) && !isUndefined(Datom.value) )){Database.createEntity(46, Datoms)}else{log("Datoms not valid: ", Datoms)}
+    
+    let Datoms = attributeAssertions.map( (attributeAssertion, index) => [
+      newDatom(`newEntity ${index}`, "entity/entityType", 46 ),
+      newDatom(`newEntity ${index}`, "event/eventTypeEntity", eventType),
+      newDatom(`newEntity ${index}`, "event/process", parentProcess),
+    ].concat(
+      eventTypeAttributes
+      .map( attribute => newDatom(`newEntity ${index}`, Database.attrName(attribute), Object.keys(attributeAssertion).includes( String( attribute ) ) 
+        ? attributeAssertion[attribute]
+        : new Function( ["Database"], Database.get(attribute, "attribute/startValue" ) )(Database) )   
+      ))  ).flat()
+
+
+    console.log("createEvents:", {attributeAssertions, Datoms})
+
+    if(Datoms.every( Datom => isString(Datom.entity) && isString(Datom.attribute) && !isUndefined(Datom.value) )){
+
+      let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
+      let updatedEntities = serverResponse
+      Database.Entities = Database.Entities.filter( Entity => !updatedEntities.map( updatedEntity => updatedEntity.entity  ).includes(Entity.entity) ).concat( updatedEntities )
+      Database.recalculateCompanies()
+      update( Database.S )
+
+    }else{log("Datoms not valid: ", Datoms)}
   },
   retractEntity: async entity => {
     let Datoms = Database.getServerEntity(entity).Datoms
