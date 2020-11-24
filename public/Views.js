@@ -551,7 +551,7 @@ let datomView = (entity, attribute, version) => {
     "36": input_boolean, //Bool
     "38": input_datomConstructor, //valueTypeView_newDatoms,
     "39": input_eventConstructor, //valueTypeView_newDatoms,
-    "40": input_object, //valueTypeView_staticDropdown,
+    "40": input_staticDropdown, //valueTypeView_staticDropdown,
     "41": input_singleCompanyEntity, //valueTypeView_companyEntityDropdown,    
     "5721": input_date,
     "5824": input_file,
@@ -600,6 +600,12 @@ let input_date = (entity, attribute, version) => input(
   {value: moment(Database.get( entity, attribute, version )).format("DD/MM/YYYY"), style: `text-align: right;`}, 
   "change", 
   async e => await Database.updateEntity(entity, attribute, Number( moment(submitInputValue(e), "DD/MM/YYYY").format("x") )   )
+)
+
+let input_staticDropdown = (entity, attribute, version) => dropdown(
+  Database.get( entity, attribute, version ),
+  Database.getOptions( entity, attribute, version ),
+  async e => await Database.updateEntity(entity, attribute,  submitInputValue(e) )
 )
 
 let input_file = (entity, attribute, version) => isArray(Database.get(entity, attribute))

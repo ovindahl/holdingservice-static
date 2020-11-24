@@ -216,7 +216,7 @@ const Database = {
     if(isUndefined(selectedDatom)){return log(undefined, `[ Database.getDatom(${entity},${attribute}, ${version}) ]: Datom does not exist`)}
     selectedDatom.attr = Database.attr(selectedDatom.attribute)
     selectedDatom.valueType = Database.getServerEntity(selectedDatom.attr).current["attribute/valueType"] //Should not need validation?
-    if([32, 37].includes(selectedDatom.valueType)){
+    if([32, 37, 40].includes(selectedDatom.valueType)){
       try {
         let optionObjects = new Function( ["Database"] , Database.get(Database.attr(selectedDatom.attribute), "attribute/selectableEntitiesFilterFunction") )( Database )
         //Should return array of [{value: x, label: y}]
@@ -286,7 +286,7 @@ const Database = {
     } 
 
     Company.events.forEach( (event, index) => {
-      let starttime2 = Date.now()
+      //let starttime2 = Date.now()
       let eventType = Database.get(event, "event/eventTypeEntity")
       let Event = Database.get(event)
       Event.t = index + 1
@@ -298,8 +298,8 @@ const Database = {
       Database.Events = Database.Events.filter( Event => Event.entity !== event ).concat( Event  )
       
       Company.constructedDatoms = Company.constructedDatoms.concat(Event.constructedDatoms)
-      let endtime2 = Date.now()
-      console.log(`Constructed Event ${event} in ${endtime2 - starttime2} ms`)
+      //let endtime2 = Date.now()
+      //console.log(`Constructed Event ${event} in ${endtime2 - starttime2} ms`)
 
     } )
     let endtime = Date.now()
