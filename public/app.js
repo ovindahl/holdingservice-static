@@ -292,6 +292,7 @@ const Database = {
       Event.t = index + 1
       Event.get = attribute => Database.get(event, attribute)
       Event.isValid = () => Database.get( eventType, "eventType/eventValidators" ).every( eventValidator => new Function( [`Database`, `Company`, `Event`], Database.get( eventValidator, "eventValidator/validatorFunctionString")  )( Database, Company, Event ) )
+      Company.latestEntityID = Company.constructedDatoms.map( Datom => Datom.entity ).sort( (a,b) => a-b ).slice(-1)[0]
       Event.constructedDatoms = Database.get( eventType, "eventType/newDatoms").map( datomConstructor => constructDatom(datomConstructor, Database, Company, Event)  ).sort( (datomA, datomB) => datomA.entity - datomB.entity )
 
       Database.Events = Database.Events.filter( Event => Event.entity !== event ).concat( Event  )
@@ -310,19 +311,11 @@ const Database = {
 }
 
 let constructDatom = (datomConstructor, Database, Company, Event) => {
-
-  let Q = {
-    latestEntityID: () => Company.constructedDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues ).sort().slice( -1 )[0]
-  }
-
-  let entity = calculateEntity(datomConstructor, Q)
+  let entity = calculateEntity(datomConstructor, {latestEntityID: () => Company.latestEntityID})
   let attribute = datomConstructor.attribute
   let value = calculateValue( datomConstructor, Database, Company, Event )
-  
   let Datom = {entity, attribute, value, event: Event.entity, t: Event.t}
-
   return Datom
-
 }
 
 let calculateEntity = (datomConstructor, Q) => {
