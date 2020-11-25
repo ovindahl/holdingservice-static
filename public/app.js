@@ -412,6 +412,49 @@ const Database = {
 }
 
 let constructDatom = (datomConstructor, Database, Company, Event) => {
+
+  Company.get = (entity, attribute, t) => {
+
+    if(Database.getAll(5817).includes( attribute )){ 
+
+      let eventField = attribute;
+      let calculatedFieldFunction = new Function( ["Entity", "Company"],  Database.get(eventField, 6048) )
+
+
+      
+
+      let Entity = {
+        entity,
+        Datoms: Company.constructedDatoms.filter( Datom => Datom.entity === entity ),
+        get: (entity, attribute, t) => {
+
+          let matchingDatoms = Company.constructedDatoms
+          .filter( Datom => Datom.entity === entity )
+          .filter( Datom => Datom.attribute === attribute )
+          .filter( Datom => isUndefined(t) ? true : Datom.t <= t )
+          return matchingDatoms.length > 0 ? matchingDatoms.slice( -1 )[0].value : undefined
+
+
+
+        }
+      }
+
+      let calculateValue = calculatedFieldFunction(Entity, Company)
+      return calculateValue
+    }else{
+
+        let matchingDatoms = Company.constructedDatoms
+          .filter( Datom => Datom.entity === entity )
+          .filter( Datom => Datom.attribute === attribute )
+          .filter( Datom => isUndefined(t) ? true : Datom.t <= t )
+        return matchingDatoms.length > 0 ? matchingDatoms.slice( -1 )[0].value : undefined
+
+    }
+
+
+    
+  }
+  
   let entity = calculateEntity(datomConstructor, {latestEntityID: () => Company.latestEntityID})
   let attribute = datomConstructor.attribute
   let value = calculateValue( datomConstructor, Database, Company, Event )
