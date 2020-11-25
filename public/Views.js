@@ -512,7 +512,7 @@ let processView =  (S , A, process) => {
       ], {class: "columns_1_1"}),
       processProgressView(S, A, process),
       br(),
-      nextActionsView(S, process),
+      processActionsView(S, process),
       br(),
       singleEventView(S, selectedEvent ),
       
@@ -530,7 +530,7 @@ let singleEventView =  (S, entity) => {
   let eventIndex = processEvents.findIndex( e => e === entity )
   
 
-  return (isNull(entity) || isUndefined( Database.get(entity) ))
+  return (isNull(entity) || isUndefined( Database.get(entity) )  || Object.keys(Database.get(entity).current).length === 1   )
     ? d("Ingen hendelse valgt.", {class: "feedContainer"})
     : d([
         h3( Database.get(Database.get(entity, "event/eventTypeEntity"), "entity/label") ),
@@ -548,17 +548,15 @@ let singleEventView =  (S, entity) => {
 
 }
 
-let nextActionsView =  (S, process) => {
+let processActionsView =  (S, process) => {
 
   
 
-  let processEvents = Database.getAll(46)
-    .filter( event => Database.get(event, "event/process") === process )
-    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
-
   let Process = {
     entity: process,
-    getEvents: () => processEvents
+    getEvents: () => Database.getAll(46)
+    .filter( event => Database.get(event, "event/process") === process )
+    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
   }
 
   let processType =   Database.get(process, "process/processType" )
@@ -567,7 +565,11 @@ let nextActionsView =  (S, process) => {
 
   
 
+  let eventsCount = Process.getEvents().length
 
+  let selectedEvent = isDefined(Database.getLocalState(process).selectedEvent)
+    ? Database.getLocalState(process).selectedEvent
+    : Process.getEvents()[0]
 
   let actionButtons = Database.get(processType, "processType/actions")
       //.filter( action => new Function(["Database", "Process"], action[5848])(Database, Process) )
@@ -579,15 +581,27 @@ let nextActionsView =  (S, process) => {
 
   return d([
         entityLabel(5922),
-        processEvents.length === 0
-          ? d([
-            actionButton("Start prosess", async e => Database.createEvent( Database.get(processType, 5926)[0], process, {1757: Date.now()}) ),
-            actionButton("Slett prosess", async e => await Database.retractEntity( process )),
-          ]) 
-          : d([
-            d(actionButtons),
-            actionButton("Slett alle hendelser i prosessen", async e => await Database.retractEntities( processEvents ))
-          ]) 
+        d([
+          eventsCount === 0
+            ? actionButton("Start prosess", async e => Database.createEvent( Database.get(processType, 5926)[0], process, {1757: Date.now()}) )
+            : d("Start prosess", {class: "actionButton", style: "background-color: gray;"}),
+          d(actionButtons),
+          eventsCount > 0
+            ? d([
+                actionButton("Slett denne hendelsen", async e => await Database.retractEntity( selectedEvent )),
+                actionButton("Slett alle hendelser i prosessen", async e => await Database.retractEntities( Process.getEvents() )),
+            ])
+            : d([
+              d("Slett denne hendelsen", {class: "actionButton", style: "background-color: gray;"}),
+              d("Slett alle hendelser i prosessen", {class: "actionButton", style: "background-color: gray;"})
+
+            ]),
+          eventsCount === 0
+            ? actionButton("Slett prosess", async e => await Database.retractEntity( process ))
+            : d("Slett prosess", {class: "actionButton", style: "background-color: gray;"})
+
+        ]),
+        
       ], {class: "columns_1_1"})
 
 }
