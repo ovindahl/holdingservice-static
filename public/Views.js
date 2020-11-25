@@ -536,7 +536,7 @@ let singleEventView =  (S, entity) => {
         h3( Database.get(Database.get(entity, "event/eventTypeEntity"), "entity/label") ),
         d( Database.get(Database.get(entity, "event/eventTypeEntity"), "eventType/eventAttributes").map( attribute => datomView( entity, attribute ))),
         br(),
-        d( Database.get( Database.get( entity ,"entity/entityType"), "entityType/calculatedFields").map( calculatedField => calculatedFieldView( log(entity), calculatedField ) )),
+        d( Database.get( Database.get( entity ,"entity/entityType"), "entityType/calculatedFields").map( calculatedField => calculatedFieldView( entity, calculatedField ) )),
         br(),
         newDatomsView(entity),
         br(),
@@ -570,12 +570,15 @@ let nextActionsView =  (S, process) => {
 
 
   let actionButtons = Database.get(processType, "processType/actions")
-      .filter( action => new Function(["Database", "Process"], action[5848])(Database, Process) )
-      .map( action => actionButton(action[6], async e => new Function(["Database", "Process"], action[5850])(Database, Process) ) )
+      //.filter( action => new Function(["Database", "Process"], action[5848])(Database, Process) )
+      .map( action => new Function(["Database", "Process"], action[5848])(Database, Process)
+        ? actionButton(action[6], async e => new Function(["Database", "Process"], action[5850])(Database, Process) )
+        : d(action[6], {class: "actionButton", style: "background-color: gray;"})
+      )
     
 
   return d([
-        d("Handlinger:"),
+        entityLabel(5922),
         processEvents.length === 0
           ? d([
             actionButton("Start prosess", async e => Database.createEvent( Database.get(processType, 5926)[0], process, {1757: Date.now()}) ),
@@ -585,8 +588,7 @@ let nextActionsView =  (S, process) => {
             d(actionButtons),
             actionButton("Slett alle hendelser i prosessen", async e => await Database.retractEntities( processEvents ))
           ]) 
-        
-      ])
+      ], {class: "columns_1_1"})
 
 }
 
