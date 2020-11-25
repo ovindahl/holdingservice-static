@@ -218,7 +218,7 @@ let pageRouter = {
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
 
 let sidebar_left = (S, A) => d([
-      d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687]
+      d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687, 5817]
         .map( entity => entityLabel(entity, e => A.updateLocalState(  {
           selectedEntityType : entity, 
           selectedCategory: null,
@@ -310,23 +310,18 @@ let companyDocPage = (S,A) => {
         )
     ], {class: "columns_1_1"}),
     d([
-      /* d([
-        submitButton("<<", e => A.updateLocalState({"selectedCompanyDocVersion": 0}) ),
-        submitButton("<", e => A.updateLocalState({"selectedCompanyDocVersion": Math.max(S["UIstate"].selectedCompanyDocVersion - 1, 0) })),
-        d(`${S["UIstate"].selectedCompanyDocVersion} / ${Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length}`),
-        submitButton(">", e => A.updateLocalState({"selectedCompanyDocVersion": Math.min(S["UIstate"].selectedCompanyDocVersion + 1, Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length)})),
-        submitButton(">>", e => A.updateLocalState({"selectedCompanyDocVersion": Database.getCompany( Number(S["UIstate"].selectedOrgnumber) ).events.length})),
-      ], {class: "columns_1_1_1_1_1"}), */
       Company.constructedDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues ).find( entity => entity === S["UIstate"].selectedCompanyDocEntity )
-        ? d( Company.constructedDatoms.filter( Datom => Datom.entity === S["UIstate"].selectedCompanyDocEntity )
-            .map( Datom => Datom.attribute )
-            .map( attribute => d([
-              entityLabel(attribute),
-              input( 
-                {value: Company.get(S["UIstate"].selectedCompanyDocEntity, attribute), style: ``, disabled: "disabled"},
-              )
-            ], {class: "columns_1_1"}) )
-          )
+        ? d([
+          d(Company.constructedDatoms.filter( Datom => Datom.entity === S["UIstate"].selectedCompanyDocEntity )
+          .map( Datom => Datom.attribute )
+          .map( attribute => companyEntityView(Company, S["UIstate"].selectedCompanyDocEntity, attribute) )),
+          d( 
+            Database.get( Company.get(S["UIstate"].selectedCompanyDocEntity, 19), "entityType/calculatedFields" ).map( calculatedField => d([
+              entityLabel(calculatedField),
+              d(JSON.stringify( Company.get(S["UIstate"].selectedCompanyDocEntity, calculatedField) ))
+            ], {class: "columns_1_1"})    )
+            )
+        ])
         : d("Ingen entitet valgt.")
 
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
@@ -334,6 +329,34 @@ let companyDocPage = (S,A) => {
   ], {class: "pageContainer"})
 
 }
+
+
+let companyEntityView = (Company, entity, attribute) => {
+
+  let value = Company.get(entity, attribute)
+
+
+  let valueType = Database.get(attribute, "attribute/valueType")
+  let valueView = (valueType === 32 && !isUndefined(value)) 
+    ? entityLabel(Number(value)) 
+    : d( JSON.stringify(value) )
+
+  return d([
+    entityLabel(attribute),
+    valueView
+  ], {class: "columns_1_1"})
+
+
+
+}
+
+
+
+
+
+
+
+
 
 let adminPage = (S, A) => d([
   sidebar_left(S, A),
@@ -455,9 +478,9 @@ let singleEventView =  (S, entity) => {
   let process = Database.get(entity, "event/process")
 
   let processEvents = Database.getAll(46)
-    .filter( event => Database.get(event, "event/process") === process )
-    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
-
+  .filter( event => Database.get(event, "event/process") === process )
+  .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
+  
   let eventIndex = processEvents.findIndex( e => e === entity )
   
 
@@ -467,10 +490,8 @@ let singleEventView =  (S, entity) => {
         h3( Database.get(Database.get(entity, "event/eventTypeEntity"), "entity/label") ),
         d( Database.get(Database.get(entity, "event/eventTypeEntity"), "eventType/eventAttributes").map( attribute => datomView( entity, attribute ))),
         br(),
-        d([
-          d("Status på hendelse"),
-          Database.getEvent(entity).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
-        ], {class: "columns_1_1"}),
+        d( Database.get( Database.get( entity ,"entity/entityType"), "entityType/calculatedFields").map( calculatedField => calculatedFieldView( entity, calculatedField ) )),
+        br(),
         newDatomsView(entity),
         br(),
         (eventIndex === processEvents.length - 1)
@@ -533,10 +554,18 @@ let adminEntityView = entity => {
       h3( Database.get(entity, "entity/label")),
       entityView(entity),
       d( Database.get( entityType, "entityType/attributes", Database.getLocalState(entityType).tx).map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx ) )),
+      d( Database.get( entityType, "entityType/calculatedFields", Database.getLocalState(entityType).tx).map( calculatedField => calculatedFieldView( entity, calculatedField, Database.getLocalState(entity).tx ) )),
       retractEntityButton(entity),
       createEntityButton( entityType ),
     ], {class: "feedContainer"} )
 }
+
+let calculatedFieldView = (entity, calculatedField, version) => d([
+  entityLabel(calculatedField),
+  d(JSON.stringify(Database.get(entity, calculatedField)))
+], {class: "columns_1_1"})
+
+
 
 let datomView = (entity, attribute, version) => {
 
