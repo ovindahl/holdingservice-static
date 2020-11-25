@@ -104,6 +104,9 @@ const Database = {
         newDatom("newEntity", "entity/category", `Mangler kategori` )
       ])
 
+
+      log(Datoms)
+
     if(Array.isArray(newEntityDatoms)){Datoms = Datoms.concat(newEntityDatoms)}
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
     let updatedEntity = serverResponse[0]
@@ -144,12 +147,21 @@ const Database = {
 
     }else{log("Datoms not valid: ", Datoms)}
   },
-  retractEntity: async entity => {
-    let Datoms = Database.getServerEntity(entity).Datoms
-    let activeDatoms = Datoms.filter( Datom => Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
-    let retractionDatoms = activeDatoms.map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
+  retractEntity: async entity => Database.retractEntities([entity]),
+  retractEntities: async entities => {
+    
+    let retractionDatoms = entities.map( entity => {
+
+      let Datoms = Database.getServerEntity(entity).Datoms
+      let activeDatoms = Datoms.filter( Datom => Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
+      let retractionDatoms = activeDatoms.map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
+      return retractionDatoms
+    } ).flat()
+
+
+
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
-    Database.Entities = Database.Entities.filter( Entity => Entity.entity !== entity ).concat( serverResponse[0] )
+    Database.Entities = Database.Entities.filter( Entity => !entities.includes(Entity.entity) ).concat( serverResponse )
     Database.recalculateCompanies()
     update( Database.S )
   },
@@ -413,7 +425,7 @@ let calculateEntity = (datomConstructor, Q) => {
 
 let calculateValue = (datomConstructor, Database, Company, Event) => {
   try {return new Function( [`Database`, `Company`, `Event`], datomConstructor.value )( Database, Company, Event ) } 
-  catch (error) {return log(error, error) } 
+  catch (error) {return log(error, Event) } 
 }
 
 let D = Database

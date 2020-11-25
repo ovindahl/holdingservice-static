@@ -22,6 +22,19 @@ body {background-color: #F2F3F5;}
     background-color: lightgray;
 }
 
+.actionButton {
+    padding: 1em;
+    background-color: #9af6ff;
+    max-width: 200px;
+}
+
+
+.actionButton:hover {
+    background-color: lightgray;
+}
+
+
+
 .pageContainer {
     display: grid; 
     grid-template-columns: 1fr 4fr 1fr;

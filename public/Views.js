@@ -111,6 +111,13 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
   onClick(e)
 }  )
 
+let actionButton = (label, onClick) => d(label, {class: "actionButton"}, "click", e => {
+  let button = document.getElementById(e.srcElement.id)
+  button.style = "background-color: darkgray;"
+  button.innerHTML = "Laster.."
+  onClick(e)
+}  )
+
 let retractEntityButton = entity => submitButton("Slett", e => Database.retractEntity(entity) )
 let createEntityButton = entityType => submitButton("Legg til", e => Database.createEntity(entityType) )    
 
@@ -198,7 +205,7 @@ let companySelectionMenuRow = (S, A) => d([
   submitButton( "+", e => console.log("NEW COMPANY") )
 ], {style: "display:flex;"}) 
 
-let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Hendelseslogg", "Rapporter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Hendelseslogg", "Tidslinje", "Rapporter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -210,6 +217,7 @@ let generateHTMLBody = (S, A) => [
 let pageRouter = {
   "Prosesser": (S, A) => processesView(S, A),
   "Hendelseslogg": (S, A) => eventLogView(S, A),
+  "Tidslinje": (S, A) => timelineView(S, A),
   "Rapporter": (S, A) => companyDocPage( S, A ),
   "Admin/DB": (S, A) => adminPage( S, A ),
   //"Admin/Entitet": (S, A) => adminEntityView( S["UIstate"]["selectedEntity"] ),
@@ -285,6 +293,44 @@ let eventLogView = (S, A) => {
     )
   ], {class: "feedContainer"})
 }
+
+
+
+let timelineView = (S,A) => {
+
+  let Company = Database.getCompany(Number(S["UIstate"].selectedCompany))
+  let companyProcesses = Database.getAll(5692).filter( e => Database.get(e, "process/company" ) === Company.entity )
+
+
+
+  return d([
+    d(companyProcesses.map( process => processTimelineView(S, A, process) ))
+
+  ])
+}
+
+
+let processTimelineView = (S, A, process) => {
+
+  let processEvents = Database.getAll(46)
+    .filter( event => Database.get(event, "event/process") === process )
+    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
+
+
+  return d([
+    d( processEvents.map( event => {
+
+      let Event = Database.getEvent(event)
+
+      return d( String(Event.t)  )
+
+
+    }   ) )
+
+  ], {style: "border: 1px solid black;"})
+}
+
+
 
 let companyDocPage = (S,A) => {
 
@@ -453,7 +499,7 @@ let processView =  (S , A, process) => {
   : processEvents[0]
 
 
-  return (isNull(process) || isUndefined( Database.get(process) ))
+  return (isNull(process) || isUndefined( Database.get(process) ) || Object.keys(Database.get(process).current).length === 1 )
   ? d("Ingen prosess valgt.", {class: "feedContainer"})
   : d([
       d([
@@ -490,7 +536,7 @@ let singleEventView =  (S, entity) => {
         h3( Database.get(Database.get(entity, "event/eventTypeEntity"), "entity/label") ),
         d( Database.get(Database.get(entity, "event/eventTypeEntity"), "eventType/eventAttributes").map( attribute => datomView( entity, attribute ))),
         br(),
-        d( Database.get( Database.get( entity ,"entity/entityType"), "entityType/calculatedFields").map( calculatedField => calculatedFieldView( entity, calculatedField ) )),
+        d( Database.get( Database.get( entity ,"entity/entityType"), "entityType/calculatedFields").map( calculatedField => calculatedFieldView( log(entity), calculatedField ) )),
         br(),
         newDatomsView(entity),
         br(),
@@ -525,17 +571,21 @@ let nextActionsView =  (S, process) => {
 
   let actionButtons = Database.get(processType, "processType/actions")
       .filter( action => new Function(["Database", "Process"], action[5848])(Database, Process) )
-      .map( action => submitButton(action[6], async e => new Function(["Database", "Process"], action[5850])(Database, Process) ) )
+      .map( action => actionButton(action[6], async e => new Function(["Database", "Process"], action[5850])(Database, Process) ) )
     
 
   return d([
         d("Handlinger:"),
         processEvents.length === 0
           ? d([
-            entityLabel( Database.get(processType, 5926)[0], async e => Database.createEvent( Database.get(processType, 5926)[0], process, {1757: Date.now()}) ),
-            retractEntityButton(process)
+            actionButton("Start prosess", async e => Database.createEvent( Database.get(processType, 5926)[0], process, {1757: Date.now()}) ),
+            actionButton("Slett prosess", async e => await Database.retractEntity( process )),
           ]) 
-          : d(actionButtons.length > 0 ? actionButtons : "Ingen tilgjengelige handlinger" )
+          : d([
+            d(actionButtons),
+            actionButton("Slett alle hendelser i prosessen", async e => await Database.retractEntities( processEvents ))
+          ]) 
+        
       ])
 
 }
