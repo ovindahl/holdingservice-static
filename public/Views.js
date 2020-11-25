@@ -490,13 +490,6 @@ let processProgressView = (S, A, process) => {
 
 let processView =  (S , A, process) => {
 
-  let processEvents = Database.getAll(46)
-    .filter( event => Database.get(event, "event/process") === process )
-    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
-
-  let selectedEvent = isDefined(Database.getLocalState(process).selectedEvent)
-  ? Database.getLocalState(process).selectedEvent
-  : processEvents[0]
 
 
   return (isNull(process) || isUndefined( Database.get(process) ) || Object.keys(Database.get(process).current).length === 1 )
@@ -512,9 +505,14 @@ let processView =  (S , A, process) => {
       ], {class: "columns_1_1"}),
       processProgressView(S, A, process),
       br(),
+      d( Database.get(  Database.get(process, "entity/entityType"), "entityType/calculatedFields").map( calculatedField => d([
+        entityLabel(calculatedField),
+        d( JSON.stringify( Database.getCalculatedField(process, calculatedField) ) )
+      ], {class: "columns_1_1"})  ) ),
+      br(),
       processActionsView(S, process),
       br(),
-      singleEventView(S, selectedEvent ),
+      singleEventView(S, Database.get(process, 6137) ),
       
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
 }
@@ -537,42 +535,24 @@ let singleEventView =  (S, entity) => {
         d( Database.get(Database.get(entity, "event/eventTypeEntity"), "eventType/eventAttributes").map( attribute => datomView( entity, attribute ))),
         br(),
         d( Database.get( Database.get( entity ,"entity/entityType"), "entityType/calculatedFields").map( calculatedField => calculatedFieldView( entity, calculatedField ) )),
-        br(),
-        newDatomsView(entity),
-        br(),
-        (eventIndex === processEvents.length - 1)
-          ? retractEntityButton(entity)
-          : d("Slett etterfølgende hendelser for å slette hendelsen")
-        
       ], {class: "feedContainer"} )
 
 }
 
 let processActionsView =  (S, process) => {
 
-  
-
   let Process = {
     entity: process,
-    getEvents: () => Database.getAll(46)
-    .filter( event => Database.get(event, "event/process") === process )
-    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
+    getEvents: () => Database.getCalculatedField( process, 6088 )
   }
 
   let processType =   Database.get(process, "process/processType" )
 
-  
+  let eventsCount = Database.getCalculatedField( process, 6088 ).length
 
-  
-
-  let eventsCount = Process.getEvents().length
-
-  let selectedEvent = isDefined(Database.getLocalState(process).selectedEvent)
-    ? Database.getLocalState(process).selectedEvent
-    : Process.getEvents()[0]
+  let selectedEvent = Database.get(process, 6137)
 
   let actionButtons = Database.get(processType, "processType/actions")
-      //.filter( action => new Function(["Database", "Process"], action[5848])(Database, Process) )
       .map( action => new Function(["Database", "Process"], action[5848])(Database, Process)
         ? actionButton(action[6], async e => new Function(["Database", "Process"], action[5850])(Database, Process) )
         : d(action[6], {class: "actionButton", style: "background-color: gray;"})
@@ -589,7 +569,7 @@ let processActionsView =  (S, process) => {
           eventsCount > 0
             ? d([
                 actionButton("Slett denne hendelsen", async e => await Database.retractEntity( selectedEvent )),
-                actionButton("Slett alle hendelser i prosessen", async e => await Database.retractEntities( Process.getEvents() )),
+                actionButton("Slett alle hendelser i prosessen", async e => await Database.retractEntities( Database.getCalculatedField( process, 6088 ) )),
             ])
             : d([
               d("Slett denne hendelsen", {class: "actionButton", style: "background-color: gray;"}),
