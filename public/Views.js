@@ -334,7 +334,15 @@ let processTimelineView = (S, A, process) => {
         : processEventsTimes.includes(t)
           ? d([
               d([
-                span( `${t}`, `${Database.get( processEvents.find( event => Database.getEvent(event).t === t  ) , "entity/label")}`, {class: "entityLabel", style: `background-color:${Database.getCalculatedField(processEvents.find( event => Database.getEvent(event).t === t  ), 6077) ? "#0080004f" : "#c30d0066"   };`}, "click", e => {
+                span( 
+                  `${t}`, 
+                  `${Database.get( processEvents.find( event => Database.getEvent(event).t === t  ) , "entity/label")}`, 
+                  {
+                    class: "entityLabel", 
+                    style: `background-color:${Database.getCalculatedField(processEvents.find( event => Database.getEvent(event).t === t  ), 6161) ? "#9ad2ff" : Database.getCalculatedField(processEvents.find( event => Database.getEvent(event).t === t  ), 6077) ? "#0080004f" : "#c30d0066"   };`
+                  }, 
+                  "click", 
+                  e => {
                   A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process })
                   Database.setLocalState(process, {selectedEvent: processEvents.find( event => Database.getEvent(event).t === t  ) })
                 } ),
