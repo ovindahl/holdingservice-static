@@ -249,10 +249,8 @@ body {background-color: #F2F3F5;}
     position: absolute;
     top: 50%;
     left: 50%;
-    border: 1px solid red;
     background-color: #eee;
     z-index: 10;
-    width: 600px;
 }
 
 

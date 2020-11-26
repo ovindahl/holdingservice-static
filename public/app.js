@@ -397,11 +397,32 @@ const Database = {
   getCalculatedField: (entity, eventField) => {
 
     let Entity = Database.get(entity)
+    let entityType = Database.get(entity, "entity/entityType")
+    let category = Database.get(entityType, "entity/category")
+    let Company = {error: "Not a company entity"}
+
+    if( category === "Entitetstyper i selskapsdokumentet"){
+
+      let sourceEvent = Database.getCalculatedField(entity, 6107)
+      let process = Database.get( sourceEvent , "event/process")
+      let company = Database.get( process , "process/company")
+      Company = Database.getCompany( company ) 
+    }else{
+
+      Company = (entityType === 46)
+       ? Database.getCompany( Database.get( Database.get( entity , "event/process") , "process/company") ) 
+       : Company
+
+    }
+
+
+
+    
     Entity.get = attribute => Database.get(entity, attribute)
 
-    let calculatedFieldFunction = new Function( ["Entity"],  Database.get(eventField, 6048) ) 
+    let calculatedFieldFunction = new Function( ["Entity", "Company"],  Database.get(eventField, 6048) ) 
 
-    let calculateValue = calculatedFieldFunction(Entity)
+    let calculateValue = calculatedFieldFunction(Entity, Company)
 
     return calculateValue
 

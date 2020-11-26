@@ -139,48 +139,7 @@ let entityInspectorPopup_small = entity => d([
   //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-let entityLabel_largePopup = entity => isDefined( Database.get(entity) ) 
-? d( [
-    d([
-      span( `${Database.get(entity, "entity/label")}`, ``, {class: "entityLabel", style: `background-color:${Database.getEntityColor(entity)};`}),
-      entityInspectorPopup_large(entity)
-    ], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-: d(`[${entity}] Entiteten finnes ikke`)
 
-let entityInspectorPopup_large = entity => {
-
-  let entityType = Database.get(entity, "entity/entityType")
-
-
-
-  let entityAttributes = ( entityType === 46)
-    ? Database.get( Database.get(entity, "event/eventTypeEntity") , 8 )
-    : Database.get( entityType, 17 )
-
-  
-
-  let view = entityAttributes.map( attrName => d([
-      span( `${Database.get( Database.attr(attrName) , "entity/label")}`, ``, {class: "entityLabel", style: `background-color:${Database.getEntityColor(Database.attr(attrName))};`} ),
-      Database.get( Database.attr(attrName) , "attribute/valueType") === 32
-        ? span( `${Database.get( Database.get( entity, attrName) , "entity/label")}`, ``, {class: "entityLabel", style: `background-color:${Database.getEntityColor(Database.get( entity, attrName))};`} )
-        : input( {value: String( Database.get( entity, attrName)  ), style: `text-align: right;`, disabled: "disabled" }   )
-    ], {class: "columns_1_1"})  )
-  
-
-  return d([
-    h3( Database.get( entity , "entity/label") ),
-    d([
-      d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`} )], {style:"display: inline-flex;"}),
-      d(String(entity), {style: `text-align: right;`} )
-    ], {class: "columns_1_1"}),
-    d(view),
-    ( entityType === 46)
-      ? newDatomsView( entity )
-      : d("")
-    
-  ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-}
 
 let entityInspectorPopup_Company = (company, t) => {
 
@@ -305,8 +264,8 @@ let eventLogView = (S, A) => {
       companyEvents.map( (event, index) => d([
         d(String(Database.getEvent(event).t)),
         d( moment( Database.getEvent(event).get("event/date") ).format("DD/MM/YYYY") ),
-        entityLabel_largePopup(event),
-        entityLabel_largePopup( Database.get(event, 5708) ),
+        entityLabel(event),
+        entityLabel( Database.get(event, 5708) ),
         Database.getEvent(event).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
       ], {class: "columns_1_1_1_1_1"})  )
     )
@@ -365,29 +324,30 @@ let processTimelineView = (S, A, process) => {
 
   return d([
     entityLabel(process),
-    d( tArray.map( t =>   
-      (t < firstEventTime || t > lastEventTime)
+    d( tArray.map( t =>   {
+
+
+      let event = processEvents.find( event => Database.getEvent(event).t === t  )
+
+      return (t < firstEventTime || t > lastEventTime)
         ? d(" ")
         : processEventsTimes.includes(t)
           ? d([
               d([
-                span( 
-                  `${t}`, 
-                  `${Database.get( processEvents.find( event => Database.getEvent(event).t === t  ) , "entity/label")}`, 
-                  {
-                    class: "entityLabel", 
-                    style: `background-color:${Database.getCalculatedField(processEvents.find( event => Database.getEvent(event).t === t  ), 6161) ? "#9ad2ff" : Database.getCalculatedField(processEvents.find( event => Database.getEvent(event).t === t  ), 6077) ? "#0080004f" : "#c30d0066"   };`
-                  }, 
-                  "click", 
-                  e => {
-                  A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process })
-                  Database.setLocalState(process, {selectedEvent: processEvents.find( event => Database.getEvent(event).t === t  ) })
-                } ),
-                entityInspectorPopup_large(processEvents.find( event => Database.getEvent(event).t === t  ))
+                span( `${t}`, `${Database.get( event , "entity/label")}`, {class: "entityLabel", style: `background-color:${Database.getCalculatedField(event, 6161) ? "#9ad2ff" : Database.getCalculatedField(event, 6077) ? "#0080004f" : "#c30d0066"   };`}, 
+                  "click", e => {
+                    A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process })
+                    Database.setLocalState(process, {selectedEvent: event })
+                  } ),
+                  d([
+                    singleEventView(S, event)
+                  ], {class: "entityInspectorPopup"})
               ], {class: "popupContainer", style:"display: inline-flex;"})
             ], {style:"display: inline-flex;"} )
           : d("-" ) 
-      ), {style: `display:grid;grid-template-columns: repeat(${tArray.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+        }), {style: `display:grid;grid-template-columns: repeat(${tArray.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+      
+    
 
   ], {style: `display:grid;grid-template-columns: 1fr 9fr;`})
 }
@@ -402,15 +362,15 @@ let companyDatomsPage = (S,A) => {
       d("Entitet"),
       d("Attributt"),
       d("Verdi"),
-      d("t"),
       d("Hendelse"),
+      d("t"),
     ], {class: "columns_1_1_1_1_1", style: "background-color: #bdbbbb;padding: 5px;" }),
     d(Company.constructedDatoms.map( Datom => d([
       d(JSON.stringify( Datom.entity )),
       entityLabel( Datom.attribute ),
       d(JSON.stringify( Datom.value )),
+      entityLabel(Datom.event),
       d(JSON.stringify( Datom.t )),
-      entityLabel(Datom.event)
     ], {class: "columns_1_1_1_1_1"}) ) ),
   ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
