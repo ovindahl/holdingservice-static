@@ -223,7 +223,7 @@ let companySelectionMenuRow = (S, A) => d([
   submitButton( "+", e => console.log("NEW COMPANY") )
 ], {style: "display:flex;"}) 
 
-let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Hendelseslogg", "Tidslinje", "Rapporter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Hendelseslogg", "Tidslinje", "Selskapets datomer", "Selskapets entiteter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   headerBarView(S),
@@ -236,7 +236,8 @@ let pageRouter = {
   "Prosesser": (S, A) => processesView(S, A),
   "Hendelseslogg": (S, A) => eventLogView(S, A),
   "Tidslinje": (S, A) => timelineView(S, A),
-  "Rapporter": (S, A) => companyDocPage( S, A ),
+  "Selskapets datomer": (S, A) => companyDatomsPage( S, A ),
+  "Selskapets entiteter": (S, A) => companyDocPage( S, A ),
   "Admin/DB": (S, A) => adminPage( S, A ),
   //"Admin/Entitet": (S, A) => adminEntityView( S["UIstate"]["selectedEntity"] ),
 }
@@ -392,6 +393,29 @@ let processTimelineView = (S, A, process) => {
 }
 
 
+let companyDatomsPage = (S,A) => {
+
+  let Company = Database.getCompany(Number(S["UIstate"].selectedCompany))
+
+  return d([
+    d([
+      d("Entitet"),
+      d("Attributt"),
+      d("Verdi"),
+      d("t"),
+      d("Hendelse"),
+    ], {class: "columns_1_1_1_1_1", style: "background-color: #bdbbbb;padding: 5px;" }),
+    d(Company.constructedDatoms.map( Datom => d([
+      d(JSON.stringify( Datom.entity )),
+      entityLabel( Datom.attribute ),
+      d(JSON.stringify( Datom.value )),
+      d(JSON.stringify( Datom.t )),
+      entityLabel(Datom.event)
+    ], {class: "columns_1_1_1_1_1"}) ) ),
+  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+}
+
 
 let companyDocPage = (S,A) => {
 
@@ -436,6 +460,12 @@ let companyDocPage = (S,A) => {
   ], {class: "pageContainer"})
 
 }
+
+
+
+
+
+
 
 
 let companyEntityView = (Company, entity, attribute) => {

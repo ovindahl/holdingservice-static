@@ -285,7 +285,7 @@ const Database = {
     let Company = Database.get(company)
     Company.processes = Database.getAll(5692).filter( e => Database.get(e, "process/company" ) === company )
     Company.events = Database.getAll(46).filter( event => Company.processes.includes( Database.get(event, "event/process") )  ).sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
-    Company.constructedDatoms = [{entity: 1, attribute: 29, value: 5679, t: 0}]
+    Company.constructedDatoms = [{entity: 1, attribute: 19, value: 5679, t: 0, event: Company.events[0]}]
     Company.get = (entity, attribute, t) => {
       let matchingDatoms = Company.constructedDatoms
       .filter( Datom => Datom.entity === entity )
