@@ -297,10 +297,10 @@ let eventLogView = (S, A) => {
 
 
 let timelineView = (S,A) => {
-
-  let Company = Database.getCompany(Number(S["UIstate"].selectedCompany))
+  let company = Number(S["UIstate"].selectedCompany)
+  let Company = Database.getCompany(company)
   let tMax = Database.getEvent(Company.events.slice( -1 )[0]).t
-  let companyProcesses = Database.getAll(5692).filter( e => Database.get(e, "process/company" ) === Company.entity )
+  let companyProcesses = Database.get(company, 6157)
   
 
 
@@ -316,7 +316,6 @@ let processTimelineView = (S, A, process) => {
   let Company = Database.getCompany(Number(S["UIstate"].selectedCompany))
   let tMax = Database.getEvent(Company.events.slice( -1 )[0]).t
   let tArray = new Array(tMax+1).fill(0).map( (v, i) => i )
-  log({Company, tMax, tArray})
 
 
   let processEvents = Database.getAll(46)
@@ -326,9 +325,6 @@ let processTimelineView = (S, A, process) => {
   let processEventsTimes = processEvents.map( event => Database.getEvent(event).t )
   let firstEventTime = processEventsTimes[0]
   let lastEventTime = processEventsTimes.slice( -1 )[0]
-  
-
-  log({processEventsTimes, firstEventTime, lastEventTime})
 
   return d([
     entityLabel(process),
@@ -338,7 +334,7 @@ let processTimelineView = (S, A, process) => {
         : processEventsTimes.includes(t)
           ? d([
               d([
-                span( `${t}`, `${Database.get( processEvents.find( event => Database.getEvent(event).t === t  ) , "entity/label")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(processEvents.find( event => Database.getEvent(event).t === t  ))};`}, "click", e => {
+                span( `${t}`, `${Database.get( processEvents.find( event => Database.getEvent(event).t === t  ) , "entity/label")}`, {class: "entityLabel", style: `background-color:${Database.getCalculatedField(processEvents.find( event => Database.getEvent(event).t === t  ), 6077) ? "#0080004f" : "#c30d0066"   };`}, "click", e => {
                   A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process })
                   Database.setLocalState(process, {selectedEvent: processEvents.find( event => Database.getEvent(event).t === t  ) })
                 } ),
@@ -538,24 +534,24 @@ let processView =  (S , A, process) => {
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
 }
 
-let singleEventView =  (S, entity) => {
+let singleEventView =  (S, event) => {
 
-  let process = Database.get(entity, "event/process")
+  let process = Database.get(event, "event/process")
 
   let processEvents = Database.getAll(46)
   .filter( event => Database.get(event, "event/process") === process )
   .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
   
-  let eventIndex = processEvents.findIndex( e => e === entity )
+  let isLocked = Database.get(event, 6161 ) //is last event
   
 
-  return (isNull(entity) || isUndefined( Database.get(entity) )  || Object.keys(Database.get(entity).current).length === 1   )
+  return (isNull(event) || isUndefined( Database.get(event) )  || Object.keys(Database.get(event).current).length === 1   )
     ? d("Ingen hendelse valgt.", {class: "feedContainer"})
     : d([
-        h3( Database.get(Database.get(entity, "event/eventTypeEntity"), "entity/label") ),
-        d( Database.get(Database.get(entity, "event/eventTypeEntity"), "eventType/eventAttributes").map( attribute => datomView( entity, attribute ))),
+        h3( Database.get(Database.get(event, "event/eventTypeEntity"), "entity/label") ),
+        d( Database.get(Database.get(event, "event/eventTypeEntity"), "eventType/eventAttributes").map( attribute => isLocked ? lockedDatomView( event, attribute ) : editabledDatomView( event, attribute )  )),
         br(),
-        d( Database.get( Database.get( entity ,"entity/entityType"), "entityType/calculatedFields").map( calculatedField => calculatedFieldView( entity, calculatedField ) )),
+        d( Database.get( Database.get( event ,"entity/entityType"), "entityType/calculatedFields").map( calculatedField => calculatedFieldView( event, calculatedField ) )),
       ], {class: "feedContainer"} )
 
 }
@@ -620,7 +616,7 @@ let adminEntityView = entity => {
   : d([
       h3( Database.get(entity, "entity/label")),
       entityView(entity),
-      d( Database.get( entityType, "entityType/attributes", Database.getLocalState(entityType).tx).map( attribute => datomView( entity, attribute, Database.getLocalState(entity).tx ) )),
+      d( Database.get( entityType, "entityType/attributes", Database.getLocalState(entityType).tx).map( attribute => editabledDatomView( entity, attribute, Database.getLocalState(entity).tx ) )),
       d( Database.get( entityType, "entityType/calculatedFields", Database.getLocalState(entityType).tx).map( calculatedField => calculatedFieldView( entity, calculatedField, Database.getLocalState(entity).tx ) )),
       retractEntityButton(entity),
       createEntityButton( entityType ),
@@ -632,9 +628,19 @@ let calculatedFieldView = (entity, calculatedField, version) => d([
   d(JSON.stringify(Database.get(entity, calculatedField)))
 ], {class: "columns_1_1"})
 
+let lockedDatomView = (entity, attribute, version) => {
 
+  try {
 
-let datomView = (entity, attribute, version) => {
+    return d([
+        entityLabel( attribute ),
+        d(JSON.stringify( Database.get(entity, attribute) ))
+      ], {class: "columns_1_1"})
+    
+  } catch (error) {return d(error) }
+}
+
+let editabledDatomView = (entity, attribute, version) => {
 
   let genericValueTypeViews = {
     "30": input_text, //Tekst
