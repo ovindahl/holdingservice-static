@@ -182,6 +182,24 @@ let entityInspectorPopup_large = entity => {
   ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 }
 
+let entityInspectorPopup_Company = (company, t) => {
+
+  let Company = Database.getCompany(company)
+  
+  return d([
+    h3( Database.get( company , "entity/label") ),
+    d([
+      d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`} )], {style:"display: inline-flex;"}),
+      d(String(company), {style: `text-align: right;`} )
+    ], {class: "columns_1_1"}),
+    d([
+      d([span( `t`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`} )], {style:"display: inline-flex;"}),
+      d(String(t), {style: `text-align: right;`} )
+    ], {class: "columns_1_1"}),
+    d( Database.get(5722, 6050).map( calculateValue => calculatedFieldView(company, calculateValue)  ) ),
+  ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+}
+
 let entityRedlinedValue = (value, prevValue) => d( [
   span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
   span( `${JSON.stringify(value)}`),
@@ -300,11 +318,29 @@ let timelineView = (S,A) => {
   let company = Number(S["UIstate"].selectedCompany)
   let Company = Database.getCompany(company)
   let tMax = Database.getEvent(Company.events.slice( -1 )[0]).t
+  let tArray = new Array(tMax+1).fill(0).map( (v, i) => i )
   let companyProcesses = Database.get(company, 6157)
   
 
 
   return d([
+    d([
+      entityLabel(company),
+      d( tArray.map( t => d([
+                d([
+                  span( 
+                    `${t}`, 
+                    `${t}`, 
+                    {
+                      class: "entityLabel", 
+                      style: `background-color: #9ad2ff;`
+                    }),
+                  //entityInspectorPopup_Company(company, t)
+                ], {class: "popupContainer", style:"display: inline-flex;"})
+              ], {style:"display: inline-flex;"} )
+        ), {style: `display:grid;grid-template-columns: repeat(${tArray.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+  
+    ], {style: `display:grid;grid-template-columns: 1fr 9fr;`}),
     d(companyProcesses.map( process => processTimelineView(S, A, process) ))
 
   ])
