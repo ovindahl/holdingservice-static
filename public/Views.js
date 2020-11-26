@@ -299,8 +299,9 @@ let eventLogView = (S, A) => {
 let timelineView = (S,A) => {
 
   let Company = Database.getCompany(Number(S["UIstate"].selectedCompany))
+  let tMax = Database.getEvent(Company.events.slice( -1 )[0]).t
   let companyProcesses = Database.getAll(5692).filter( e => Database.get(e, "process/company" ) === Company.entity )
-
+  
 
 
   return d([
@@ -312,22 +313,42 @@ let timelineView = (S,A) => {
 
 let processTimelineView = (S, A, process) => {
 
+  let Company = Database.getCompany(Number(S["UIstate"].selectedCompany))
+  let tMax = Database.getEvent(Company.events.slice( -1 )[0]).t
+  let tArray = new Array(tMax+1).fill(0).map( (v, i) => i )
+  log({Company, tMax, tArray})
+
+
   let processEvents = Database.getAll(46)
     .filter( event => Database.get(event, "event/process") === process )
     .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
 
+  let processEventsTimes = processEvents.map( event => Database.getEvent(event).t )
+  let firstEventTime = processEventsTimes[0]
+  let lastEventTime = processEventsTimes.slice( -1 )[0]
+  
+
+  log({processEventsTimes, firstEventTime, lastEventTime})
 
   return d([
-    d( processEvents.map( event => {
+    entityLabel(process),
+    d( tArray.map( t =>   
+      (t < firstEventTime || t > lastEventTime)
+        ? d(" ")
+        : processEventsTimes.includes(t)
+          ? d([
+              d([
+                span( `${t}`, `${Database.get( processEvents.find( event => Database.getEvent(event).t === t  ) , "entity/label")}`, {class: "entityLabel", style: `background-color:${Database.getEntityColor(processEvents.find( event => Database.getEvent(event).t === t  ))};`}, "click", e => {
+                  A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process })
+                  Database.setLocalState(process, {selectedEvent: processEvents.find( event => Database.getEvent(event).t === t  ) })
+                } ),
+                entityInspectorPopup_large(processEvents.find( event => Database.getEvent(event).t === t  ))
+              ], {class: "popupContainer", style:"display: inline-flex;"})
+            ], {style:"display: inline-flex;"} )
+          : d("-" ) 
+      ), {style: `display:grid;grid-template-columns: repeat(${tArray.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
 
-      let Event = Database.getEvent(event)
-
-      return d( String(Event.t)  )
-
-
-    }   ) )
-
-  ], {style: "border: 1px solid black;"})
+  ], {style: `display:grid;grid-template-columns: 1fr 9fr;`})
 }
 
 
