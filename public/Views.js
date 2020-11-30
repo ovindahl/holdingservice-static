@@ -305,7 +305,7 @@ let timelineView = (S,A) => {
   let company = Number(S["UIstate"].selectedCompany)
   let tMax = Database.get(company).t
   let tArray = new Array(tMax+1).fill(0).map( (v, i) => i )
-  let companyProcesses = Database.get(company, 6157)
+  let companyProcesses = Database.getFromCompany(company, 1, 6157)
   
 
 
@@ -339,10 +339,13 @@ let processTimelineView = (S, A, process) => {
   let tMax = Database.get(company).t
   let tArray = new Array(tMax+1).fill(0).map( (v, i) => i )
   let processEvents = Database.get(process, 6088)
+
+  
+
   let processEventsTimes = processEvents.map( event => Database.getCalculatedField(event, 6101) )
   let firstEventTime = processEventsTimes[0]
   let lastEventTime = processEventsTimes.slice( -1 )[0]
-
+  log({process, processEvents, processEventsTimes})
   return d([
     entityLabel(process),
     d( tArray.map( (t, index) =>   {

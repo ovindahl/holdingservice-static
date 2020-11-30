@@ -151,7 +151,7 @@ const Database = {
     
     let retractionDatoms = entities.map( entity => {
 
-      let Datoms = Database.getServerEntity(entity).Datoms
+      let Datoms = Database.get(entity).Datoms
       let activeDatoms = Datoms.filter( Datom => Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
       let retractionDatoms = activeDatoms.map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
       return retractionDatoms
@@ -174,21 +174,24 @@ const Database = {
     Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
     Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
     Database.companyDatoms = [];
+    Database.calculatedFields = [];
     Database.getAll( 5722 ).forEach( company => Database.reconstructCompany(company) )
     return;
   },
   reconstructCompany: company => {
     let processes = Database.getAll(5692).filter( e => Database.get(e, "process/company" ) === company ) // [TBD] Change to calculatedField??
     let events = Database.getAll(46).filter( event => processes.includes( Database.get(event, "event/process") )  ).sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) ) // [TBD] Change to calculatedField??
-    let initialDatom = {company, entity: 1, attribute: 19, value: 5679, t: 0, event: events[0]}
-    Database.companyDatoms = Database.companyDatoms.filter( Datom => Datom.company !== company ).concat([initialDatom]) 
+    //let initialDatom = {company, entity: 1, attribute: 19, value: 5679, t: 1, event: events[0]}
+    Database.companyDatoms = Database.companyDatoms.filter( Datom => Datom.company !== company ) //.concat([initialDatom]) 
+    Database.calculatedFields = Database.calculatedFields.filter( Datom => Datom.company !== company )
     let companyDatoms = events.forEach( (event, index) => {
       let t = index + 1
       let eventType = Database.get( event, "event/eventTypeEntity" )
-      let latestEntityID = Database.companyDatoms
-        .map( Datom => Datom.entity )
-        .sort( (a,b) => a-b )
-        .slice(-1)[0]
+      let currentCompanyDatoms = Database.companyDatoms
+      .filter( Datom => Datom.company === company )
+      let latestEntityID = currentCompanyDatoms.length > 0
+        ? currentCompanyDatoms.map( Datom => Datom.entity ).sort( (a,b) => a-b ).slice(-1)[0]
+        : 0
       let eventDatoms = Database.get( eventType, "eventType/newDatoms" )
         .map( datomConstructor => {
 
@@ -247,6 +250,64 @@ const Database = {
         }  )
         .sort( (datomA, datomB) => datomA.entity - datomB.entity )
       Database.companyDatoms = Database.companyDatoms.concat(eventDatoms)
+      
+      let companyEntitiesToUpdate = Database.companyDatoms.map( companyDatom => companyDatom.entity ).filter(filterUniqueValues)
+
+      let calculatedFieldDatoms = companyEntitiesToUpdate.map( companyEntity => {
+
+        let entityType = Database.getFromCompany(company, companyEntity, 19)
+
+        
+
+        let calculatedFieldDatoms_event = isDefined(entityType)
+          ? Database.get( entityType , "entityType/calculatedFields" ).map( calculatedField => {
+
+          let Company = {
+            entity: company
+          }
+      
+          Company.get = (entity, attribute) => Database.getFromCompany(company, entity, attribute)
+          Company.getAll = entityType => Database.companyDatoms
+            .filter( companyDatom => companyDatom.company === company )
+            .filter( companyDatom => companyDatom.attribute === 19 )
+            .filter( companyDatom => companyDatom.value === entityType )
+            .map(companyDatom => companyDatom.entity)
+            .filter(filterUniqueValues)
+      
+          let Entity = {
+            entity: companyEntity,
+            event: Database.companyDatoms
+            .filter( companyDatom => companyDatom.company === company )
+            .filter( companyDatom => companyDatom.entity === companyEntity )
+            [0].event,
+          }
+          Entity.get = attribute => Company.get(entity, attribute)
+          
+      
+      
+            let value;
+            let error = "No error";
+            try {
+              let calculatedFieldFunction = new Function( ["Entity", "Company", "Database"],  Database.get(calculatedField, 6048) )
+              value =  calculatedFieldFunction(Entity, Company, Database) 
+            } 
+            catch (err) {
+              value = log("ERROR",{info: "CompanycalculatedValue calculation  failed", company, companyEntity, calculatedField, err}) 
+              error = err;
+            }
+
+          
+          let Datom = {company, entity: companyEntity, calculatedField, value, event, t, error}
+
+          return Datom
+        }) : []
+        return calculatedFieldDatoms_event
+      } ).flat()
+
+      console.log({event, eventDatoms, calculatedFieldDatoms})
+
+      Database.calculatedFields = Database.calculatedFields.concat(calculatedFieldDatoms)
+
     })
     let Company = Database.get(company)
     Company.t = Database.companyDatoms.slice(-1)[0].t;
@@ -300,7 +361,7 @@ const Database = {
         .slice(-1)[0]
         if(isUndefined(companyDatom)){return log(undefined, `[ Database.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: No attribute ${attribute} datoms exist for companyEntity ${companyEntity}`)}
         else{ return companyDatom.value}
-      }else if(Database.getAll(5817).includes( attribute )){ return Database.getCompanyCalculatedField(company, companyEntity, attribute) } //returns calculatedField
+      }else if(Database.getAll(5817).includes( attribute )){return Database.getCompanyCalculatedField(company, companyEntity, attribute, t) } //returns calculatedField
     }else{
       let CompanyEntity = {
         company: company,
@@ -346,14 +407,26 @@ const Database = {
 
 
   },
-  getCompanyCalculatedField: (company, companyEntity, eventField) => {
+  getCompanyCalculatedField: (company, companyEntity, calculatedField, t) => {
+
+    let matchingDatoms = Database.calculatedFields
+      .filter( companyDatom => companyDatom.company === company  )
+      .filter( companyDatom => companyDatom.entity === companyEntity  )
+
+
+    let companyDatom = matchingDatoms
+        .filter( companyDatom => companyDatom.calculatedField === calculatedField )
+        .filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
+        .slice(-1)[0]
+        if(isUndefined(companyDatom)){return log(undefined, `[ Database.getCompanyCalculatedField(${company}, ${companyEntity}, ${calculatedField}, {t}) ]: No calculatedField ${calculatedField} datoms exist for companyEntity ${companyEntity}`)}
+        else{ return companyDatom.value}
+
+
+
 
     let Company = {
       entity: company
     }
-
-    console.log({Company,eventField})
-
 
     Company.get = (entity, attribute) => Database.getFromCompany(company, entity, attribute)
     Company.getAll = entityType => Database.companyDatoms
