@@ -165,6 +165,33 @@ let entityRedlinedValue = (value, prevValue) => d( [
 
 //Page frame
 
+let adminPanelView = (S, A) =>{
+
+
+
+  return d([
+    d([
+      d([
+        entityLabel(5612),
+        d(S.UIstate.user)
+      ], {class: "columns_1_1"}),
+      d([
+        d("Status Database"),
+        d("Ledig", {id: "APISYNCSTATUS"}),
+      ], {class: "columns_1_1"}),
+      d([
+        d("Versjon Database"),
+        input({value: Database.tx, disabled: "disabled"})
+      ], {class: "columns_1_1"}),
+
+    ]),
+    d([
+      d("Klientvariabler"),
+      d( Object.entries(S.UIstate).map( entry => d(`${entry[0]}: ${entry[1]}`)  ) )
+    ], {class: "columns_1_1"}),
+  ], {class: "columns_1_1", style: "background-color:gray;"})
+} 
+
 let headerBarView = (S) => d([
   d('<header><h1>Holdingservice Beta</h1></header>'),
   d([
@@ -184,6 +211,7 @@ let companySelectionMenuRow = (S, A) => d([
 let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Hendelseslogg", "Tidslinje", "Selskapets datomer", "Selskapets entiteter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
+  adminPanelView(S,A),
   headerBarView(S),
   companySelectionMenuRow(S, A),
   pageSelectionMenuRow(S, A),
@@ -275,20 +303,7 @@ let eventLogView = (S, A) => {
 
 let timelineView = (S,A) => {
   let company = Number(S["UIstate"].selectedCompany)
-  let Company = Database.get(company)
-
-
-  let selectedEntity = S["UIstate"].selectedCompanyDocEntity
-
-  
-
-
-
-
-
-
-
-  let tMax = Company.companyDatoms.slice( -1 )[0].t
+  let tMax = Database.get(company).t
   let tArray = new Array(tMax+1).fill(0).map( (v, i) => i )
   let companyProcesses = Database.get(company, 6157)
   
@@ -321,27 +336,17 @@ let timelineView = (S,A) => {
 let processTimelineView = (S, A, process) => {
 
   let company = Number(S["UIstate"].selectedCompany)
-  let Company = Database.get(company)
-  let tMax = Company.companyDatoms.slice( -1 )[0].t
+  let tMax = Database.get(company).t
   let tArray = new Array(tMax+1).fill(0).map( (v, i) => i )
-
-
-  let processEvents = Database.getAll(46)
-    .filter( event => Database.get(event, "event/process") === process )
-    .sort(  (a,b) => Database.get(a, "event/date" ) - Database.get(b, "event/date" ) )
-
-
-
-
-  let processEventsTimes = processEvents.map( event => Company.companyDatoms.filter( Datom => Datom.event === event ).slice(-1)[0].t )
-
+  let processEvents = Database.get(process, 6088)
+  let processEventsTimes = processEvents.map( event => Database.getCalculatedField(event, 6101) )
   let firstEventTime = processEventsTimes[0]
   let lastEventTime = processEventsTimes.slice( -1 )[0]
 
   return d([
     entityLabel(process),
-    d( tArray.map( t =>   {
-      let event = Company.companyDatoms.filter( Datom => Datom.t === t ).length > 0 ? Company.companyDatoms.filter( Datom => Datom.t === t )[0].event : undefined
+    d( tArray.map( (t, index) =>   {
+      let event = processEvents[index]
       return (t < firstEventTime || t > lastEventTime)
         ? d(" ")
         : processEventsTimes.includes(t)
@@ -367,8 +372,8 @@ let processTimelineView = (S, A, process) => {
 
 
 let companyDatomsPage = (S,A) => {
-
-  let Company = Database.getCompany(Number(S["UIstate"].selectedCompany))
+  let company = Number(S["UIstate"].selectedCompany)
+  let companyDatoms = D.companyDatoms.filter( companyDatom => companyDatom.company === company )
 
   return d([
     d([
@@ -378,7 +383,7 @@ let companyDatomsPage = (S,A) => {
       d("Hendelse"),
       d("t"),
     ], {class: "columns_1_1_1_1_1", style: "background-color: #bdbbbb;padding: 5px;" }),
-    d(Company.companyDatoms.map( Datom => d([
+    d(companyDatoms.map( Datom => d([
       d(JSON.stringify( Datom.entity )),
       entityLabel( Datom.attribute ),
       d(JSON.stringify( Datom.value )),
@@ -396,27 +401,10 @@ let companyDocPage = (S,A) => {
 
   let Company = Database.get(company)
 
-  Company.get = (entity, attribute) => {
+  Company.get = (entity, attribute) => Database.getFromCompany(company, entity, attribute)
 
-    let matchingDatoms = Company.companyDatoms
-    .filter( Datom => Datom.entity === entity )
-    .filter( Datom => Datom.attribute === attribute )
-    
-    let datom = (matchingDatoms.length > 0) 
-      ? matchingDatoms.slice( -1 )[0]
-      : undefined
+  let companyDatoms = D.companyDatoms.filter( companyDatom => companyDatom.company === company )
 
-    let value = isDefined(datom)
-      ? datom.value
-      : undefined
-
-    return value
-
-  }
-
-  let selectedEntity = S["UIstate"].selectedCompanyDocEntity
-
-  let entityType = Company.get(selectedEntity, 19)
 
 
   return d([
@@ -427,7 +415,7 @@ let companyDocPage = (S,A) => {
         .map( entity => entityLabel(entity, e => A.updateLocalState({selectedCompanyDocEntityType: entity, selectedCompanyDocEntity: null} )) )
         ),
       d(
-        Company.companyDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues )
+        companyDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues )
           .filter( entity => Company.get(entity, 19) === S["UIstate"]["selectedCompanyDocEntityType"]  )
           .map( entity => d( 
             `Entitet # ${entity}`, 
@@ -439,16 +427,15 @@ let companyDocPage = (S,A) => {
         )
     ], {class: "columns_1_1"}),
     d([
-      Company.companyDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues ).find( entity => entity === S["UIstate"].selectedCompanyDocEntity )
+      isDefined( Database.getFromCompany(company, S["UIstate"].selectedCompanyDocEntity) )
         ? d([
-          d(Company.companyDatoms
-            .filter( Datom => Datom.entity === S["UIstate"].selectedCompanyDocEntity )
-            .map( Datom => Datom.attribute )
-            .map( attribute => companyEntityView(Company, S["UIstate"].selectedCompanyDocEntity, attribute) )),
+          d( companyDatoms
+            .filter( companyDatom => companyDatom.entity === S["UIstate"].selectedCompanyDocEntity )
+            .map( companyDatom => companyDatomView(companyDatom) )),
           d( 
-            Database.get( entityType, "entityType/calculatedFields" ).map( calculatedField => d([
+            Database.get( Database.getFromCompany(company, S["UIstate"].selectedCompanyDocEntity, 19), "entityType/calculatedFields" ).map( calculatedField => d([
               entityLabel(calculatedField),
-              d(JSON.stringify( Database.getCompanyCalculatedField(company, selectedEntity, calculatedField) ))
+              d(JSON.stringify( Database.getCompanyCalculatedField(company, S["UIstate"].selectedCompanyDocEntity, calculatedField) ))
             ], {class: "columns_1_1"})    )
             )
         ])
@@ -460,21 +447,16 @@ let companyDocPage = (S,A) => {
 
 }
 
-let companyEntityView = (Company, entity, attribute) => {
+let companyDatomView = (companyDatom) => {
 
-  let value = Company.companyDatoms
-  .filter( Datom => Datom.entity === entity )
-  .filter( Datom => Datom.attribute === attribute )
-  .slice(-1)[0].value
+  let valueType = Database.get(companyDatom.attribute, "attribute/valueType")
 
-
-  let valueType = Database.get(attribute, "attribute/valueType")
-  let valueView = (valueType === 32 && !isUndefined(value)) 
-    ? entityLabel(Number(value)) 
-    : d( JSON.stringify(value) )
+  let valueView = (valueType === 32 && !isUndefined(companyDatom.value)) 
+    ? entityLabel(Number(companyDatom.value)) 
+    : d( JSON.stringify(companyDatom.value) )
 
   return d([
-    entityLabel(attribute),
+    entityLabel(companyDatom.attribute),
     valueView
   ], {class: "columns_1_1"})
 
