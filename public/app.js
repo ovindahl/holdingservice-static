@@ -207,20 +207,23 @@ const Database = {
           let Company = {
             get: (entity, attribute) => Database.getFromCompany(company, entity, attribute),
             getEntityValueFromID: () => log( "ERROR", {info: "Company.getEntityValueFromID() brukes i hendelsestype, bør endres til kalkulert verdi", eventType, event} ),
-            sumAccountBalance: () => log( 0, {info: "Company.sumAccountBalance() brukes i hendelsestype, bør endres til kalkulert verdi", eventType, event} ),
+            sumAccountBalance: () => log( "ERROR", {info: "Company.sumAccountBalance() brukes i hendelsestype, bør endres til kalkulert verdi", eventType, event} ),
 
           }
 
           let Event = {
+            entity: event,
             get: attribute => Database.get(event, attribute),
           }
 
           let process = Database.get(event, "event/process")
 
-          let Process = {
-              get: attribute => Database.get(process, attribute),
-              getEvents: () => Database.getCalculatedField( process, 6088 ).map( event => Database.get(event) )
-          }
+          let Process = Database.get(process)
+          Process.events = Process.get( 6088 )
+          Process.getEventEntityByIndex = index => Process.events[index]
+          Process.getEventByIndex = index => Database.get( Process.getEventEntityByIndex(index) )
+          Process.getFirstEvent = () => Process.getEventByIndex(  0 )
+          Process.getPrevEvent = () => Process.getEventByIndex(  Process.events.findIndex( e => e === event ) - 1 )
 
           let value;
           let error = "No errors";
@@ -234,7 +237,8 @@ const Database = {
       
       let companyEntitiesToUpdate = Database.companyDatoms
         .filter( companyDatom => companyDatom.company === company )
-        .map( companyDatom => companyDatom.entity ).filter(filterUniqueValues)
+        .map( companyDatom => companyDatom.entity )
+        .filter(filterUniqueValues)
 
       companyEntitiesToUpdate.forEach( companyEntity => {
 
@@ -275,6 +279,10 @@ const Database = {
 
           
           let Datom = {company, entity: companyEntity, calculatedField, value, event, t, error}
+
+          if(t === 28){
+            console.log({t, event, Datom, Company, Entity})
+          }
 
           Database.calculatedFields = Database.calculatedFields.concat(Datom)
         })
@@ -404,7 +412,14 @@ const Database = {
       .filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
 
       let datom = matchingDatoms.slice(-1)[0]
+
+      
+
       let value = isDefined(datom) ? datom.value : undefined
+
+      if(calculatedField === 6190){
+        console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", {company, companyEntity, calculatedField, t, value, matchingDatoms, allCalcFields: Database.calculatedFields})
+      }
         
         if(isUndefined(value)){return log(undefined, `[ Database.getCompanyCalculatedField(${company}, ${companyEntity}, ${calculatedField}, {t}) ]: No calculatedField ${calculatedField} datoms exist for companyEntity ${companyEntity}`)}
         else{ return value}
