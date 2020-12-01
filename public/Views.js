@@ -274,7 +274,7 @@ let timelineView = (S,A) => {
                     {
                       class: "entityLabel", 
                       style: `background-color: #9ad2ff;`
-                    }),
+                    })
                 ], {class: "popupContainer", style:"display: inline-flex;"})
               ], {style:"display: inline-flex;"} )
         ), {style: `display:grid;grid-template-columns: repeat(${tArray.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
@@ -325,26 +325,28 @@ let companyDatomsPage = (S,A) => {
 
   return d([
     d([
+      d("t"),
+      d("Hendelse"),
       d("Entitet"),
       d("Attributt"),
       d("Verdi"),
-      d("Hendelse"),
-      d("t"),
     ], {class: "columns_1_1_1_1_1", style: "background-color: #bdbbbb;padding: 5px;" }),
-    d(companyDatoms.map( Datom => {
+    d(companyDatoms.map( companyDatom => {
 
-      let valueType = Database.get(Datom.attribute, "attribute/valueType")
-      let valueView = (valueType === 32 && !isUndefined(Datom.value)) 
-        ? entityLabel(Number(Datom.value)) 
-        : d( JSON.stringify(Datom.value) )
+      let valueType = Database.get(companyDatom.attribute, "attribute/valueType")
+      let valueView = (valueType === 32 && !isUndefined(companyDatom.value)) 
+        ? entityLabel(Number(companyDatom.value)) 
+        : (valueType === 31) 
+          ? d( String(companyDatom.value), {style: `text-align: right;`} )
+          : d( JSON.stringify(companyDatom.value) )
 
 
       return d([
-        d(JSON.stringify( Datom.entity )),
-        entityLabel( Datom.attribute ),
+        d( String(companyDatom.t), {style: `text-align: right;`} ),
+        entityLabel(companyDatom.event),
+        d( String(companyDatom.entity), {style: `text-align: right;`} ),
+        entityLabel( companyDatom.attribute ),
         valueView,
-        entityLabel(Datom.event),
-        d(JSON.stringify( Datom.t )),
       ], {class: "columns_1_1_1_1_1"})
     }  ) ),
   ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
@@ -372,7 +374,7 @@ let companyDocPage = (S,A) => {
         .map( entity => entityLabel(entity, e => A.updateLocalState({selectedCompanyDocEntityType: entity, selectedCompanyDocEntity: null} )) )
         ),
       d(
-        companyDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues )
+        companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
           .filter( entity => Company.get(entity, 19) === S["UIstate"]["selectedCompanyDocEntityType"]  )
           .map( entity => d( 
             `Entitet # ${entity}`, 
@@ -405,12 +407,12 @@ let companyDocPage = (S,A) => {
 }
 
 let companyDatomView = (companyDatom) => {
-
   let valueType = Database.get(companyDatom.attribute, "attribute/valueType")
-
   let valueView = (valueType === 32 && !isUndefined(companyDatom.value)) 
     ? entityLabel(Number(companyDatom.value)) 
-    : d( JSON.stringify(companyDatom.value) )
+    : (valueType === 31) 
+      ? d( String(companyDatom.value), {style: `text-align: right;`} )
+      : d( JSON.stringify(companyDatom.value) )
 
   return d([
     entityLabel(companyDatom.attribute),
