@@ -751,7 +751,7 @@ let input_date = (entity, attribute, version) => input(
 
 let input_staticDropdown = (entity, attribute, version) => dropdown(
   Database.get( entity, attribute, version ),
-  Database.getOptions( entity, attribute, version ),
+  Database.getOptions( attribute, version ),
   async e => await Database.updateEntity(entity, attribute,  submitInputValue(e) )
 )
 
@@ -1034,11 +1034,22 @@ let input_multipleSelect = (entity, attribute, version) => d([
 ], {class: "columns_1_1"})
 
 let input_singleCompanyEntity = (entity, attribute, version) => {
-  let Company = Database.getCompany(Number(Database.S["UIstate"].selectedCompany))
+  let Company = Database.get(Number(Database.S["UIstate"].selectedCompany))
 
-  let t =  Company.events.findIndex( e => e === entity ) // 5 // Database.get(entity, 1000)
 
-  let optionObjects = Company.getOptions( attribute, t )
+
+  
+  //let t =  Company.events.findIndex( e => e === entity ) // 5 // Database.get(entity, 1000)
+
+  let optionObjects = ["TBD"] //Company.getOptions( attribute, t )
+
+
+  
+
+
+
+
+
   let selectedOption = optionObjects.find( Option => Option.value === Database.get( entity, attribute, version ))
   let value = isDefined(selectedOption)
   ? selectedOption.value
