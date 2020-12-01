@@ -139,25 +139,6 @@ let entityInspectorPopup_small = entity => d([
   //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-
-
-let entityInspectorPopup_Company = (company, t) => {
-
-  
-  return d([
-    h3( Database.get( company , "entity/label") ),
-    d([
-      d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`} )], {style:"display: inline-flex;"}),
-      d(String(company), {style: `text-align: right;`} )
-    ], {class: "columns_1_1"}),
-    d([
-      d([span( `t`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`} )], {style:"display: inline-flex;"}),
-      d(String(t), {style: `text-align: right;`} )
-    ], {class: "columns_1_1"}),
-    d( Database.get(5722, 6050).map( calculateValue => calculatedFieldView(company, calculateValue)  ) ),
-  ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-}
-
 let entityRedlinedValue = (value, prevValue) => d( [
   span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
   span( `${JSON.stringify(value)}`),
@@ -208,7 +189,7 @@ let companySelectionMenuRow = (S, A) => d([
   submitButton( "+", e => console.log("NEW COMPANY") )
 ], {style: "display:flex;"}) 
 
-let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Hendelseslogg", "Tidslinje", "Selskapets datomer", "Selskapets entiteter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Tidslinje", "Selskapets datomer", "Selskapets entiteter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A) => [
   adminPanelView(S,A),
@@ -220,7 +201,6 @@ let generateHTMLBody = (S, A) => [
 
 let pageRouter = {
   "Prosesser": (S, A) => processesView(S, A),
-  "Hendelseslogg": (S, A) => eventLogView(S, A),
   "Tidslinje": (S, A) => timelineView(S, A),
   "Selskapets datomer": (S, A) => companyDatomsPage( S, A ),
   "Selskapets entiteter": (S, A) => companyDocPage( S, A ),
@@ -274,36 +254,10 @@ let newDatomsView = event => d([
   } ))
 ])
 
-let eventLogView = (S, A) => {
-
-  let companyEvents = Database.getCompany(S["UIstate"].selectedCompany).events
-
-
-  return d([
-    d([
-      d("t"),
-      d("Dato"),
-      d("Hendelse"),
-      d("Prosess"),
-      d("Status"),
-    ], {class: "columns_1_1_1_1_1"}),
-    d(
-      companyEvents.map( (event, index) => d([
-        d(String(Database.getEvent(event).t)),
-        d( moment( Database.getEvent(event).get("event/date") ).format("DD/MM/YYYY") ),
-        entityLabel(event),
-        entityLabel( Database.get(event, 5708) ),
-        Database.getEvent(event).isValid() ? d("Gyldig", {style: "background-color: #269c266e;"}) : d("Ikke gyldig", {style: "background-color: #f94d4d6e;"})
-      ], {class: "columns_1_1_1_1_1"})  )
-    )
-  ], {class: "feedContainer"})
-}
-
-
 
 let timelineView = (S,A) => {
   let company = Number(S["UIstate"].selectedCompany)
-  let tMax = Database.get(company).t
+  let tMax = Database.get( Database.get(company, 6178).slice(-1)[0], 6101)
   let tArray = new Array(tMax+1).fill(0).map( (v, i) => i )
   let companyProcesses = Database.get(company, 6157)
   
@@ -321,7 +275,6 @@ let timelineView = (S,A) => {
                       class: "entityLabel", 
                       style: `background-color: #9ad2ff;`
                     }),
-                  //entityInspectorPopup_Company(company, t)
                 ], {class: "popupContainer", style:"display: inline-flex;"})
               ], {style:"display: inline-flex;"} )
         ), {style: `display:grid;grid-template-columns: repeat(${tArray.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
@@ -336,7 +289,7 @@ let timelineView = (S,A) => {
 let processTimelineView = (S, A, process) => {
 
   let company = Number(S["UIstate"].selectedCompany)
-  let tMax = Database.get(company).t
+  let tMax = Database.get( Database.get(company, 6178).slice(-1)[0], 6101)
   let tArray = new Array(tMax+1).fill(0).map( (v, i) => i )
   let processEvents = Database.get(process, 6088)
   let processEventsTimes = processEvents.map( event => Database.getCalculatedField(event, 6101) )
@@ -351,16 +304,11 @@ let processTimelineView = (S, A, process) => {
         ? d(" ")
         : processEventsTimes.includes(t)
           ? d([
-              d([
-                span( `${t}`, `${Database.get( event , "entity/label")}`, {class: "entityLabel", style: `background-color:${Database.getCalculatedField(event, 6161) ? "#9ad2ff" : Database.getCalculatedField(event, 6077) ? "#0080004f" : "#c30d0066"   };`}, 
-                  "click", e => {
-                    A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process })
-                    Database.setLocalState(process, {selectedEvent: event })
-                  } ),
-                  d([
-                    singleEventView(S, event)
-                  ], {class: "entityInspectorPopup"})
-              ], {class: "popupContainer", style:"display: inline-flex;"})
+                //entityLabel(event, e => { A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process });Database.setLocalState(process, {selectedEvent: event })})
+                d([
+                  span( `${t}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Database.get(event, "entity/entityType" ), Database.attrName(20) )};`}, "click", e => { A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process });Database.setLocalState(process, {selectedEvent: event })} ),
+                  entityInspectorPopup_small(event)
+                ], {class: "popupContainer", style:"display: inline-flex;"})
             ], {style:"display: inline-flex;"} )
           : d("-" ) 
         }), {style: `display:grid;grid-template-columns: repeat(${tArray.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
@@ -373,7 +321,7 @@ let processTimelineView = (S, A, process) => {
 
 let companyDatomsPage = (S,A) => {
   let company = Number(S["UIstate"].selectedCompany)
-  let companyDatoms = D.companyDatoms.filter( companyDatom => companyDatom.company === company )
+  let companyDatoms = D.companyDatoms.filter( companyDatom => companyDatom.company === company ).sort( (companyDatomA, companyDatomB) => companyDatomA.entity - companyDatomB.entity )
 
   return d([
     d([
@@ -383,13 +331,22 @@ let companyDatomsPage = (S,A) => {
       d("Hendelse"),
       d("t"),
     ], {class: "columns_1_1_1_1_1", style: "background-color: #bdbbbb;padding: 5px;" }),
-    d(companyDatoms.map( Datom => d([
-      d(JSON.stringify( Datom.entity )),
-      entityLabel( Datom.attribute ),
-      d(JSON.stringify( Datom.value )),
-      entityLabel(Datom.event),
-      d(JSON.stringify( Datom.t )),
-    ], {class: "columns_1_1_1_1_1"}) ) ),
+    d(companyDatoms.map( Datom => {
+
+      let valueType = Database.get(Datom.attribute, "attribute/valueType")
+      let valueView = (valueType === 32 && !isUndefined(Datom.value)) 
+        ? entityLabel(Number(Datom.value)) 
+        : d( JSON.stringify(Datom.value) )
+
+
+      return d([
+        d(JSON.stringify( Datom.entity )),
+        entityLabel( Datom.attribute ),
+        valueView,
+        entityLabel(Datom.event),
+        d(JSON.stringify( Datom.t )),
+      ], {class: "columns_1_1_1_1_1"})
+    }  ) ),
   ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 }
@@ -463,12 +420,6 @@ let companyDatomView = (companyDatom) => {
 
 
 }
-
-
-
-
-
-
 
 
 
@@ -1031,21 +982,18 @@ let input_multipleSelect = (entity, attribute, version) => d([
 ], {class: "columns_1_1"})
 
 let input_singleCompanyEntity = (entity, attribute, version) => {
-  let Company = Database.get(Number(Database.S["UIstate"].selectedCompany))
-
-
-
-  
-  //let t =  Company.events.findIndex( e => e === entity ) // 5 // Database.get(entity, 1000)
-
-  let optionObjects = ["TBD"] //Company.getOptions( attribute, t )
-
-
-  
 
 
 
 
+  let company = Database.S["UIstate"].selectedCompany
+
+
+  let optionsObjectsObject = {
+    "5813": Database.getFromCompany(company, 1, 6174).map( e => returnObject({value: e, label: `[${Database.getFromCompany(company, e, 1080)} - ${ moment(Database.getFromCompany(company, e, 1757)).format("DD/MM/YYYY") }] ${Database.getFromCompany(company, e, 1083)} (${Database.getFromCompany(company, e, 1139)}) ` }) ) //Bank
+  }
+
+  let optionObjects = optionsObjectsObject[attribute]
 
   let selectedOption = optionObjects.find( Option => Option.value === Database.get( entity, attribute, version ))
   let value = isDefined(selectedOption)
@@ -1053,18 +1001,8 @@ let input_singleCompanyEntity = (entity, attribute, version) => {
   : "Ingen entitet valgt"
 
   return d([
-    
     dropdown( Number(value), optionObjects, async e => optionObjects.map( Option => Number(Option.value) ).includes( Number(e.srcElement.value) ) 
     ? await Database.updateEntity(entity, attribute,  Number(submitInputValue(e)))
     : log("Selected option not valid: ", {entity, attribute, version}, Number(e.srcElement.value))  )
-    /* 
-    htmlElementObject("datalist", {id:`entity/${entity}/options`}, optionsElement( optionObjects ) ),
-    input(
-      {value: value, list:`entity/${entity}/options`, style: `text-align: right;`}, 
-      "change", 
-      async e => optionObjects.map( Option => Number(Option.value) ).includes( Number(e.srcElement.value) ) 
-        ? await Database.updateEntity(entity, attribute,  Number(submitInputValue(e)))
-        : log("Selected option not valid: ", Datom, Number(e.srcElement.value))
-    ) */
   ])
 } 
