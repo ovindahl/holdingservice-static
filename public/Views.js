@@ -357,11 +357,8 @@ let companyDatomsPage = (S,A) => {
 let companyDocPage = (S,A) => {
 
   let company = Number(S["UIstate"].selectedCompany)
-
-  let Company = Database.get(company)
-
-  Company.get = (entity, attribute) => Database.getFromCompany(company, entity, attribute)
-
+  let t = Database.get(company, 6198)
+  let Company = Database.getCompanyObject(company, t)
   let companyDatoms = D.companyDatoms.filter( companyDatom => companyDatom.company === company )
 
 
@@ -386,13 +383,13 @@ let companyDocPage = (S,A) => {
         )
     ], {class: "columns_1_1"}),
     d([
-      isDefined( Database.getFromCompany(company, S["UIstate"].selectedCompanyDocEntity) )
+      isDefined( Company.get(S["UIstate"].selectedCompanyDocEntity) )
         ? d([
           d( companyDatoms
             .filter( companyDatom => companyDatom.entity === S["UIstate"].selectedCompanyDocEntity )
             .map( companyDatom => companyDatomView(companyDatom) )),
           d( 
-            Database.get( Database.getFromCompany(company, S["UIstate"].selectedCompanyDocEntity, 19), "entityType/calculatedFields" ).map( calculatedField => d([
+            Database.get( Company.get(S["UIstate"].selectedCompanyDocEntity, 19), "entityType/calculatedFields" ).map( calculatedField => d([
               entityLabel(calculatedField),
               d(JSON.stringify( Database.getCompanyCalculatedField(company, S["UIstate"].selectedCompanyDocEntity, calculatedField) ))
             ], {class: "columns_1_1"})    )
@@ -553,15 +550,9 @@ let singleEventView =  (S, event) => {
 
 let processActionsView =  (S, process) => {
 
-  let Process = {
-    entity: process,
-    getEvents: () => Database.getCalculatedField( process, 6088 )
-  }
-
+  let Process = Database.getProcessObject(process)
   let processType =   Database.get(process, "process/processType" )
-
-  let eventsCount = Database.getCalculatedField( process, 6088 ).length
-
+  let eventsCount = Process.events.length
   let selectedEvent = Database.get(process, 6137)
 
   let actionButtons = Database.get(processType, "processType/actions")
@@ -984,23 +975,14 @@ let input_multipleSelect = (entity, attribute, version) => d([
 ], {class: "columns_1_1"})
 
 let input_singleCompanyEntity = (entity, attribute, version) => {
-
-
-
-
   let company = Database.S["UIstate"].selectedCompany
-
-
-  let optionsObjectsObject = {
-    "5813": Database.getFromCompany(company, 1, 6174).map( e => returnObject({value: e, label: `[${Database.getFromCompany(company, e, 1080)} - ${ moment(Database.getFromCompany(company, e, 1757)).format("DD/MM/YYYY") }] ${Database.getFromCompany(company, e, 1083)} (${Database.getFromCompany(company, e, 1139)}) ` }) ) //Bank
-  }
-
-  let optionObjects = optionsObjectsObject[attribute]
+  let t = Database.get(entity, 6101)
+  let optionObjects = Database.getCompanyOptions(company, attribute, t).concat({value: 0, label: "Ingen entitet valgt"})
 
   let selectedOption = optionObjects.find( Option => Option.value === Database.get( entity, attribute, version ))
   let value = isDefined(selectedOption)
   ? selectedOption.value
-  : "Ingen entitet valgt"
+  : 0
 
   return d([
     dropdown( Number(value), optionObjects, async e => optionObjects.map( Option => Number(Option.value) ).includes( Number(e.srcElement.value) ) 
