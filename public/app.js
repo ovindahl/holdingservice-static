@@ -7,9 +7,8 @@ const Database = {
     Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
     Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
     Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-    Database.companyDatoms = [];
     Database.calculatedFieldFunctions = Database.getAll( 5817 ).map( calculatedField => returnObject({calculatedField, function: new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) ) })  )
-    Database.getAll( 5722 ).forEach( company => Database.reconstructCompany(company) )
+    Database.getAll( 5722 ).forEach( company => Companies.reconstructCompany(company) )
     return;
   },
   setLocalState: (entity, newState) => {
@@ -35,7 +34,7 @@ const Database = {
     let valueInArray = attributeIsArray ? value : [value]
     let isValid_existingEntity = Database.Entities.map( E => E.entity).includes(entity)
     let valueTypeValidatorFunction = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") )
-    let isValid_valueType = valueInArray.every( arrayValue => log(valueTypeValidatorFunction)(arrayValue) ) 
+    let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
     let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attribute), "attribute/validatorFunctionString") ) ( value )
     let isValid_notNaN = !Number.isNaN(value)
 
@@ -51,7 +50,7 @@ const Database = {
       Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
       Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
 
-      if( updatedEntity.current["entity/entityType"] === 46  ){ Database.recalculateCompanies() }
+      if( updatedEntity.current["entity/entityType"] === 46  ){ Companies.recalculateCompanies() }
 
       update( Database.S )
 
@@ -76,7 +75,7 @@ const Database = {
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
     let updatedEntity = serverResponse[0]
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
-    if( updatedEntity.current["entity/entityType"] === 46  ){ Database.recalculateCompanies() }
+    if( updatedEntity.current["entity/entityType"] === 46  ){ Companies.recalculateCompanies() }
     update( Database.S )
     return updatedEntity
   },
@@ -100,7 +99,7 @@ const Database = {
       let updatedEntities = serverResponse
       Database.Entities = Database.Entities.filter( Entity => !updatedEntities.map( updatedEntity => updatedEntity.entity  ).includes(Entity.entity) ).concat( updatedEntities )
       Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-      Database.recalculateCompanies()
+      Companies.recalculateCompanies()
       update( Database.S )
     }else{log("Datoms not valid: ", Datoms)}
   },
@@ -119,12 +118,12 @@ const Database = {
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
     Database.Entities = Database.Entities.filter( Entity => !entities.includes(Entity.entity) ).concat( serverResponse )
     Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-    if( includesEvent  ){ Database.recalculateCompanies() }
+    if( includesEvent  ){ Companies.recalculateCompanies() }
     update( Database.S )
   },
   submitDatoms: async datoms => {
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) )
-    Database.recalculateCompanies()
+    Companies.recalculateCompanies()
     update( Database.S )
   },
   attrName: attribute => {
@@ -192,10 +191,14 @@ const Database = {
     catch (error) { log(error, {info: "Could not get options for DB attribute", attribute, tx }) }
     return options
   },
+}
+
+const Companies = {
+  companyDatoms: [],
   reconstructCompany: company => {
     let startTime = Date.now()
     let events = Database.get(company, 6178) 
-    Database.companyDatoms = Database.companyDatoms.filter( Datom => Datom.company !== company ) //.concat([initialDatom]) 
+    Companies.companyDatoms = Companies.companyDatoms.filter( Datom => Datom.company !== company ) //.concat([initialDatom]) 
     let latestEntityID = 0;
     events.forEach( event => {
       
@@ -211,9 +214,9 @@ const Database = {
     
         let attribute = datomConstructor.attribute
     
-        let Company = Database.getCompanyObject(company)
+        let Company = Companies.getCompanyObject(company)
         let Event = Database.get(event)
-        let Process = Database.getProcessObject( Database.get(event, "event/process") )
+        let Process = Companies.getProcessObject( Database.get(event, "event/process") )
         Process.getPrevEvent = () => Process.getEventByIndex(  Process.events.findIndex( e => e === event ) - 1 ) //Flytte til event?
     
         let value;
@@ -225,7 +228,7 @@ const Database = {
         
       }  )
       
-      Database.companyDatoms = Database.companyDatoms.concat(eventDatoms)
+      Companies.companyDatoms = Companies.companyDatoms.concat(eventDatoms)
       let maxEventEntity = eventDatoms.map( Datom => Datom.entity ).sort( (a, b) => a-b ).slice(-1)[0]
       let newMax = isNumber(maxEventEntity) 
         ? Math.max(latestEntityID, maxEventEntity)
@@ -234,26 +237,27 @@ const Database = {
     })
     console.log(`reconstructCompany [${company}] completed in ${Date.now() - startTime} ms`)
   },
-  recalculateCompanies: () => Database.getAll( 5722 ).forEach( company => Database.reconstructCompany( company) ),
+  recalculateCompanies: () => Database.getAll( 5722 ).forEach( company => Companies.reconstructCompany( company) ),
   getCompanyObject: (company, t) => {
 
     let Company = {
       entity: company,
       t
     }
-    Company.get = (entity, attribute) => Database.getFromCompany(company, entity, attribute, t)
-    Company.getAll = entityType => Database.getAllFromCompany(company, entityType, t)
+    Company.get = (entity, attribute) => Companies.getFromCompany(company, entity, attribute, t)
+    Company.getAll = entityType => Companies.getAllFromCompany(company, entityType, t)
     Company.getEvent = event =>  Database.get(event)
+    Company.getOptions = attribute =>  Companies.getCompanyOptions(company, attribute, t)
     return Company
 
   },
   getFromCompany: (company, companyEntity, attribute, t) => {
-    if(isUndefined(company)){return log(undefined, `[ Database.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received company argument is undefined`)}
-    if(isUndefined(companyEntity)){return log(undefined, `[ Database.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received companyEntity argument is undefined`)}
-    let matchingDatoms = Database.companyDatoms
+    if(isUndefined(company)){return log(undefined, `[ Companies.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received company argument is undefined`)}
+    if(isUndefined(companyEntity)){return log(undefined, `[ Companies.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received companyEntity argument is undefined`)}
+    let matchingDatoms = Companies.companyDatoms
       .filter( companyDatom => companyDatom.company === company  )
       .filter( companyDatom => companyDatom.entity === companyEntity  )
-    if(matchingDatoms.length === 0){return log(undefined, `[ Database.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: No matching company datoms`)}
+    if(matchingDatoms.length === 0){return log(undefined, `[ Companies.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: No matching company datoms`)}
     if(isDefined(attribute) ){
       if( Database.getAll(42).includes( Database.attr(attribute) ) ){
         let companyDatom = matchingDatoms
@@ -262,7 +266,7 @@ const Database = {
         .slice(-1)[0]
         if(isUndefined(companyDatom)){return undefined}
         else{ return companyDatom.value}
-      }else if(Database.getAll(5817).includes( attribute )){return Database.getCompanyCalculatedField(company, companyEntity, attribute, t) } //returns calculatedField
+      }else if(Database.getAll(5817).includes( attribute )){return Companies.getCompanyCalculatedField(company, companyEntity, attribute, t) } //returns calculatedField
     }else{
       let CompanyEntity = {
         company: company,
@@ -281,15 +285,15 @@ const Database = {
   },
   getCompanyOptions: (company, attribute, t) => {
     let options = [];
-    let Company = Database.getCompanyObject(company, t)
+    let Company = Companies.getCompanyObject(company, t)
     try {options = new Function( [ "Company" ] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Company )}
     catch (error) { log(error, {info: "Could not get options for Company attribute", company, attribute, t }) }
     return options
   },
   getAllFromCompany: (company, entityType, t) => {
-    if(isUndefined(company)){return log(undefined, `[ Database.getAllFromCompany(${company}, ${entityType}, ${t}) ]: received company argument is undefined`)}
-    if(isUndefined(entityType)){return log(undefined, `[ Database.getFromCompany(${company}, ${entityType}, ${t}) ]: received entityType argument is undefined`)}
-    let entities = Database.companyDatoms
+    if(isUndefined(company)){return log(undefined, `[ Companies.getAllFromCompany(${company}, ${entityType}, ${t}) ]: received company argument is undefined`)}
+    if(isUndefined(entityType)){return log(undefined, `[ Companies.getFromCompany(${company}, ${entityType}, ${t}) ]: received entityType argument is undefined`)}
+    let entities = Companies.companyDatoms
       .filter( companyDatom => companyDatom.company === company  )
       .filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
       .filter( companyDatom => companyDatom.attribute === 19 )
@@ -299,11 +303,11 @@ const Database = {
   },
   getCompanyCalculatedField: (company, companyEntity, calculatedField, t) => {
 
-          let Company = Database.getCompanyObject(company, t)
+          let Company = Companies.getCompanyObject(company, t)
       
           let Entity = {
             entity: companyEntity,
-            event: Database.companyDatoms
+            event: Companies.companyDatoms
             .filter( companyDatom => companyDatom.company === company )
             .filter( companyDatom => companyDatom.entity === companyEntity )
             [0].event,
@@ -339,10 +343,6 @@ const Database = {
   }
 }
 
-let Counter = {
-  getCompanyCalculatedField: 0
-}
-
 let D = Database
 let Company = {}
 let Process = {}
@@ -361,12 +361,9 @@ const sideEffects = {
       if(sideEffects.isIdle){
         sideEffects.isIdle = false;
         let statusDiv = document.getElementById("APISYNCSTATUS")
-
         if(!isNull(statusDiv)) {
           statusDiv.innerHTML = "Laster";
         }
-
-
         let startTime = Date.now()
         let APIendpoint = `https://holdingservice.appspot.com/api/${endPoint}`
         let authToken = await sideEffects.auth0.getTokenSilently()
@@ -396,10 +393,7 @@ const sideEffects = {
         }); //This call is for some reason never resolved..
         if(await sideEffects.auth0.isAuthenticated()){
             console.log("Authenticated");
-
             init()
-            
-            
         }else{
             try{
                 await sideEffects.auth0.handleRedirectCallback();
@@ -417,48 +411,27 @@ const sideEffects = {
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
-let getUserActions = (S, Database) => returnObject({
-    updateLocalState: (patch) => update({
-      UIstate: mergerino( S["UIstate"], patch )
-    })
-})
-
-
 let update = ( S ) => {
 
-  
-    
-    S.selectedCategories = Database.Entities
-      .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
-      .map( serverEntity => Database.get(serverEntity.entity, "entity/category" ) )
-      .filter(filterUniqueValues)
-    
-    S.selectedEntities = Database.Entities
-      .filter( serverEntity => serverEntity.current["entity/entityType"] === S["UIstate"].selectedEntityType )
-      .filter( serverEntity => serverEntity.current["entity/category"] === S["UIstate"].selectedCategory )
-      .map( serverEntity => serverEntity.entity )
-    
     Database.S = S;
     Admin.S = S;
     Admin.DB = Database
     D = Database
 
     console.log("State: ", S)
-    let A = getUserActions(S, Database)
+    let A = {updateLocalState: (patch) => update({UIstate: mergerino( S["UIstate"], patch )})}
     Admin.A = A;
+
     let company = S["UIstate"].selectedCompany
     let t = Database.get(company, 6198)
-    Company = isDefined(company) ? Database.getCompanyObject( company, t ): "Ingen selskap valgt"
+    Company = isDefined(company) ? Companies.getCompanyObject( company, t ): "Ingen selskap valgt"
     let process = S["UIstate"].selectedProcess
-    Process = isDefined(process) ? Database.getProcessObject(process) : "Ingen prosess valgt"
+    Process = isDefined(process) ? Companies.getProcessObject(process) : "Ingen prosess valgt"
 
     let startTime = Date.now()
 
-    
-    
-    S.elementTree = generateHTMLBody(S, A )
-    sideEffects.updateDOM( S.elementTree )
-    
+    let elementTree = generateHTMLBody(S, A )
+    sideEffects.updateDOM( elementTree )
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)    
 
 }

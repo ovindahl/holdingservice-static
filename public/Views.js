@@ -219,7 +219,7 @@ let sidebar_left = (S, A) => d([
           }))
         )
       ),
-      d( S.selectedCategories
+      d( Database.getAll(S["UIstate"].selectedEntityType).map( entity => Database.get(entity, "entity/category" ) ).filter(filterUniqueValues)
         .sort( ( a , b ) => ('' + a).localeCompare(b) )
         .map( category => d( 
           category, 
@@ -230,7 +230,7 @@ let sidebar_left = (S, A) => d([
       ),
       S["UIstate"].selectedCategory === null 
         ? d("Ingen kategori valgt") 
-        : d( S.selectedEntities
+        : d( Database.getAll(S["UIstate"].selectedEntityType).filter( entity => Database.get(entity, "entity/category" ) === S["UIstate"].selectedCategory )
           .sort( sortEntitiesAlphabeticallyByLabel )
           .map( entity => entityLabel( entity, e => Database.selectEntity(entity) ))
         )
@@ -358,8 +358,8 @@ let companyDocPage = (S,A) => {
 
   let company = Number(S["UIstate"].selectedCompany)
   let t = Database.get(company, 6198)
-  let Company = Database.getCompanyObject(company, t)
-  let companyDatoms = D.companyDatoms.filter( companyDatom => companyDatom.company === company )
+  let Company = Companies.getCompanyObject(company, t)
+  let companyDatoms = Companies.companyDatoms.filter( companyDatom => companyDatom.company === company )
 
 
 
@@ -391,7 +391,7 @@ let companyDocPage = (S,A) => {
           d( 
             Database.get( Company.get(S["UIstate"].selectedCompanyDocEntity, 19), "entityType/calculatedFields" ).map( calculatedField => d([
               entityLabel(calculatedField),
-              d(JSON.stringify( Database.getCompanyCalculatedField(company, S["UIstate"].selectedCompanyDocEntity, calculatedField) ))
+              d(JSON.stringify( Company.get(S["UIstate"].selectedCompanyDocEntity, calculatedField) ))
             ], {class: "columns_1_1"})    )
             )
         ])
@@ -550,7 +550,7 @@ let singleEventView =  (S, event) => {
 
 let processActionsView =  (S, process) => {
 
-  let Process = Database.getProcessObject(process)
+  let Process = Companies.getProcessObject(process)
   let processType =   Database.get(process, "process/processType" )
   let eventsCount = Process.events.length
   let selectedEvent = Database.get(process, 6137)
@@ -977,7 +977,8 @@ let input_multipleSelect = (entity, attribute, version) => d([
 let input_singleCompanyEntity = (entity, attribute, version) => {
   let company = Database.S["UIstate"].selectedCompany
   let t = Database.get(entity, 6101)
-  let optionObjects = Database.getCompanyOptions(company, attribute, t).concat({value: 0, label: "Ingen entitet valgt"})
+  let Company = Companies.getCompanyObject(company, t)
+  let optionObjects = Company.getOptions(attribute, t).concat({value: 0, label: "Ingen entitet valgt"})
 
   let selectedOption = optionObjects.find( Option => Option.value === Database.get( entity, attribute, version ))
   let value = isDefined(selectedOption)
