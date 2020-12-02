@@ -128,30 +128,16 @@ const Database = {
       return Entity
     }
   },
-  getCalculatedField: (entity, eventField) => {
-
+  getCalculatedField: (entity, calculatedField) => {
     let entityType = Database.get(entity, "entity/entityType")
-
     let systemEntityTypes = [42, 43, 44, 45, 47, 48, 5030, 5590, 5612, 5687, 5817];
     let realEntityTypes = [46, 5722, 5692]
     let companyEntityTypes = [5672, 5673, 5674, 5679, 5714, 5810, 5811, 5812]
-
     let Entity = Database.get(entity)
-
-
-    
-    
-
     let calculatedValue;
-      try {calculatedValue = new Function( ["Entity", "Database"],  Database.get(eventField, 6048) ) (Entity, Database) } 
-      catch (error) {calculatedValue = log("ERROR",{info: "calculatedValue calculation  failed", entity, eventField, error}) }
-      
-
+      try {calculatedValue = new Function( ["Entity", "Database"],  Database.get(calculatedField, 6048) ) (Entity, Database) } 
+      catch (error) {calculatedValue = log("ERROR",{info: "calculatedValue calculation  failed", entity, calculatedField, error}) }
     return calculatedValue
-
-
-
-
   },
   getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity),
   getOptions: (attribute, tx ) => {
@@ -165,21 +151,39 @@ const Database = {
 const Companies = {
   companyDatoms: [],
   reconstructCompany: company => {
-    let startTime = Date.now()
+    let Logger = {
+      logs: [{label: "Start", timeStamp: Date.now()}]
+    };
+    Logger.log = (label) => {
+
+      let timeStamp = Date.now()
+
+      let prevTime = Logger.logs.slice(-1)[0].timeStamp
+
+      let duration = timeStamp - prevTime
+
+      Logger.logs.push({label, timeStamp, duration})
+      
+
+    } 
+    
+    
     let events = Database.get(company, 6178) 
     Companies.companyDatoms = Companies.companyDatoms.filter( Datom => Datom.company !== company ) //.concat([initialDatom]) 
     let latestEntityID = 0;
     events.forEach( event => {
+
+      Logger.log(event)
       
       let eventType = Database.get( event, "event/eventTypeEntity" )
       let t = Database.get(event, 6101)
       
       let eventDatoms = Database.get( eventType, "eventType/newDatoms" ).map( datomConstructor => {
-    
         let entity;
     
           try {entity = new Function( [`Q`], datomConstructor.entity )( {latestEntityID: () => latestEntityID} )}
           catch (error) {entity = log("ERROR",{info: "entity calculation for datomconstructor failed", event, datomConstructor, error}) }
+
     
         let attribute = datomConstructor.attribute
     
@@ -187,7 +191,6 @@ const Companies = {
         let Event = Database.get(event)
         let Process = Companies.getProcessObject( Database.get(event, "event/process") )
         Process.getPrevEvent = () => Process.getEventByIndex(  Process.events.findIndex( e => e === event ) - 1 ) //Flytte til event?
-    
         let value;
         let error = "No errors";
           try {value = new Function( [`Company`, `Event`, `Process`, `latestEntityID`], datomConstructor.value )( Company, Event, Process, latestEntityID ) } 
@@ -196,7 +199,6 @@ const Companies = {
         return Datom
         
       }  )
-      
       Companies.companyDatoms = Companies.companyDatoms.concat(eventDatoms)
       let maxEventEntity = eventDatoms.map( Datom => Datom.entity ).sort( (a, b) => a-b ).slice(-1)[0]
       let newMax = isNumber(maxEventEntity) 
@@ -204,7 +206,7 @@ const Companies = {
         : latestEntityID
       latestEntityID = newMax
     })
-    console.log(`reconstructCompany [${company}] completed in ${Date.now() - startTime} ms`)
+    log(Logger)
   },
   getCompanyObject: (company, t) => {
 
@@ -350,6 +352,9 @@ const Companies = {
 let D = Database
 let Company = {}
 let Process = {}
+
+
+//let fieldsToImport = [{label: 'Sum annen langsiktig gjeld', entities: [, 1324, 1326, 1327, 1330, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum avsetning for forpliktelser', entities: [, , , , , 1318, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum bankinnskudd, kontanter og lignende', entities: [, , , , , , 1302, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum finansielle anleggsmidler', entities: [, , , , , , , 1201, 1202, 1203, 1210, 1196, 1197, 1198, 1199, 1189, 1190, 1187, 1188, 1193, 1194, 1192, 1195, 1200, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum fordringer', entities: [, , , , , , , , , , , , , , , , , , , , , , , , 1233, 1234, 1274, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum immatrielle eiendeler', entities: [, , , , , , , , , , , , , , , , , , , , , , , , , , , 1154, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum innskutt egenkapital', entities: [, , , , , , , , , , , , , , , , , , , , , , , , , , , , 1305, 1309, 1310, 1307, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum investeringer', entities: [, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , 1279, 1280, 1296, 1289, 1290, 1291, 1292, 1293, 1294, 1295, 1281, 1282, 1283, 1284, 1285, 1286, 1287, 1288, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum kortsiktig gjeld', entities: [, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , 1373, 1375, 1376, 1388, 1340, 1341, 1337, 1338, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}]
 
 const sideEffects = {
     isIdle: true,
