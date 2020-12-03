@@ -263,7 +263,7 @@ let newDatomsView = event => d([
 let timelineView = Company => d([
   d([
     entityLabel(Company.entity),
-    d( Company.events.map( (event, i) => i+1 ).map( t => d([d([span( `${t}`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )
+    d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )
       ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
   ], {style: `display:grid;grid-template-columns: 1fr 9fr;`}),
   d( Company.processes.map( process => processTimelineView(Company, process) ))
@@ -425,9 +425,7 @@ let entityView = entity => {
 
 let processesView = Company => d([
   d([
-    d(
-      Company.processes.map( process => entityLabel(process, e => Company.selectProcess(process) ) )
-      ),
+    d(Company.processes.map( process => entityLabel(process, e => Company.selectProcess(process) ) )),
       br(),
       dropdown(0, [{value: 0, label: "Legg til prosess"}].concat( Database.getAll(5687).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ) ) , async e => await Database.createEntity(5692, [
         newDatom( "newEntity" , "process/company", Company.entity  ),
@@ -450,11 +448,6 @@ let processView =  Company => isNumber( Company.selectedProcess)
       entityLabel(Database.get(Company.selectedProcess, "process/processType")),
     ], {class: "columns_1_1"}),
     processProgressView(Company),
-    br(),
-    d( Database.get(  Database.get(Company.selectedProcess, "entity/entityType"), "entityType/calculatedFields").map( calculatedField => d([
-      entityLabel(calculatedField),
-      d( JSON.stringify( Database.getCalculatedField(Company.selectedProcess, calculatedField) ) )
-    ], {class: "columns_1_1"})  ) ),
     br(),
     singleEventView( Company ),
     br(),

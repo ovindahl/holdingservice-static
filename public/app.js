@@ -18,22 +18,29 @@ const Database = {
   },
   selectEntity: entity => update( mergerino(Database.S, {"UIstate": {"selectedEntity": entity}})  ),
   updateEntity: async (entity, attribute, value) => {
-    let valueType = Database.get( Database.attr(attribute), "attribute/valueType")
-    let attributeIsArray = isDefined( Database.get(attribute, 5823) )
-      ? Database.get(attribute, 5823)
+
+    let attr = Database.attr(attribute)
+
+
+    let valueType = Database.get( attr , "attribute/valueType")
+    let attributeIsArray = isDefined( Database.get( attr, 5823) )
+      ? Database.get(attr, 5823)
       : false
     let valueInArray = attributeIsArray ? value : [value]
     let isValid_existingEntity = Database.Entities.map( E => E.entity).includes(entity)
     let valueTypeValidatorFunction = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") )
+
+    log({entity, attr, value, valueInArray})
+
     let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
-    let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attribute), "attribute/validatorFunctionString") ) ( value )
+    let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attr), "attribute/validatorFunctionString") ) ( value )
     let isValid_notNaN = !Number.isNaN(value)
 
     //Add checks for whether attribtue is valid for the entity type?
 
     if( isValid_existingEntity && isValid_valueType && isValid_attribute && isValid_notNaN  ){
 
-      let Datom = newDatom(entity, Database.attrName(attribute), value )
+      let Datom = newDatom(entity, Database.attrName(attr), value )
       let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( [Datom] ) )
       let updatedEntity = serverResponse[0]
       let latestTx = serverResponse[0].Datoms.map( Datom => Datom.tx ).filter( tx => !isUndefined(tx) ).sort().reverse()[0]
@@ -42,7 +49,7 @@ const Database = {
       Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
       return updatedEntity;
     }else{
-      console.log("Database.updateEntityAndRefreshUI did not pass validation.", {entity, attribute, value, validators: {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN }})
+      console.log("Database.updateEntityAndRefreshUI did not pass validation.", {entity, attr, value, validators: {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN }})
       return null;
     }
     
@@ -308,7 +315,7 @@ const ActiveCompany = {
           
       let value;
         try {
-          let calculatedFieldFunction = Database.calculatedFieldFunctions.find( calculatedFieldObject => calculatedFieldObject.calculatedField === calculatedField  ).function
+          let calculatedFieldFunction = new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) )
           value =  calculatedFieldFunction(Entity, Company) 
         } 
         catch (err) {
@@ -502,8 +509,6 @@ let init = async () => {
   Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
   Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
   Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-  Database.calculatedFieldFunctions = Database.getAll( 5817 ).map( calculatedField => returnObject({calculatedField, function: new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) ) })  )
-
 
   let user = await sideEffects.auth0.getUser()
   let userEntity = user.name === "ovindahl@gmail.com" ? 5614 : 5613
