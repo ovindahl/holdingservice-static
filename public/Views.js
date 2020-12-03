@@ -139,6 +139,13 @@ let entityInspectorPopup_small = entity => d([
   //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
+
+
+
+
+
+
+
 let entityRedlinedValue = (value, prevValue) => d( [
   span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
   span( `${JSON.stringify(value)}`),
@@ -300,7 +307,7 @@ let processTimelineView = (S, A, Company, process) => {
                 //entityLabel(event, e => { A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process });Database.setLocalState(process, {selectedEvent: event })})
                 d([
                   span( `${t}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Database.get(event, "entity/entityType" ), Database.attrName(20) )};`}, "click", e => { A.updateLocalState({ currentPage : "Prosesser", selectedProcess: process });Database.setLocalState(process, {selectedEvent: event })} ),
-                  entityInspectorPopup_small(event)
+                  entityInspectorEventTimeline(Company, event)
                 ], {class: "popupContainer", style:"display: inline-flex;"})
             ], {style:"display: inline-flex;"} )
           : d("-" ) 
@@ -309,6 +316,17 @@ let processTimelineView = (S, A, Company, process) => {
     
 
   ], {style: `display:grid;grid-template-columns: 1fr 9fr;`})
+}
+
+let entityInspectorEventTimeline = (Company, event) => {
+
+  
+
+  return  d([
+    d( Database.get( event, 6139 ).map( companyEntity => d([
+        companyEntityView(Company, companyEntity, Database.get(event, 6101))
+      ], {style: "padding:5px; border: solid 1px lightgray;"})  ) )
+  ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 }
 
 
@@ -366,8 +384,6 @@ let companyEntityLabel = (Company, companyEntity, t) => {
 
 let companyEntityInspectorPopup = (Company, companyEntity, t) =>{
 
-  
-
   return d([
     companyEntityView(Company, companyEntity, t)
   ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
@@ -418,7 +434,8 @@ let companyEntityView = (Company, companyEntity, t) => {
   let formattedDate = moment(eventDate).format("DD/MM/YYYY")
 
   return d([
-    h3( `${label}`, {style: `background-color: {Entity.color}; padding: 3px;`}),
+    span( label, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ), Database.attrName(20) )};`}),
+    d("<br>"),
     d(`Etter hendelse ${t} (${formattedDate})`),
     d("<br>"),
     d(Company.get(companyEntity, undefined, t).companyDatoms
