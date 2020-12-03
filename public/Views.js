@@ -449,7 +449,7 @@ let processView =  Company => isNumber( Company.selectedProcess)
     ], {class: "columns_1_1"}),
     processProgressView(Company),
     br(),
-    singleEventView( Company ),
+    isDefined( Company.selectedEvent ) ? singleEventView( Company, Company.getEvent(Company.selectedEvent) ) : d("Ingen hendelse valgt.", {class: "feedContainer"}),
     br(),
     d([
       entityLabel(5922),
@@ -476,23 +476,17 @@ let processProgressView = Company => d([
   ), {style: "display: flex;"} ),
 ])
 
-let singleEventView =  Company => {
-  let Event = Company.getEvent(Company.selectedEvent)
-  return isNumber(Event.entity)
-  ? d([
-      h3( Database.get(Event.type, "entity/label") ),
-      d( Database.get(Event.type, "eventType/eventAttributes").map( attribute =>  Event.get( 6161 ) ? lockedDatomView( Event.entity, attribute ) : editabledDatomView( Event.entity, attribute )  )),
-      br(),
-      d([
-        d( "Posisjon i tidslinjen er: " + Event.t  ),
-        br(),
-        h3("Selskapsentiteter som opprettes eller endres:"),
-        d(Event.entities.map( companyEntity => companyEntityLabel(Company, companyEntity, Event.t) )),
-      ], {style: "background-color: #f1ecec;padding: 1em;border: 1px solid black;"} ),
-    ], {class: "feedContainer"} )
-  : d("Ingen hendelse valgt.", {class: "feedContainer"})
-
-}
+let singleEventView =  (Company, Event) => d([
+  h3( Database.get(Event.type, "entity/label") ),
+  d( Database.get(Event.type, "eventType/eventAttributes").map( attribute =>  Event.get( 6161 ) ? lockedDatomView( Event.entity, attribute ) : editabledDatomView( Event.entity, attribute )  )),
+  br(),
+  d([
+    d( "Posisjon i tidslinjen er: " + Event.t  ),
+    br(),
+    h3("Selskapsentiteter som opprettes eller endres:"),
+    d(Event.entities.map( companyEntity => companyEntityLabel(Company, companyEntity, Event.t) )),
+  ], {style: "background-color: #f1ecec;padding: 1em;border: 1px solid black;"} ),
+], {class: "feedContainer"} )
 // End ----
 
 //Entity view
