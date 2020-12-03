@@ -152,11 +152,11 @@ const ActiveCompany = {
   constructCompany: company => {
     let startTime = Date.now()
     ActiveCompany.companyDatoms = [];
-    let events = Database.get(company, 6178) 
+    ActiveCompany.events = Database.get(company, 6178) 
     let latestEntityID = 0;
-    events.forEach( event => {
+    ActiveCompany.events.forEach( event => {
       let eventType = Database.get( event, "event/eventTypeEntity" )
-      let t = Database.get(event, 6101)
+      let t = ActiveCompany.events.findIndex( e => e === event  ) + 1
       let Company = ActiveCompany.getCompanyObject(company, t - 1)
       let Event = Database.get(event)
       let Process = Company.getProcess( Database.get(event, "event/process") )
@@ -198,7 +198,7 @@ const ActiveCompany = {
     }
     Company.processes = Database.get(company, 6157)
     Company.selectedProcess = ActiveCompany.selectedProcess
-    Company.events = Database.get(company, 6178)
+    Company.events = ActiveCompany.events
     Company.selectedEvent = ActiveCompany.selectedEvent
     Company.companyDatoms = ActiveCompany.companyDatoms
     Company.entityTypes = Database.getAll(47).filter( entity => Database.get(entity, "entity/category") === "Entitetstyper i selskapsdokumentet" )
@@ -206,9 +206,10 @@ const ActiveCompany = {
     Company.selectedEntity = ActiveCompany.selectedEntity
     Company.get = (entity, attribute, providedT) => ActiveCompany.getFromCompany(company, entity, attribute, isDefined(providedT) ? providedT : t)
     Company.getAll = entityType => ActiveCompany.getAllFromCompany(company, entityType, t)
-    Company.getEvent = event =>  Database.get(event)
+    Company.getEvent = event =>  ActiveCompany.getEventObject(event)
     Company.getProcess = process =>  ActiveCompany.getProcessObject( process )
     Company.getOptions = attribute =>  ActiveCompany.getCompanyOptions(company, attribute, t)
+
     Company.storeDatoms = Datoms => ActiveCompany.storeDatoms(Datoms)
     Company.updateEvent = async (event, attribute, value) => await ActiveCompany.updateCompanyEvent(company, event, attribute, value)
     Company.createEvent = async (eventType, parentProcess, attributeAssertions) => await ActiveCompany.createCompanyEvents(company, eventType, parentProcess, [ isDefined(attributeAssertions) ? attributeAssertions : {} ])
@@ -219,16 +220,20 @@ const ActiveCompany = {
       //ActiveCompany.constructCompany(company)
       update( Database.S )
     }
+
     Company.selectEntity = companyEntity => {
       ActiveCompany.selectedEntity = companyEntity
       update( Database.S )
     } 
     Company.selectProcess = process => {
       ActiveCompany.selectedProcess = process
+      ActiveCompany.selectedEvent = Database.get(process, 6088)[0]
       update( Database.S )
     }
     Company.selectEvent = event => {
       ActiveCompany.selectedEvent = event
+      ActiveCompany.selectedProcess = Database.get( event, "event/process" )
+      Admin.A.updateLocalState({ currentPage : "Prosesser"})
       update( Database.S )
     }
     return Company
@@ -319,12 +324,40 @@ const ActiveCompany = {
   getProcessObject: process => {
 
     let Process = Database.get(process)
+    Process.type =  Database.get(process, "process/processType" )
+    
     Process.events = Process.get(6088)
     Process.getEventEntityByIndex = index => Process.events[index]
     Process.getEventByIndex = index => Database.get( Process.getEventEntityByIndex(index) )
     Process.getFirstEvent = () => Process.getEventByIndex(  0 )
+
+    Process.Actions = Database.get(Process.type, "processType/actions").map( actionObject => {
+
+      let label = actionObject[6]
+      let criteriumFunctionString = actionObject[5848]
+      let criteriumFunction = new Function( ["Database", "Company", "Process"], criteriumFunctionString )
+      let isActionable = criteriumFunction(Database, Company, Process)
+      let actionFunctionString = actionObject[5850]
+      let actionFunction = isActionable ? new Function(["Database", "Company", "Process"], actionFunctionString ) : undefined
+
+      let Action = {
+        label, isActionable, actionFunction
+      }
+      return Action
+
+
+    } )
+  
     return Process
 
+  },
+  getEventObject: event => {
+    let Event = Database.get( event )
+    Event.type = Database.get( event, "event/eventTypeEntity" )
+    Event.t = ActiveCompany.events.findIndex( e => e === event  ) + 1
+    Event.companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.event === event )
+    Event.entities = Event.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
+    return Event
   },
   updateCompanyEvent: async (company, event, attribute, value) => {
     await Database.updateEntity(event, attribute, value)
@@ -438,8 +471,7 @@ let update = ( S ) => {
     Admin.A = A;
 
     let company = S["UIstate"].selectedCompany
-    let t = Database.get(company, 6198)
-    Company = isDefined(company) ? ActiveCompany.getCompanyObject( company, t ): "Ingen selskap valgt"
+    Company = isDefined(company) ? ActiveCompany.getCompanyObject( company ): "Ingen selskap valgt"
     let process = S["UIstate"].selectedProcess
     Process = isDefined(process) ? ActiveCompany.getProcessObject(process) : "Ingen prosess valgt"
 
