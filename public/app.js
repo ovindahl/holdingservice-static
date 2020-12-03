@@ -2,14 +2,6 @@
 const Database = {
   tx: null,
   Entities: [],
-  companyDatoms: [],
-  init: async () => { 
-    Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
-    Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
-    Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-    Database.calculatedFieldFunctions = Database.getAll( 5817 ).map( calculatedField => returnObject({calculatedField, function: new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) ) })  )
-    return;
-  },
   setLocalState: (entity, newState) => {
     let updatedEntity = Database.get(entity)
     updatedEntity.localState = mergerino(updatedEntity.localState, newState) 
@@ -145,7 +137,7 @@ const Database = {
     try {options = new Function( ["Database"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction", tx) )( Database )}
     catch (error) { log(error, {info: "Could not get options for DB attribute", attribute, tx }) }
     return options
-  },
+  }
 }
 
 
@@ -156,25 +148,19 @@ let Logs = []
 const ActiveCompany = {
   companyDatoms: [],
   calculatedFieldsCache: [],
+  storeDatoms: (Datoms) => ActiveCompany.companyDatoms = ActiveCompany.companyDatoms.concat(Datoms),
   constructCompany: company => {
     let startTime = Date.now()
-    
-    
-    
+    ActiveCompany.companyDatoms = [];
     let events = Database.get(company, 6178) 
-    ActiveCompany.companyDatoms = ActiveCompany.companyDatoms.filter( Datom => Datom.company !== company ) //.concat([initialDatom]) 
     let latestEntityID = 0;
     events.forEach( event => {
-
-      
       let eventType = Database.get( event, "event/eventTypeEntity" )
       let t = Database.get(event, 6101)
-
       let Company = ActiveCompany.getCompanyObject(company, t - 1)
       let Event = Database.get(event)
-      let Process = ActiveCompany.getProcessObject( Database.get(event, "event/process") )
+      let Process = Company.getProcess( Database.get(event, "event/process") )
       Process.getPrevEvent = () => Process.getEventByIndex(  Process.events.findIndex( e => e === event ) - 1 ) //Flytte til event?
-      
       let eventDatoms = Database.get( eventType, "eventType/newDatoms" ).map( datomConstructor => {
         let entity;
           try {entity = new Function( [`Q`], datomConstructor.entity )( {latestEntityID: () => latestEntityID} )}
@@ -186,24 +172,19 @@ const ActiveCompany = {
         let Datom = {company, entity, attribute, value, event, t}
         return Datom
       }  )
-      ActiveCompany.companyDatoms = ActiveCompany.companyDatoms.concat(eventDatoms)
+      Company.storeDatoms(eventDatoms)
       let maxEventEntity = eventDatoms.map( Datom => Datom.entity ).sort( (a, b) => a-b ).slice(-1)[0]
       let newMax = isNumber(maxEventEntity) 
         ? Math.max(latestEntityID, maxEventEntity)
         : latestEntityID
       latestEntityID = newMax
     })
-
-    let companyEntities = ActiveCompany.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
-
     let Company = ActiveCompany.getCompanyObject(company)
-    let cachedCalculatedFields = companyEntities.forEach( companyEntity => {
+    Company.entities.forEach( companyEntity => {
       let entityType = Company.get(companyEntity, 19)
       let calculatedFields = Database.get( entityType , "entityType/calculatedFields" )
       calculatedFields.forEach( calculatedField => Company.get(companyEntity, calculatedField, Company.t)    )
     })
-
-    
     console.log(`Constructed Company ${company} in ${Date.now() -startTime} ms`)
   },
   getCompanyObject: (company, receivedT) => {
@@ -217,10 +198,16 @@ const ActiveCompany = {
     }
 
     Company.events = Database.get(company, 6178)
+    Company.companyDatoms = ActiveCompany.companyDatoms
+    Company.entityTypes = Database.getAll(47).filter( entity => Database.get(entity, "entity/category") === "Entitetstyper i selskapsdokumentet" )
+    Company.entities = Company.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
+    Company.selectedEntity = ActiveCompany.selectedEntity
     Company.get = (entity, attribute, providedT) => ActiveCompany.getFromCompany(company, entity, attribute, isDefined(providedT) ? providedT : t)
     Company.getAll = entityType => ActiveCompany.getAllFromCompany(company, entityType, t)
     Company.getEvent = event =>  Database.get(event)
+    Company.getProcess = process =>  ActiveCompany.getProcessObject( process )
     Company.getOptions = attribute =>  ActiveCompany.getCompanyOptions(company, attribute, t)
+    Company.storeDatoms = Datoms => ActiveCompany.storeDatoms(Datoms)
     Company.updateEvent = async (event, attribute, value) => await ActiveCompany.updateCompanyEvent(company, event, attribute, value)
     Company.createEvent = async (eventType, parentProcess, attributeAssertions) => await ActiveCompany.createCompanyEvents(company, eventType, parentProcess, [ isDefined(attributeAssertions) ? attributeAssertions : {} ])
     Company.createEvents = async (eventType, parentProcess, attributeAssertions) => await ActiveCompany.createCompanyEvents(company, eventType, parentProcess, attributeAssertions)
@@ -228,6 +215,10 @@ const ActiveCompany = {
       let entities = Array.isArray(events) ? events : [events]
       let retractedEvent = await Database.retractEntities(entities)
       //ActiveCompany.constructCompany(company)
+      update( Database.S )
+    }
+    Company.selectEntity = companyEntity => {
+      ActiveCompany.selectedEntity = companyEntity
       update( Database.S )
     } 
     return Company
@@ -465,7 +456,13 @@ let Admin = {
 
 let init = async () => {
 
-  await Database.init();
+  
+  Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
+  Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
+  Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
+  Database.calculatedFieldFunctions = Database.getAll( 5817 ).map( calculatedField => returnObject({calculatedField, function: new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) ) })  )
+
+
   let user = await sideEffects.auth0.getUser()
   let userEntity = user.name === "ovindahl@gmail.com" ? 5614 : 5613
   let userState = Database.get(userEntity, 5615 )

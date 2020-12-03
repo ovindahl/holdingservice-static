@@ -209,7 +209,7 @@ let generateHTMLBody = (S, A, Company) => [
 let pageRouter = {
   "Prosesser": (S, A) => processesView(S, A, Company),
   "Tidslinje": (S, A) => timelineView(S, A, Company),
-  "Selskapets datomer": (S, A) => companyDatomsPage( S, A, Company ),
+  //"Selskapets datomer": (S, A) => companyDatomsPage( S, A, Company ),
   "Selskapets entiteter": (S, A) => companyDocPage( S, A, Company ),
   "Admin/DB": (S, A) => adminPage( S, A, Company ),
   //"Admin/Entitet": (S, A) => adminEntityView( S["UIstate"]["selectedEntity"] ),
@@ -289,7 +289,7 @@ let timelineView = (S,A, Company) => {
 
 let processTimelineView = (S, A, Company, process) => {
 
-  let Process = ActiveCompany.getProcessObject(process)
+  let Process = Company.getProcess(process)
   let tArray = new Array(Company.t+1).fill(0).map( (v, i) => i )
   let processEvents = Process.events
   let processEventsTimes = processEvents.map( event => Database.getCalculatedField(event, 6101) )
@@ -331,7 +331,6 @@ let entityInspectorEventTimeline = (Company, event) => {
 
 
 let companyDatomsPage = (S,A, Company) => {
-  let companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.company === Company.entity ).sort( (companyDatomA, companyDatomB) => companyDatomA.entity - companyDatomB.entity )
 
   return d([
     d([
@@ -341,7 +340,7 @@ let companyDatomsPage = (S,A, Company) => {
       d("Attributt"),
       d("Verdi"),
     ], {class: "columns_1_3_1_3_2", style: "background-color: #bdbbbb;padding: 5px;" }),
-    d(companyDatoms.map( companyDatom =>  fullCompanyDatomView(Company, companyDatom) ) ),
+    d(Company.companyDatoms.map( companyDatom =>  fullCompanyDatomView(Company, companyDatom) ) ),
   ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 }
@@ -394,26 +393,21 @@ let companyDocPage = (S,A, Company) => {
 
   return d([
     d([
-      d( //Left sidebar
-        Database.getAll(47)
-        .filter( entity => Database.get(entity, "entity/category") === "Entitetstyper i selskapsdokumentet" )
-        .map( entity => entityLabel(entity, e => A.updateLocalState({selectedCompanyDocEntityType: entity, selectedCompanyDocEntity: null} )) )
-        ),
-      d(
-        Company.getAll()
-          .filter( entity => Company.get(entity, 19) === S["UIstate"]["selectedCompanyDocEntityType"]  )
-          .map( entity => d( 
+      d( Company.entityTypes.map( entityType => entityLabel(entityType, 
+        e => Company.selectEntity( Company.getAll(entityType)[0] )
+        //e => A.updateLocalState({selectedCompanyDocEntityType: entity, selectedCompanyDocEntity: null} )
+        ) ) ),
+      d( Company.entities.filter( entity => Company.get(entity, 19) === Company.get(Company.selectedEntity, 19)  ).map( entity => d( 
             `Entitet # ${entity}`, 
-            {class: entity === S["UIstate"].selectedCompanyDocEntity ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, 
+            {class: entity === Company.selectedEntity ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, 
             "click", 
-            e => A.updateLocalState({selectedCompanyDocEntity: entity} )
+            e => Company.selectEntity(entity)
             )
-            )
-        )
+          ))
     ], {class: "columns_1_1"}),
     d([
-      isDefined( Company.get(S["UIstate"].selectedCompanyDocEntity) )
-        ? companyEntityView(Company, S["UIstate"].selectedCompanyDocEntity, Company.t)
+      isDefined( Company.get(Company.selectedEntity) )
+        ? companyEntityView(Company, Company.selectedEntity, Company.t)
         : d("Ingen entitet valgt.")
 
     ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
@@ -600,7 +594,7 @@ let singleEventView =  (S, Company, event) => {
 
 let processActionsView =  (S, Company, process) => {
 
-  let Process = ActiveCompany.getProcessObject(process)
+  let Process = Company.getProcess(process)
   let processType =   Database.get(process, "process/processType" )
   let eventsCount = Process.events.length
   let selectedEvent = Database.get(process, 6137)
