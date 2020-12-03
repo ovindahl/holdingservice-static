@@ -8,7 +8,6 @@ const Database = {
     Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
     Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
     Database.calculatedFieldFunctions = Database.getAll( 5817 ).map( calculatedField => returnObject({calculatedField, function: new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) ) })  )
-    Database.getAll( 5722 ).forEach( company => Companies.reconstructCompany(company) )
     return;
   },
   setLocalState: (entity, newState) => {
@@ -109,6 +108,7 @@ const Database = {
     ? isNumber(attrName) ? attrName : Database.attrNames[attrName]
     : log(undefined, `[ Database.attr(${attrName}) ]: Proveded attribute name is undefined`),
   get: (entity, attribute, version) => {
+    //Logs.push({method: "Database.get", entity, attribute, version})
     if(isUndefined(entity)){return log(undefined, `[ Database.get(${entity}, ${attribute}, ${version}) ]: received entity argument is undefined`)}
     let serverEntity = Database.Entities.find( serverEntity => serverEntity.entity === entity  )
     if(isUndefined(serverEntity)){return log(undefined, `[ Database.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`)}
@@ -148,24 +148,17 @@ const Database = {
   },
 }
 
+
+
+
+let Logs = []
+
 const Companies = {
   companyDatoms: [],
+  calculatedFieldsCache: [],
   reconstructCompany: company => {
-    let Logger = {
-      logs: [{label: "Start", timeStamp: Date.now()}]
-    };
-    Logger.log = (label) => {
-
-      let timeStamp = Date.now()
-
-      let prevTime = Logger.logs.slice(-1)[0].timeStamp
-
-      let duration = timeStamp - prevTime
-
-      Logger.logs.push({label, timeStamp, duration})
-      
-
-    } 
+    let startTime = Date.now()
+    
     
     
     let events = Database.get(company, 6178) 
@@ -173,31 +166,25 @@ const Companies = {
     let latestEntityID = 0;
     events.forEach( event => {
 
-      Logger.log(event)
       
       let eventType = Database.get( event, "event/eventTypeEntity" )
       let t = Database.get(event, 6101)
+
+      let Company = Companies.getCompanyObject(company, t - 1)
+      let Event = Database.get(event)
+      let Process = Companies.getProcessObject( Database.get(event, "event/process") )
+      Process.getPrevEvent = () => Process.getEventByIndex(  Process.events.findIndex( e => e === event ) - 1 ) //Flytte til event?
       
       let eventDatoms = Database.get( eventType, "eventType/newDatoms" ).map( datomConstructor => {
         let entity;
-    
           try {entity = new Function( [`Q`], datomConstructor.entity )( {latestEntityID: () => latestEntityID} )}
           catch (error) {entity = log("ERROR",{info: "entity calculation for datomconstructor failed", event, datomConstructor, error}) }
-
-    
         let attribute = datomConstructor.attribute
-    
-        let Company = Companies.getCompanyObject(company)
-        let Event = Database.get(event)
-        let Process = Companies.getProcessObject( Database.get(event, "event/process") )
-        Process.getPrevEvent = () => Process.getEventByIndex(  Process.events.findIndex( e => e === event ) - 1 ) //Flytte til event?
         let value;
-        let error = "No errors";
           try {value = new Function( [`Company`, `Event`, `Process`, `latestEntityID`], datomConstructor.value )( Company, Event, Process, latestEntityID ) } 
           catch (error) {value = log("ERROR",{info: "Value calculation for datomconstructor failed", event, datomConstructor, error}) } 
-        let Datom = {company, entity, attribute, value, event, t, error}
+        let Datom = {company, entity, attribute, value, event, t}
         return Datom
-        
       }  )
       Companies.companyDatoms = Companies.companyDatoms.concat(eventDatoms)
       let maxEventEntity = eventDatoms.map( Datom => Datom.entity ).sort( (a, b) => a-b ).slice(-1)[0]
@@ -206,9 +193,23 @@ const Companies = {
         : latestEntityID
       latestEntityID = newMax
     })
-    log(Logger)
+
+    let companyEntities = Companies.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
+
+    let Company = Companies.getCompanyObject(company)
+    let cachedCalculatedFields = companyEntities.forEach( companyEntity => {
+      let entityType = Company.get(companyEntity, 19)
+      let calculatedFields = Database.get( entityType , "entityType/calculatedFields" )
+      calculatedFields.forEach( calculatedField => Company.get(companyEntity, calculatedField, Company.t)    )
+    })
+
+    
+    console.log(`Constructed Company ${company} in ${Date.now() -startTime} ms`)
   },
-  getCompanyObject: (company, t) => {
+  getCompanyObject: (company, receivedT) => {
+    let t = isNumber(receivedT) ? receivedT : Companies.companyDatoms.filter( Datom => Datom.company === company ).map( Datom => Datom.t ).sort( (a,b) => a-b ).slice(-1)[0]
+
+    //Logs.push({method: "getCompanyObject", company, t})
 
     let Company = {
       entity: company,
@@ -226,12 +227,15 @@ const Companies = {
     Company.retractEvents = async events => {
       let entities = Array.isArray(events) ? events : [events]
       let retractedEvent = await Database.retractEntities(entities)
-      Companies.reconstructCompany(company)
+      //Companies.reconstructCompany(company)
       update( Database.S )
     } 
     return Company
   },
   getFromCompany: (company, companyEntity, attribute, t) => {
+      
+    //Logs.push({method: "getFromCompany", company, companyEntity, attribute, t})
+    
     if(isUndefined(company)){return log(undefined, `[ Companies.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received company argument is undefined`)}
     if(isUndefined(companyEntity)){return log(undefined, `[ Companies.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received companyEntity argument is undefined`)}
     let matchingDatoms = Companies.companyDatoms
@@ -280,33 +284,35 @@ const Companies = {
       return entities
   },
   getCompanyCalculatedField: (company, companyEntity, calculatedField, t) => {
+    //Logs.push({method: "getCompanyCalculatedField", company, companyEntity, calculatedField, t})
 
-          let Company = Companies.getCompanyObject(company, t)
-      
-          let Entity = {
-            entity: companyEntity,
-            event: Companies.companyDatoms
-            .filter( companyDatom => companyDatom.company === company )
-            .filter( companyDatom => companyDatom.entity === companyEntity )
-            [0].event,
-          }
+    let cachedCalculatedField = Companies.calculatedFieldsCache.find( cachedCalculatedField => cachedCalculatedField.company === company && cachedCalculatedField.companyEntity === companyEntity && cachedCalculatedField.calculatedField === calculatedField && cachedCalculatedField.t === t )
+    if( isDefined(cachedCalculatedField) ){return cachedCalculatedField.value }
+    else{
 
-          Entity.get = attribute => Company.get(entity, attribute, t)
+      let Company = Companies.getCompanyObject(company, t)
+      let Entity = {
+        entity: companyEntity,
+        event: Companies.companyDatoms
+        .filter( companyDatom => companyDatom.company === company )
+        .filter( companyDatom => companyDatom.entity === companyEntity )
+        [0].event,
+      }
+      Entity.get = attribute => Company.get(entity, attribute, t)
           
-      
-      
-            let value;
-            let error = "No error";
-            try {
-              let calculatedFieldFunction = Database.calculatedFieldFunctions.find( calculatedFieldObject => calculatedFieldObject.calculatedField === calculatedField  ).function
-              value =  calculatedFieldFunction(Entity, Company) 
-            } 
-            catch (err) {
-              value = log("ERROR",{info: "CompanycalculatedValue calculation  failed", company, companyEntity, calculatedField, err}) 
-              error = err;
-            }
+      let value;
+        try {
+          let calculatedFieldFunction = Database.calculatedFieldFunctions.find( calculatedFieldObject => calculatedFieldObject.calculatedField === calculatedField  ).function
+          value =  calculatedFieldFunction(Entity, Company) 
+        } 
+        catch (err) {
+          value = log("ERROR",{info: "CompanycalculatedValue calculation  failed", company, companyEntity, calculatedField, err}) 
+        }
+      Companies.calculatedFieldsCache.push({company, companyEntity, calculatedField, t, value})
+      return value;
+    }
 
-            return value;
+          
 
   },
   getProcessObject: process => {
@@ -321,7 +327,7 @@ const Companies = {
   },
   updateCompanyEvent: async (company, event, attribute, value) => {
     await Database.updateEntity(event, attribute, value)
-    Companies.reconstructCompany(company)
+    //Companies.reconstructCompany(company)
     update( Database.S )
   },
   createCompanyEvents: async (company, eventType, parentProcess, attributeAssertions) => {
@@ -343,7 +349,7 @@ const Companies = {
       let updatedEntities = serverResponse
       Database.Entities = Database.Entities.filter( Entity => !updatedEntities.map( updatedEntity => updatedEntity.entity  ).includes(Entity.entity) ).concat( updatedEntities )
       Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-      Companies.reconstructCompany(company)
+      //Companies.reconstructCompany(company)
       update( Database.S )
     }else{log("Datoms not valid: ", Datoms)}
   },
@@ -471,10 +477,13 @@ let init = async () => {
       "selectedEntityType" : 42,
       "selectedCategory": undefined,
       "selectedEntity": 6,
+      "selectedCompany": 5723
     }
   }
-
-    update( S )
+  let company = S.UIstate.selectedCompany
+  log("Database initialized, constructing company " + company)
+  Companies.reconstructCompany(company)
+  update( S )
 
 
 
