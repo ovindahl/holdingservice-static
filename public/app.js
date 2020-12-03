@@ -196,8 +196,10 @@ const ActiveCompany = {
       entity: company,
       t
     }
-
+    Company.processes = Database.get(company, 6157)
+    Company.selectedProcess = ActiveCompany.selectedProcess
     Company.events = Database.get(company, 6178)
+    Company.selectedEvent = ActiveCompany.selectedEvent
     Company.companyDatoms = ActiveCompany.companyDatoms
     Company.entityTypes = Database.getAll(47).filter( entity => Database.get(entity, "entity/category") === "Entitetstyper i selskapsdokumentet" )
     Company.entities = Company.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
@@ -221,6 +223,14 @@ const ActiveCompany = {
       ActiveCompany.selectedEntity = companyEntity
       update( Database.S )
     } 
+    Company.selectProcess = process => {
+      ActiveCompany.selectedProcess = process
+      update( Database.S )
+    }
+    Company.selectEvent = event => {
+      ActiveCompany.selectedEvent = event
+      update( Database.S )
+    }
     return Company
   },
   getFromCompany: (company, companyEntity, attribute, t) => {

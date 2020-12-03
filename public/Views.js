@@ -207,12 +207,10 @@ let generateHTMLBody = (S, A, Company) => [
 ]
 
 let pageRouter = {
-  "Prosesser": (S, A) => processesView(S, A, Company),
+  "Prosesser": (S, A) => processesView( Company ),
   "Tidslinje": (S, A) => timelineView(S, A, Company),
-  //"Selskapets datomer": (S, A) => companyDatomsPage( S, A, Company ),
-  "Selskapets entiteter": (S, A) => companyDocPage( S, A, Company ),
+  "Selskapets entiteter": (S, A) => companyDocPage( Company ),
   "Admin/DB": (S, A) => adminPage( S, A, Company ),
-  //"Admin/Entitet": (S, A) => adminEntityView( S["UIstate"]["selectedEntity"] ),
 }
 
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
@@ -389,21 +387,19 @@ let companyEntityInspectorPopup = (Company, companyEntity, t) =>{
 } 
 
 
-let companyDocPage = (S,A, Company) => {
+let companyDocPage = Company => {
 
   return d([
     d([
-      d( Company.entityTypes.map( entityType => entityLabel(entityType, 
-        e => Company.selectEntity( Company.getAll(entityType)[0] )
-        //e => A.updateLocalState({selectedCompanyDocEntityType: entity, selectedCompanyDocEntity: null} )
-        ) ) ),
-      d( Company.entities.filter( entity => Company.get(entity, 19) === Company.get(Company.selectedEntity, 19)  ).map( entity => d( 
-            `Entitet # ${entity}`, 
-            {class: entity === Company.selectedEntity ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, 
-            "click", 
-            e => Company.selectEntity(entity)
-            )
-          ))
+      d( Company.entityTypes.map( entityType => entityLabel(entityType, e => Company.selectEntity( Company.getAll(entityType)[0] ) ) ) ),
+      d( Company.entities
+          .filter( entity => Company.get(entity, 19) === Company.get(Company.selectedEntity, 19)  )
+          .map( entity => d( 
+              `Entitet # ${entity}`, 
+              {class: entity === Company.selectedEntity ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, 
+              "click", 
+              e => Company.selectEntity(entity)
+            )))
     ], {class: "columns_1_1"}),
     d([
       isDefined( Company.get(Company.selectedEntity) )
@@ -502,103 +498,69 @@ let entityView = entity => {
 
 //Processes view
 
-let processesView = ( S , A, Company ) => d([
+let processesView = Company => d([
   d([
     d(
-      Database.get(Company.entity, 6157).map( entity => entityLabel(entity, e => A.updateLocalState({selectedProcess: entity} )) )
+      Company.processes.map( process => entityLabel(process, e => Company.selectProcess(process) ) )
       ),
       br(),
       dropdown(0, [{value: 0, label: "Legg til prosess"}].concat( Database.getAll(5687).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ) ) , async e => await Database.createEntity(5692, [
-        newDatom( "newEntity" , "process/company", S["UIstate"].selectedCompany  ),
+        newDatom( "newEntity" , "process/company", Company.entity  ),
         newDatom( "newEntity" , "process/processType", Number( submitInputValue(e) ) ),
-        newDatom( "newEntity" , "entity/label", `${Database.get(Number( submitInputValue(e) ), "entity/label")} for ${Database.get(S["UIstate"].selectedCompany, "entity/label")}`  ),
+        newDatom( "newEntity" , "entity/label", `${Database.get(Number( submitInputValue(e) ), "entity/label")} for ${Database.get(Company.entity, "entity/label")}`  ),
       ] ) )
   ]),
-  processView( S , A, Company ,Number(S["UIstate"].selectedProcess) )
+  processView( Company )
 ], {class: "pageContainer"})
 
-let processProgressView = (S, A, process) => {
 
-  let processEvents = Database.get(process, 6088)
+let processView =  Company => {
 
-  let selectedEvent = isDefined(Database.getLocalState(process).selectedEvent)
-  ? Database.getLocalState(process).selectedEvent
-  : processEvents[0]
-
-
-  return d([
-    d( Database.get(Database.get(process, "process/processType"), 5926).map( (eventType, index) => d([
-          entityLabel( eventType ),
-          d( Database.getAll(46)
-          .filter( event => Database.get(event).current["event/process"] === process )
-          .filter( event => Database.get(event, "event/eventTypeEntity") === eventType  )
-          .map( event => d(String(event), {style: event === selectedEvent ? "color: blue;" : ""}, "click", e => Database.setLocalState(process, {selectedEvent: event })  ) ) )
-        ], {style: eventType === Database.get(selectedEvent, "event/eventTypeEntity") ? "background-color: #bfbfbf;" : ""})
-    ), {style: "display: flex;"} ),
-    /* d( [
-      selectedEventIndex > 0 ? submitButton("<", e => Database.setLocalState(process, {selectedEvent: processEvents[selectedEventIndex - 1] })) : d("["),
-      selectedEventIndex < processEvents.length - 1 ? submitButton(">", e => Database.setLocalState(process, {selectedEvent: processEvents[selectedEventIndex + 1 ] })) : d("]")
-    ], {style: "display: flex;"}) */
-  ])
-} 
-
-let processView =  (S, A, Company, process) => {
-
-  
-
-
-
-  return (isNull(process) || isUndefined( Database.get(process) ) || Object.keys(Database.get(process).current).length === 1 )
-  ? d("Ingen prosess valgt.", {class: "feedContainer"})
-  : d([
+  return isNumber( log(Company, "C").selectedProcess)
+  ? d([
       d([
         entityLabel(5692),
-        entityLabel(process),
+        entityLabel(Company.selectedProcess),
       ], {class: "columns_1_1"}),
       d([
         entityLabel(5687),
-        entityLabel(Database.get(process, "process/processType")),
+        entityLabel(Database.get(Company.selectedProcess, "process/processType")),
       ], {class: "columns_1_1"}),
-      processProgressView(S, A, process),
+      processProgressView(Company),
       br(),
-      d( Database.get(  Database.get(process, "entity/entityType"), "entityType/calculatedFields").map( calculatedField => d([
+      d( Database.get(  Database.get(Company.selectedProcess, "entity/entityType"), "entityType/calculatedFields").map( calculatedField => d([
         entityLabel(calculatedField),
-        d( JSON.stringify( Database.getCalculatedField(process, calculatedField) ) )
+        d( JSON.stringify( Database.getCalculatedField(Company.selectedProcess, calculatedField) ) )
       ], {class: "columns_1_1"})  ) ),
       br(),
-      processActionsView(S, Company, process),
+      processActionsView( Company ),
       br(),
-      singleEventView(S, Company, Database.get(process, 6137) ),
-      
-    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
+      singleEventView( Company ),
+  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
+  : d("Ingen prosess valgt.", {class: "feedContainer"})
 }
 
-let singleEventView =  (S, Company, event) => {
-  
-  return (isNull(event) || isUndefined( Database.get(event) )  || Object.keys(Database.get(event).current).length === 1   )
-    ? d("Ingen hendelse valgt.", {class: "feedContainer"})
-    : d([
-        h3( Database.get(Database.get(event, "event/eventTypeEntity"), "entity/label") ),
-        d( Database.get(Database.get(event, "event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  Database.get(event, 6161 ) ? lockedDatomView( event, attribute ) : editabledDatomView( event, attribute )  )),
-        br(),
-        d([
-          calculatedFieldView( event, 6101 ),
-          calculatedFieldView( event, 6077 ),
-          br(),
-          entityLabel( 6139 ),
-          d(Database.get(event, 6139).map( companyEntity => companyEntityLabel(Company, companyEntity, Database.get(event, 6101)) )),
-        ], {style: "background-color: #f1ecec;padding: 1em;border: 1px solid black;"} ),
-      ], {class: "feedContainer"} )
 
-}
+let processProgressView = Company => d([
+  d( Database.get(Database.get(Company.selectedProcess, "process/processType"), 5926).map( (eventType, index) => d([
+        entityLabel( eventType ),
+        d( Database.getAll(46)
+        .filter( event => Database.get(event).current["event/process"] === Company.selectedProcess )
+        .filter( event => Database.get(event, "event/eventTypeEntity") === eventType  )
+        .map( event => d(String(event), {style: event === Company.selectedEvent ? "color: blue;" : ""}, "click", 
+        e => Company.selectEvent(event)
+          ) ) )
+      ], {style: eventType === Database.get(Company.selectedEvent, "event/eventTypeEntity") ? "background-color: #bfbfbf;" : ""})
+  ), {style: "display: flex;"} ),
+])
 
-let processActionsView =  (S, Company, process) => {
 
-  let Process = Company.getProcess(process)
-  let processType =   Database.get(process, "process/processType" )
+let processActionsView =  Company => {
+
+  let Process = Company.getProcess( Company.selectedProcess )
   let eventsCount = Process.events.length
-  let selectedEvent = Database.get(process, 6137)
 
+  let processType =   Database.get(Company.selectedProcess, "process/processType" )
   let actionButtons = Database.get(processType, "processType/actions")
       .map( action => new Function(["Database", "Company", "Process"], action[5848])(Database, Company, Process)
         ? actionButton(action[6], async e => new Function(["Database", "Company", "Process"], action[5850])(Database, Company, Process) )
@@ -610,13 +572,13 @@ let processActionsView =  (S, Company, process) => {
         entityLabel(5922),
         d([
           eventsCount === 0
-            ? actionButton("Start prosess", async e => Company.createEvent( Database.get(processType, 5926)[0], process, {1757: Date.now()}) )
+            ? actionButton("Start prosess", async e => Company.createEvent( Database.get(processType, 5926)[0], Company.selectedProcess, {1757: Date.now()}) )
             : d("Start prosess", {class: "actionButton", style: "background-color: gray;"}),
           d(actionButtons),
           eventsCount > 0
             ? d([
-                actionButton("Slett denne hendelsen", async e => await Company.retractEvents( selectedEvent )),
-                actionButton("Slett alle hendelser i prosessen", async e => await Company.retractEvents( Database.getCalculatedField( process, 6088 ) )),
+                actionButton("Slett denne hendelsen", async e => await Company.retractEvents( Company.selectedEvent )),
+                actionButton("Slett alle hendelser i prosessen", async e => await Company.retractEvents( Database.getCalculatedField( Company.selectedProcess, 6088 ) )),
             ])
             : d([
               d("Slett denne hendelsen", {class: "actionButton", style: "background-color: gray;"}),
@@ -624,7 +586,7 @@ let processActionsView =  (S, Company, process) => {
 
             ]),
           eventsCount === 0
-            ? actionButton("Slett prosess", async e => await Database.retractEntity( process ))
+            ? actionButton("Slett prosess", async e => await Database.retractEntity( Company.selectedProcess ))
             : d("Slett prosess", {class: "actionButton", style: "background-color: gray;"})
 
         ]),
@@ -632,6 +594,22 @@ let processActionsView =  (S, Company, process) => {
       ], {class: "columns_1_1"})
 
 }
+
+let singleEventView =  Company => isNumber(Company.selectedEvent)
+  ? d([
+      h3( Database.get(Database.get(Company.selectedEvent, "event/eventTypeEntity"), "entity/label") ),
+      d( Database.get(Database.get(Company.selectedEvent, "event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  Database.get(Company.selectedEvent, 6161 ) ? lockedDatomView( Company.selectedEvent, attribute ) : editabledDatomView( Company.selectedEvent, attribute )  )),
+      br(),
+      d([
+        calculatedFieldView( Company.selectedEvent, 6101 ),
+        calculatedFieldView( Company.selectedEvent, 6077 ),
+        br(),
+        entityLabel( 6139 ),
+        d(Database.get(Company.selectedEvent, 6139).map( companyEntity => companyEntityLabel(Company, companyEntity, Database.get(Company.selectedEvent, 6101)) )),
+      ], {style: "background-color: #f1ecec;padding: 1em;border: 1px solid black;"} ),
+    ], {class: "feedContainer"} )
+  : d("Ingen hendelse valgt.", {class: "feedContainer"})
+
 
 // End ----
 
