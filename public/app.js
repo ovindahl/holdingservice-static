@@ -153,16 +153,16 @@ const Database = {
 
 let Logs = []
 
-const Companies = {
+const ActiveCompany = {
   companyDatoms: [],
   calculatedFieldsCache: [],
-  reconstructCompany: company => {
+  constructCompany: company => {
     let startTime = Date.now()
     
     
     
     let events = Database.get(company, 6178) 
-    Companies.companyDatoms = Companies.companyDatoms.filter( Datom => Datom.company !== company ) //.concat([initialDatom]) 
+    ActiveCompany.companyDatoms = ActiveCompany.companyDatoms.filter( Datom => Datom.company !== company ) //.concat([initialDatom]) 
     let latestEntityID = 0;
     events.forEach( event => {
 
@@ -170,9 +170,9 @@ const Companies = {
       let eventType = Database.get( event, "event/eventTypeEntity" )
       let t = Database.get(event, 6101)
 
-      let Company = Companies.getCompanyObject(company, t - 1)
+      let Company = ActiveCompany.getCompanyObject(company, t - 1)
       let Event = Database.get(event)
-      let Process = Companies.getProcessObject( Database.get(event, "event/process") )
+      let Process = ActiveCompany.getProcessObject( Database.get(event, "event/process") )
       Process.getPrevEvent = () => Process.getEventByIndex(  Process.events.findIndex( e => e === event ) - 1 ) //Flytte til event?
       
       let eventDatoms = Database.get( eventType, "eventType/newDatoms" ).map( datomConstructor => {
@@ -186,7 +186,7 @@ const Companies = {
         let Datom = {company, entity, attribute, value, event, t}
         return Datom
       }  )
-      Companies.companyDatoms = Companies.companyDatoms.concat(eventDatoms)
+      ActiveCompany.companyDatoms = ActiveCompany.companyDatoms.concat(eventDatoms)
       let maxEventEntity = eventDatoms.map( Datom => Datom.entity ).sort( (a, b) => a-b ).slice(-1)[0]
       let newMax = isNumber(maxEventEntity) 
         ? Math.max(latestEntityID, maxEventEntity)
@@ -194,9 +194,9 @@ const Companies = {
       latestEntityID = newMax
     })
 
-    let companyEntities = Companies.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
+    let companyEntities = ActiveCompany.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
 
-    let Company = Companies.getCompanyObject(company)
+    let Company = ActiveCompany.getCompanyObject(company)
     let cachedCalculatedFields = companyEntities.forEach( companyEntity => {
       let entityType = Company.get(companyEntity, 19)
       let calculatedFields = Database.get( entityType , "entityType/calculatedFields" )
@@ -207,7 +207,7 @@ const Companies = {
     console.log(`Constructed Company ${company} in ${Date.now() -startTime} ms`)
   },
   getCompanyObject: (company, receivedT) => {
-    let t = isNumber(receivedT) ? receivedT : Companies.companyDatoms.filter( Datom => Datom.company === company ).map( Datom => Datom.t ).sort( (a,b) => a-b ).slice(-1)[0]
+    let t = isNumber(receivedT) ? receivedT : ActiveCompany.companyDatoms.filter( Datom => Datom.company === company ).map( Datom => Datom.t ).sort( (a,b) => a-b ).slice(-1)[0]
 
     //Logs.push({method: "getCompanyObject", company, t})
 
@@ -217,17 +217,17 @@ const Companies = {
     }
 
     Company.events = Database.get(company, 6178)
-    Company.get = (entity, attribute, providedT) => Companies.getFromCompany(company, entity, attribute, isDefined(providedT) ? providedT : t)
-    Company.getAll = entityType => Companies.getAllFromCompany(company, entityType, t)
+    Company.get = (entity, attribute, providedT) => ActiveCompany.getFromCompany(company, entity, attribute, isDefined(providedT) ? providedT : t)
+    Company.getAll = entityType => ActiveCompany.getAllFromCompany(company, entityType, t)
     Company.getEvent = event =>  Database.get(event)
-    Company.getOptions = attribute =>  Companies.getCompanyOptions(company, attribute, t)
-    Company.updateEvent = async (event, attribute, value) => await Companies.updateCompanyEvent(company, event, attribute, value)
-    Company.createEvent = async (eventType, parentProcess, attributeAssertions) => await Companies.createCompanyEvents(company, eventType, parentProcess, [ isDefined(attributeAssertions) ? attributeAssertions : {} ])
-    Company.createEvents = async (eventType, parentProcess, attributeAssertions) => await Companies.createCompanyEvents(company, eventType, parentProcess, attributeAssertions)
+    Company.getOptions = attribute =>  ActiveCompany.getCompanyOptions(company, attribute, t)
+    Company.updateEvent = async (event, attribute, value) => await ActiveCompany.updateCompanyEvent(company, event, attribute, value)
+    Company.createEvent = async (eventType, parentProcess, attributeAssertions) => await ActiveCompany.createCompanyEvents(company, eventType, parentProcess, [ isDefined(attributeAssertions) ? attributeAssertions : {} ])
+    Company.createEvents = async (eventType, parentProcess, attributeAssertions) => await ActiveCompany.createCompanyEvents(company, eventType, parentProcess, attributeAssertions)
     Company.retractEvents = async events => {
       let entities = Array.isArray(events) ? events : [events]
       let retractedEvent = await Database.retractEntities(entities)
-      //Companies.reconstructCompany(company)
+      //ActiveCompany.constructCompany(company)
       update( Database.S )
     } 
     return Company
@@ -236,13 +236,13 @@ const Companies = {
       
     //Logs.push({method: "getFromCompany", company, companyEntity, attribute, t})
     
-    if(isUndefined(company)){return log(undefined, `[ Companies.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received company argument is undefined`)}
-    if(isUndefined(companyEntity)){return log(undefined, `[ Companies.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received companyEntity argument is undefined`)}
-    let matchingDatoms = Companies.companyDatoms
+    if(isUndefined(company)){return log(undefined, `[ ActiveCompany.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received company argument is undefined`)}
+    if(isUndefined(companyEntity)){return log(undefined, `[ ActiveCompany.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received companyEntity argument is undefined`)}
+    let matchingDatoms = ActiveCompany.companyDatoms
       .filter( companyDatom => companyDatom.company === company  )
       .filter( companyDatom => companyDatom.entity === companyEntity  )
       .filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
-    if(matchingDatoms.length === 0){return log(undefined, `[ Companies.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: No matching company datoms`)}
+    if(matchingDatoms.length === 0){return log(undefined, `[ ActiveCompany.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: No matching company datoms`)}
     if(isDefined(attribute) ){
       if( Database.getAll(42).includes( Database.attr(attribute) ) ){
         let companyDatom = matchingDatoms
@@ -250,7 +250,7 @@ const Companies = {
         .slice(-1)[0]
         if(isUndefined(companyDatom)){return undefined}
         else{ return companyDatom.value}
-      }else if(Database.getAll(5817).includes( attribute )){return Companies.getCompanyCalculatedField(company, companyEntity, attribute, t) } //returns calculatedField
+      }else if(Database.getAll(5817).includes( attribute )){return ActiveCompany.getCompanyCalculatedField(company, companyEntity, attribute, t) } //returns calculatedField
     }else{
       let CompanyEntity = {
         company: company,
@@ -268,14 +268,14 @@ const Companies = {
   },
   getCompanyOptions: (company, attribute, t) => {
     let options = [];
-    let Company = Companies.getCompanyObject(company, t)
+    let Company = ActiveCompany.getCompanyObject(company, t)
     try {options = new Function( [ "Company" ] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Company )}
     catch (error) { log(error, {info: "Could not get options for Company attribute", company, attribute, t }) }
     return options
   },
   getAllFromCompany: (company, entityType, t) => {
-    if(isUndefined(company)){return log(undefined, `[ Companies.getAllFromCompany(${company}, ${entityType}, ${t}) ]: received company argument is undefined`)}
-    let entities = Companies.companyDatoms
+    if(isUndefined(company)){return log(undefined, `[ ActiveCompany.getAllFromCompany(${company}, ${entityType}, ${t}) ]: received company argument is undefined`)}
+    let entities = ActiveCompany.companyDatoms
       .filter( companyDatom => companyDatom.company === company  )
       .filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
       .filter( companyDatom => companyDatom.attribute === 19 )
@@ -286,14 +286,14 @@ const Companies = {
   getCompanyCalculatedField: (company, companyEntity, calculatedField, t) => {
     //Logs.push({method: "getCompanyCalculatedField", company, companyEntity, calculatedField, t})
 
-    let cachedCalculatedField = Companies.calculatedFieldsCache.find( cachedCalculatedField => cachedCalculatedField.company === company && cachedCalculatedField.companyEntity === companyEntity && cachedCalculatedField.calculatedField === calculatedField && cachedCalculatedField.t === t )
+    let cachedCalculatedField = ActiveCompany.calculatedFieldsCache.find( cachedCalculatedField => cachedCalculatedField.company === company && cachedCalculatedField.companyEntity === companyEntity && cachedCalculatedField.calculatedField === calculatedField && cachedCalculatedField.t === t )
     if( isDefined(cachedCalculatedField) ){return cachedCalculatedField.value }
     else{
 
-      let Company = Companies.getCompanyObject(company, t)
+      let Company = ActiveCompany.getCompanyObject(company, t)
       let Entity = {
         entity: companyEntity,
-        event: Companies.companyDatoms
+        event: ActiveCompany.companyDatoms
         .filter( companyDatom => companyDatom.company === company )
         .filter( companyDatom => companyDatom.entity === companyEntity )
         [0].event,
@@ -308,7 +308,7 @@ const Companies = {
         catch (err) {
           value = log("ERROR",{info: "CompanycalculatedValue calculation  failed", company, companyEntity, calculatedField, err}) 
         }
-      Companies.calculatedFieldsCache.push({company, companyEntity, calculatedField, t, value})
+      ActiveCompany.calculatedFieldsCache.push({company, companyEntity, calculatedField, t, value})
       return value;
     }
 
@@ -327,7 +327,7 @@ const Companies = {
   },
   updateCompanyEvent: async (company, event, attribute, value) => {
     await Database.updateEntity(event, attribute, value)
-    //Companies.reconstructCompany(company)
+    //ActiveCompany.constructCompany(company)
     update( Database.S )
   },
   createCompanyEvents: async (company, eventType, parentProcess, attributeAssertions) => {
@@ -349,7 +349,7 @@ const Companies = {
       let updatedEntities = serverResponse
       Database.Entities = Database.Entities.filter( Entity => !updatedEntities.map( updatedEntity => updatedEntity.entity  ).includes(Entity.entity) ).concat( updatedEntities )
       Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-      //Companies.reconstructCompany(company)
+      //ActiveCompany.constructCompany(company)
       update( Database.S )
     }else{log("Datoms not valid: ", Datoms)}
   },
@@ -438,9 +438,9 @@ let update = ( S ) => {
 
     let company = S["UIstate"].selectedCompany
     let t = Database.get(company, 6198)
-    Company = isDefined(company) ? Companies.getCompanyObject( company, t ): "Ingen selskap valgt"
+    Company = isDefined(company) ? ActiveCompany.getCompanyObject( company, t ): "Ingen selskap valgt"
     let process = S["UIstate"].selectedProcess
-    Process = isDefined(process) ? Companies.getProcessObject(process) : "Ingen prosess valgt"
+    Process = isDefined(process) ? ActiveCompany.getProcessObject(process) : "Ingen prosess valgt"
 
     let startTime = Date.now()
 
@@ -482,7 +482,7 @@ let init = async () => {
   }
   let company = S.UIstate.selectedCompany
   log("Database initialized, constructing company " + company)
-  Companies.reconstructCompany(company)
+  ActiveCompany.constructCompany(company)
   update( S )
 
 

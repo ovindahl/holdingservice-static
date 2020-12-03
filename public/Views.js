@@ -289,7 +289,7 @@ let timelineView = (S,A, Company) => {
 
 let processTimelineView = (S, A, Company, process) => {
 
-  let Process = Companies.getProcessObject(process)
+  let Process = ActiveCompany.getProcessObject(process)
   let tArray = new Array(Company.t+1).fill(0).map( (v, i) => i )
   let processEvents = Process.events
   let processEventsTimes = processEvents.map( event => Database.getCalculatedField(event, 6101) )
@@ -331,7 +331,7 @@ let entityInspectorEventTimeline = (Company, event) => {
 
 
 let companyDatomsPage = (S,A, Company) => {
-  let companyDatoms = Companies.companyDatoms.filter( companyDatom => companyDatom.company === Company.entity ).sort( (companyDatomA, companyDatomB) => companyDatomA.entity - companyDatomB.entity )
+  let companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.company === Company.entity ).sort( (companyDatomA, companyDatomB) => companyDatomA.entity - companyDatomB.entity )
 
   return d([
     d([
@@ -600,7 +600,7 @@ let singleEventView =  (S, Company, event) => {
 
 let processActionsView =  (S, Company, process) => {
 
-  let Process = Companies.getProcessObject(process)
+  let Process = ActiveCompany.getProcessObject(process)
   let processType =   Database.get(process, "process/processType" )
   let eventsCount = Process.events.length
   let selectedEvent = Database.get(process, 6137)
@@ -1027,7 +1027,7 @@ let input_multipleSelect = (entity, attribute, version) => d([
 let input_singleCompanyEntity = (entity, attribute, version) => {
   let company = Database.S["UIstate"].selectedCompany
   let t = Database.get(entity, 6101)
-  let Company = Companies.getCompanyObject(company, t)
+  let Company = ActiveCompany.getCompanyObject(company, t)
   let optionObjects = Company.getOptions(attribute, t).concat({value: 0, label: "Ingen entitet valgt"})
 
   let selectedOption = optionObjects.find( Option => Option.value === Database.get( entity, attribute, version ))
