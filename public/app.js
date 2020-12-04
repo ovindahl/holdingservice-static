@@ -1,4 +1,3 @@
-
 const Database = {
   tx: null,
   selectedPage: "Prosesser",
@@ -118,7 +117,7 @@ const Database = {
   attr: attrName => isDefined(attrName)
     ? isNumber(attrName) ? attrName : Database.attrNames[attrName]
     : log(undefined, `[ Database.attr(${attrName}) ]: Proveded attribute name is undefined`),
-  isAttribute: attribute => Database.getAll(42).includes( Database.attr(attribute) ),
+  isAttribute: attribute => Database.attributes.includes( Database.attr(attribute) ),
   isCalculatedField: calculatedField => Database.getAll(5817).includes( calculatedField ),
   get: (entity, attribute, version) => {
     if(Database.entities.includes(entity)){
@@ -154,7 +153,7 @@ const Database = {
       catch (error) {calculatedValue = log("ERROR",{info: "calculatedValue calculation  failed", entity, calculatedField, error}) }
     return calculatedValue
   },
-  getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity),
+  getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity), //Kan bli sirkulær med isAttribute
   getOptions: (attribute, tx ) => {
     let options = [];
     try {options = new Function( ["Database"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction", tx) )( Database )}
@@ -253,14 +252,6 @@ const ActiveCompany = {
     ActiveCompany.Actions = [
       {label: "test", isActionable: true, actionFunction: async e => console.log("This is an action on company level")}
     ].concat(newProcessActions)
-
-    /* async e => await Database.createEntity(5692, [
-      newDatom( "newEntity" , "process/company", Company.entity  ),
-      newDatom( "newEntity" , "process/processType", Number( submitInputValue(e) ) ),
-      newDatom( "newEntity" , "entity/label", `${Database.get(Number( submitInputValue(e) ), "entity/label")} for ${Database.get(Company.entity, "entity/label")}`  ),
-    ] ) */
-    
-    
     
   },
   getCompanyObject: (company, receivedT) => {
@@ -530,6 +521,7 @@ let init = async () => {
 
   Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
   Database.entities = Database.Entities.map( serverEntity => serverEntity.entity )
+  Database.attributes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
   Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
   Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
   Database.selectedEntity = 6

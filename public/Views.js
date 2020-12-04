@@ -358,7 +358,7 @@ let processesView = Company => d([
   d([
     d(Company.processes.map( process => entityLabel(process, e => Company.selectProcess(process) ) )),
       br(),
-      hr("Tillatte handlinger på selskapsnivå"),
+      h3("Tillatte handlinger på selskapsnivå"),
       d(Company.Actions.map( Action => actionButton( Action ) ) ),
   ]),
   processView( Company )
@@ -738,7 +738,7 @@ let input_eventConstructorsInProcessStep = (entity, attribute, version) => {
         ),
         submitButton("[Slett]", async e => await Database.updateEntityAndRefreshUI(entity, attribute, eventConstructors.filter( (d, i) => i !== eventConstructorIndex  )  )),
       ], {class: "columns_1_3_3_1"}) )),
-      submitButton("Legg til rad", async e => await Database.updateEntityAndRefreshUI(entity, attribute, eventConstructors.concat( {5848: "return true;", 5705: 5000, 5850: "Company.createEvent(5000, Process.entity);"} )  )),
+      submitButton("Legg til rad", async e => await Database.updateEntityAndRefreshUI(entity, attribute, eventConstructors.concat( {6: "Ny handling", 5848: "return true;", 5850: "Company.createEvent(5000, Process.entity);"} )  )),
     ])
   ])
 }
