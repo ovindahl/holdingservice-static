@@ -33,8 +33,6 @@ console.log( (label) ? label : "Logging this: ", something )
 return something
 }
 
-
-
 let isUndefined = value => typeof value === "undefined"
 let isDefined = value => !isUndefined(value)
 let isNull = value => value === null
@@ -139,13 +137,6 @@ let entityInspectorPopup_small = entity => d([
   //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-
-
-
-
-
-
-
 let entityRedlinedValue = (value, prevValue) => d( [
   span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
   span( `${JSON.stringify(value)}`),
@@ -196,7 +187,7 @@ let companySelectionMenuRow = (S, A) => d([
   submitButton( "+", e => console.log("NEW COMPANY") )
 ], {style: "display:flex;"}) 
 
-let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Tidslinje", "Selskapets datomer", "Selskapets entiteter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Tidslinje", "Selskapets entiteter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
 
 let generateHTMLBody = (S, A, Company) => [
   adminPanelView(S,A),
@@ -269,7 +260,6 @@ let timelineView = Company => d([
   d( Company.processes.map( process => processTimelineView(Company, process) ))
 
 ])
-
 
 let processTimelineView = (Company, process) => {
 
@@ -381,8 +371,6 @@ let companyDatomView = (companyDatom) => {
 
 }
 
-
-
 let adminPage = (S, A) => d([
   sidebar_left(S, A),
   adminEntityView(S["UIstate"]["selectedEntity"]),
@@ -435,7 +423,6 @@ let processesView = Company => d([
   ]),
   processView( Company )
 ], {class: "pageContainer"})
-
 
 let processView =  Company => isNumber( Company.selectedProcess)
 ? d([
@@ -783,9 +770,6 @@ let input_eventConstructor = (entity, attribute, version) => {
   ])
 }
 
-
-
-
 let input_eventConstructorsInProcessStep = (entity, attribute, version) => {
 
   let eventConstructors = Database.get( entity, attribute, version )
@@ -821,7 +805,6 @@ let input_eventConstructorsInProcessStep = (entity, attribute, version) => {
     ])
   ])
 }
-
 
 let input_multipleSelect = (entity, attribute, version) => d([
   entityLabel(attribute),

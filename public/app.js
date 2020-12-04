@@ -147,9 +147,6 @@ const Database = {
   }
 }
 
-
-
-
 let Logs = []
 
 const ActiveCompany = {
@@ -185,14 +182,36 @@ const ActiveCompany = {
         ? Math.max(latestEntityID, maxEventEntity)
         : latestEntityID
       latestEntityID = newMax
-    })
-    let Company = ActiveCompany.getCompanyObject(company)
-    Company.entities.forEach( companyEntity => {
-      let entityType = Company.get(companyEntity, 19)
-      let calculatedFields = Database.get( entityType , "entityType/calculatedFields" )
-      calculatedFields.forEach( calculatedField => Company.get(companyEntity, calculatedField, Company.t)    )
+
+      let updatedCompany = ActiveCompany.getCompanyObject(company)
+      updatedCompany.entities.forEach( companyEntity => {
+        let CompanyEntity = updatedCompany.getCompanyEntity( companyEntity )
+        let calculatedFields = Database.get( CompanyEntity.type , "entityType/calculatedFields" )
+        calculatedFields.forEach( calculatedField => {
+  
+            let prevValue = updatedCompany.get(companyEntity, calculatedField, t )
+                
+            let value;
+              try {
+                let calculatedFieldFunction = new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) )
+                value =  calculatedFieldFunction(CompanyEntity, updatedCompany) 
+              } 
+              catch (err) {
+                value = log("ERROR",{info: "CompanycalculatedValue calculation  failed", company, companyEntity, calculatedField, err}) 
+              }
+              if( value !== prevValue  ){ ActiveCompany.calculatedFieldsCache.push({company, companyEntity, calculatedField, t, value}) }
+        })
+
+      } )
+
+
+
+
+
     })
     console.log(`Constructed Company ${company} in ${Date.now() -startTime} ms`)
+    let Company = ActiveCompany.getCompanyObject(company)
+    //ActiveCompany.constructCalculatedFieldsCache(Company)
   },
   getCompanyObject: (company, receivedT) => {
     let t = isNumber(receivedT) ? receivedT : ActiveCompany.companyDatoms.filter( Datom => Datom.company === company ).map( Datom => Datom.t ).sort( (a,b) => a-b ).slice(-1)[0]
@@ -216,6 +235,7 @@ const ActiveCompany = {
     Company.getEvent = event =>  ActiveCompany.getEventObject(event)
     Company.getProcess = process =>  ActiveCompany.getProcessObject( process )
     Company.getOptions = attribute =>  ActiveCompany.getCompanyOptions(company, attribute, t)
+    Company.getCompanyEntity = companyEntity =>  ActiveCompany.getCompanyEntityObject(company, companyEntity, t)
 
     Company.storeDatoms = Datoms => ActiveCompany.storeDatoms(Datoms)
     Company.updateEvent = async (event, attribute, value) => await ActiveCompany.updateCompanyEvent(company, event, attribute, value)
@@ -297,36 +317,9 @@ const ActiveCompany = {
       return entities
   },
   getCompanyCalculatedField: (company, companyEntity, calculatedField, t) => {
-    //Logs.push({method: "getCompanyCalculatedField", company, companyEntity, calculatedField, t})
-
-    let cachedCalculatedField = ActiveCompany.calculatedFieldsCache.find( cachedCalculatedField => cachedCalculatedField.company === company && cachedCalculatedField.companyEntity === companyEntity && cachedCalculatedField.calculatedField === calculatedField && cachedCalculatedField.t === t )
-    if( isDefined(cachedCalculatedField) ){return cachedCalculatedField.value }
-    else{
-
-      let Company = ActiveCompany.getCompanyObject(company, t)
-      let Entity = {
-        entity: companyEntity,
-        event: ActiveCompany.companyDatoms
-        .filter( companyDatom => companyDatom.company === company )
-        .filter( companyDatom => companyDatom.entity === companyEntity )
-        [0].event,
-      }
-      Entity.get = attribute => Company.get(entity, attribute, t)
-          
-      let value;
-        try {
-          let calculatedFieldFunction = new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) )
-          value =  calculatedFieldFunction(Entity, Company) 
-        } 
-        catch (err) {
-          value = log("ERROR",{info: "CompanycalculatedValue calculation  failed", company, companyEntity, calculatedField, err}) 
-        }
-      ActiveCompany.calculatedFieldsCache.push({company, companyEntity, calculatedField, t, value})
-      return value;
-    }
-
-          
-
+    let matchingCachedValues = ActiveCompany.calculatedFieldsCache.filter( cachedCalculatedField => cachedCalculatedField.company === company && cachedCalculatedField.companyEntity === companyEntity && cachedCalculatedField.calculatedField === calculatedField && cachedCalculatedField.t <= t )
+    let latestCachedValues = matchingCachedValues.length > 0 ? matchingCachedValues.slice( -1 )[0] : undefined
+    return isDefined(latestCachedValues) ? latestCachedValues.value : undefined
   },
   getProcessObject: process => {
 
@@ -365,6 +358,18 @@ const ActiveCompany = {
     Event.companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.event === event )
     Event.entities = Event.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
     return Event
+  },
+  getCompanyEntityObject: (company, companyEntity, t) => {
+    let CompanyEntity = {
+      entity: companyEntity,
+      companyEntity
+    }
+    CompanyEntity.get = attribute => ActiveCompany.getFromCompany(company, companyEntity, attribute, t)
+    CompanyEntity.type = CompanyEntity.get( 19 )
+    CompanyEntity.t = "TBD"
+    CompanyEntity.companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity )
+    CompanyEntity.event = "TBD"
+    return CompanyEntity
   },
   updateCompanyEvent: async (company, event, attribute, value) => {
     await Database.updateEntity(event, attribute, value)
@@ -489,7 +494,6 @@ let update = ( S ) => {
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)    
 
 }
-
 
 sideEffects.configureClient();
 
