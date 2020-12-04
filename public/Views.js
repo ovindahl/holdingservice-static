@@ -99,7 +99,6 @@ let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("sele
 
 let optionsElement = optionObjects => optionObjects.map( o => `<option value="${o.value}">${o.label}</option>` ).join('')
 
-
 let checkBox = (isChecked, onClick) => input({type: "checkbox", value: isChecked}, "click", onClick)
 
 let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", e => {
@@ -109,12 +108,7 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
   onClick(e)
 }  )
 
-let actionButton = (label, isActionable, onClick) => d(label, {class: "actionButton", style: isActionable ? "" : "background-color: darkgray;"}, isActionable ? "click" : undefined , isActionable ? e => {
-  let button = document.getElementById(e.srcElement.id)
-  button.style = "background-color: darkgray;"
-  button.innerHTML = "Laster.."
-  onClick(e)
-} : undefined  )
+let actionButton = Action => d(Action.label, {class: "actionButton", style: Action.isActionable ? "" : "background-color: darkgray;"}, Action.isActionable ? "click" : undefined , Action.isActionable ? Action.actionFunction : undefined  )
 
 let retractEntityButton = entity => submitButton("Slett", e => Database.retractEntity(entity) )
 let createEntityButton = entityType => submitButton("Legg til", e => Database.createEntity(entityType) )    
@@ -131,10 +125,6 @@ let entityLabel = (entity, onClick) => Database.get(entity)
 
 let entityInspectorPopup_small = entity => d([
   h3(`[${entity}] ${Database.get(entity, "entity/label")}`, {style: `background-color: {Entity.color}; padding: 3px;`}),
-  d("<br>"),
-  //d(`Type: ${Database.get(entity, "entity/entityType")}`),
-  //d(`Kategori: ${Database.get(entity, "entity/category")}`),
-  //d("Rediger", {class: "textButton"}, "click", e => A.updateLocalState({currentPage: "Admin/DB", selectedEntityType: Database.get(entity, "entity/entityType"), selectedCategory:  Database.get(entity, "entity/category"), selectedEntity: entity }))
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 let entityRedlinedValue = (value, prevValue) => d( [
@@ -144,34 +134,20 @@ let entityRedlinedValue = (value, prevValue) => d( [
 
 //Page frame
 
-let adminPanelView = (S, A) =>{
-
-
-
-  return d([
+let adminPanelView = Company => d([
+  d([
     d([
-      d([
-        entityLabel(5612),
-        d(S.UIstate.user)
-      ], {class: "columns_1_1"}),
-      d([
-        d("Status Database"),
-        d("Ledig", {id: "APISYNCSTATUS"}),
-      ], {class: "columns_1_1"}),
-      d([
-        d("Versjon Database"),
-        input({value: Database.tx, disabled: "disabled"})
-      ], {class: "columns_1_1"}),
-
-    ]),
-    d([
-      d("Klientvariabler"),
-      d( Object.entries(S.UIstate).map( entry => d(`${entry[0]}: ${entry[1]}`)  ) )
+      d("Status Database"),
+      d("Ledig", {id: "APISYNCSTATUS"}),
     ], {class: "columns_1_1"}),
-  ], {class: "columns_1_1", style: "background-color:gray;"})
-} 
+    d([
+      d("Versjon Database"),
+      input({value: Database.tx, disabled: "disabled"})
+    ], {class: "columns_1_1"}),
+  ]),
+], {class: "columns_1_1", style: "background-color:gray;"}) 
 
-let headerBarView = (S) => d([
+let headerBarView = Company => d([
   d('<header><h1>Holdingservice Beta</h1></header>'),
   d([
     d("Logg ut", {class: "textButton"}, "click", ),
@@ -179,77 +155,44 @@ let headerBarView = (S) => d([
   ], {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
-let companySelectionMenuRow = (S, A) => d([
-  d( Database.getAll( 5722 ).map( company => d([
-      entityLabel(company, e => A.updateLocalState(  {selectedCompany : company} ))
-    ], {style: company === S["UIstate"].selectedCompany ? "background-color: #bfbfbf;" : ""})
-  ), {style: "display:flex;"}),
+let companySelectionMenuRow = Company => d([
+  d( Database.getAll( 5722 ).map( company => d([entityLabel(company, e => Database.selectCompany(company))], {style: company === Company.entity ? "background-color: #bfbfbf;" : ""})), {style: "display:flex;"}),
   submitButton( "+", e => console.log("NEW COMPANY") )
 ], {style: "display:flex;"}) 
 
-let pageSelectionMenuRow = (S, A) => d( ["Prosesser", "Tidslinje", "Selskapets entiteter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === S["UIstate"].currentPage ? "textButton textButton_selected" : "textButton"}, "click", e => A.updateLocalState(  {currentPage : pageName} ) )  ), {style: "display:flex;"})
+let pageSelectionMenuRow = Company => d( ["Prosesser", "Tidslinje", "Selskapets entiteter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === Database.selectedPage ? "textButton textButton_selected" : "textButton"}, "click", e => Database.selectPage(pageName) ) ), {style: "display:flex;"})
 
-let generateHTMLBody = (S, A, Company) => [
-  adminPanelView(S,A),
-  headerBarView(S),
-  companySelectionMenuRow(S, A),
-  pageSelectionMenuRow(S, A),
-  pageRouter[ S["UIstate"].currentPage ]( S, A, Company ),
+let generateHTMLBody = Company => [
+  adminPanelView( Company ),
+  headerBarView( Company ),
+  companySelectionMenuRow( Company ),
+  pageSelectionMenuRow( Company ),
+  pageRouter[ Database.selectedPage ]( Company ),
 ]
 
 let pageRouter = {
-  "Prosesser": (S, A) => processesView( Company ),
-  "Tidslinje": (S, A) => timelineView( Company ),
-  "Selskapets entiteter": (S, A) => companyDocPage( Company ),
-  "Admin/DB": (S, A) => adminPage( S, A, Company ),
+  "Prosesser": Company => processesView( Company ),
+  "Tidslinje": Company => timelineView( Company ),
+  "Selskapets entiteter": Company => companyDocPage( Company ),
+  "Admin/DB": Company => adminPage( Company ),
 }
 
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
 
-let sidebar_left = (S, A) => d([
-      d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687, 5817]
-        .map( entity => entityLabel(entity, e => A.updateLocalState(  {
-          selectedEntityType : entity, 
-          selectedCategory: null,
-          selectedEntity: null
-          }))
-        )
-      ),
-      d( Database.getAll(S["UIstate"].selectedEntityType).map( entity => Database.get(entity, "entity/category" ) ).filter(filterUniqueValues)
-        .sort( ( a , b ) => ('' + a).localeCompare(b) )
-        .map( category => d( 
-          category, 
-          {class: category === S["UIstate"].selectedCategory ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, 
-          "click", 
-          e => A.updateLocalState(  {selectedCategory : category, selectedEntity: null} )
-          )  )
-      ),
-      S["UIstate"].selectedCategory === null 
-        ? d("Ingen kategori valgt") 
-        : d( Database.getAll(S["UIstate"].selectedEntityType).filter( entity => Database.get(entity, "entity/category" ) === S["UIstate"].selectedCategory )
-          .sort( sortEntitiesAlphabeticallyByLabel )
-          .map( entity => entityLabel( entity, e => Database.selectEntity(entity) ))
-        )
-  ], {style: "display:flex;"})
-
-let newDatomsView = event => d([
-  h3("Nye selskapsdatomer generert av hendelsen:"),
-  d( Database.getEvent(event).constructedDatoms.sort( (a,b) => a.entity - b.entity ).map( Datom => {
-
-      let valueType = Database.get(Datom.attribute, "attribute/valueType")
-      let valueView = (valueType === 32 && !isUndefined(Datom.value)) 
-        ? entityLabel(Number(Datom.value)) 
-        : d( JSON.stringify(Datom.value) )
-
-    return d([
-      span( `Selskapsentitet ${ Datom.entity }`, ``, {class: "entityLabel", style: `background-color: lightgray;`} ),
-      entityLabel(Datom.attribute),
-      valueView,
-    ], {class: "columns_1_1_1"})
-
-  } ))
-])
-
+let sidebar_left = Company => {
+  let selectedEntityType = Database.get(Database.selectedEntity, "entity/entityType")
+  let selectedCategory = Database.get(Database.selectedEntity, "entity/category")
+  return d([
+    d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687, 5817, 5722].map( entityType => entityLabel(entityType, e => Database.selectEntity(  Database.getAll(entityType)[0]) )) ),
+    d( Database.getAll( selectedEntityType   ).map( entity => Database.get(entity, "entity/category" ) ).filter(filterUniqueValues)
+      .sort( ( a , b ) => ('' + a).localeCompare(b) )
+      .map( category => d( category, {class: category === selectedCategory ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, "click", 
+        e => Database.selectEntity(  Database.getAll( selectedEntityType  ).find( e => Database.get(e, "entity/category") === category  )   )
+        ))
+    ),
+    d( Database.getAll( selectedEntityType ).filter( entity => Database.get(entity, "entity/category" ) === selectedCategory ).sort( sortEntitiesAlphabeticallyByLabel ).map( entity => entityLabel( entity, e => Database.selectEntity(entity) )))
+], {style: "display:flex;"})
+} 
 
 let timelineView = Company => d([
   d([
@@ -371,9 +314,9 @@ let companyDatomView = (companyDatom) => {
 
 }
 
-let adminPage = (S, A) => d([
-  sidebar_left(S, A),
-  adminEntityView(S["UIstate"]["selectedEntity"]),
+let adminPage = Company => d([
+  sidebar_left( Company ),
+  adminEntityView( Database.selectedEntity ),
   d("")
 ], {class: "pageContainer"})
 
@@ -415,11 +358,8 @@ let processesView = Company => d([
   d([
     d(Company.processes.map( process => entityLabel(process, e => Company.selectProcess(process) ) )),
       br(),
-      dropdown(0, [{value: 0, label: "Legg til prosess"}].concat( Database.getAll(5687).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ) ) , async e => await Database.createEntity(5692, [
-        newDatom( "newEntity" , "process/company", Company.entity  ),
-        newDatom( "newEntity" , "process/processType", Number( submitInputValue(e) ) ),
-        newDatom( "newEntity" , "entity/label", `${Database.get(Number( submitInputValue(e) ), "entity/label")} for ${Database.get(Company.entity, "entity/label")}`  ),
-      ] ) )
+      hr("Tillatte handlinger på selskapsnivå"),
+      d(Company.Actions.map( Action => actionButton( Action ) ) ),
   ]),
   processView( Company )
 ], {class: "pageContainer"})
@@ -440,10 +380,7 @@ let processView =  Company => isNumber( Company.selectedProcess)
     br(),
     d([
       entityLabel(5922),
-      d(Company.getProcess( Company.selectedProcess ).Actions.map( Action => actionButton(Action.label, Action.isActionable, Action.isActionable 
-        ? async e => Action.actionFunction(Database, Company, Company.getProcess( Company.selectedProcess ) ) 
-        : undefined
-        ) 
+      d(Company.getProcess( Company.selectedProcess ).Actions.map( Action => actionButton( Action) 
       ))
     ], {class: "columns_1_1"}),
 ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
@@ -454,7 +391,7 @@ let processProgressView = Company => d([
   d( Database.get(Database.get(Company.selectedProcess, "process/processType"), 5926).map( (eventType, index) => d([
         entityLabel( eventType ),
         d( Database.getAll(46)
-        .filter( event => Database.get(event).current["event/process"] === Company.selectedProcess )
+        .filter( event => Database.get(event, "event/process") === Company.selectedProcess )
         .filter( event => Database.get(event, "event/eventTypeEntity") === eventType  )
         .map( event => d(String(event), {style: event === Company.selectedEvent ? "color: blue;" : ""}, "click", 
         e => Company.selectEvent(event)
@@ -464,8 +401,8 @@ let processProgressView = Company => d([
 ])
 
 let singleEventView =  (Company, Event) => d([
-  h3( Database.get(Event.type, "entity/label") ),
-  d( Database.get(Event.type, "eventType/eventAttributes").map( attribute =>  Event.get( 6161 ) ? lockedDatomView( Event.entity, attribute ) : editabledDatomView( Event.entity, attribute )  )),
+  h3( Database.get(Event.eventType, "entity/label") ),
+  d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  Event.get( 6161 ) ? lockedDatomView( Event.entity, attribute ) : editabledDatomView( Event.entity, attribute )  )),
   br(),
   d([
     d( "Posisjon i tidslinjen er: " + Event.t  ),
@@ -856,7 +793,7 @@ let input_multipleSelect = (entity, attribute, version) => d([
 ], {class: "columns_1_1"})
 
 let input_singleCompanyEntity = (entity, attribute, version) => {
-  let company = Database.S["UIstate"].selectedCompany
+  let company = ActiveCompany.company
   let t = Database.get(entity, 6101)
   let Company = ActiveCompany.getCompanyObject(company, t)
   let optionObjects = Company.getOptions(attribute, t).concat({value: 0, label: "Ingen entitet valgt"})
