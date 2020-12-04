@@ -83,7 +83,17 @@ const Database = {
     if(Array.isArray(newEntityDatoms)){Datoms = Datoms.concat(newEntityDatoms)}
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
     let updatedEntity = serverResponse[0]
+
+
+
+    //To be systematized
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
+    Database.entities = Database.Entities.map( serverEntity => serverEntity.entity )
+    Database.attributes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
+    Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
+    Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
+    //To be systematized ---
+
     update( )
     return updatedEntity
   },
@@ -96,8 +106,21 @@ const Database = {
       return retractionDatoms
     } ).flat()
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
+
+
+    //To be systematized
     Database.Entities = Database.Entities.filter( Entity => !entities.includes(Entity.entity) ).concat( serverResponse )
+    Database.entities = Database.Entities.map( serverEntity => serverEntity.entity )
+    Database.attributes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
+    Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
     Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
+    //To be systematized ---
+
+
+
+
+
+
     update( )
   },
   submitDatoms: async datoms => {
@@ -118,9 +141,10 @@ const Database = {
     ? isNumber(attrName) ? attrName : Database.attrNames[attrName]
     : log(undefined, `[ Database.attr(${attrName}) ]: Proveded attribute name is undefined`),
   isAttribute: attribute => Database.attributes.includes( Database.attr(attribute) ),
+  isEntity: entity => Database.entities.includes(entity),
   isCalculatedField: calculatedField => Database.getAll(5817).includes( calculatedField ),
   get: (entity, attribute, version) => {
-    if(Database.entities.includes(entity)){
+    if(Database.isEntity(entity)){
       if( isDefined(attribute) ){
         if( Database.isAttribute(attribute) ){
           let Datom = Database.getDatom(entity, attribute, version)
@@ -144,6 +168,17 @@ const Database = {
     let Entity = serverEntity;
     Entity.get = (attr, version) => Database.get(entity, attr, version)
     Entity.entityType = Entity.get("entity/entityType")
+    Entity.isLocked = false;
+    Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
+
+    Entity.Actions = [
+      {label: "Slett", isActionable: true, actionFunction: async e => await Database.retractEntity(entity) },
+      {label: "Legg til", isActionable: true, actionFunction: async e => {
+        let newEntity = await Database.createEntity(Entity.entityType)
+        Database.selectEntity(newEntity.entity)
+      }  },
+    ]
+
     return Entity
   },
   getCalculatedField: (entity, calculatedField) => {

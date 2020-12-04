@@ -108,7 +108,16 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
   onClick(e)
 }  )
 
-let actionButton = Action => d(Action.label, {class: "actionButton", style: Action.isActionable ? "" : "background-color: darkgray;"}, Action.isActionable ? "click" : undefined , Action.isActionable ? Action.actionFunction : undefined  )
+let actionButton = Action => d(
+  Action.label, 
+  {class: "actionButton", style: Action.isActionable ? "" : "background-color: darkgray;"}, 
+  Action.isActionable ? "click" : undefined,
+  e => {
+    if(Action.isActionable){Action.actionFunction()}
+    update()
+  }
+  
+  )
 
 let retractEntityButton = entity => submitButton("Slett", e => Database.retractEntity(entity) )
 let createEntityButton = entityType => submitButton("Legg til", e => Database.createEntity(entityType) )    
@@ -320,7 +329,7 @@ let adminPage = Company => d([
   d("")
 ], {class: "pageContainer"})
 
-let entityView = entity => {
+let versionView = entity => {
 
   let versions = Database.get(entity).Datoms.map( Datom => Datom.tx ).filter( filterUniqueValues ).filter( tx => isNumber(tx) )
   let selectedVersion = Database.getLocalState(entity).tx
@@ -331,10 +340,6 @@ let entityView = entity => {
 
   
   return d([
-    d([
-      d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
-      d(String(entity), {style: `text-align: right;`} )
-    ], {class: "columns_1_1"}),
     d([
       d([span( `Versjon`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`}, null )], {style:"display: inline-flex;"}),
       d([
@@ -402,7 +407,7 @@ let processProgressView = Company => d([
 
 let singleEventView =  (Company, Event) => d([
   h3( Database.get(Event.eventType, "entity/label") ),
-  d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  Event.get( 6161 ) ? lockedDatomView( Event.entity, attribute ) : editabledDatomView( Event.entity, attribute )  )),
+  d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  Event.get( 6161 ) ? lockedDatomView( Event.entity, attribute ) : valueView( Event , attribute )  )),
   br(),
   d([
     d( "Posisjon i tidslinjen er: " + Event.t  ),
@@ -415,40 +420,49 @@ let singleEventView =  (Company, Event) => d([
 
 //Entity view
 
+
 let adminEntityView = entity => {
 
-  let entityType = Database.get(entity, "entity/entityType")
+  let Entity = Database.getEntity(entity)
+  let attributes = Database.get(Entity.entityType, "entityType/attributes", Entity.tx)
+  let calculatedFields = Database.get(Entity.entityType, "entityType/calculatedFields", Entity.tx)
 
-  return (isNull(entity) || isUndefined( Database.get(entity) ))
-  ? d("Ingen entitet valgt.", {class: "feedContainer"})
-  : d([
-      h3( Database.get(entity, "entity/label")),
-      entityView(entity),
-      d( Database.get( entityType, "entityType/attributes", Database.getLocalState(entityType).tx).map( attribute => editabledDatomView( entity, attribute, Database.getLocalState(entity).tx ) )),
-      d( Database.get( entityType, "entityType/calculatedFields", Database.getLocalState(entityType).tx).map( calculatedField => calculatedFieldView( entity, calculatedField, Database.getLocalState(entity).tx ) )),
-      retractEntityButton(entity),
-      createEntityButton( entityType ),
-    ], {class: "feedContainer"} )
-}
-
-let calculatedFieldView = (entity, calculatedField, version) => d([
-  entityLabel(calculatedField),
-  d(JSON.stringify(Database.get(entity, calculatedField)))
-], {class: "columns_1_1"})
-
-let lockedDatomView = (entity, attribute, version) => {
-
-  try {
-
-    return d([
-        entityLabel( attribute ),
-        d(JSON.stringify( Database.get(entity, attribute) ))
-      ], {class: "columns_1_1"})
+  return Database.isEntity(entity)
+  ? Entity.isLocked
+    ? d("Entity is locked")
+    : d([
+        d([
+          d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
+          entityLabel(entity),
+        ], {class: "columns_1_1"}),
+        versionView(entity),
+        d( attributes.map( attribute => valueView( Entity, attribute ) )),
+        br(),
+        isDefined(calculatedFields)
+          ? d( calculatedFields.map( calculatedField => calculatedFieldView( entity, calculatedField, Database.getLocalState(entity).tx ) ))
+          : d("Ingen kalkulerte felter"),
+        h3("Tillatte handlinger på entitetsnivå"),
+        d( Entity.Actions.map( Action => actionButton(Action) ) ),
+      ], {class: "feedContainer"} )
+  : d("Ingen entitet valgt.", {class: "feedContainer"})
     
-  } catch (error) {return d(error) }
 }
 
-let editabledDatomView = (entity, attribute, version) => {
+
+let attributeLabel = attribute => Database.get(attribute) 
+? d( [
+    d([
+      d([
+        span( Database.get(attribute, "entity/label"), "", {}, "click", e => Database.selectEntity(attribute) ),
+        entityLabel( Database.get(attribute, "attribute/valueType") ),
+        span(`${Database.get(attribute, "attribute/isArray") ? "Flertall" : "Entall"}`, "", {style: "background-color:#7676f385;padding: 5px;"})
+      ],{class: "entityLabel", style: `background-color:${Database.get( 42, "entityType/color" )};`}),
+    ], {class: "popupContainer", style:"display: inline-flex;"})
+  ], {style:"display: inline-flex;"} )
+: d(`[${attribute}] Entiteten finnes ikke`)
+
+
+let valueView = (Entity, attribute) => {
 
   let genericValueTypeViews = {
     "30": input_text, //Tekst
@@ -466,33 +480,60 @@ let editabledDatomView = (entity, attribute, version) => {
     "5721": input_date,
     "5824": input_file,
     "5849": input_eventConstructorsInProcessStep
-  } 
+  }
 
   let valueType = Database.get(attribute, "attribute/valueType")
+  let isArray = Database.get(attribute, "attribute/isArray")
+
+  if(isArray){
+
+    let values = Entity.get( attribute )
+
+    return d([
+      attributeLabel(attribute),
+      d( values.map( (singleValue, index) => {
+        let earlierValues = values.slice(0, index )
+        let laterValues = values.slice( index + 1, values.length  )
+        return d([
+          d(String(index+1)),
+          input( {value: singleValue}, "change",async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute, earlierValues.concat( submitInputValue(e) ).concat( laterValues ) )  ),
+          d("X")
+        ], {class: "columns_1_1_1"}) 
+        })
+      )
+    ], {style: "margin: 1em; padding: 1em; background-color: #8080802e;"})
+
+  }else{
+
+
+    return d([
+      attributeLabel(attribute),
+      genericValueTypeViews[ valueType ]( Entity.entity, attribute, Entity.tx )
+    ], {class: "columns_1_1"}) 
+
+  }
+
   
+
+}
+
+
+let calculatedFieldView = (entity, calculatedField, version) => d([
+  entityLabel(calculatedField),
+  d(JSON.stringify(Database.get(entity, calculatedField)))
+], {class: "columns_1_1"})
+
+let lockedDatomView = (entity, attribute, version) => {
 
   try {
 
-    return isUndefined(Database.get( entity, attribute, version ))
-    ? d([
-      entityLabel( attribute ),
-      input_undefined( entity, attribute )
-    ], {class: "columns_1_1"})
-    : [37, 38, 39, 5849].includes( valueType )
-      ? genericValueTypeViews[ valueType  ]( entity, attribute, version )
-      : d([
+    return d([
         entityLabel( attribute ),
-        genericValueTypeViews[ valueType ]( entity, attribute, version )
+        d(JSON.stringify( Database.get(entity, attribute) ))
       ], {class: "columns_1_1"})
     
   } catch (error) {return d(error) }
 }
-
-let input_undefined = (entity, attribute) => input(
-  {value: "", style: `background-color: #de171761;`},
-  "change", 
-  async e => await Database.updateEntityAndRefreshUI(entity, attribute, Number.isNaN( Number(submitInputValue(e)) ) ? submitInputValue(e) : Number(submitInputValue(e))  )
-)
 
 let input_text = (entity, attribute, version) => input(
   {value: Database.get( entity, attribute, version ), style: ``},
@@ -608,7 +649,6 @@ let input_datomConstructor = (entity, attribute, version) => {
   let datoms = Database.get( entity, attribute, version )
 
   return d([
-    entityLabel(attribute),
     d([
       d("EntitetID"),
       d("Attributt"),
@@ -652,7 +692,6 @@ let input_eventConstructor = (entity, attribute, version) => {
   let processSteps = Database.get( entity, attribute, version )
 
   return d([
-    entityLabel(5690),
     d(processSteps.map( (processStep, index) => d([
       d([
         h3(`Steg ${index}`),
@@ -712,7 +751,6 @@ let input_eventConstructorsInProcessStep = (entity, attribute, version) => {
   let eventConstructors = Database.get( entity, attribute, version )
 
   return d([
-    entityLabel(attribute),
     d([
       d([
         d("Navn på handling"),
@@ -744,7 +782,6 @@ let input_eventConstructorsInProcessStep = (entity, attribute, version) => {
 }
 
 let input_multipleSelect = (entity, attribute, version) => d([
-  entityLabel(attribute),
   d([
     d( Database.get( entity, attribute, version ).map( attr => d([
       entityLabel(attr), 
