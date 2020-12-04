@@ -266,9 +266,6 @@ const ActiveCompany = {
     return Company
   },
   getFromCompany: (company, companyEntity, attribute, t) => {
-      
-    //Logs.push({method: "getFromCompany", company, companyEntity, attribute, t})
-    
     if(isUndefined(company)){return log(undefined, `[ ActiveCompany.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received company argument is undefined`)}
     if(isUndefined(companyEntity)){return log(undefined, `[ ActiveCompany.getFromCompany(${company}, ${companyEntity}, ${attribute}, ${t}) ]: received companyEntity argument is undefined`)}
     let matchingDatoms = ActiveCompany.companyDatoms
@@ -284,20 +281,7 @@ const ActiveCompany = {
         if(isUndefined(companyDatom)){return undefined}
         else{ return companyDatom.value}
       }else if(Database.getAll(5817).includes( attribute )){return ActiveCompany.getCompanyCalculatedField(company, companyEntity, attribute, t) } //returns calculatedField
-    }else{
-      let CompanyEntity = {
-        company: company,
-        entity: companyEntity,
-        companyDatoms: matchingDatoms
-      };
-      CompanyEntity.get = attr => {
-        let matchingDatoms = CompanyEntity.companyDatoms
-        .filter( companyDatom => companyDatom.attribute === attr )
-        return matchingDatoms.length > 0 ? matchingDatoms.slice(-1)[0] : undefined
-      } 
-
-      return CompanyEntity
-    }
+    }else{return ActiveCompany.getCompanyEntityObject(company, companyEntity, t)}
   },
   getCompanyOptions: (company, attribute, t) => {
     let options = [];
