@@ -538,10 +538,14 @@ let fullDatomView = (Entity, attribute) => {
     "31": basicInputView, //Tall
     "34": functionTextView, //Funksjonstekst
     "36": booleanView, //Boolean
+    "40": basicInputView, //Velg alternativ [TBD]
     "32": entityReferenceView,
     "5721": basicInputView, //Dato
     "38": datomConstructorView,
-    "fallback":basicInputView
+    "41": basicInputView, //Company entity [TBD]
+    "5824": basicInputView, //File [TBD]
+    "5849": basicInputView, //Konstruksjon av ny hendelse [TBD]
+    "fallback": basicInputView
   }
 
   let valueType = Database.get(attribute, "attribute/valueType")
@@ -865,71 +869,6 @@ let input_file = (entity, attribute, version) => isArray(Database.get(entity, at
 
   } 
 )
-
-let input_function = (entity, attribute, version) => textArea(
-  Database.get( entity, attribute, version ), 
-  {class:"textArea_code"}, 
-  async e => await Database.updateEntityAndRefreshUI(entity, attribute,  submitInputValue(e).replaceAll(`"`, `'`) )
-)
-
-let input_object = (entity, attribute, version) => textArea(
-  JSON.stringify(Database.get( entity, attribute, version )),
-  {class:"textArea_code"}, 
-  async e => await Database.updateEntityAndRefreshUI(entity, attribute,  JSON.parse( submitInputValue(e) ) )
-)
-
-let input_boolean = (entity, attribute, version) => input(
-  {value: Database.get( entity, attribute, version ) ? "1" : "0", style: `text-align: right;`}, 
-  "change", 
-  async e => await Database.updateEntityAndRefreshUI(entity, attribute,  submitInputValue(e) === "1" ? true : false )
-)
-
-let input_Entity = (entity, attribute, version) => {
-
-  let currentSelection = Database.get(entity, attribute, version)
-  return d([
-    d([
-      entityLabel(currentSelection),
-      input(
-        {
-          id: `searchBox/${entity}/${attribute}`, 
-          value: Database.getLocalState(entity)[`searchstring/${attribute}`] ? Database.getLocalState(entity)[`searchstring/${attribute}`] : ""
-        }, 
-        "input", 
-        e => {
-  
-        Database.setLocalState(entity, {[`searchstring/${attribute}`]: e.srcElement.value  })
-
-        let searchBoxElement = document.getElementById(`searchBox/${entity}/${attribute}`)
-        searchBoxElement.focus()
-        let val = searchBoxElement.value
-        searchBoxElement.value = ""
-        searchBoxElement.value = val
-
-  
-      })
-    ]),
-    isDefined( Database.getLocalState(entity)[`searchstring/${attribute}`] )
-       ? d([
-            d(Database.getLocalState(entity)[`searchstring/${attribute}`] ),
-            d(
-                new Function( ["Database"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Database )
-                .map( optionObject => optionObject.value )
-                .filter( e => {
-                  let searchString = Database.getLocalState(entity)[`searchstring/${attribute}`]
-                  let label = Database.get(e, "entity/label")
-                  let isMatch = label.toUpperCase().includes(searchString.toUpperCase())
-                  return isMatch
-
-                }  )
-                .map( ent => d([entityLabel(ent, async e => await Database.updateEntityAndRefreshUI(entity, attribute,  ent ) )] )  )
-                
-              , {class: "searchResults"})
-          ], {class: "searchResultsContainer"})
-      : d("")
-  ]) 
-} 
-
 
 let input_eventConstructor = (entity, attribute, version) => {
 
