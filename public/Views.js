@@ -407,7 +407,7 @@ let processProgressView = Company => d([
 
 let singleEventView =  (Company, Event) => d([
   h3( Database.get(Event.eventType, "entity/label") ),
-  d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  Event.get( 6161 ) ? lockedDatomView( Event.entity, attribute ) : valueView( Event , attribute )  )),
+  d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  Event.get( 6161 ) ? lockedDatomView( Event.entity, attribute ) : fullDatomView( Event , attribute )  )),
   br(),
   d([
     d( "Posisjon i tidslinjen er: " + Event.t  ),
@@ -419,6 +419,19 @@ let singleEventView =  (Company, Event) => d([
 // End ----
 
 //Entity view
+
+let attributeLabel = attribute => Database.get(attribute) 
+? d( [
+    d([
+      d([
+        span( Database.get(attribute, "entity/label"), "", {}, "click", e => Database.selectEntity(attribute) ),
+        entityLabel( Database.get(attribute, "attribute/valueType") ),
+        span(`${Database.get(attribute, "attribute/isArray") ? "Flertall" : "Entall"}`, "", {style: "background-color:#7676f385;padding: 5px;"}),
+        span("[t TBD]")
+      ],{class: "entityLabel", style: `background-color:${Database.get( 42, "entityType/color" )};`}),
+    ], {class: "popupContainer", style:"display: inline-flex;"})
+  ], {style:"display: inline-flex;"} )
+: d(`[${attribute}] Entiteten finnes ikke`)
 
 
 let adminEntityView = entity => {
@@ -436,7 +449,7 @@ let adminEntityView = entity => {
           entityLabel(entity),
         ], {class: "columns_1_1"}),
         versionView(entity),
-        d( attributes.map( attribute => valueView( Entity, attribute ) )),
+        d( attributes.map( attribute => fullDatomView( Entity, attribute ) )),
         br(),
         isDefined(calculatedFields)
           ? d( calculatedFields.map( calculatedField => calculatedFieldView( entity, calculatedField, Database.getLocalState(entity).tx ) ))
@@ -449,17 +462,7 @@ let adminEntityView = entity => {
 }
 
 
-let attributeLabel = attribute => Database.get(attribute) 
-? d( [
-    d([
-      d([
-        span( Database.get(attribute, "entity/label"), "", {}, "click", e => Database.selectEntity(attribute) ),
-        entityLabel( Database.get(attribute, "attribute/valueType") ),
-        span(`${Database.get(attribute, "attribute/isArray") ? "Flertall" : "Entall"}`, "", {style: "background-color:#7676f385;padding: 5px;"})
-      ],{class: "entityLabel", style: `background-color:${Database.get( 42, "entityType/color" )};`}),
-    ], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-: d(`[${attribute}] Entiteten finnes ikke`)
+
 
 
 let valueView = (Entity, attribute) => {
@@ -468,10 +471,8 @@ let valueView = (Entity, attribute) => {
     "30": input_text, //Tekst
     "31": input_number, //Tall
     "32": input_Entity, //Entitet
-    "33": input_object, //Array
     "37": input_multipleSelect, //Entiteter
     "34": input_function, //Funksjonstekst
-    "35": input_object, //Objekt
     "36": input_boolean, //Bool
     "38": input_datomConstructor, //valueTypeView_newDatoms,
     "39": input_eventConstructor, //valueTypeView_newDatoms,
@@ -517,6 +518,93 @@ let valueView = (Entity, attribute) => {
 
 }
 
+let fullDatomView = (Entity, attribute) => {
+
+  let tempStyle = {style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"}
+
+  let valueType = Database.get(attribute, "attribute/valueType")
+  let isArray = Database.get(attribute, "attribute/isArray")
+  let isLocked = Entity.isLocked
+
+  let storedValue = Entity.get(attribute)
+
+  let Value = isArray ? undefined : storedValue
+  let Values = isArray 
+    ? Array.isArray( storedValue )
+      ? storedValue
+      : []
+    : undefined
+
+  let formatting = {
+    "30": storedValue => storedValue, //Tekst
+    "31": storedValue => String(storedValue), //Tall
+    "5721": storedValue => moment(storedValue).format("DD/MM/YYYY"), //Dato
+  }
+
+  let unFormatting = {
+    "30": storedValue => storedValue, //Tekst
+    "31": storedValue => Number( storedValue ), //Tall
+    "5721": storedValue => Number( moment(storedValue, "DD/MM/YYYY").format("x") ) , //Dato
+  }
+
+  
+
+  let formatFunction = formatting[valueType] ? formatting[valueType] : formatting[ "30" ]
+  let unFormatFunction = unFormatting[valueType] ? unFormatting[valueType] : unFormatting[ "30" ]
+
+  
+
+  let inputElementStyle = {
+    "30": ``, //Tekst
+    "31": `text-align: right;`, //Tall
+    "5721": `text-align: right;`, //Dato
+  }
+
+  let style = inputElementStyle[ valueType ] ? inputElementStyle[ valueType ] : inputElementStyle[ "30" ]
+
+  let startValuesByType = {
+    "30": ``, //Tekst
+    "31": 0, //Tall
+    "5721": Date.now(), //Dato
+  }
+
+  let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : startValuesByType[ "30" ]
+
+  log({Entity, attribute, valueType, Value, Values, formatFunction, unFormatFunction, startValue})
+
+  return isArray
+    ? d([
+      attributeLabel( attribute ),
+      br(),
+      d([
+
+        d([
+          d( "#" ),
+          d( "Verdi" )
+        ], {class: "columns_1_1_1"}),
+
+        d( Values.map( (Value, index) => d([
+            d( String(index) ),
+            input( {value: formatFunction(Value), style}, "change", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  Values.slice(0, index ).concat( unFormatFunction( submitInputValue(e) ) ).concat( Values.slice( index + 1, Values.length  ) ) ) ),
+            d( "[ X ]", {}, "click", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  Values.filter( (Value, i) => i !== index  ) )  )
+          ], mergerino(  {class: "columns_1_1_1"}, tempStyle )) )),
+
+
+          d( "[ + ]", {}, "click", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  Values.concat( startValue ) )  )
+
+      ])
+      
+    ], tempStyle)
+    : d([
+      attributeLabel( attribute ),
+      input( {value: formatFunction(Value), style}, "change", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  unFormatFunction( submitInputValue(e) ) ) )
+    ], mergerino( {class: "columns_1_1"}, tempStyle ) ) 
+
+
+
+
+}
+
 
 let calculatedFieldView = (entity, calculatedField, version) => d([
   entityLabel(calculatedField),
@@ -535,6 +623,11 @@ let lockedDatomView = (entity, attribute, version) => {
   } catch (error) {return d(error) }
 }
 
+
+
+
+
+
 let input_text = (entity, attribute, version) => input(
   {value: Database.get( entity, attribute, version ), style: ``},
   "change", 
@@ -552,6 +645,12 @@ let input_date = (entity, attribute, version) => input(
   "change", 
   async e => await Database.updateEntityAndRefreshUI(entity, attribute, Number( moment(submitInputValue(e), "DD/MM/YYYY").format("x") )   )
 )
+
+
+
+
+
+
 
 let input_staticDropdown = (entity, attribute, version) => dropdown(
   Database.get( entity, attribute, version ),

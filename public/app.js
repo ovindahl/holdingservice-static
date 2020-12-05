@@ -33,19 +33,25 @@ const Database = {
   updateEntity: async (entity, attribute, value) => {
 
     let attr = Database.attr(attribute)
-
-
     let valueType = Database.get( attr , "attribute/valueType")
+
+
+
+
+
     let attributeIsArray = isDefined( Database.get( attr, 5823) )
       ? Database.get(attr, 5823)
       : false
+
+
+
     let valueInArray = attributeIsArray ? value : [value]
-    let isValid_existingEntity = Database.Entities.map( E => E.entity).includes(entity)
+    let isValid_existingEntity = Database.isEntity(entity)
     let valueTypeValidatorFunction = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") )
 
     let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
     let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attr), "attribute/validatorFunctionString") ) ( value )
-    let isValid_notNaN = !Number.isNaN(value)
+    let isValid_notNaN = valueInArray.every( arrayValue => !Number.isNaN(arrayValue) )
 
     //Add checks for whether attribtue is valid for the entity type?
 
