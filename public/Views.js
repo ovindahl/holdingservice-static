@@ -828,7 +828,11 @@ let booleanView = (Entity, attribute) => Database.get(attribute, "attribute/isAr
 
 let functionTextView = (Entity, attribute) => d([
   attributeLabel( attribute ),
-  d( "Funksjon: " + JSON.stringify(Entity.get(attribute)), {style: "background-color: #ff18004d;"})
+  textArea(
+    Entity.get(attribute), 
+    {class:"textArea_code"}, 
+    async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  submitInputValue(e).replaceAll(`"`, `'`) )
+  )
 ], {class: "columns_1_1", style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"} )  
 
 
