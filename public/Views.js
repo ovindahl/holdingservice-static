@@ -536,8 +536,9 @@ let fullDatomView = (Entity, attribute) => {
   let valueTypeController = {
     "30": basicInputView, //Tekst
     "31": basicInputView, //Tall
+    "34": functionTextView, //Funksjonstekst
+    "36": booleanView, //Boolean
     "32": entityReferenceView,
-    //"37": entityReferenceView, //cardinality many of above
     "5721": basicInputView, //Dato
     "38": datomConstructorView,
     "fallback":basicInputView
@@ -816,6 +817,19 @@ let entityReferenceView = (Entity, attribute) => {
 
 }
 
+
+let booleanView = (Entity, attribute) => Database.get(attribute, "attribute/isArray")
+  ? d("[TBD]")
+  : d([
+      attributeLabel( attribute ),
+      submitButton( Entity.get(attribute) ? "Sant" : "Usant", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute, Entity.get(attribute) ? false : true ) ),
+    ], {class: "columns_1_1", style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"} )  
+
+
+let functionTextView = (Entity, attribute) => d([
+  attributeLabel( attribute ),
+  d( "Funksjon: " + JSON.stringify(Entity.get(attribute)), {style: "background-color: #ff18004d;"})
+], {class: "columns_1_1", style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"} )  
 
 
 
