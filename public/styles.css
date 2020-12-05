@@ -10,7 +10,7 @@ body {background-color: #F2F3F5;}
 }
 
 .textButton {
-    padding: 1em;
+    padding: 3px;
 }
 
 .textButton_selected {
@@ -92,6 +92,13 @@ body {background-color: #F2F3F5;}
     display:grid;
     grid-template-columns: 1fr 1fr 1fr;
 }
+
+.columns_1_8_1{
+    display:grid;
+    grid-template-columns: 1fr 8fr 1fr;
+}
+
+
 
 .columns_2_4_4{
     display:grid;
