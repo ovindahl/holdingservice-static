@@ -231,26 +231,6 @@ let entityInspectorEventTimeline = (Company, event) => d([
   d( Company.getEvent(event).entities.map( companyEntity => d([companyEntityView(Company, companyEntity, Company.getEvent(event).t )], {style: "padding:5px; border: solid 1px lightgray;"})  ) )
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-let fullCompanyDatomView = (Company, companyDatom) => {
-
-  let valueType = Database.get(companyDatom.attribute, "attribute/valueType")
-  let valueView = (valueType === 32 && !isUndefined(companyDatom.value)) 
-    ? entityLabel(Number(companyDatom.value)) 
-    : (valueType === 31) 
-      ? d( String(companyDatom.value), {style: `text-align: right;`} )
-      : d( JSON.stringify(companyDatom.value) )
-
-
-  return d([
-    d( String(companyDatom.t), {style: `text-align: right;`} ),
-    entityLabel(companyDatom.event),
-    companyEntityLabel(Company, companyDatom.entity, Company.t),
-    //d( String(companyDatom.entity), {style: `text-align: right;`} ),
-    entityLabel( companyDatom.attribute ),
-    valueView,
-  ], {class: "columns_1_3_1_3_2"})
-}
-
 let companyEntityLabel = (Company, companyEntity, t) => d( [
   d([
     span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ), "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ), Database.attrName(20) )};`}),
@@ -301,7 +281,7 @@ let companyEntityView = (Company, companyEntity, t) => d([
     )
 ])
 
-let companyDatomView = (companyDatom) => {
+let companyDatomView = companyDatom => {
   let valueType = Database.get(companyDatom.attribute, "attribute/valueType")
   let valueView = (valueType === 32 && !isUndefined(companyDatom.value)) 
     ? entityLabel(Number(companyDatom.value)) 
@@ -386,7 +366,6 @@ let processView =  Company => isNumber( Company.selectedProcess)
 ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
 : d("Ingen prosess valgt.", {class: "feedContainer"})
 
-
 let processProgressView = Company => d([
   d( Database.get(Database.get(Company.selectedProcess, "process/processType"), 5926).map( (eventType, index) => d([
         entityLabel( eventType ),
@@ -423,15 +402,6 @@ let attributeLabel = attribute => Database.get(attribute)
     ], {class: "popupContainer", style:"display: inline-flex;"}),
   ], {style:"display: inline-flex;"} )
 : d(`[${attribute}] Entiteten finnes ikke`)
-
-
-/* let entityLabel = (entity, onClick) => Database.get(entity) 
-? d([
-    d([
-      span( `${Database.get(entity, "entity/label") ? Database.get(entity, "entity/label") : "[Visningsnavn mangler]"}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Database.get(entity, "entity/entityType" ), Database.attrName(20) )};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
-      entityInspectorPopup_small(entity),], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-: d(`[${entity}] Entiteten finnes ikke`) */
 
 let attributeInspectorPopup = attribute => d([
   h3(`[${attribute}] ${Database.get(attribute, "entity/label")}`),
