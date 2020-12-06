@@ -115,12 +115,7 @@ let actionButton = Action => d(
   e => {
     if(Action.isActionable){Action.actionFunction()}
     update()
-  }
-  
-  )
-
-let retractEntityButton = entity => submitButton("Slett", e => Database.retractEntity(entity) )
-let createEntityButton = entityType => submitButton("Legg til", e => Database.createEntity(entityType) )    
+  })
 
 //Basic entity views
 
@@ -421,17 +416,62 @@ let singleEventView =  (Company, Event) => d([
 //Entity view
 
 let attributeLabel = attribute => Database.get(attribute) 
-? d( [
+? d([
     d([
-      d([
-        span( Database.get(attribute, "entity/label"), "", {}, "click", e => Database.selectEntity(attribute) ),
-        entityLabel( Database.get(attribute, "attribute/valueType") ),
-        span(`${Database.get(attribute, "attribute/isArray") ? "Flertall" : "Entall"}`, "", {style: "background-color:#7676f385;padding: 5px;"}),
-        span("[t TBD]")
-      ],{class: "entityLabel", style: `background-color:${Database.get( 42, "entityType/color" )};`}),
-    ], {class: "popupContainer", style:"display: inline-flex;"})
+      span( Database.get(attribute, "entity/label"), "", {class: "entityLabel", style: `background-color:${Database.get( 42, "entityType/color" )};`}, "click", e => Database.selectEntity(attribute) ),
+      attributeInspectorPopup(attribute)
+    ], {class: "popupContainer", style:"display: inline-flex;"}),
   ], {style:"display: inline-flex;"} )
 : d(`[${attribute}] Entiteten finnes ikke`)
+
+
+/* let entityLabel = (entity, onClick) => Database.get(entity) 
+? d([
+    d([
+      span( `${Database.get(entity, "entity/label") ? Database.get(entity, "entity/label") : "[Visningsnavn mangler]"}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Database.get(entity, "entity/entityType" ), Database.attrName(20) )};`}, "click", isUndefined(onClick) ? e => Database.selectEntity(entity) : onClick ),
+      entityInspectorPopup_small(entity),], {class: "popupContainer", style:"display: inline-flex;"})
+  ], {style:"display: inline-flex;"} )
+: d(`[${entity}] Entiteten finnes ikke`) */
+
+let attributeInspectorPopup = attribute => d([
+  h3(`[${attribute}] ${Database.get(attribute, "entity/label")}`),
+  d([
+    entityLabel( 18 ),
+    entityLabel( Database.get(attribute, "attribute/valueType") )
+  ], {class: "columns_1_1"}),
+  d([
+    entityLabel( 5823 ),
+    span(`${Database.get(attribute, "attribute/isArray") ? "Flertall" : "Entall"}`, "", {style: "background-color:#7676f385;padding: 5px;"})
+  ], {class: "columns_1_1"}),
+  span("[t TBD]")
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+let positionInArrayView = (Entity, attribute, index) => d([
+  d( String(index) ),
+  moveUpButton(Entity, attribute, index),
+  moveDownButton(Entity, attribute, index)
+], {class: "columns_1_1_1"})
+
+let moveUpButton = (Entity, attribute, index) => index > 0 ? submitButton( "↑", async e => {
+  let Values = Entity.get(attribute)
+  let stillBefore = Values.filter( (Value, i) => i < (index - 1) )
+  let movedUp = Values[index]
+  let movedDown = Values[index - 1]
+  let stillAfter = Values.filter( (Value, i) => i > index )
+  let newArray = stillBefore.concat( movedUp ).concat( movedDown ).concat( stillAfter )
+  update( await Entity.replaceValue( attribute,  newArray ) )
+}   ) : d("")
+
+let moveDownButton = (Entity, attribute, index) => index < Entity.get(attribute).length - 1 ? submitButton( "↓", async e => {
+  let Values = Entity.get(attribute)
+  let stillBefore = Values.filter( (Value, i) => i < index )
+  let movedUp = Values[index + 1]
+  let movedDown = Values[index]
+  let stillAfter = Values.filter( (Value, i) => i > index +1 )
+  let newArray = stillBefore.concat( movedUp ).concat( movedDown ).concat( stillAfter )
+  update( await Entity.replaceValue( attribute,  newArray ) )
+}   ) : d("")
+
 
 
 
@@ -480,113 +520,52 @@ let lockedDatomView = (entity, attribute, version) => {
   } catch (error) {return d(error) }
 }
 
-
-
-let OLDvalueView = (Entity, attribute) => {
-
-  let genericValueTypeViews = {
-    "32": input_Entity, //Entitet
-    "37": input_multipleSelect, //Entiteter
-    "34": input_function, //Funksjonstekst
-    "36": input_boolean, //Bool
-    "39": input_eventConstructor, //valueTypeView_newDatoms,
-    "40": input_staticDropdown, //valueTypeView_staticDropdown,
-    "41": input_singleCompanyEntity, //valueTypeView_companyEntityDropdown,    
-    "5824": input_file,
-    "5849": input_eventConstructorsInProcessStep
-  }
-
-  let valueType = Database.get(attribute, "attribute/valueType")
-  let isArray = Database.get(attribute, "attribute/isArray")
-
-  if(isArray){
-
-    let values = Entity.get( attribute )
-
-    return d([
-      attributeLabel(attribute),
-      d( values.map( (singleValue, index) => {
-        let earlierValues = values.slice(0, index )
-        let laterValues = values.slice( index + 1, values.length  )
-        return d([
-          d(String(index+1)),
-          input( {value: singleValue}, "change",async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute, earlierValues.concat( submitInputValue(e) ).concat( laterValues ) )  ),
-          d("X")
-        ], {class: "columns_1_1_1"}) 
-        })
-      )
-    ], {style: "margin: 1em; padding: 1em; background-color: #8080802e;"})
-
-  }else{
-
-
-    return d([
-      attributeLabel(attribute),
-      genericValueTypeViews[ valueType ]( Entity.entity, attribute, Entity.tx )
-    ], {class: "columns_1_1"}) 
-
-  }
-
-  
-
-}
-
 let fullDatomView = (Entity, attribute) => {
 
-  let valueTypeController = {
-    "30": basicInputView, //Tekst
-    "31": basicInputView, //Tall
-    "34": functionTextView, //Funksjonstekst
-    "36": booleanView, //Boolean
-    "40": dropdownView, //Velg alternativ
-    "32": entityReferenceView,
-    "5721": basicInputView, //Dato
-    "38": datomConstructorView,
-    "5824": fileView, //File
-    "fallback": basicInputView,
+  let isArray = Database.get(attribute, "attribute/isArray")
 
-    "41": basicInputView, //Company entity [TBD]
-    "5849": basicInputView, //Konstruksjon av ny hendelse [TBD]
+  let valueTypeViews = {
+    "30": !isArray ? singleTextView : multpleSimpleValuesView, //Tekst
+    "31": !isArray ? singleNumberView : multpleSimpleValuesView, //Tall
+    "34": !isArray ? functionTextView : multpleSimpleValuesView, //Funksjonstekst
+    "36": !isArray ? booleanView : multpleSimpleValuesView, //Boolean
+    "40": !isArray ? dropdownView : multpleSimpleValuesView, //Velg alternativ
+    "32": isArray ? multipleEntitiesReferenceView : singleEntityReferenceView,
+    "5721": !isArray ? singleDateView : multpleSimpleValuesView, //Dato
+    "38": !isArray ? (Entity, attribute) => d(JSON.stringify(Entity.get(attribute))) : datomConstructorView,
+    "5824": fileView, //File
+
+    "41": isArray ? (Entity, attribute) =>  d(JSON.stringify(Entity.get(attribute))) : input_singleCompanyEntity, //Company entity [TBD]
+    "5849": isArray ? input_eventConstructorsInProcessStep : (Entity, attribute) =>  d(JSON.stringify(Entity.get(attribute))), //Konstruksjon av ny hendelse [TBD]
   }
+
 
 
   //TBD:
-  //  Last two views
+  //  Fix input_singleCompanyEntity
   //  Non-editable views
-  //  Generalize views
-  //  Move entries up/down for multiple values
-  //  Implement time/versioning/changelog on datom and entity level
   //  Associated Views for calculatedValues (same as non-editable?)
+  //  Generalize views
+  //  Implement time/versioning/changelog on datom and entity level (or value level?)
   //  Account balance value type?
 
-  let valueType = Database.get(attribute, "attribute/valueType")
-  let viewFunction = valueTypeController[valueType] ? valueTypeController[valueType] : valueTypeController[ "fallback" ]  
-  return viewFunction(Entity, attribute)
+  return d([
+    attributeLabel( attribute ),
+    valueTypeViews[ Database.get(attribute, "attribute/valueType") ](Entity, attribute)
+  ], isArray ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
 
 }
 
+let singleTextView = (Entity, attribute) => Entity.isLocked ? d( Entity.get(attribute) ) : input( {value: Entity.get(attribute)}, "change", async e => update( await Entity.replaceValue( attribute,  submitInputValue(e) ) )  )
 
+let singleNumberView = (Entity, attribute) => Entity.isLocked ? d( String( Entity.get(attribute) ) ) : input( {value: String( Entity.get(attribute) ), style: `text-align: right;` }, "change", async e => update( await Entity.replaceValue( attribute,  Number( submitInputValue(e) ) ) ) )
 
+let singleDateView = (Entity, attribute) => Entity.isLocked ? d( moment( Entity.get(attribute) ).format("DD/MM/YYYY") ) : input( {value: moment( Entity.get(attribute) ).format("DD/MM/YYYY"), style: `text-align: right;` }, "change", async e => update( await Entity.replaceValue( attribute,  Number( moment( submitInputValue(e) , "DD/MM/YYYY").format("x") ) ) ) )
 
-
-
-
-let basicInputView = (Entity, attribute) => {
-
-  let tempStyle = {style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"}
+let multpleSimpleValuesView = (Entity, attribute) => {
 
   let valueType = Database.get(attribute, "attribute/valueType")
-  let isArray = Database.get(attribute, "attribute/isArray")
   let isLocked = Entity.isLocked
-
-  let storedValue = Entity.get(attribute)
-
-  let Value = isArray ? undefined : storedValue
-  let Values = isArray 
-    ? Array.isArray( storedValue )
-      ? storedValue
-      : []
-    : undefined
 
   let formatting = {
     "30": storedValue => storedValue, //Tekst
@@ -600,20 +579,8 @@ let basicInputView = (Entity, attribute) => {
     "5721": storedValue => Number( moment(storedValue, "DD/MM/YYYY").format("x") ) , //Dato
   }
 
-  
-
   let formatFunction = formatting[valueType] ? formatting[valueType] : formatting[ "30" ]
   let unFormatFunction = unFormatting[valueType] ? unFormatting[valueType] : unFormatting[ "30" ]
-
-  
-
-  let inputElementStyle = {
-    "30": ``, //Tekst
-    "31": `text-align: right;`, //Tall
-    "5721": `text-align: right;`, //Dato
-  }
-
-  let style = inputElementStyle[ valueType ] ? inputElementStyle[ valueType ] : inputElementStyle[ "30" ]
 
   let startValuesByType = {
     "30": ``, //Tekst
@@ -623,337 +590,167 @@ let basicInputView = (Entity, attribute) => {
 
   let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : startValuesByType[ "30" ]
 
+  return d([
 
-  return isArray
-    ? d([
-        attributeLabel( attribute ),
-        br(),
         d([
+          d( "#" ),
+          d( "Verdi" )
+        ], {class: "columns_1_1_1"}),
 
-          d([
-            d( "#" ),
-            d( "Verdi" )
-          ], {class: "columns_1_1_1"}),
+        d( Entity.get(attribute).map( (Value, index) => d([
+            positionInArrayView(Entity, attribute, index),
+            input( {value: formatFunction(Value), style}, "change", async e => update( await Entity.replaceValueEntry( attribute,  index, unFormatFunction( submitInputValue(e) ) ) ) ),
+            submitButton( "[ X ]", async e => update( await Entity.removeValueEntry( attribute,  index ) )  )
+          ], {class: "columns_1_1_1", style: "margin: 5px;"} )) ),
 
-          d( Values.map( (Value, index) => d([
-              d( String(index) ),
-              input( {value: formatFunction(Value), style}, "change", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  Values.slice(0, index ).concat( unFormatFunction( submitInputValue(e) ) ).concat( Values.slice( index + 1, Values.length  ) ) ) ),
-              submitButton( "[ X ]", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  Values.filter( (Value, i) => i !== index  ) )  )
-            ], mergerino(  {class: "columns_1_1_1"}, tempStyle )) )),
-
-
-            submitButton( "[ + ]", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  Values.concat( startValue ) )  )
-
-        ])
-      
-    ], tempStyle)
-    : d([
-      attributeLabel( attribute ),
-      input( {value: formatFunction(Value), style}, "change", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  unFormatFunction( submitInputValue(e) ) ) )
-    ], mergerino( {class: "columns_1_1"}, tempStyle ) ) 
-
-
-
+          submitButton( "[ + ]", async e => update( await Entity.addValueEntry( attribute,  startValue ) )  )
+      ])
 
 }
 
-let datomConstructorView = (Entity, attribute) => {
-
-  let isArray = Database.get(attribute, "attribute/isArray")
-
-
-
-  let entity = Entity.entity
-
-  let Values = Database.get( entity, attribute )
-
-  return isArray
-  ? d([
-      attributeLabel( attribute ),
-      br(),
-        d([
-          d("#"),
-          d("EntitetID"),
-          d("Attributt"),
-          d("Verdi")
-        ], {class: "columns_1_2_2_2_1"}),
-        d(Values.map( (datom, index) => d([
-          d( String(index) ),
-          dropdown(
-            datom.entity, 
-            [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}, , {value: `return Q.latestEntityID() + 4;`, label: `Ny entitet nr. 4`}, , {value: `return Q.latestEntityID() + 5;`, label: `Ny entitet nr. 5`}],
-            async e => await Database.updateEntityAndRefreshUI(entity, attribute, mergerino(Values, {[index]: {entity: submitInputValue(e)}})  )
-            ),
-          d([
-            htmlElementObject("datalist", {id:`entity/${entity}/options`}, optionsElement( Database.getAll(42)
-              .filter( attr => attr >= 1000 ).concat(19)
-              .filter( attr => Database.get( attr, "entity/label") !== "Ubenyttet hendelsesattributt")
-              .map( attr => returnObject({value: attr, label: Database.get( attr, "entity/label")})  )
-            )),
-            input(
-              {value: Database.get(datom.attribute, "entity/label"), list:`entity/${entity}/options`, style: `text-align: right;`}, 
-              "change", 
-              async e => {
-                if(!isUndefined(submitInputValue(e))){
-                let updatedValue = mergerino(Values, {[index]: {attribute: Number(submitInputValue(e)), value: `return Event.get(${Number(submitInputValue(e))})`}})
-                await Database.updateEntityAndRefreshUI(entity, attribute, updatedValue  )
-                await Database.updateEntityAndRefreshUI(entity, "eventType/eventAttributes", Database.get(entity, "eventType/eventAttributes").concat( Number(submitInputValue(e)) ).filter(filterUniqueValues)  )
-                }
-
-              } 
-            )
-          ]),
-          textArea(datom.value, {class:"textArea_code"}, async e => await Database.updateEntityAndRefreshUI(entity, attribute, mergerino(Values, {[index]: {value: submitInputValue(e)}})  )),
-          submitButton("[Slett]", async e => await Database.updateEntityAndRefreshUI(entity, attribute, Values.filter( (d, i) => i !== index  )  )),
-        ], {class: "columns_1_2_2_2_1"}) )),
-        submitButton("Legg til", async e => await Database.updateEntityAndRefreshUI(entity, attribute, Values.concat({entity: `return Q.latestEntityID() + 1;`, attribute: 1001, value: `return ''` })  ))
-    ], {style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"})
-  : d("ERROR: Not array") 
-
-
-
-
-}
-
-let entityReferenceView = (Entity, attribute) => {
-
-  let valueType = Database.get(attribute, "attribute/valueType")
-  let isArray = Database.get(attribute, "attribute/isArray")
-  let isLocked = Entity.isLocked
-
-  let storedValue = Entity.get(attribute)
-
-  let Value = isArray ? undefined : storedValue
-  let Values = isArray 
-    ? Array.isArray( storedValue )
-      ? storedValue
-      : []
-    : undefined
-
-
-  let entity = Entity.entity
-
-  return isArray
-  ? d([
-      attributeLabel( attribute ),
-      br(),
-      d([
-        d("#"),
-        d("Entitet"),
-        d("")
-      ], {class: "columns_1_8_1"}),
-      d(Values.map( (Value, index) => d([
-        d( String(index) ),
-
-        d([
-          entityLabel(Value),
-          input(
-            {
-              id: `searchBox/${attribute}/${index}`, 
-              value: Database.getLocalState(entity)[`searchstring/${attribute}/${index}`] ? Database.getLocalState(entity)[`searchstring/${attribute}/${index}`] : ""
-            }, 
-            "input", 
-            e => {
-      
-            Database.setLocalState(entity, {[`searchstring/${attribute}/${index}`]: e.srcElement.value  })
-    
-            let searchBoxElement = document.getElementById(`searchBox/${attribute}/${index}`)
-            searchBoxElement.focus()
-            let val = searchBoxElement.value
-            searchBoxElement.value = ""
-            searchBoxElement.value = val
-    
-      
-          }),
-          isDefined( Database.getLocalState(entity)[`searchstring/${attribute}/${index}`] )
-            ? d([
-                  d(Database.getLocalState(entity)[`searchstring/${attribute}/${index}`] ),
-                  d(
-                      new Function( ["Database"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Database )
-                      .map( optionObject => optionObject.value )
-                      .filter( e => {
-                        let searchString = Database.getLocalState(entity)[`searchstring/${attribute}/${index}`]
-                        let label = Database.get(e, "entity/label")
-                        let isMatch = label.toUpperCase().includes(searchString.toUpperCase())
-                        return isMatch
-
-                      }  )
-                      .map( ent => d([entityLabel(ent, async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  Values.filter( (Value, i) => i !== index  ).concat(ent) ) )] )  )
-                      
-                    , {class: "searchResults"})
-                ], {class: "searchResultsContainer"})
-            : d("")
-        ]),
-        
-        submitButton( "[ X ]", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  Values.filter( (Value, i) => i !== index  ) )  )
-      ], {class: "columns_1_8_1", style: "border: 1px solid #80808052;"}))),
-      submitButton("[ + ]", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute, Values.concat(6)  ))
-    ], {style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"})
-  : d([
-      attributeLabel( attribute ),
-      entityLabel(Value),
+let datomConstructorView = (Entity, attribute) => d([
+  d([
+    d("#"),
+    d("EntitetID"),
+    d("Attributt"),
+    d("Verdi")
+  ], {class: "columns_1_2_2_2_1"}),
+  d(Database.get( Entity.entity, attribute ).map( (datom, index) => d([
+    positionInArrayView(Entity, attribute, index),
+    dropdown(
+      datom.entity, 
+      [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}, , {value: `return Q.latestEntityID() + 4;`, label: `Ny entitet nr. 4`}, , {value: `return Q.latestEntityID() + 5;`, label: `Ny entitet nr. 5`}],
+      async e => update( await Entity.replaceValueEntry( attribute, index, mergerino( datom, {entity: submitInputValue(e)} ) ) )
+      ),
+    d([
+      htmlElementObject("datalist", {id:`entity/${Entity.entity}/options`}, optionsElement( Database.getAll(42)
+        .filter( attr => attr >= 1000 ).concat(19)
+        .filter( attr => Database.get( attr, "entity/label") !== "Ubenyttet hendelsesattributt")
+        .map( attr => returnObject({value: attr, label: Database.get( attr, "entity/label")})  )
+      )),
       input(
-        {
-          id: `searchBox/${entity}/${attribute}`, 
-          value: Database.getLocalState(entity)[`searchstring/${attribute}`] ? Database.getLocalState(entity)[`searchstring/${attribute}`] : ""
-        }, 
-        "input", 
-        e => {
-  
-        Database.setLocalState(entity, {[`searchstring/${attribute}`]: e.srcElement.value  })
-
-        let searchBoxElement = document.getElementById(`searchBox/${entity}/${attribute}`)
-        searchBoxElement.focus()
-        let val = searchBoxElement.value
-        searchBoxElement.value = ""
-        searchBoxElement.value = val
-
-  
-      }),
-      isDefined( Database.getLocalState(entity)[`searchstring/${attribute}`] )
-       ? d([
-            d(Database.getLocalState(entity)[`searchstring/${attribute}`] ),
-            d(
-                new Function( ["Database"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Database )
-                .map( optionObject => optionObject.value )
-                .filter( e => {
-                  let searchString = Database.getLocalState(entity)[`searchstring/${attribute}`]
-                  let label = Database.get(e, "entity/label")
-                  let isMatch = label.toUpperCase().includes(searchString.toUpperCase())
-                  return isMatch
-
-                }  )
-                .map( ent => d([entityLabel(ent, async e => await Database.updateEntityAndRefreshUI(entity, attribute,  ent ) )] )  )
-                
-              , {class: "searchResults"})
-          ], {class: "searchResultsContainer"})
-      : d("")
-    ], {style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"}) 
-
-}
-
-let booleanView = (Entity, attribute) => Database.get(attribute, "attribute/isArray")
-  ? d("[TBD]")
-  : d([
-      attributeLabel( attribute ),
-      submitButton( Entity.get(attribute) ? "Sant" : "Usant", async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute, Entity.get(attribute) ? false : true ) ),
-    ], {class: "columns_1_1", style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"} )
-
-
-let functionTextView = (Entity, attribute) => Database.get(attribute, "attribute/isArray")
-? d("[TBD]")
-: d([
-  attributeLabel( attribute ),
-  textArea(
-    JSON.stringify( Entity.get(attribute)  ), 
-    {class:"textArea_code"}, 
-    async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  submitInputValue(e).replaceAll(`"`, `'`) )
-  )
-], {class: "columns_1_1", style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"} )
-
-
-let fileView = (Entity, attribute) => Database.get(attribute, "attribute/isArray")
-  ? d("[TBD]")
-  : isArray(Database.get(Entity.entity, attribute))
-    ? d( Database.get(Entity.entity, attribute).map( row => d(JSON.stringify(row)) ) )
-    : d([
-      attributeLabel( attribute ),
-      input(
-        {type: "file", style: `text-align: right;`}, 
+        {value: Database.get(datom.attribute, "entity/label"), list:`entity/${Entity.entity}/options`, style: `text-align: right;`}, 
         "change", 
-        e => {
-    
+        async e => {
+          let selectedAttribute = Number( submitInputValue(e) )
+          await Entity.replaceValueEntry( attribute, index, mergerino( datom, {attribute: Number(submitInputValue(e)), value: `return Event.get(${selectedAttribute})`} ) )
+          update( await Entity.addValueEntry( 8, selectedAttribute ) )
+      })
+    ]),
+    textArea(datom.value, {class:"textArea_code"}, async e => update( await Entity.replaceValueEntry( attribute, index, mergerino( datom, {value: submitInputValue(e)} ) ) ) ),
+    submitButton("[Slett]", async e => update( await Entity.removeValueEntry( attribute, index )  ) )
+  ], {class: "columns_1_2_2_2_1"}) )),
+  submitButton("Legg til", async e => update( await Entity.addValueEntry( attribute, {entity: `return Q.latestEntityID() + 1;`, attribute: 1001, value: `return ''` } )  ) )
+], {style: "margin: 5px;"})
+
+let entitySearchBox = (Entity, attribute, updateFunction, index) => d([
+  input({id: `searchBox/${Entity.entity}/${attribute}/${index}`, value: Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] ? Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] : ""}, "input", 
+    e => {
+    Database.setLocalState(Entity.entity, {[`searchstring/${attribute}/${index}`]: e.srcElement.value  })
+    let searchBoxElement = document.getElementById(`searchBox/${Entity.entity}/${attribute}/${index}`)
+    searchBoxElement.focus()
+    let val = searchBoxElement.value
+    searchBoxElement.value = ""
+    searchBoxElement.value = val
+  }),
+  isDefined( Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] )
+  ? d([
+        d( Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] ),
+        d( Entity.getOptions(attribute).map( optionObject => optionObject.value ).filter( e => {
+              let searchString = Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`]
+              let label = Database.get(e, "entity/label")
+              let isMatch = label.toUpperCase().includes(searchString.toUpperCase())
+              return isMatch
+            }  )
+            .map( ent => d([entityLabel(ent, updateFunction(ent) )] )  )
+            
+          , {class: "searchResults"})
+      ], {class: "searchResultsContainer"})
+  : d("")
+
+])
+
+let singleEntityReferenceView = (Entity, attribute) => d([ entityLabel( Entity.get(attribute) ), entitySearchBox(Entity, attribute, ent => async e => update( await Entity.replaceValue( attribute,  ent ) ), 1) ])
+
+let multipleEntitiesReferenceView = (Entity, attribute) => d([
+  d([
+    d(" Posisjon "),
+    d("Entitet"),
+    d("")
+  ], {class: "columns_1_8_1"}),
+  d(Entity.get(attribute).map( (Value, index) => d([
+    positionInArrayView(Entity, attribute, index),
+    d([
+      entityLabel(Value),
+      entitySearchBox(Entity, attribute, selectedEntity => async e => update( await Entity.replaceValueEntry( attribute, index, selectedEntity ) ), index)
+    ]),
+    submitButton( "[ X ]", async e => update( await Entity.removeValueEntry( attribute, index ) ) )
+  ], {class: "columns_1_8_1"}))),
+  submitButton("[ + ]", async e => update( await Entity.addValueEntry( attribute, 6 ) ) )
+])
+
+let booleanView = (Entity, attribute) => Database.get(attribute, "attribute/isArray") ? d("[TBD]") : submitButton( Entity.get(attribute) ? "Sant" : "Usant", async e => update( await Entity.replaceValue( attribute,  Entity.get(attribute) ? false : true ) ) )
+
+let functionTextView = (Entity, attribute) => Database.get(attribute, "attribute/isArray") ? d("[TBD]") : textArea( Entity.get(attribute), {class:"textArea_code"}, async e => update( await Entity.replaceValue( attribute,  submitInputValue(e).replaceAll(`"`, `'`) ) ) )
+
+let dropdownView = (Entity, attribute) => Database.get(attribute, "attribute/isArray") ? d("[TBD]") : dropdown( Entity.get( attribute ), Database.getOptions( attribute ), async e => update( await Entity.replaceValue( attribute,  submitInputValue(e) ) ))
+
+let fileView = (Entity, attribute) => Database.get(attribute, "attribute/isArray") ? d("[TBD]") : isArray(Database.get(Entity.entity, attribute))
+    ? d( Database.get(Entity.entity, attribute).map( row => d(JSON.stringify(row)) ) )
+    : input({type: "file", style: `text-align: right;`}, "change", e => {
           let file = e.srcElement.files[0]
-    
           Papa.parse(file, {
             header: true,
-            complete: results => Database.updateEntityAndRefreshUI(Entity.entity, attribute, results.data )
+            complete: async results => update( await Entity.replaceValue( attribute,  results.data ) ) 
           })
-    
-          
-    
-        } 
-      ),
-    ], {class: "columns_1_1", style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"} )
-
-
-let dropdownView = (Entity, attribute) => Database.get(attribute, "attribute/isArray")
-  ? d("[TBD]")
-  : d([
-      attributeLabel( attribute ),
-      dropdown(
-        Entity.get( attribute ),
-        Database.getOptions( attribute ),
-        async e => await Database.updateEntityAndRefreshUI(Entity.entity, attribute,  submitInputValue(e) )
+        }
       )
-    ], {class: "columns_1_1", style: "border: 1px solid #80808052;padding: 1em;margin: 5px;"} )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let input_eventConstructorsInProcessStep = (entity, attribute, version) => {
-
-  let eventConstructors = Database.get( entity, attribute, version )
-
-  return d([
+let input_eventConstructorsInProcessStep = (Entity, attribute) => d([
+  d([
     d([
-      d([
-        d("Navn på handling"),
-        d("Kriterium"),
-        d("Funksjon for å opprette"),
-        d("")
-      ], {class: "columns_1_3_3_1"}),
-      d(eventConstructors.map( (eventConstructor, eventConstructorIndex) => d([
-        input(
-          {value: eventConstructor[6], style: ``},
-          "change", 
-          async e => await Database.updateEntityAndRefreshUI(entity, attribute, eventConstructors.filter( (eventConstructor, i) => i !== eventConstructorIndex ).concat( mergerino(eventConstructor, {6: submitInputValue(e) }) ) )
-        ),
-        textArea(
-          eventConstructor[5848], 
-          {class:"textArea_code"}, 
-          async e => await Database.updateEntityAndRefreshUI(entity, attribute, eventConstructors.filter( (eventConstructor, i) => i !== eventConstructorIndex ).concat( mergerino(eventConstructor, {5848: submitInputValue(e).replaceAll(`"`, `'`)}) ) )
-        ),
-        textArea(
-          eventConstructor[5850], 
-          {class:"textArea_code"}, 
-          async e => await Database.updateEntityAndRefreshUI(entity, attribute, eventConstructors.filter( (eventConstructor, i) => i !== eventConstructorIndex ).concat( mergerino(eventConstructor, {5850: submitInputValue(e).replaceAll(`"`, `'`)}) ) )
-        ),
-        submitButton("[Slett]", async e => await Database.updateEntityAndRefreshUI(entity, attribute, eventConstructors.filter( (d, i) => i !== eventConstructorIndex  )  )),
-      ], {class: "columns_1_3_3_1"}) )),
-      submitButton("Legg til rad", async e => await Database.updateEntityAndRefreshUI(entity, attribute, eventConstructors.concat( {6: "Ny handling", 5848: "return true;", 5850: "Company.createEvent(5000, Process.entity);"} )  )),
-    ])
+      d("Navn på handling"),
+      d("Kriterium"),
+      d("Funksjon for å opprette"),
+      d("")
+    ], {class: "columns_1_3_3_1"}),
+    d(Entity.get( attribute ).map( (eventConstructor, index) => d([
+      input( {value: eventConstructor[ 6 ], style: ``}, "change", async e => update( await Entity.replaceValueEntry(attribute, index, mergerino(eventConstructor, {6: submitInputValue(e) }) ) )  ),
+      textArea( eventConstructor[5848], {class:"textArea_code"},  async e => update( await Entity.replaceValueEntry(attribute, index, mergerino(eventConstructor, {5848: submitInputValue(e).replaceAll(`"`, `'`)}) ) ) ),
+      textArea( eventConstructor[5850],  {class:"textArea_code"},  async e => update( await Entity.replaceValueEntry(attribute, index, mergerino(eventConstructor, {5850: submitInputValue(e).replaceAll(`"`, `'`)}) ) )),
+      submitButton("[Slett]", async e => update( await Entity.removeValueEntry(attribute, index ) ) )
+    ], {class: "columns_1_3_3_1"}) )),
+    submitButton("Legg til rad", async e => update( await Entity.addValueEntry(attribute, {6: "Ny handling", 5848: "return true;", 5850: "Company.createEvent(5000, Process.entity);"} ) ) )
   ])
-}
+])
 
-let input_singleCompanyEntity = (entity, attribute, version) => {
+
+
+
+
+
+
+
+
+
+
+//TBD...
+
+
+let input_singleCompanyEntity = (Entity, attribute) => {
   let company = ActiveCompany.company
-  let t = Database.get(entity, 6101)
+  let t = Database.get(Entity.entity, 6101)
   let Company = ActiveCompany.getCompanyObject(company, t)
   let optionObjects = Company.getOptions(attribute, t).concat({value: 0, label: "Ingen entitet valgt"})
 
-  let selectedOption = optionObjects.find( Option => Option.value === Database.get( entity, attribute, version ))
+  let selectedOption = optionObjects.find( Option => Option.value === Entity.get( attribute ))
   let value = isDefined(selectedOption)
   ? selectedOption.value
   : 0
 
   return d([
     dropdown( Number(value), optionObjects, async e => optionObjects.map( Option => Number(Option.value) ).includes( Number(e.srcElement.value) ) 
-    ? await Database.updateEntityAndRefreshUI(entity, attribute,  Number(submitInputValue(e)))
+    ? update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) )
     : log("Selected option not valid: ", {entity, attribute, version}, Number(e.srcElement.value))  )
   ])
 } 

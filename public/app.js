@@ -66,14 +66,9 @@ const Database = {
       Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
       return updatedEntity;
     }else{
-      console.log("Database.updateEntityAndRefreshUI did not pass validation.", {entity, attr, value, validators: {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN }})
+      console.log("Database.updateEntity did not pass validation.", {entity, attr, value, validators: {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN }})
       return null;
     }
-    
-  },
-  updateEntityAndRefreshUI: async (entity, attribute, value) => {
-    let updatedEntity = await Database.updateEntity(entity, attribute, value)
-    update( )
   },
   createEntity: async (entityType, newEntityDatoms) => {
 
@@ -173,9 +168,16 @@ const Database = {
     let serverEntity = Database.Entities.find( serverEntity => serverEntity.entity === entity  )
     let Entity = serverEntity;
     Entity.get = (attr, version) => Database.get(entity, attr, version)
+    Entity.getOptions = attr => Database.getOptions(attr)
     Entity.entityType = Entity.get("entity/entityType")
     Entity.isLocked = false;
     Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
+
+    Entity.replaceValue = async (attribute, newValue) => Database.updateEntity(entity, attribute, newValue )
+
+    Entity.addValueEntry = async (attribute, newValue) => await Entity.replaceValue( attribute,  Entity.get(attribute).concat( newValue )  )
+    Entity.removeValueEntry = async (attribute, index) => await Entity.replaceValue( attribute,  Entity.get(attribute).filter( (Value, i) => i !== index  ) )
+    Entity.replaceValueEntry = async (attribute, index, newValue) => await Entity.replaceValue( attribute,  Entity.get(attribute).filter( (Value, i) => i !== index  ).concat( newValue ) )
 
     Entity.Actions = [
       {label: "Slett", isActionable: true, actionFunction: async e => await Database.retractEntity(entity) },
