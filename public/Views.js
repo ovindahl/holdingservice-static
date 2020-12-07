@@ -266,7 +266,10 @@ let entityInspectorEventTimeline = (Company, event) => d([
 
 let companyEntityLabel = (Company, companyEntity, t) => d( [
   d([
-    span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ), "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ), Database.attrName(20) )};`}),
+    span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ), "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ), Database.attrName(20) )};`}, "click", e => {
+      Database.selectPage("Selskapets entiteter")
+      Company.selectEntity( companyEntity )
+    }),
     companyEntityInspectorPopup(Company, companyEntity, t)
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
@@ -275,7 +278,10 @@ let companyEntityInspectorPopup = (Company, companyEntity, t) => d([ companyEnti
 
 let companyEntityLabelWithoutPopup = (Company, companyEntity, t) => d( [
   d([
-    span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ), "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ), Database.attrName(20) )};`}),
+    span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ), "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ), Database.attrName(20) )};`}, "click", e => {
+      Database.selectPage("Selskapets entiteter")
+      Company.selectEntity( companyEntity )
+    }),
     d( String( Company.get(companyEntity, 19 ) ), {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
