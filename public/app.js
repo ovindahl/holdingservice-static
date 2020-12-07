@@ -439,9 +439,9 @@ const ActiveCompany = {
     }
     CompanyEntity.get = attribute => ActiveCompany.getFromCompany(company, companyEntity, attribute, t)
     CompanyEntity.entityType = CompanyEntity.get( 19 )
-    CompanyEntity.t = "TBD"
     CompanyEntity.companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity )
-    CompanyEntity.event = "TBD"
+    CompanyEntity.t = CompanyEntity.companyDatoms[0].t
+    CompanyEntity.event = CompanyEntity.companyDatoms[0].event
     return CompanyEntity
   },
   updateCompanyEvent: async (company, event, attribute, value) => {
@@ -476,9 +476,6 @@ const ActiveCompany = {
 
 let D = Database
 let Company = {}
-
-
-//let fieldsToImport = [{label: 'Sum annen langsiktig gjeld', entities: [, 1324, 1326, 1327, 1330, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum avsetning for forpliktelser', entities: [, , , , , 1318, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum bankinnskudd, kontanter og lignende', entities: [, , , , , , 1302, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum finansielle anleggsmidler', entities: [, , , , , , , 1201, 1202, 1203, 1210, 1196, 1197, 1198, 1199, 1189, 1190, 1187, 1188, 1193, 1194, 1192, 1195, 1200, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum fordringer', entities: [, , , , , , , , , , , , , , , , , , , , , , , , 1233, 1234, 1274, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum immatrielle eiendeler', entities: [, , , , , , , , , , , , , , , , , , , , , , , , , , , 1154, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum innskutt egenkapital', entities: [, , , , , , , , , , , , , , , , , , , , , , , , , , , , 1305, 1309, 1310, 1307, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum investeringer', entities: [, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , 1279, 1280, 1296, 1289, 1290, 1291, 1292, 1293, 1294, 1295, 1281, 1282, 1283, 1284, 1285, 1286, 1287, 1288, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}, {label: 'Sum kortsiktig gjeld', entities: [, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , 1373, 1375, 1376, 1388, 1340, 1341, 1337, 1338, , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , , ]}]
 
 const sideEffects = {
     isIdle: true,
@@ -555,11 +552,6 @@ let update = (  ) => {
 
 }
 
-sideEffects.configureClient();
-
-//Archive
-
-
 let init = async () => {
 
   Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
@@ -574,3 +566,6 @@ let init = async () => {
   ActiveCompany.constructCompany(company)
   update(  )
 }
+
+sideEffects.configureClient();
+
