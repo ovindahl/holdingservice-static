@@ -221,17 +221,27 @@ let sidebar_left = Company => {
 ], {style: "display:flex;"})
 }
 
-let companyActionsView = Company => d(Company.Actions.map( Action => actionButton( Action ) ), {style: "display: flex; padding: 1em;"} )
+let companyActionsView = Company => d( [
+  h3("Handlinger"),
+  d(Company.Actions.map( Action => actionButton( Action ) ), {style: "display: flex;"})
+], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )  
 
 let timelineView = Company => d([
-  companyActionsView( Company ),
+  d(""),
   d([
-      entityLabel(Company.entity),
-      d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )
-        ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-  ], {style: `display:grid;grid-template-columns: 1fr 9fr;`}),
-  d( Company.processes.map( process => processTimelineView(Company, process) )),
-])
+    d([
+      h3("Selskapets prosesser"),
+      d([
+        entityLabel(Company.entity),
+        d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+      ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`}),
+      d( Company.processes.map( process => processTimelineView(Company, process) )),
+
+    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    br(),
+    companyActionsView( Company )
+  ])
+], {class: "pageContainer"})
 
 let processTimelineView = (Company, process) => {
 
@@ -255,7 +265,10 @@ let processTimelineView = (Company, process) => {
             ], {class: "popupContainer", style:"display: inline-flex;"})
         ], {style:"display: inline-flex;"} )
       : d("-" ) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-  ], {style: `display:grid;grid-template-columns: 1fr 9fr;`})
+      
+      Company.getProcess(process).events.length == 0 ? submitButton( "[ X ]", e => Database.retractEntity( process )  ) : d("")
+      //d(Company.getProcess( process ).Actions.map( Action => actionButton( Action )  ))
+  ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`})
 }
 
 let entityInspectorEventTimeline = (Company, event) => d([
@@ -409,8 +422,7 @@ let processView =  Company => isNumber( Company.selectedProcess)
     br(),
     d([
       entityLabel(5922),
-      d(Company.getProcess( Company.selectedProcess ).Actions.map( Action => actionButton( Action) 
-      ))
+      d(Company.getProcess( Company.selectedProcess ).Actions.map( Action => actionButton( Action)  ))
     ], {class: "columns_1_1"}),
 ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
 : d("Ingen prosess valgt.", {class: "feedContainer"})

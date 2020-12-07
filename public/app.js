@@ -350,7 +350,7 @@ const ActiveCompany = {
     } 
     Company.selectProcess = process => {
       ActiveCompany.selectedProcess = process
-      ActiveCompany.selectedEvent = ActiveCompany.getProcessObject( Database.get( event, "event/process" ) ).events[0]
+      ActiveCompany.selectedEvent = ActiveCompany.getProcessObject( process ).events[0]
       update( )
     }
     Company.selectEvent = event => {
@@ -421,7 +421,7 @@ const ActiveCompany = {
       let isActionable = criteriumFunction(Database, Company, Process)
       let actionFunctionString = actionObject[5850]
       let actionFunction = isActionable 
-        ? e => new Function( ["Database", "Company", "Process"] , actionFunctionString ) (Database, Company, Company.getProcess( Company.selectedProcess ) ) 
+        ? e => new Function( ["Database", "Company", "Process"] , actionFunctionString ) (Database, Company, Company.getProcess( process ) ) 
         : undefined
 
 
