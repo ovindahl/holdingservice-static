@@ -424,7 +424,7 @@ let processProgressView = Company => d([
 
 let singleEventView =  (Company, Event) => d([
   h3( Database.get(Event.eventType, "entity/label") ),
-  d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  Event.get( 6161 ) ? lockedDatomView( Event.entity, attribute ) : fullDatomView( Event , attribute )  )),
+  d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute )  )),
   br(),
   d([
     d( "Posisjon i tidslinjen er: " + Event.t  ),

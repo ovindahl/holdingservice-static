@@ -216,7 +216,19 @@ const ActiveCompany = {
     let startTime = Date.now()
     ActiveCompany.company = company;
     ActiveCompany.companyDatoms = [];
-    ActiveCompany.events = Database.get(company, 6178) 
+    ActiveCompany.processes = Database.getAll(5692).filter( process => Database.get(process , 'process/company' ) === company  )
+      .sort( (processA, processB) => {
+        let processEventsA = ActiveCompany.getProcessObject(processA).events
+        let firstEventA = processEventsA[0]
+        let firstEventDateA = isDefined(firstEventA) ? Database.get(firstEventA, 'event/date') : Date.now()
+        let processEventsB = ActiveCompany.getProcessObject(processB).events
+        let firstEventB = processEventsB[0]
+        let firstEventDateB = isDefined(firstEventB ) ? Database.get(firstEventB , 'event/date') : Date.now()
+        return firstEventDateA - firstEventDateB;
+    })
+    
+    ActiveCompany.events = Database.getAll(46).filter( event => ActiveCompany.processes.includes( Database.get(event, "event/process") )  )
+
     let latestEntityID = 0;
     ActiveCompany.events.forEach( event => {
       let eventType = Database.get( event, "event/eventTypeEntity" )
@@ -306,7 +318,7 @@ const ActiveCompany = {
       entity: company,
       t
     }
-    Company.processes = Database.get(company, 6157)
+    Company.processes = ActiveCompany.processes
     Company.selectedProcess = ActiveCompany.selectedProcess
     Company.events = ActiveCompany.events
     Company.selectedEvent = ActiveCompany.selectedEvent
@@ -338,7 +350,7 @@ const ActiveCompany = {
     } 
     Company.selectProcess = process => {
       ActiveCompany.selectedProcess = process
-      ActiveCompany.selectedEvent = Database.get(process, 6088)[0]
+      ActiveCompany.selectedEvent = ActiveCompany.getProcessObject( Database.get( event, "event/process" ) ).events[0]
       update( )
     }
     Company.selectEvent = event => {
@@ -395,8 +407,8 @@ const ActiveCompany = {
 
     let Process = Database.get(process)
     Process.processType =  Database.get(process, "process/processType" )
-    
-    Process.events = Process.get(6088)
+
+    Process.events = Database.getAll(46).filter( event => Database.get(event, 'event/process') === process ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) )
     Process.getEventEntityByIndex = index => Process.events[index]
     Process.getEventByIndex = index => Database.get( Process.getEventEntityByIndex(index) )
     Process.getFirstEvent = () => Process.getEventByIndex(  0 )
