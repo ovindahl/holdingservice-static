@@ -138,19 +138,6 @@ let entityRedlinedValue = (value, prevValue) => d( [
 
 //Page frame
 
-let adminPanelView = Company => d([
-  d([
-    d([
-      d("Status Database"),
-      d("Ledig", {id: "APISYNCSTATUS"}),
-    ], {class: "columns_1_1"}),
-    d([
-      d("Versjon Database"),
-      input({value: Database.tx, disabled: "disabled"})
-    ], {class: "columns_1_1"}),
-  ]),
-], {class: "columns_1_1", style: "background-color:gray;"}) 
-
 let headerBarView = Company => d([
   d('<header><h1>Holdingservice Beta</h1></header>'),
   d([
@@ -159,17 +146,10 @@ let headerBarView = Company => d([
   ], {style: "display:flex;"} )
 ], {style: "padding-left:3em; display:flex; justify-content: space-between;"})
 
-let companySelectionMenuRow = Company => d([
-  d( Database.getAll( 5722 ).map( company => d([entityLabel(company, e => Database.selectCompany(company))], {style: company === Company.entity ? "background-color: #bfbfbf;" : ""})), {style: "display:flex;"}),
-  submitButton( "+", e => console.log("NEW COMPANY") )
-], {style: "display:flex;"}) 
-
 let pageSelectionMenuRow = Company => d( ["Prosesser", "Tidslinje", "Selskapets entiteter", "Admin/DB"].map( pageName => d( pageName, {class: pageName === Database.selectedPage ? "textButton textButton_selected" : "textButton"}, "click", e => Database.selectPage(pageName) ) ), {style: "display:flex;"})
 
 let generateHTMLBody = Company => [
-  adminPanelView( Company ),
   headerBarView( Company ),
-  companySelectionMenuRow( Company ),
   pageSelectionMenuRow( Company ),
   pageRouter[ Database.selectedPage ]( Company ),
 ]
@@ -200,9 +180,14 @@ let sidebar_left = Company => {
 
 let timelineView = Company => d([
   d([
-    entityLabel(Company.entity),
-    d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )
-      ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+    dropdown(Company.entity, Database.getAll( 5722 ).map( company => returnObject({value: company, label: Database.get(company, "entity/label")} )), e =>  Database.selectCompany( Number( submitInputValue(e) ) )  ),
+    span(" / "  ),
+    dropdown("Tidslinje", ["Prosesser", "Tidslinje", "Selskapets entiteter"].map( pageName => returnObject({value: pageName, label: pageName} )  ), e => Database.selectPage(submitInputValue(e)) ),
+  ], {style: "padding: 1em;"}),
+  d([
+      entityLabel(Company.entity),
+      d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )
+        ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
   ], {style: `display:grid;grid-template-columns: 1fr 9fr;`}),
   d( Company.processes.map( process => processTimelineView(Company, process) ))
 
@@ -240,6 +225,13 @@ let companyEntityLabel = (Company, companyEntity, t) => d( [
 
 let companyEntityInspectorPopup = (Company, companyEntity, t) => d([ companyEntityView(Company, companyEntity, t) ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
+let companyEntityLabelWithoutPopup = (Company, companyEntity, t) => d( [
+  d([
+    span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ), "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ), Database.attrName(20) )};`}),
+    d( String( Company.get(companyEntity, 19 ) ), {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+  ], {class: "popupContainer", style:"display: inline-flex;"})
+], {style:"display: inline-flex;"} )
+
 
 let companyDocPage = Company => {
 
@@ -256,29 +248,41 @@ let companyDocPage = Company => {
             )))
     ], {class: "columns_1_1"}),
     d([
-      isDefined( Company.get(Company.selectedEntity) )
-        ? companyEntityView(Company, Company.selectedEntity, Company.t)
-        : d("Ingen entitet valgt.")
-
-    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-    d("")
+      d([
+        dropdown(Company.entity, Database.getAll( 5722 ).map( company => returnObject({value: company, label: Database.get(company, "entity/label")} )), e =>  Database.selectCompany( Number( submitInputValue(e) ) )  ),
+        span(" / "  ),
+        dropdown("Selskapets entiteter", ["Prosesser", "Tidslinje", "Selskapets entiteter"].map( pageName => returnObject({value: pageName, label: pageName} )  ), e => Database.selectPage(submitInputValue(e)) ),
+        span(" / "  ),
+        isDefined(Company.selectedEntity)
+          ? entityLabel( Company.get(Company.selectedEntity, 19)  )
+          : span(" ... "),
+        span(" / "  ),
+        isDefined(Company.selectedEntity)
+          ? companyEntityLabelWithoutPopup( Company, Company.selectedEntity )
+          : span("Ingen entitet valgt.")
+      ], {style: "padding: 1em;"}),
+      d([
+      
+        isDefined( Company.get(Company.selectedEntity) )
+          ? companyEntityView(Company, Company.selectedEntity )
+          : d("Ingen entitet valgt.")
+  
+      ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+      d("")
+    ])
+    
   ], {class: "pageContainer"})
 
 }
 
-let companyEntityView = (Company, companyEntity, t) => d([
+let companyEntityView = (Company, companyEntity ) => d([
   d("<br>"),
   span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ) , "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ) , Database.attrName(20) )};`}),
   d("<br>"),
-  d(`Etter hendelse ${t} (${moment( Company.getEvent( Company.events[ t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
+  d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
   d("<br>"),
-  d(Company.get(companyEntity, undefined, t).companyDatoms.map( companyDatom => companyDatomView(companyDatom) )),
-  d( 
-    Database.get( Company.get(companyEntity, 19 ), "entityType/calculatedFields" ).map( calculatedField => d([
-      entityLabel(calculatedField),
-      d(JSON.stringify( Company.get(companyEntity, calculatedField, t) ))
-    ], {class: "columns_1_1"})    )
-    )
+  d(Company.get(companyEntity, undefined).companyDatoms.map( companyDatom => companyDatomView(companyDatom) )),
+  d( Database.get( Company.get(companyEntity, 19 ), "entityType/calculatedFields" ).map( companyCalculatedField => companyCalculatedFieldView(Company, companyEntity, companyCalculatedField)))
 ])
 
 let companyDatomView = companyDatom => {
@@ -294,14 +298,45 @@ let companyDatomView = companyDatom => {
     valueView
   ], {class: "columns_1_1"})
 
+}
 
+
+let companyCalculatedFieldView = (Company, companyEntity, companyCalculatedField) => {
+
+  let value = Company.get(companyEntity, companyCalculatedField)
+  let valueType = Database.get(companyCalculatedField, "attribute/valueType")
+  let isArray = Database.get(companyCalculatedField, "attribute/isArray")
+  let valueView = (valueType === 41 && !isUndefined(value)) 
+    ? isArray
+      ? d(value.map( v => companyEntityLabelWithoutPopup(Company, v, Company.t) ))
+      : companyEntityLabelWithoutPopup(Company, value, Company.t)
+    : d( JSON.stringify(value) )
+
+  return d([
+    entityLabel(companyCalculatedField),
+    valueView
+  ], {class: "columns_1_1"})
 
 }
 
 let adminPage = Company => d([
   sidebar_left( Company ),
-  adminEntityView( Database.selectedEntity ),
-  d("")
+  d([
+    d([
+      span( "Holdingservice sin database" ),
+      span(" / "  ),
+      isDefined(Database.selectedEntity)
+        ? entityLabel( Database.get(Database.selectedEntity).entityType   )
+        : span(" ... "),
+      span(" / "  ),
+      isDefined(Database.selectedEntity)
+        ? entityLabel( Database.selectedEntity   )
+        : span("Ingen entitet valgt.")
+    ], {style: "padding: 1em;"}),
+    adminEntityView( Database.selectedEntity ),
+  ])
+  
+  
 ], {class: "pageContainer"})
 
 let versionView = entity => {
@@ -341,7 +376,23 @@ let processesView = Company => d([
       h3("Tillatte handlinger på selskapsnivå"),
       d(Company.Actions.map( Action => actionButton( Action ) ) ),
   ]),
-  processView( Company )
+  d([
+    d([
+      dropdown(Company.entity, Database.getAll( 5722 ).map( company => returnObject({value: company, label: Database.get(company, "entity/label")} )), e =>  Database.selectCompany( Number( submitInputValue(e) ) )  ),
+      span(" / "  ),
+      dropdown("Prosesser", ["Prosesser", "Tidslinje", "Selskapets entiteter"].map( pageName => returnObject({value: pageName, label: pageName} )  ), e => Database.selectPage(submitInputValue(e)) ),
+      span(" / "  ),
+      isDefined( Company.selectedProcess )
+        ? entityLabel( Company.selectedProcess  )
+        : span(" ... "),
+      span(" / "  ),
+      isDefined(Company.selectedEvent)
+        ? entityLabel( Company.selectedEvent  )
+        : span("Ingen hendelse valgt.")
+    ], {style: "padding: 1em;"}),
+    processView( Company )
+  ])
+  
 ], {class: "pageContainer"})
 
 let processView =  Company => isNumber( Company.selectedProcess)
