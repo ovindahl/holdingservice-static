@@ -1,6 +1,6 @@
 const Database = {
   tx: null,
-  selectedPage: "Prosesser",
+  selectedPage: "Tidslinje",
   selectedEntity: 1,
   Entities: [],
   entities: [],

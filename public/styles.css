@@ -24,6 +24,7 @@ body {background-color: #F2F3F5;}
 
 .actionButton {
     padding: 3px;
+    margin: 3px;
     background-color: #9af6ff;
     max-width: 200px;
 }
