@@ -330,7 +330,8 @@ const ActiveCompany = {
         newDatom(`newEntity`, "event/date", Date.now() )
       ])
       ActiveCompany.constructCompany(company)
-      update()
+      return newEvent;
+      //update()
     }
     
 
