@@ -108,7 +108,13 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
   onClick(e)
 }  )
 
-let actionButton = Action => Action.isActionable ? submitButton( Action.label, async e => update(  await Action.actionFunction() ) ) : d( Action.label, {style: "background-color: gray;"} ) 
+let actionButton = Action => Action.isActionable ? submitButton( Action.label, async e => {
+
+  let updateResults = await Action.actionFunction()
+  log({updateResults})
+  update(    )
+
+}  ) : d( Action.label, {style: "background-color: gray;"} ) 
 
 //Basic entity views
 
@@ -205,11 +211,6 @@ let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompar
 
 
 
-let companyActionsView = Company => d( [
-  h3("Handlinger"),
-  d(Company.Actions.map( Action => actionButton( Action ) ), {style: "display: flex;"})
-], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )  
-
 let timelineView = Company => d([
     d([
       h3("Selskapets prosesser"),
@@ -218,9 +219,48 @@ let timelineView = Company => d([
         d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
       ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`}),
       d( Company.processes.map( process => processTimelineView(Company, process) ) ),
-    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+      br(),
+      d([
+        h3("Handlinger"),
+        d(Company.Actions.map( Action => actionButton( Action ) ), {style: "display: flex;"})
+      ])  
+    ], {class: "feedContainer"}),
     br(),
-    companyActionsView( Company ),
+    d([
+      h3("Balanse"),
+      d([
+        d([
+          h3("Eiendeler"),
+          d("Anleggsmidler"),
+          d( Company.getAll(5812).map( security => d([
+            companyEntityLabel(Company, security),
+            companyCalculatedFieldView(Company, security, 6184)
+            ], {class: "columns_1_1"})   ) ),
+          companyCalculatedFieldView(Company, 1, 6275),
+          br(),
+          d("Omløpsmidler"),
+          companyCalculatedFieldView(Company, 1, 6274),
+          br(),
+        ]),
+        d([
+          h3("Gjeld og egenkapital"),
+          d("Egenkapital"),
+          d( Company.getAll(5673).map( security => d([
+            companyEntityLabel(Company, security),
+            companyCalculatedFieldView(Company, security, 6089)
+            ], {class: "columns_1_1"})   ) ),
+          br(),
+          d("Gjeld"),
+          d( Company.getAll(5811).map( security => d([
+            companyEntityLabel(Company, security),
+            companyCalculatedFieldView(Company, security, 6190)
+            ], {class: "columns_1_1"})   ) ),
+         
+        ]),
+      ], {class: "columns_1_1"})
+    ], {class: "feedContainer"}),
+    br(),
+    
     br(),
     d([
       h3("Selskapets entiteter"),
@@ -229,7 +269,7 @@ let timelineView = Company => d([
         d( Company.getAll(entityType).map( companyEntity => companyEntityLabel(Company, companyEntity) ) ),
         br()
       ])))
-    ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    ], {class: "feedContainer"}),
   ])
 
 let processTimelineView = (Company, process) => {
@@ -256,10 +296,16 @@ let processTimelineView = (Company, process) => {
 }
 
 let entityInspectorEventTimeline = (Company, event) => d([
-  entityLabel(event),
-  br(),
-  d( Company.getEvent(event).entities.map( companyEntity => d([companyEntityView(Company, companyEntity, Company.getEvent(event).t )], {style: "padding:5px; border: solid 1px lightgray;"})  ) )
-], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+  h3(`[${event}] Hendelse`),
+  d([
+    attributeLabel(6),
+    entityLabel(event),
+  ], {class: "columns_1_1"}),
+  d([
+    attributeLabel(1757),
+    d(moment( Company.get(event, 1757) ).format("DD/MM/YYYY"))
+  ], {class: "columns_1_1"})
+], {class: "entityInspectorPopup feedContainer"})
 
 let companyEntityLabel = (Company, companyEntity, t) => d( [
   d([
@@ -373,6 +419,12 @@ let eventView =  Company => {
     d([
       h3( Database.get(Event.eventType, "entity/label") ),
       d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute )  )),
+      br(),
+      actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
+        await Event.retract()
+        ClientApp.updateState({selectedEntity: isDefined(Event.prevEvent) ? Event.prevEvent : undefined })
+        update(  )
+      }   })
     ], {class: "feedContainer"} ),
     br(),
     d([

@@ -221,7 +221,7 @@ const ActiveCompany = {
       let eventType = Database.get( event, "event/eventTypeEntity" )
       let t = ActiveCompany.events.findIndex( e => e === event  ) + 1
       let Company = ActiveCompany.getCompanyObject(company, t - 1)
-      let Event = Database.get(event)
+      let Event = Company.getEvent(event)
       let Process = Company.getProcess( Database.get(event, "event/process") )
       Process.getPrevEvent = () => Process.getEventByIndex(  Process.events.findIndex( e => e === event ) - 1 ) //Flytte til event?
       let eventDatoms = Database.get( eventType, "eventType/newDatoms" ).map( datomConstructor => {
@@ -302,54 +302,59 @@ const ActiveCompany = {
       t
     }
     Company.processes = ActiveCompany.processes
-    Company.selectedProcess = ActiveCompany.selectedProcess
     Company.events = ActiveCompany.events
-    Company.selectedEvent = ActiveCompany.selectedEvent
     Company.companyDatoms = ActiveCompany.companyDatoms
     Company.entityTypes = Database.getAll(47).filter( entity => Database.get(entity, "entity/category") === "Entitetstyper i selskapsdokumentet" )
     Company.entities = Company.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
-    Company.selectedEntity = ActiveCompany.selectedEntity
     Company.get = (entity, attribute, providedT) => ActiveCompany.getFromCompany(company, entity, attribute, isDefined(providedT) ? providedT : t)
     Company.getAll = entityType => ActiveCompany.getAllFromCompany(company, entityType, t)
-    Company.getEvent = event =>  ActiveCompany.getEventObject(event)
+    
     Company.getProcess = process =>  ActiveCompany.getProcessObject( process )
+    Company.getEvent = event =>  ActiveCompany.getEventObject(event)
     Company.getOptions = attribute =>  ActiveCompany.getCompanyOptions(company, attribute, t)
     Company.getCompanyEntity = companyEntity =>  ActiveCompany.getCompanyEntityObject(company, companyEntity, t)
 
     Company.storeDatoms = Datoms => ActiveCompany.storeDatoms(Datoms)
-    Company.updateEvent = async (event, attribute, value) => await ActiveCompany.updateCompanyEvent(company, event, attribute, value)
-    Company.createEvent = async (eventType, parentProcess, attributeAssertions) => await ActiveCompany.createCompanyEvents(company, eventType, parentProcess, [ isDefined(attributeAssertions) ? attributeAssertions : {} ])
-    Company.createEvents = async (eventType, parentProcess, attributeAssertions) => await ActiveCompany.createCompanyEvents(company, eventType, parentProcess, attributeAssertions)
-    Company.retractEvents = async events => {
-      let entities = Array.isArray(events) ? events : [events]
-      let retractedEvent = await Database.retractEntities(entities)
-      //ActiveCompany.constructCompany(company)
-      update( )
-    }
 
-    Company.selectEntity = companyEntity => {
-      ActiveCompany.selectedEntity = companyEntity
-      update( )
-    } 
-    Company.selectProcess = process => {
-      ActiveCompany.selectedProcess = process
-      ActiveCompany.selectedEvent = ActiveCompany.getProcessObject( process ).events[0]
-      update( )
+
+
+
+    //WIP //WIP //WIP
+    
+    Company.updateEvent = async (event, attribute, value) => await ActiveCompany.updateCompanyEvent(company, event, attribute, value)
+    Company.createEvent = async (eventType, process) => {
+
+      let newEvent = await Database.createEntity(46, [
+        newDatom(`newEntity`, "event/eventTypeEntity", eventType),
+        newDatom(`newEntity`, "event/process", process),
+        newDatom(`newEntity`, "event/date", Date.now() )
+      ])
+      ActiveCompany.constructCompany(company)
+      update()
     }
-    Company.selectEvent = event => {
-      ActiveCompany.selectedEvent = event
-      ActiveCompany.selectedProcess = Database.get( event, "event/process" )
-      update( )
-    }
+    
+
+
 
     Company.createProcess = async processType => {
-      await Database.createEntity(5692, [
+      let newProcess = await Database.createEntity(5692, [
         newDatom( "newEntity" , "process/company", company  ),
         newDatom( "newEntity" , "process/processType", processType ),
         newDatom( "newEntity" , "entity/label", `${Database.get(processType, "entity/label")} for ${Database.get(Company.entity, "entity/label")}`  ),
       ] )
-      ActiveCompany.constructCompany(company)
+      let newEvent = await Company.createEvent( Database.get(processType, 5926)[0] , newProcess.entity )
+      
+
+      ActiveCompany.processes = ActiveCompany.processes.concat(newProcess.entity)
+      Company.processes = ActiveCompany.processes
+      ActiveCompany.events = ActiveCompany.events.concat(newEvent.entity)
+      Company.events = ActiveCompany.events
+
+      return log({newProcess,newEvent})
     } 
+    
+    //WIP //WIP //WIP
+
 
     Company.Actions = ActiveCompany.Actions
     return Company
@@ -404,12 +409,10 @@ const ActiveCompany = {
     Process.getEventEntityByIndex = index => Process.events[index]
     Process.getEventByIndex = index => Database.get( Process.getEventEntityByIndex(index) )
     Process.getFirstEvent = () => Process.getEventByIndex(  0 )
-
-
-
     Process.retract = async () => {
       await Database.retractEntity(process)
       ActiveCompany.constructCompany(Process.company)
+      ClientApp.updateState({selectedEntity: undefined})
     }
 
     Process.Actions = Database.get(Process.processType, "processType/actions").map( actionObject => {
@@ -440,9 +443,23 @@ const ActiveCompany = {
     Event.eventType = Database.get( event, "event/eventTypeEntity" )
     Event.process = Database.get( event, "event/process" )
     Event.processType = Database.get( Event.process, "process/processType" )
+    Event.company = Database.get( Event.process , "process/company" )
     Event.t = ActiveCompany.events.findIndex( e => e === event  ) + 1
     Event.companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.event === event )
     Event.entities = Event.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
+
+
+    Event.prevEvent = ActiveCompany.getProcessObject( Event.process ).events[  ActiveCompany.getProcessObject( Event.process ).events.findIndex( e => e === event ) - 1 ]
+
+    Event.getPrevEvent = () => ActiveCompany.getEventObject( Event.prevEvent )
+
+
+    Event.retract = async () => {
+      await Database.retractEntity(event)
+      ActiveCompany.constructCompany(Event.company)
+    }
+
+
     return Event
   },
   getCompanyEntityObject: (company, companyEntity, t) => {
@@ -463,7 +480,21 @@ const ActiveCompany = {
     update( )
   },
   createCompanyEvents: async (company, eventType, parentProcess, attributeAssertions) => {
-    let eventTypeAttributes = Database.get(eventType, "eventType/eventAttributes" )
+
+
+
+
+    let newEvent = await Database.createEntity(46, [
+      newDatom(`newEntity`, "event/eventTypeEntity", eventType),
+      newDatom(`newEntity`, "event/process", parentProcess),
+      newDatom(`newEntity`, "event/date", Date.now() )
+    ])
+
+    log({newEvent})
+
+    return newEvent
+
+    /* let eventTypeAttributes = Database.get(eventType, "eventType/eventAttributes" )
     let Datoms = attributeAssertions.map( (attributeAssertion, index) => [
       newDatom(`newEntity ${index}`, "entity/entityType", 46 ),
       newDatom(`newEntity ${index}`, "event/eventTypeEntity", eventType),
@@ -480,10 +511,10 @@ const ActiveCompany = {
       let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( Datoms ) )
       let updatedEntities = serverResponse
       Database.Entities = Database.Entities.filter( Entity => !updatedEntities.map( updatedEntity => updatedEntity.entity  ).includes(Entity.entity) ).concat( updatedEntities )
-      Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-      //ActiveCompany.constructCompany(company)
-      update( )
-    }else{log("Datoms not valid: ", Datoms)}
+
+
+
+    }else{log("Datoms not valid: ", Datoms)} */
   },
 }
 
