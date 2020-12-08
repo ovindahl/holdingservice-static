@@ -135,7 +135,7 @@ const Database = {
       if( isDefined(attribute) ){
         if( Database.isAttribute(attribute) ){
           let Datom = Database.getDatom(entity, attribute, version)
-          if(isUndefined(Datom)){return log(undefined, `[ Database.get(${entity}, ${attribute}, ${version}) ]: No attribute ${attribute} datoms exist for entity ${entity}`)}
+          if(isUndefined(Datom)){return undefined} //, `[ Database.get(${entity}, ${attribute}, ${version}) ]: No attribute ${attribute} datoms exist for entity ${entity}`)}
           else{ return Datom.value}
         }else if( Database.isCalculatedField(attribute) ){return Database.getCalculatedField(entity, attribute) } //returns calculatedField
       }else{return Database.getEntity(entity)}
@@ -278,11 +278,7 @@ const ActiveCompany = {
 
       let label = "Ny prosess av typen: " + Database.get(processType, "entity/label");
       let isActionable = true;
-      let actionFunction = async e => await Database.createEntity(5692, [
-        newDatom( "newEntity" , "process/company", Company.entity  ),
-        newDatom( "newEntity" , "process/processType", processType ),
-        newDatom( "newEntity" , "entity/label", `${Database.get(processType, "entity/label")} for ${Database.get(Company.entity, "entity/label")}`  ),
-      ] )
+      let actionFunction = async e => await Company.createProcess( processType )
 
       let Action = {label, isActionable, actionFunction}
 
@@ -293,9 +289,7 @@ const ActiveCompany = {
 
 
 
-    ActiveCompany.Actions = [
-      {label: "test", isActionable: true, actionFunction: async e => console.log("This is an action on company level")}
-    ].concat(newProcessActions)
+    ActiveCompany.Actions = newProcessActions
     
   },
   getCompanyObject: (company, receivedT) => {
@@ -348,6 +342,14 @@ const ActiveCompany = {
       update( )
     }
 
+    Company.createProcess = async processType => {
+      await Database.createEntity(5692, [
+        newDatom( "newEntity" , "process/company", company  ),
+        newDatom( "newEntity" , "process/processType", processType ),
+        newDatom( "newEntity" , "entity/label", `${Database.get(processType, "entity/label")} for ${Database.get(Company.entity, "entity/label")}`  ),
+      ] )
+      ActiveCompany.constructCompany(company)
+    } 
 
     Company.Actions = ActiveCompany.Actions
     return Company
@@ -396,11 +398,19 @@ const ActiveCompany = {
 
     let Process = Database.get(process)
     Process.processType =  Database.get(process, "process/processType" )
+    Process.company = Database.get(process, "process/company" )
 
     Process.events = Database.getAll(46).filter( event => Database.get(event, 'event/process') === process ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) )
     Process.getEventEntityByIndex = index => Process.events[index]
     Process.getEventByIndex = index => Database.get( Process.getEventEntityByIndex(index) )
     Process.getFirstEvent = () => Process.getEventByIndex(  0 )
+
+
+
+    Process.retract = async () => {
+      await Database.retractEntity(process)
+      ActiveCompany.constructCompany(Process.company)
+    }
 
     Process.Actions = Database.get(Process.processType, "processType/actions").map( actionObject => {
 
@@ -483,7 +493,8 @@ const ActiveCompany = {
 const ClientApp = {
   S: {
     selectedPage: "Tidslinje",
-    selectedCompany: 5723
+    selectedCompany: 5723,
+    selectedEntity: undefined
   },
   updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
   replaceState: newState => ClientApp.S = newState,
