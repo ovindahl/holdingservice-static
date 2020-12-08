@@ -156,6 +156,7 @@ const Database = {
     Entity.get = (attr, version) => Database.get(entity, attr, version)
     Entity.getOptions = attr => Database.getOptions(attr)
     Entity.entityType = Entity.get("entity/entityType")
+    Entity.label = Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
     Entity.isLocked = false;
     Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
 

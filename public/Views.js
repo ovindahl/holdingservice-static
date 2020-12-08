@@ -122,7 +122,7 @@ let actionButton = Action => d(
 let entityLabel = (entity, onClick) => Database.get(entity) 
 ? d( [
     d([
-      span( `${Database.get(entity, "entity/label") ? Database.get(entity, "entity/label") : "[Visningsnavn mangler]"}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Database.get(entity, "entity/entityType" ), Database.attrName(20) )};`}, "click", isUndefined(onClick) ? e => update(AdminApp.updateState({selectedEntity: entity}))  : onClick ),
+      span( `${Database.getEntity(entity).label}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Database.get(entity, "entity/entityType" ), Database.attrName(20) )};`}, "click", isUndefined(onClick) ? e => update(AdminApp.updateState({selectedEntity: entity}))  : onClick ),
       entityInspectorPopup_small(entity),], {class: "popupContainer", style:"display: inline-flex;"})
   ], {style:"display: inline-flex;"} )
 : d(`[${entity}] Entiteten finnes ikke`)
@@ -614,7 +614,7 @@ let fullDatomView = (Entity, attribute) => {
 
 }
 
-let singleTextView = (Entity, attribute) => Entity.isLocked ? d( Entity.get(attribute) ) : input( {value: Entity.get(attribute)}, "change", async e => update( await Entity.replaceValue( attribute,  submitInputValue(e) ) )  )
+let singleTextView = (Entity, attribute) => Entity.isLocked ? d( Entity.get(attribute) ) : input( {value: Entity.get(attribute), style: isDefined(Entity.get(attribute)) ? "" : "background-color: red;" }, "change", async e => update( await Entity.replaceValue( attribute,  submitInputValue(e) ) )  )
 
 let singleNumberView = (Entity, attribute) => Entity.isLocked ? d( String( Entity.get(attribute) ) ) : input( {value: String( Entity.get(attribute) ), style: `text-align: right;` }, "change", async e => update( await Entity.replaceValue( attribute,  Number( submitInputValue(e) ) ) ) )
 
@@ -703,7 +703,9 @@ let multipleEntitiesReferenceRowView = (Entity, attribute, index) => d([
   entitySearchBox(Entity, attribute, selectedEntity => async e => update( await Entity.replaceValueEntry( attribute, index, selectedEntity ) ), index)
 ])
 
-let booleanView = (Entity, attribute) => Database.get(attribute, "attribute/isArray") ? d("[TBD]") : submitButton( Entity.get(attribute) ? "Sant" : "Usant", async e => update( await Entity.replaceValue( attribute,  Entity.get(attribute) ? false : true ) ) )
+let booleanView = (Entity, attribute) => Database.get(attribute, "attribute/isArray") ? d("[TBD]") : isDefined(Entity.get(attribute))
+ ? submitButton( Entity.get(attribute) ? "Sant" : "Usant", async e => update( await Entity.replaceValue( attribute,  Entity.get(attribute) ? false : true ) ) )
+ : d("Verdi mangler", {style: "background-color: #ff36366b;" }, "click", async e => update( await Entity.replaceValue( attribute,  Entity.get(attribute) ? false : true ) ) )
 
 let functionTextView = (Entity, attribute) => Database.get(attribute, "attribute/isArray") ? d("[TBD]") : textArea( Entity.get(attribute), {class:"textArea_code"}, async e => update( await Entity.replaceValue( attribute,  submitInputValue(e).replaceAll(`"`, `'`) ) ) )
 
