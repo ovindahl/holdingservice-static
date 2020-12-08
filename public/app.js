@@ -438,6 +438,8 @@ const ActiveCompany = {
   getEventObject: event => {
     let Event = Database.get( event )
     Event.eventType = Database.get( event, "event/eventTypeEntity" )
+    Event.process = Database.get( event, "event/process" )
+    Event.processType = Database.get( Event.process, "process/processType" )
     Event.t = ActiveCompany.events.findIndex( e => e === event  ) + 1
     Event.companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.event === event )
     Event.entities = Event.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)

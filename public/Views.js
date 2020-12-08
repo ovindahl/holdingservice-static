@@ -108,11 +108,7 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
   onClick(e)
 }  )
 
-let actionButton = Action => d(
-  Action.label, 
-  {class: "actionButton", style: Action.isActionable ? "" : "background-color: darkgray;"}, 
-  Action.isActionable ? "click" : undefined,
-  async e => update( Action.isActionable ? await Action.actionFunction() : log(undefined, {info: "Action not actionable: ", Action}) ) )
+let actionButton = Action => Action.isActionable ? submitButton( Action.label, async e => update(  await Action.actionFunction() ) ) : d( Action.label, {style: "background-color: gray;"} ) 
 
 //Basic entity views
 
@@ -136,7 +132,7 @@ let entityRedlinedValue = (value, prevValue) => d( [
 //Page frame
 let isEvent = entity => entity > 1000
 
-let adminPage = Company => d([
+let adminPage = () => d([
     d([d('<header><h1>Holdingservice Admin</h1></header>'),d([submitButton("Bytt til klient", e => update( ClientApp.updateState({selectedPage: "Prosesser"}) ) )], {style: "display:flex;"} )], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
     d([
       span( "Holdingservice sin database" ),
@@ -150,10 +146,25 @@ let adminPage = Company => d([
         : span("Ingen entitet valgt.")
     ], {style: "padding: 1em;"}),
     d([
-      sidebar_left( Company ),
+      sidebar_left( ),
       adminEntityView( AdminApp.S.selectedEntity ),
     ], {class: "pageContainer"})
   ])
+
+  let sidebar_left = () => {
+    let selectedEntityType = Database.get(AdminApp.S.selectedEntity, "entity/entityType")
+    let selectedCategory = Database.get(AdminApp.S.selectedEntity, "entity/category")
+    return d([
+      d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687, 5817, 5722].map( entityType => entityLabel(entityType, e => update(AdminApp.updateState({selectedEntity:  Database.getAll(entityType)[0] })) )) ),
+      d( Database.getAll( selectedEntityType   ).map( entity => Database.get(entity, "entity/category" ) ).filter(filterUniqueValues)
+        .sort( ( a , b ) => ('' + a).localeCompare(b) )
+        .map( category => d( category, {class: category === selectedCategory ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, "click", 
+          e => update( AdminApp.updateState({selectedEntity:  Database.getAll( selectedEntityType  ).find( e => Database.get(e, "entity/category") === category  ) }) )
+          ))
+      ),
+      d( Database.getAll( selectedEntityType ).filter( entity => Database.get(entity, "entity/category" ) === selectedCategory ).sort( sortEntitiesAlphabeticallyByLabel ).map( entity => entityLabel( entity, e => update( AdminApp.updateState({selectedEntity: entity} ) ) )))
+  ], {style: "display:flex;"})
+  }
 
 let clientPage = Company => d([
     d([d('<header><h1>Holdingservice Beta</h1></header>'),d([submitButton("Bytt til admin", e => update( ClientApp.updateState({selectedPage: "Admin"}) ) )], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
@@ -162,8 +173,12 @@ let clientPage = Company => d([
       d(""),
       isDefined( ClientApp.S.selectedEntity ) 
       ? isEvent( ClientApp.S.selectedEntity )
-       ? processView( Company )
-       : companyEntityView(Company, ClientApp.S.selectedEntity )
+       ? eventView( Company )
+       : d([
+        submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: undefined }) ) ),
+        br(),
+        companyEntityView(Company, ClientApp.S.selectedEntity )
+        ]) 
       : timelineView( Company )
     ], {class: "pageContainer"})
     
@@ -175,7 +190,7 @@ let navBar = Company => d([
     ? isEvent( ClientApp.S.selectedEntity )
       ? d([
         span(" / "  ),
-        entityLabel( Database.get( ClientApp.S.selectedEntity, "event/process" )  ),
+        entityLabel( Company.getEvent( ClientApp.S.selectedEntity ).get( "event/process" )  ),
         span(" / "  ),
         entityLabel( ClientApp.S.selectedEntity  )
       ])
@@ -188,20 +203,7 @@ let navBar = Company => d([
 
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
 
-let sidebar_left = Company => {
-  let selectedEntityType = Database.get(AdminApp.S.selectedEntity, "entity/entityType")
-  let selectedCategory = Database.get(AdminApp.S.selectedEntity, "entity/category")
-  return d([
-    d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687, 5817, 5722].map( entityType => entityLabel(entityType, e => update(AdminApp.updateState({selectedEntity:  Database.getAll(entityType)[0] })) )) ),
-    d( Database.getAll( selectedEntityType   ).map( entity => Database.get(entity, "entity/category" ) ).filter(filterUniqueValues)
-      .sort( ( a , b ) => ('' + a).localeCompare(b) )
-      .map( category => d( category, {class: category === selectedCategory ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, "click", 
-        e => update( AdminApp.updateState({selectedEntity:  Database.getAll( selectedEntityType  ).find( e => Database.get(e, "entity/category") === category  ) }) )
-        ))
-    ),
-    d( Database.getAll( selectedEntityType ).filter( entity => Database.get(entity, "entity/category" ) === selectedCategory ).sort( sortEntitiesAlphabeticallyByLabel ).map( entity => entityLabel( entity, e => update( AdminApp.updateState({selectedEntity: entity} ) ) )))
-], {style: "display:flex;"})
-}
+
 
 let companyActionsView = Company => d( [
   h3("Handlinger"),
@@ -280,9 +282,6 @@ let companyEntityLabelWithoutPopup = (Company, companyEntity, t) => d( [
 
 
 let companyEntityView = (Company, companyEntity ) => d([
-  br(),
-  submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: undefined }) ) ),
-  br(),
   span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ) , "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ) , Database.attrName(20) )};`}),
   d("<br>"),
   d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
@@ -355,47 +354,34 @@ let versionView = entity => {
 } 
 
 
-let processView =  Company => isNumber( ClientApp.S.selectedEntity )
-? d([
+let eventView =  Company => {
+
+  let Event = Company.getEvent( ClientApp.S.selectedEntity )
+
+
+  return d([
     submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: undefined }) ) ),
-    entityLabel( ClientApp.S.selectedEntity ),
-    processTimelineView(Company, Database.get( ClientApp.S.selectedEntity, "event/process" ) ),
-    br(),
-    processProgressView(Company),
-    br(),
-    isDefined( ClientApp.S.selectedEntity ) ? singleEventView( Company, Company.getEvent( ClientApp.S.selectedEntity ) ) : d("Ingen hendelse valgt.", {class: "feedContainer"}),
     br(),
     d([
-      entityLabel(5922),
-      d(Company.getProcess(Database.get( ClientApp.S.selectedEntity, "event/process" ) ).Actions.map( Action => actionButton( Action)  ))
-    ], {class: "columns_1_1"}),
-], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"} )
-: d("Ingen prosess valgt.", {class: "feedContainer"})
-
-let processProgressView = Company => d([
-  d( Database.get(Database.get(    Database.get( ClientApp.S.selectedEntity, "event/process" ), "process/processType"), 5926).map( (eventType, index) => d([
-        entityLabel( eventType ),
-        d( Database.getAll(46)
-        .filter( event => Database.get(event, "event/process") === Database.get( ClientApp.S.selectedEntity, "event/process" ) )
-        .filter( event => Database.get(event, "event/eventTypeEntity") === eventType  )
-        .map( event => d(String(event), {style: event === ClientApp.S.selectedEntity ? "color: blue;" : ""}, "click", 
-        e => update( ClientApp.updateState({selectedEntity: event }) )
-          ) ) )
-      ], {style: eventType === Database.get(ClientApp.S.selectedEntity, "event/eventTypeEntity") ? "background-color: #bfbfbf;" : ""})
-  ), {style: "display: flex;"} ),
-])
-
-let singleEventView =  (Company, Event) => d([
-  h3( Database.get(Event.eventType, "entity/label") ),
-  d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute )  )),
-  br(),
-  d([
-    d( "Posisjon i tidslinjen er: " + Event.t  ),
+      h3( "Prosessoversikt" ),
+      d(Database.get( Event.processType, 5926).map( eventType => entityLabel( eventType ) ) ),
+      processTimelineView(Company, Event.process ),
+      br(),
+      d(Company.getProcess(Database.get( ClientApp.S.selectedEntity, "event/process" ) ).Actions.map( Action => actionButton( Action )  ), {style: "display: flex;"})
+    ], {class: "feedContainer"}),
     br(),
-    h3("Selskapsentiteter som opprettes eller endres:"),
-    d(Event.entities.map( companyEntity => companyEntityLabel(Company, companyEntity, Event.t) )),
-  ], {style: "background-color: #f1ecec;padding: 1em;border: 1px solid black;"} ),
-], {class: "feedContainer"} )
+    d([
+      h3( Database.get(Event.eventType, "entity/label") ),
+      d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute )  )),
+    ], {class: "feedContainer"} ),
+    br(),
+    d([
+      h3("Selskapsentiteter som opprettes eller endres:"),
+      d(Event.entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
+    ], {class: "feedContainer"} )
+  ])
+} 
+
 // End ----
 
 //Entity view
