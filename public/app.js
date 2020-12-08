@@ -1,7 +1,5 @@
 const Database = {
   tx: null,
-  selectedPage: "Tidslinje",
-  selectedEntity: 1,
   Entities: [],
   entities: [],
   setLocalState: (entity, newState) => {
@@ -17,18 +15,6 @@ const Database = {
       ? serverEntity.localState
       : {tx: serverEntity.Datoms.map( Datom => Datom.tx ).filter( tx => !isUndefined(tx) ).sort().slice(-1)[0]}
     return localState
-  },
-  selectEntity: entity => {
-    Database.selectedEntity = entity
-    update( Database.S  )
-  },
-  selectCompany: company => {
-    ActiveCompany.constructCompany(company)
-    update( Database.S  )
-  },
-  selectPage: page => {
-    Database.selectedPage = page
-    update( Database.S  )
   },
   updateEntity: async (entity, attribute, value) => {
 
@@ -227,7 +213,7 @@ const ActiveCompany = {
         return firstEventDateA - firstEventDateB;
     })
     
-    ActiveCompany.events = Database.getAll(46).filter( event => ActiveCompany.processes.includes( Database.get(event, "event/process") )  )
+    ActiveCompany.events = Database.getAll(46).filter( event => ActiveCompany.processes.includes( Database.get(event, "event/process") )  ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) )
 
     let latestEntityID = 0;
     ActiveCompany.events.forEach( event => {
@@ -262,6 +248,8 @@ const ActiveCompany = {
         calculatedFields.forEach( calculatedField => {
   
             let prevValue = updatedCompany.get(companyEntity, calculatedField, t )
+
+            
                 
             let value;
               try {
@@ -383,7 +371,7 @@ const ActiveCompany = {
   },
   getCompanyOptions: (company, attribute, t) => {
     let options = [];
-    let Company = ActiveCompany.getCompanyObject(company, t)
+    let Company = ActiveCompany.getCompanyObject(company)
     try {options = new Function( [ "Company" ] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction") )( Company )}
     catch (error) { log(error, {info: "Could not get options for Company attribute", company, attribute, t }) }
     return options
@@ -486,6 +474,35 @@ const ActiveCompany = {
   },
 }
 
+
+
+
+
+
+const ClientApp = {
+  S: {
+    selectedPage: "Tidslinje",
+    selectedCompany: 5723
+  },
+  updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
+  replaceState: newState => ClientApp.S = newState,
+  selectCompany: company => {
+    ActiveCompany.constructCompany(company)
+    ClientApp.updateState( {selectedCompany: company} )
+  },
+  getCompany: () => ActiveCompany.getCompanyObject( ClientApp.S.selectedCompany )
+}
+
+const AdminApp = {
+  S: {
+    selectedPage: "Admin",
+    selectedEntity: 1,  
+  },
+  updateState: patch => AdminApp.S = mergerino( AdminApp.S, patch ),
+  replaceState: newState => AdminApp.S = newState,
+
+}
+
 let D = Database
 let Company = {}
 
@@ -558,7 +575,8 @@ let update = (  ) => {
     Company = ActiveCompany.getCompanyObject( ActiveCompany.company )
 
     let startTime = Date.now()
-    let elementTree = generateHTMLBody( Company )
+    let elementTree = ClientApp.S.selectedPage === "Admin" ? [ adminPage( Company ) ] : [ clientPage(Company) ]
+    
     sideEffects.updateDOM( elementTree )
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)    
 
