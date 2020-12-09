@@ -156,6 +156,7 @@ const Database = {
     Entity.getOptions = attr => Database.getOptions(attr)
     Entity.entityType = Entity.get("entity/entityType")
     Entity.label = Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
+    Entity.color = Database.get( Entity.entityType, "entityType/color") ? Database.get( Entity.entityType, "entityType/color") : "#bfbfbf"
     Entity.isLocked = false;
     Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
 
@@ -218,16 +219,18 @@ const ActiveCompany = {
     let Process = Company.getProcess( Database.get(event, "event/process") )
     
     let eventDatoms = Database.get( eventType, "eventType/newDatoms" ).map( datomConstructor => {
-      let entity;
-        try {entity = new Function( [`Q`], datomConstructor.entity )( {latestEntityID: () => ActiveCompany.latestEntityID} )}
-        catch (error) {entity = log("ERROR",{info: "entity calculation for datomconstructor failed", event, datomConstructor, error}) }
+      let entity = datomConstructor.isNew ? ActiveCompany.latestEntityID + datomConstructor.e : datomConstructor.e
       let attribute = datomConstructor.attribute
       let value;
         try {value = new Function( [`Company`, `Event`, `Process`, `latestEntityID`], datomConstructor.value )( Company, Event, Process, ActiveCompany.latestEntityID ) } 
         catch (error) {value = log("ERROR",{info: "Value calculation for datomconstructor failed", event, datomConstructor, error}) } 
       let Datom = {company, entity, attribute, value, event, t}
       return Datom
+      
     }  )
+
+
+    
 
     Company.storeDatoms(eventDatoms)
 
@@ -243,19 +246,10 @@ const ActiveCompany = {
       let CompanyEntity = updatedCompany.getCompanyEntity( companyEntity )
       let calculatedFields = Database.get( CompanyEntity.entityType , "entityType/calculatedFields" )
       calculatedFields.forEach( calculatedField => {
-
           let prevValue = updatedCompany.get(companyEntity, calculatedField, t )
-
-          
-              
           let value;
-            try {
-              let calculatedFieldFunction = new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) )
-              value =  calculatedFieldFunction(CompanyEntity, updatedCompany) 
-            } 
-            catch (err) {
-              value = log("ERROR",{info: "CompanycalculatedValue calculation  failed", company, companyEntity, calculatedField, err}) 
-            }
+            try {value =  new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) )(CompanyEntity, updatedCompany) } 
+            catch (err) {value = log("ERROR",{info: "CompanycalculatedValue calculation  failed", company, companyEntity, calculatedField, err}) }
             if( value !== prevValue  ){ ActiveCompany.calculatedFieldsCache.push({company, companyEntity, calculatedField, t, value}) }
       })
 
@@ -458,6 +452,12 @@ const ActiveCompany = {
     }
     CompanyEntity.get = attribute => ActiveCompany.getFromCompany(company, companyEntity, attribute, t)
     CompanyEntity.entityType = CompanyEntity.get( 19 )
+
+    CompanyEntity.label = CompanyEntity.get("entity/label") ? CompanyEntity.get("entity/label") : "Mangler visningsnavn."
+    CompanyEntity.color = Database.get( CompanyEntity.entityType, "entityType/color") ? Database.get( CompanyEntity.entityType, "entityType/color") : "#578fff82"
+
+
+
     CompanyEntity.companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity )
     CompanyEntity.t = CompanyEntity.companyDatoms[0].t
     CompanyEntity.event = CompanyEntity.companyDatoms[0].event

@@ -122,6 +122,22 @@ let fullDatomView = (Entity, attribute, isEditable) => {
 
   let isCalculatedField = Database.get(attribute, "entity/entityType") === 5817
 
+  
+
+  return d([
+    isCalculatedField ? entityLabel(attribute) : attributeLabel( attribute ),
+    valueView(Entity, attribute, isEditable)
+  ], isArray ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
+
+}
+
+let valueView = (Entity, attribute, isEditable) => {
+
+  let valueType = Database.get(attribute, "attribute/valueType")
+  let isArray = Database.get(attribute, "attribute/isArray")
+
+  let isCalculatedField = Database.get(attribute, "entity/entityType") === 5817
+
   let valueTypeViews_single = {
     "30": singleTextView, //Tekst
     "31": singleNumberView, //Tall
@@ -140,11 +156,7 @@ let fullDatomView = (Entity, attribute, isEditable) => {
     ? multipleValuesView(Entity, attribute, isEditable)
     : valueTypeViews_single[valueType](Entity, attribute, isEditable)
 
-  return d([
-    isCalculatedField ? entityLabel(attribute) : attributeLabel( attribute ),
-    selectedView
-  ], isArray ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
-
+  return selectedView
 }
 
 let multipleValuesView = (Entity, attribute, isEditable) => {
@@ -177,7 +189,7 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "36": false, //Boolean
     "40": 0, //Velg alternativ
     "32": 6,
-    "38": {entity: `return Q.latestEntityID() + 1;`, attribute: 1001, value: `return ''` },
+    "38": {isNew: true, e: 1, attribute: 1001, value: `return ''` },
     "5824": "", //File
     "41": 0, //Company entity
     "5849":  {6: "Ny handling", 5848: "return true;", 5850: "return Company.createEvent(5000, Process.entity);"}, //Konstruksjon av ny hendelse
@@ -309,9 +321,9 @@ let multpleSimpleValuesRowView = (Entity, attribute, index) => {
 
 let datomConstructorRowView = (Entity, attribute, index) => d([
   dropdown(
-    Entity.get(attribute)[index].entity, 
-    [{value: `return 1;`, label: `Selskapets entitet`}, {value: `return Q.latestEntityID() + 1;`, label: `Ny entitet nr. 1`}, {value: `return Q.latestEntityID() + 2;`, label: `Ny entitet nr. 2`}, {value: `return Q.latestEntityID() + 3;`, label: `Ny entitet nr. 3`}, , {value: `return Q.latestEntityID() + 4;`, label: `Ny entitet nr. 4`}, , {value: `return Q.latestEntityID() + 5;`, label: `Ny entitet nr. 5`}],
-    async e => update( await Entity.replaceValueEntry( attribute, index, mergerino( Entity.get(attribute)[index], {entity: submitInputValue(e)} ) ) )
+    Entity.get(attribute)[index].e, 
+    [{value: 0, label: `Selskapets entitet`}, {value: 1, label: `Ny entitet nr. 1`}, {value: 2, label: `Ny entitet nr. 2`}, {value: 3, label: `Ny entitet nr. 3`}, {value: 4, label: `Ny entitet nr. 4`}, , {value: 5, label: `Ny entitet nr. 5`}],
+    async e => update( await Entity.replaceValueEntry( attribute, index, mergerino( Entity.get(attribute)[index], {e: Number(submitInputValue(e)) === 0 ? 1 :  Number(submitInputValue(e)), isNew:  Number(submitInputValue(e)) > 0 } ) ) )
     ),
   d([
     htmlElementObject("datalist", {id:`entity/${Entity.entity}/options`}, optionsElement( Database.getAll(42)
@@ -448,6 +460,12 @@ let companyEntityLabelWithoutPopup = (Company, companyEntity) => d( [
 ], {style:"display: inline-flex;"} )
 
 
+
+let eLabel = Entity => d([
+  d( Entity.label, {class: "entityLabel", style: `background-color:${Entity.color};`} )
+])
+
+
 // CLIENT PAGE VIEWS
 
 let clientPage = Company => d([
@@ -458,17 +476,43 @@ let clientPage = Company => d([
     isDefined( ClientApp.S.selectedEntity ) 
     ? isEvent( ClientApp.S.selectedEntity )
      ? eventView( Company )
-     : d([
-      submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: undefined }) ) ),
-      br(),
-      companyEntityView(Company, ClientApp.S.selectedEntity )
-      ]) 
+     : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
+        ? multipleCompanyEntitiesView( Company, ClientApp.S.selectedEntity )
+        :  d([
+            submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: undefined }) ) ),
+            br(),
+            companyEntityView(Company, ClientApp.S.selectedEntity )
+            ])
     : timelineView( Company )
   ], {class: "pageContainer"})
   
 ])
 
-let isEvent = entity => entity > 1000
+
+
+let multipleCompanyEntitiesView = (Company, entityType) => {
+
+  let eventTypeAttributes = D.get( entityType,  17)
+
+
+
+
+  return d([
+    d([
+      d(""),
+      d( eventTypeAttributes.map( attr => entityLabel(attr)  ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length + 1}, 1fr);`} )
+    ], {style: `display:grid;grid-template-columns: 1fr 7fr;`}),
+    entityLabel(entityType),
+    d( Company.getAll(entityType).map( companyEntity => d([
+      companyEntityLabel(Company, companyEntity),
+      d( eventTypeAttributes.map( attr => valueView(Company.get(companyEntity) , attr, false)   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length + 1}, 1fr);`} )
+    ], {style: `display:grid;grid-template-columns: 1fr 7fr;`}),
+   ) )
+  ],{class: "feedContainer"})
+} 
+
+
+let isEvent = entity => Database.get(entity).entityType === 46
 
 let navBar = Company => d([
   entityLabel( Company.entity, e => update( ClientApp.updateState({selectedEntity: undefined }) )  ),
@@ -476,14 +520,23 @@ let navBar = Company => d([
     ? isEvent( ClientApp.S.selectedEntity )
       ? d([
         span(" / "  ),
+        entityLabel( 46, e => update( ClientApp.updateState({selectedEntity: 46 }) ) ),
+        span(" / "  ),
         entityLabel( Company.getEvent( ClientApp.S.selectedEntity ).get( "event/process" )  ),
         span(" / "  ),
         entityLabel( ClientApp.S.selectedEntity  )
       ])
-      : d([
-        span(" / "  ),
-        companyEntityLabelWithoutPopup( Company, ClientApp.S.selectedEntity )
-      ])
+      : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
+        ? d([
+          span(" / "  ),
+          entityLabel( ClientApp.S.selectedEntity, e => update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity }) ) ),
+        ])
+        : d([
+          span(" / "  ),
+          entityLabel( Company.get( ClientApp.S.selectedEntity, 19 ), e => update( ClientApp.updateState({selectedEntity: Company.get( ClientApp.S.selectedEntity, 19 ) }) ) ),
+          span(" / "  ),
+          companyEntityLabelWithoutPopup( Company, ClientApp.S.selectedEntity )
+        ])
     : d("")
 ], {style: "display: flex;"})
 
@@ -492,6 +545,10 @@ let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompar
 let timelineView = Company => d([
     d([
       h3("Selskapets prosesser"),
+      d([
+        d("Bedre entity label TBD"),
+        eLabel( Company.get(1)  )
+      ]),
       d([
         entityLabel(Company.entity),
         d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
@@ -540,7 +597,7 @@ let timelineView = Company => d([
     d([
       h3("Selskapets entiteter"),
       d( Company.entityTypes.map( entityType => d([
-        entityLabel(entityType ),
+        entityLabel(entityType, e => update( ClientApp.updateState({selectedEntity: entityType}) ) ),
         d( Company.getAll(entityType).map( companyEntity => companyEntityLabel(Company, companyEntity) ) ),
         br()
       ])))
