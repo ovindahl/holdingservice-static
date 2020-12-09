@@ -474,9 +474,9 @@ const ActiveCompany = {
       newDatom(`newEntity`, "event/date", Date.now() )
     ])
 
-    ActiveCompany.events = ActiveCompany.getCompanyEvents(company)
+    ActiveCompany.events = ActiveCompany.getCompanyEvents(ActiveCompany.company)
     return newEvent;
-  } ,
+  },
   createCompanyProcess: async (company, processType) => {
 
     let newProcess = await Database.createEntity(5692, [
