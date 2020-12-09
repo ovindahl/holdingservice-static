@@ -43,7 +43,6 @@ const mergerino = (source, ...patches) => {
 }
 let mergeArray = (array) => array.every( object => typeof object === "object") ? mergerino( {}, array ) : console.log( " mergeArray received invalid array ", array )
 
-
 //HTML element generation
 let IDcounter = [0];
 let getNewElementID = () => String( IDcounter.push( IDcounter.length  ) )
@@ -382,8 +381,6 @@ let eventConstructorsInProcessStepRowView = (Entity, attribute, index) => d([
   submitButton("[Slett]", async e => update( await Entity.removeValueEntry(attribute, index ) ) )
 ], {class: "columns_1_3_3_1"})
 
-
-
 //Basic entity views
 
 let entityLabel = (entity, onClick) => Database.get(entity) 
@@ -529,8 +526,6 @@ let navBar = Company => d([
     : d("")
 ], {style: "display: flex;"})
 
-let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
-
 let companyView = Company => d([
     d([
       h3("Selskapets prosesser"),
@@ -558,40 +553,32 @@ let companyView = Company => d([
     ], {class: "feedContainer"}),
   ])
 
-  let balanceSheetView = Company => d([
+let balanceSheetView = Company => d([
       h3("Balanse"),
       d([
         d([
           h3("Eiendeler"),
-          /* d( Company.getAll(5812).map( security => d([
-            companyEntityLabel(Company, security),
-            fullDatomView(Company.get(security), 6184)
-            ], {class: "columns_1_1"})   ) ), */
           d("Anleggsmidler"),
           fullDatomView(Company.get(1), 6238),
           fullDatomView(Company.get(1), 6241),
           fullDatomView(Company.get(1), 6253),
+          d( Company.getAll(5812).map( security => companyEntityLabel(Company, security))   ),
           fullDatomView(Company.get(1), 6254),
           fullDatomView(Company.get(1), 6255),
           fullDatomView(Company.get(1), 6256),
           fullDatomView(Company.get(1), 6260),
           fullDatomView(Company.get(1), 6262),
           fullDatomView(Company.get(1), 6270),
+          fullDatomView(Company.get(1), 6240),
           fullDatomView(Company.get(1), 6275),
           fullDatomView(Company.get(1), 6277),
           fullDatomView(Company.get(1), 6279),
-
-
-
-          
           fullDatomView(Company.get(1), 6286),
           br(),
 
           d("Omløpsmidler"),
-          fullDatomView(Company.get(1), 6240),
           fullDatomView(Company.get(1), 6248),
           fullDatomView(Company.get(1), 6274),
-          fullDatomView(Company.get(1), 6275),
           fullDatomView(Company.get(1), 6276),
 
           fullDatomView(Company.get(1), 6287),
@@ -599,51 +586,32 @@ let companyView = Company => d([
           br(),
           fullDatomView(Company.get(1), 6288),
           br(),
-        ]),
+        ], {style: "margin: 5px;border: 1px solid #80808052;"}),
         d([
           h3("Gjeld og egenkapital"),
           d("Egenkapital"),
           fullDatomView(Company.get(1), 6237),
           fullDatomView(Company.get(1), 6246),
-
           fullDatomView(Company.get(1), 6278),
-
           fullDatomView(Company.get(1), 6281),
-
           fullDatomView(Company.get(1), 6295),
-
-
-         /*  d( Company.getAll(5673).map( security => d([
-            companyEntityLabel(Company, security),
-            fullDatomView(Company.get(security), 6089)
-            ], {class: "columns_1_1"})   ) ), */
           br(),
           d("Gjeld"),
-
           fullDatomView(Company.get(1), 6247),
           fullDatomView(Company.get(1), 6259),
           fullDatomView(Company.get(1), 6280),
           fullDatomView(Company.get(1), 6257),
           fullDatomView(Company.get(1), 6258),
           fullDatomView(Company.get(1), 6264),
+          d( Company.getAll(5811).map( loan => companyEntityLabel(Company, loan))   ),
           fullDatomView(Company.get(1), 6269),
           fullDatomView(Company.get(1), 6272),
           fullDatomView(Company.get(1), 6273),
           fullDatomView(Company.get(1), 6275),
-          
-
-
           fullDatomView(Company.get(1), 6294),
-
-          /* d( Company.getAll(5811).map( security => d([
-            companyEntityLabel(Company, security),
-            fullDatomView(Company.get(security), 6190)
-            ], {class: "columns_1_1"})   ) ), */
-
           br(),
           fullDatomView(Company.get(1), 6296),
-        ]),
-        
+        ], {style: "margin: 5px;border: 1px solid #80808052;"}),
       ], {class: "columns_1_1"})
   ], {class: "feedContainer"})
 
@@ -733,6 +701,8 @@ let adminPage = () => d([
     adminEntityView( AdminApp.S.selectedEntity ),
   ], {class: "pageContainer"})
 ])
+
+let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
 
 let sidebar_left = () => {
 let selectedEntityType = Database.get(AdminApp.S.selectedEntity, "entity/entityType")
