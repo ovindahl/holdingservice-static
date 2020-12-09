@@ -124,7 +124,8 @@ let fullDatomView = (Entity, attribute, isEditable) => {
   
 
   return d([
-    isCalculatedField ? entityLabel(attribute) : attributeLabel( attribute ),
+    //isCalculatedField ? entityLabel(attribute) : attributeLabel( attribute ),
+    entityLabel(attribute),
     valueView(Entity, attribute, isEditable)
   ], isArray ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
 
@@ -289,7 +290,7 @@ let singleEntityReferenceView = (Entity, attribute, isEditable) => isEditable
 
 let input_singleCompanyEntity = (Entity, attribute, isEditable) => isEditable
   ? dropdown( Entity.get( attribute ), ClientApp.getCompany().getOptions(attribute), async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
-  : companyEntityLabelWithoutPopup(ClientApp.getCompany(), Entity.get( attribute ) )
+  : companyEntityLabel(ClientApp.getCompany(), Entity.get( attribute ) )
 
 //Multiple value views
 
@@ -383,82 +384,64 @@ let eventConstructorsInProcessStepRowView = (Entity, attribute, index) => d([
 
 //Basic entity views
 
-let entityLabel = (entity, onClick) => Database.get(entity) 
-? d( [
+let entityLabel = (entity, onClick) => d( [
+  d([
+    d( `${ Database.get( entity ) ? Database.get( entity ).label : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", e => update( AdminApp.updateState({selectedEntity: entity}) ) ),
     d([
-      span( `${Database.getEntity(entity).label}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Database.get(entity, "entity/entityType" ), Database.attrName(20) )};`}, "click", isUndefined(onClick) ? e => update(AdminApp.updateState({selectedEntity: entity}))  : onClick ),
-      entityInspectorPopup_small(entity),], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-: d(`[${entity}] Entiteten finnes ikke`)
-
-let entityInspectorPopup_small = entity => d([
-  h3(`[${entity}] ${Database.get(entity, "entity/label")}`, {style: `background-color: {Entity.color}; padding: 3px;`}),
-], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+      d( `${ Database.get( entity ) ? Database.get( entity ).label : "na."}` ),
+      d( "Entitet i databasen" ),
+      d( "[ TBD ]" ),
+    ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+  ], {class: "popupContainer", style:"display: inline-flex;"})
+], {style:"display: inline-flex;"} )
 
 let entityRedlinedValue = (value, prevValue) => d( [
   span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
   span( `${JSON.stringify(value)}`),
 ], {style:"display: inline-flex;justify-content: flex-end;"} ) 
 
-let attributeLabel = attribute => Database.get(attribute) 
-? d([
+let attributeLabel = attribute => d([
+  d([
+    span( Database.get(attribute, "entity/label"), "", {class: "entityLabel", style: `background-color:${Database.get( 42, "entityType/color" )};`}, "click", e => update(AdminApp.updateState({selectedEntity: attribute })) ),
     d([
-      span( Database.get(attribute, "entity/label"), "", {class: "entityLabel", style: `background-color:${Database.get( 42, "entityType/color" )};`}, "click", e => update(AdminApp.updateState({selectedEntity: attribute })) ),
-      attributeInspectorPopup(attribute)
-    ], {class: "popupContainer", style:"display: inline-flex;"}),
-  ], {style:"display: inline-flex;"} )
-: d(`[${attribute}] Entiteten finnes ikke`)
-
-let attributeInspectorPopup = attribute => d([
-  h3(`[${attribute}] ${Database.get(attribute, "entity/label")}`),
-  d([
-    entityLabel( 18 ),
-    entityLabel( Database.get(attribute, "attribute/valueType") )
-  ], {class: "columns_1_1"}),
-  d([
-    entityLabel( 5823 ),
-    span(`${Database.get(attribute, "attribute/isArray") ? "Flertall" : "Entall"}`, "", {style: "background-color:#7676f385;padding: 5px;"})
-  ], {class: "columns_1_1"}),
-  span("[t TBD]")
-], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-
-let entityInspectorEventTimeline = (Company, event) => d([
-  h3(`[${event}] Hendelse`),
-  d([
-    attributeLabel(6),
-    entityLabel(event),
-  ], {class: "columns_1_1"})
-], {class: "entityInspectorPopup feedContainer"})
-
-let companyEntityLabel = (Company, companyEntity, t) => d( [
-  d([
-    span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ), "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ), Database.attrName(20) )};`}, "click", e => update( ClientApp.updateState({selectedEntity: companyEntity}) ) ),
-    companyEntityInspectorPopup(Company, companyEntity, t)
-  ], {class: "popupContainer", style:"display: inline-flex;"})
-], {style:"display: inline-flex;"} )
-
-let companyEntityInspectorPopup = (Company, companyEntity, t) => d([ companyEntityView(Company, companyEntity, t) ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-
-let companyEntityLabelWithoutPopup = (Company, companyEntity) => d( [
-  d([
-    span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ), "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ), Database.attrName(20) )};`}, "click", e => update( ClientApp.updateState({selectedEntity: companyEntity}) )),
-    d([
-      span( `[${companyEntity}] ${Database.get( Company.get(companyEntity, 19 ) , "entity/label" )}`, ``, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19 ) , Database.attrName(20) )};`}),
-      br(),
+      h3(`[${attribute}] ${Database.get(attribute, "entity/label")}`),
       d([
-        entityLabel( 19 ),
-        entityLabel( Company.get(companyEntity, 19 ) )
-      ], {class: "columns_1_1"})
-    ] , {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-  ], {class: "popupContainer", style:"display: inline-flex;"})
+        entityLabel( 18 ),
+        entityLabel( Database.get(attribute, "attribute/valueType") )
+      ], {class: "columns_1_1"}),
+      d([
+        entityLabel( 5823 ),
+        span(`${Database.get(attribute, "attribute/isArray") ? "Flertall" : "Entall"}`, "", {style: "background-color:#7676f385;padding: 5px;"})
+      ], {class: "columns_1_1"}),
+      span("[t TBD]")
+    ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+  ], {class: "popupContainer", style:"display: inline-flex;"}),
 ], {style:"display: inline-flex;"} )
-
-let eLabel = Entity => d([
-  d( Entity.label, {class: "entityLabel", style: `background-color:${Entity.color};`} )
-])
 
 
 // CLIENT PAGE VIEWS
+
+let companyEntityInspectorPopup = (Company, companyEntity, t) => d([ companyEntityView(Company, companyEntity, t) ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+let companyEntityLabel = (Company, companyEntity) => d([
+  d( `${Company.get( companyEntity ).label}`, {class: "entityLabel", style: `background-color:${Company.get( companyEntity ).color};`}, "click", e => update( ClientApp.updateState({selectedEntity: companyEntity}) ) )
+], {style:"display: inline-flex;"}) 
+
+
+
+
+let companyEntityLabelWithPopup = (Company, companyEntity) => d( [
+    d([
+      companyEntityLabel(Company, companyEntity),
+      d([
+        d( Company.get( companyEntity ).companyDatoms.map( companyDatom => fullDatomView( Company.get( companyEntity ), companyDatom.attribute, false  ) )),
+        d( Database.get( Company.get(companyEntity, 19 ), "entityType/calculatedFields" ).map( companyCalculatedField => fullDatomView( Company.get( companyEntity ), companyCalculatedField, false  ) ) )
+      ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+    ], {class: "popupContainer", style:"display: inline-flex;"})
+  ], {style:"display: inline-flex;"} )
+
+
+
 
 let clientPage = Company => d([
   d([d('<header><h1>Holdingservice Beta</h1></header>'),d([submitButton("Bytt til admin", e => update( ClientApp.updateState({selectedPage: "Admin"}) ) )], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
@@ -521,7 +504,7 @@ let navBar = Company => d([
           span(" / "  ),
           entityLabel( Company.get( ClientApp.S.selectedEntity, 19 ), e => update( ClientApp.updateState({selectedEntity: Company.get( ClientApp.S.selectedEntity, 19 ) }) ) ),
           span(" / "  ),
-          companyEntityLabelWithoutPopup( Company, ClientApp.S.selectedEntity )
+          companyEntityLabel( Company, ClientApp.S.selectedEntity )
         ])
     : d("")
 ], {style: "display: flex;"})
@@ -530,9 +513,13 @@ let companyView = Company => d([
     d([
       h3("Selskapets prosesser"),
       d([
-        entityLabel(Company.entity),
-        d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+        d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
+        d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} )
       ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`}),
+      /* d([
+        d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
+        d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+      ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`}), */
       d( Company.processes.map( process => processTimelineView(Company, process) ) ),
       br(),
       d([
@@ -628,8 +615,12 @@ let processTimelineView = (Company, process) => {
     : Company.getProcess(process).events.includes(event)
       ? d([
           d([
-              span( `${i+1}`, ``, {class: "entityLabel", style: `background-color:${ event === ClientApp.S.selectedEntity ? "red" : "pink"};`}, "click", e => { update( ClientApp.updateState({selectedPage: "Prosesser", selectedEntity: event }) )} ),
-              entityInspectorEventTimeline(Company, event)
+              d( `${i+1}`, {class: "entityLabel", style: `background-color:${ event === ClientApp.S.selectedEntity ? "red" : "pink"};`}, "click", e => { update( ClientApp.updateState({selectedPage: "Prosesser", selectedEntity: event }) )} ),
+              d([
+                d( `Hendelse ${event}` ),
+                d( "Entitet i databasen" ),
+                d( "[ TBD ]" ),
+              ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
             ], {class: "popupContainer", style:"display: inline-flex;"})
         ], {style:"display: inline-flex;"} )
       : d("-" ) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
@@ -639,7 +630,7 @@ let processTimelineView = (Company, process) => {
 }
 
 let companyEntityView = (Company, companyEntity ) => d([
-  companyEntityLabelWithoutPopup(Company, companyEntity),
+  companyEntityLabel(Company, companyEntity),
   d("<br>"),
   d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
   d("<br>"),

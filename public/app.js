@@ -415,7 +415,7 @@ const ActiveCompany = {
     }
     CompanyEntity.get = attribute => ActiveCompany.getFromCompany(company, companyEntity, attribute, t)
     CompanyEntity.entityType = CompanyEntity.get( 19 )
-    CompanyEntity.label = CompanyEntity.get("entity/label") ? CompanyEntity.get("entity/label") : "Mangler visningsnavn."
+    CompanyEntity.label = `${Database.get( CompanyEntity.entityType, "entity/label")} # ${ActiveCompany.getAllFromCompany(company, CompanyEntity.entityType).findIndex( e => e === companyEntity) + 1}`
     CompanyEntity.color = Database.get( CompanyEntity.entityType, "entityType/color") ? Database.get( CompanyEntity.entityType, "entityType/color") : "#578fff82"
     CompanyEntity.companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity )
     CompanyEntity.t = CompanyEntity.companyDatoms[0].t
