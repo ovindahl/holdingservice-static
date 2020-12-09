@@ -321,7 +321,7 @@ let multpleSimpleValuesRowView = (Entity, attribute, index) => {
 
 let datomConstructorRowView = (Entity, attribute, index) => d([
   dropdown(
-    Entity.get(attribute)[index].e, 
+    Entity.get(attribute)[index].isNew ? Entity.get(attribute)[index].e : 0, 
     [{value: 0, label: `Selskapets entitet`}, {value: 1, label: `Ny entitet nr. 1`}, {value: 2, label: `Ny entitet nr. 2`}, {value: 3, label: `Ny entitet nr. 3`}, {value: 4, label: `Ny entitet nr. 4`}, , {value: 5, label: `Ny entitet nr. 5`}],
     async e => update( await Entity.replaceValueEntry( attribute, index, mergerino( Entity.get(attribute)[index], {e: Number(submitInputValue(e)) === 0 ? 1 :  Number(submitInputValue(e)), isNew:  Number(submitInputValue(e)) > 0 } ) ) )
     ),
@@ -468,6 +468,8 @@ let eLabel = Entity => d([
 
 // CLIENT PAGE VIEWS
 
+
+
 let clientPage = Company => d([
   d([d('<header><h1>Holdingservice Beta</h1></header>'),d([submitButton("Bytt til admin", e => update( ClientApp.updateState({selectedPage: "Admin"}) ) )], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
   navBar(Company),
@@ -483,7 +485,7 @@ let clientPage = Company => d([
             br(),
             companyEntityView(Company, ClientApp.S.selectedEntity )
             ])
-    : timelineView( Company )
+    : companyView( Company )
   ], {class: "pageContainer"})
   
 ])
@@ -500,13 +502,13 @@ let multipleCompanyEntitiesView = (Company, entityType) => {
   return d([
     d([
       d(""),
-      d( eventTypeAttributes.map( attr => entityLabel(attr)  ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length + 1}, 1fr);`} )
-    ], {style: `display:grid;grid-template-columns: 1fr 7fr;`}),
+      d( eventTypeAttributes.map( attr => entityLabel(attr)  ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} )
+    ], {style: `display:grid;grid-template-columns: 1fr 7fr; margin: 5px;border: 1px solid #80808052;`}),
     entityLabel(entityType),
     d( Company.getAll(entityType).map( companyEntity => d([
       companyEntityLabel(Company, companyEntity),
-      d( eventTypeAttributes.map( attr => valueView(Company.get(companyEntity) , attr, false)   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length + 1}, 1fr);`} )
-    ], {style: `display:grid;grid-template-columns: 1fr 7fr;`}),
+      d( eventTypeAttributes.map( attr => valueView(Company.get(companyEntity) , attr, false)   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} )
+    ], {style: `display:grid;grid-template-columns: 1fr 7fr; margin: 5px;border: 1px solid #80808052;`}),
    ) )
   ],{class: "feedContainer"})
 } 
@@ -542,13 +544,9 @@ let navBar = Company => d([
 
 let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
 
-let timelineView = Company => d([
+let companyView = Company => d([
     d([
       h3("Selskapets prosesser"),
-      d([
-        d("Bedre entity label TBD"),
-        eLabel( Company.get(1)  )
-      ]),
       d([
         entityLabel(Company.entity),
         d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
@@ -561,38 +559,7 @@ let timelineView = Company => d([
       ])  
     ], {class: "feedContainer"}),
     br(),
-    d([
-      h3("Balanse"),
-      d([
-        d([
-          h3("Eiendeler"),
-          d("Anleggsmidler"),
-          d( Company.getAll(5812).map( security => d([
-            companyEntityLabel(Company, security),
-            fullDatomView(Company.get(security), 6184)
-            ], {class: "columns_1_1"})   ) ),
-          fullDatomView(Company.get(1), 6275),
-          br(),
-          d("Omløpsmidler"),
-          fullDatomView(Company.get(1), 6274),
-          br(),
-        ]),
-        d([
-          h3("Gjeld og egenkapital"),
-          d("Egenkapital"),
-          d( Company.getAll(5673).map( security => d([
-            companyEntityLabel(Company, security),
-            fullDatomView(Company.get(security), 6089)
-            ], {class: "columns_1_1"})   ) ),
-          br(),
-          d("Gjeld"),
-          d( Company.getAll(5811).map( security => d([
-            companyEntityLabel(Company, security),
-            fullDatomView(Company.get(security), 6190)
-            ], {class: "columns_1_1"})   ) ),
-        ]),
-      ], {class: "columns_1_1"})
-    ], {class: "feedContainer"}),
+    balanceSheetView( Company ),
     br(),
     d([
       h3("Selskapets entiteter"),
@@ -603,6 +570,95 @@ let timelineView = Company => d([
       ])))
     ], {class: "feedContainer"}),
   ])
+
+  let balanceSheetView = Company => d([
+      h3("Balanse"),
+      d([
+        d([
+          h3("Eiendeler"),
+          /* d( Company.getAll(5812).map( security => d([
+            companyEntityLabel(Company, security),
+            fullDatomView(Company.get(security), 6184)
+            ], {class: "columns_1_1"})   ) ), */
+          d("Anleggsmidler"),
+          fullDatomView(Company.get(1), 6238),
+          fullDatomView(Company.get(1), 6241),
+          fullDatomView(Company.get(1), 6253),
+          fullDatomView(Company.get(1), 6254),
+          fullDatomView(Company.get(1), 6255),
+          fullDatomView(Company.get(1), 6256),
+          fullDatomView(Company.get(1), 6260),
+          fullDatomView(Company.get(1), 6262),
+          fullDatomView(Company.get(1), 6270),
+          fullDatomView(Company.get(1), 6275),
+          fullDatomView(Company.get(1), 6277),
+          fullDatomView(Company.get(1), 6279),
+
+
+
+          
+          fullDatomView(Company.get(1), 6286),
+          br(),
+
+          d("Omløpsmidler"),
+          fullDatomView(Company.get(1), 6240),
+          fullDatomView(Company.get(1), 6248),
+          fullDatomView(Company.get(1), 6274),
+          fullDatomView(Company.get(1), 6275),
+          fullDatomView(Company.get(1), 6276),
+
+          fullDatomView(Company.get(1), 6287),
+
+          br(),
+          fullDatomView(Company.get(1), 6288),
+          br(),
+        ]),
+        d([
+          h3("Gjeld og egenkapital"),
+          d("Egenkapital"),
+          fullDatomView(Company.get(1), 6237),
+          fullDatomView(Company.get(1), 6246),
+
+          fullDatomView(Company.get(1), 6278),
+
+          fullDatomView(Company.get(1), 6281),
+
+          fullDatomView(Company.get(1), 6295),
+
+
+         /*  d( Company.getAll(5673).map( security => d([
+            companyEntityLabel(Company, security),
+            fullDatomView(Company.get(security), 6089)
+            ], {class: "columns_1_1"})   ) ), */
+          br(),
+          d("Gjeld"),
+
+          fullDatomView(Company.get(1), 6247),
+          fullDatomView(Company.get(1), 6259),
+          fullDatomView(Company.get(1), 6280),
+          fullDatomView(Company.get(1), 6257),
+          fullDatomView(Company.get(1), 6258),
+          fullDatomView(Company.get(1), 6264),
+          fullDatomView(Company.get(1), 6269),
+          fullDatomView(Company.get(1), 6272),
+          fullDatomView(Company.get(1), 6273),
+          fullDatomView(Company.get(1), 6275),
+          
+
+
+          fullDatomView(Company.get(1), 6294),
+
+          /* d( Company.getAll(5811).map( security => d([
+            companyEntityLabel(Company, security),
+            fullDatomView(Company.get(security), 6190)
+            ], {class: "columns_1_1"})   ) ), */
+
+          br(),
+          fullDatomView(Company.get(1), 6296),
+        ]),
+        
+      ], {class: "columns_1_1"})
+  ], {class: "feedContainer"})
 
 let processTimelineView = (Company, process) => {
 
