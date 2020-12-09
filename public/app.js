@@ -499,11 +499,6 @@ const ActiveCompany = {
   }
 }
 
-
-
-
-
-
 const ClientApp = {
   S: {
     selectedPage: "Tidslinje",
