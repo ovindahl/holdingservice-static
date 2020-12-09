@@ -292,10 +292,6 @@ let entityInspectorEventTimeline = (Company, event) => d([
   d([
     attributeLabel(6),
     entityLabel(event),
-  ], {class: "columns_1_1"}),
-  d([
-    attributeLabel(1757),
-    d(moment( Company.get(event, 1757) ).format("DD/MM/YYYY"))
   ], {class: "columns_1_1"})
 ], {class: "entityInspectorPopup feedContainer"})
 

@@ -208,7 +208,7 @@ const ActiveCompany = {
     let firstEventDateB = isDefined(firstEventB ) ? Database.get(firstEventB , 'event/date') : Date.now()
     return firstEventDateA - firstEventDateB;
   }),
-  getCompanyEvents: company => Database.getAll(46).filter( event => ActiveCompany.getCompanyProcesses(company).includes( Database.get(event, "event/process") )  ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) ),
+  getCompanyEvents: company => Database.getAll(46).filter( event => Database.get( Database.get(event, "event/process"), "process/company" ) === company  ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) ),
   applyCompanyEvent: (company, event) => {
     let eventType = Database.get( event, "event/eventTypeEntity" )
     let t = ActiveCompany.events.findIndex( e => e === event  ) + 1
@@ -271,8 +271,8 @@ const ActiveCompany = {
 
     ActiveCompany.company = company;
     ActiveCompany.companyDatoms = [];
-    ActiveCompany.processes = ActiveCompany.getCompanyProcesses(company)
     ActiveCompany.events = ActiveCompany.getCompanyEvents(company)
+    ActiveCompany.processes = ActiveCompany.getCompanyProcesses(company)
     ActiveCompany.latestEntityID = 0;
     ActiveCompany.events.forEach( event => ActiveCompany.applyCompanyEvent(company, event) )
 
@@ -390,7 +390,7 @@ const ActiveCompany = {
     Process.processType =  Database.get(process, "process/processType" )
     Process.company = Database.get(process, "process/company" )
 
-    Process.events = Database.getAll(46).filter( event => Database.get(event, 'event/process') === process ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) )
+    Process.events = ActiveCompany.events.filter( event => Database.get(event, 'event/process') === process ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) )
     Process.getEventEntityByIndex = index => Process.events[index]
     Process.getEventByIndex = index => Database.get( Process.getEventEntityByIndex(index) )
     Process.getFirstEvent = () => Process.getEventByIndex(  0 )
@@ -441,10 +441,7 @@ const ActiveCompany = {
     Event.getPrevEvent = () => ActiveCompany.getEventObject( Event.prevEvent )
 
 
-    Event.retract = async () => {
-      await Database.retractEntity(event)
-      ActiveCompany.refreshCompany(Event.company, event)
-    }
+    Event.retract = async () => await ActiveCompany.retractCompanyEvent( event ) 
 
     Event.update = async (attribute, newValue) => {
       await Database.updateEntity(event, attribute, newValue)
@@ -476,6 +473,12 @@ const ActiveCompany = {
 
     ActiveCompany.events = ActiveCompany.getCompanyEvents(ActiveCompany.company)
     return newEvent;
+  },
+  retractCompanyEvent: async event => {
+    let retractedEvent = await Database.retractEntity(event)
+    ActiveCompany.events = ActiveCompany.getCompanyEvents(ActiveCompany.company)
+    ActiveCompany.refreshCompany(ActiveCompany.company, ActiveCompany.events[0]  )
+    return retractedEvent;
   },
   createCompanyProcess: async (company, processType) => {
 
