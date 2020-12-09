@@ -535,9 +535,64 @@ let lockedDatomView = (entity, attribute, version) => {
 }
 
 let fullDatomView = (Entity, attribute) => {
+  
 
-  let valueType = Database.get(attribute, "attribute/valueType")
+
+  //TBD:
+  //  Non-editable views
+  //  Associated Views for calculatedValues (same as non-editable?)
+  //  Implement time/versioning/changelog on datom and entity level (or value level?)
+  //  Account balance value type?
+
   let isArray = Database.get(attribute, "attribute/isArray")
+
+
+  return d([
+    attributeLabel( attribute ),
+    isArray ? multipleValuesView(Entity, attribute) : singleValueView(Entity, attribute)
+  ], isArray ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
+
+}
+
+let singleValueView = (Entity, attribute) => {
+
+  
+  let isArray = false
+  let valueType = Database.get(attribute, "attribute/valueType")
+
+  let storedValue = Entity.get(attribute)
+
+  let valueTypeFormats = {
+    "30": storedValue => String(storedValue), //Tekst
+    "31": storedValue => String(storedValue), //Tall
+    "5721": storedValue => moment( storedValue ).format("DD/MM/YYYY"), //Dato
+    "34": storedValue => storedValue, //Funksjonstekst
+    "36": storedValue => storedValue, //Boolean
+    "40": storedValue => storedValue, //Velg alternativ
+    "32": storedValue => storedValue, //Entitetsreferanse
+    "38": storedValue => storedValue, //Konstruksjon av nye datomer NB: Finnes ikke i entall
+    "5824": storedValue => storedValue, //File
+    "41": storedValue => storedValue, //Company entity
+    "5849": storedValue => storedValue, //Konstruksjon av ny hendelse
+  }
+
+  let formattedValue = valueTypeFormats[ valueType ]( storedValue )
+
+  let valueTypeUpdateFunctions = {
+    "30": Entity => async e => update( await Entity.replaceValue( attribute,  submitInputValue(e) ) ), //Tekst
+    "31": Entity => async e => update( await Entity.replaceValue( attribute,  Number( submitInputValue(e) ) ) ), //Tall
+    "5721": Entity => async e => update( await Entity.replaceValue( attribute,  Number( moment( submitInputValue(e) , "DD/MM/YYYY").format("x") ) ) ), //Dato
+    "34": Entity => async e => update( await Entity.replaceValue( attribute,  submitInputValue(e).replaceAll(`"`, `'`) ) ), //Funksjonstekst
+    "36": Entity => async e => update( await Entity.replaceValue( attribute,  Entity.get(attribute) ? false : true ) ), //Boolean
+    "40": Entity => async e => update( await Entity.replaceValue( attribute,  submitInputValue(e) ) ), //Velg alternativ
+    "32": Entity => async e => update( await Entity.replaceValue( attribute,  Number( submitInputValue(e) ) ) ), //Entitetsreferanse
+    "38": Entity => async e => update(), //Konstruksjon av nye datomer NB: Finnes ikke i entall
+    "5824": Entity => async e => update(), //File - TBD
+    "41": Entity => async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ), //Company entity
+    "5849": Entity => async e => update(), //Konstruksjon av ny hendelse NB: Finnes ikke i entall
+  }
+
+  let updateFunction = valueTypeUpdateFunctions[ valueType ]( Entity )
 
   let valueTypeViews = {
     "30": isArray ? multpleSimpleValuesRowView : singleTextView, //Tekst
@@ -553,13 +608,31 @@ let fullDatomView = (Entity, attribute) => {
     "5849": eventConstructorsInProcessStepRowView, //Konstruksjon av ny hendelse
   }
 
+  return valueTypeViews[ valueType ](Entity, attribute)
 
+}
 
-  //TBD:
-  //  Non-editable views
-  //  Associated Views for calculatedValues (same as non-editable?)
-  //  Implement time/versioning/changelog on datom and entity level (or value level?)
-  //  Account balance value type?
+let multipleValuesView = (Entity, attribute) => {
+
+  
+  let isArray = true
+  let valueType = Database.get(attribute, "attribute/valueType")
+
+  let storedValue = Entity.get(attribute)
+
+  let valueTypeViews = {
+    "30": isArray ? multpleSimpleValuesRowView : singleTextView, //Tekst
+    "31": isArray ? multpleSimpleValuesRowView : singleNumberView, //Tall
+    "34": isArray ? multpleSimpleValuesRowView : functionTextView, //Funksjonstekst
+    "36": isArray ? multpleSimpleValuesRowView : booleanView, //Boolean
+    "40": isArray ? multpleSimpleValuesRowView : dropdownView, //Velg alternativ
+    "32": isArray ? multipleEntitiesReferenceRowView : singleEntityReferenceView,
+    "5721": isArray ? multpleSimpleValuesRowView : singleDateView, //Dato
+    "38": datomConstructorRowView,
+    "5824": fileView, //File
+    "41": input_singleCompanyEntity, //Company entity
+    "5849": eventConstructorsInProcessStepRowView, //Konstruksjon av ny hendelse
+  }
 
   let startValuesByType = {
     "30": ``, //Tekst
@@ -572,31 +645,24 @@ let fullDatomView = (Entity, attribute) => {
     "38": {entity: `return Q.latestEntityID() + 1;`, attribute: 1001, value: `return ''` },
     "5824": "", //File
     "41": 0, //Company entity
-    "5849":  {6: "Ny handling", 5848: "return true;", 5850: "Company.createEvent(5000, Process.entity);"}, //Konstruksjon av ny hendelse
+    "5849":  {6: "Ny handling", 5848: "return true;", 5850: "return Company.createEvent(5000, Process.entity);"}, //Konstruksjon av ny hendelse
   }
-
-  
 
   let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : ``
 
   return d([
-    attributeLabel( attribute ),
-    isArray 
-      ? d([
-          d([
-            d( "#" ),
-            d( "Verdi" ),
-            d("")
-          ], {class: "columns_1_8_1"}),
-          d( Entity.get(attribute).map( (Value, index) => d([
-              positionInArrayView(Entity, attribute, index),
-              valueTypeViews[ Database.get(attribute, "attribute/valueType") ](Entity, attribute, index),
-              submitButton( "[ X ]", async e => update( await Entity.removeValueEntry( attribute,  index ) )  )
-            ], {class: "columns_1_8_1", style: "margin: 5px;"} )) ),
-            submitButton( "[ + ]", async e => update( await Entity.addValueEntry( attribute,  startValue ) )  )
-        ])
-      : valueTypeViews[ Database.get(attribute, "attribute/valueType") ](Entity, attribute)
-  ], isArray ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
+    d([
+      d( "#" ),
+      d( "Verdi" ),
+      d("")
+    ], {class: "columns_1_8_1"}),
+    d( Entity.get(attribute).map( (Value, index) => d([
+        positionInArrayView(Entity, attribute, index),
+        valueTypeViews[ valueType ](Entity, attribute, index),
+        submitButton( "[ X ]", async e => update( await Entity.removeValueEntry( attribute,  index ) )  )
+      ], {class: "columns_1_8_1", style: "margin: 5px;"} )) ),
+      submitButton( "[ + ]", async e => update( await Entity.addValueEntry( attribute,  startValue ) )  )
+  ])
 
 }
 
