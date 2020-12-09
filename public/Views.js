@@ -384,9 +384,6 @@ let eventConstructorsInProcessStepRowView = (Entity, attribute, index) => d([
 
 
 
-
-
-
 //Basic entity views
 
 let entityLabel = (entity, onClick) => Database.get(entity) 
@@ -459,16 +456,12 @@ let companyEntityLabelWithoutPopup = (Company, companyEntity) => d( [
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
-
-
 let eLabel = Entity => d([
   d( Entity.label, {class: "entityLabel", style: `background-color:${Entity.color};`} )
 ])
 
 
 // CLIENT PAGE VIEWS
-
-
 
 let clientPage = Company => d([
   d([d('<header><h1>Holdingservice Beta</h1></header>'),d([submitButton("Bytt til admin", e => update( ClientApp.updateState({selectedPage: "Admin"}) ) )], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
@@ -490,14 +483,9 @@ let clientPage = Company => d([
   
 ])
 
-
-
 let multipleCompanyEntitiesView = (Company, entityType) => {
 
   let eventTypeAttributes = D.get( entityType,  17)
-
-
-
 
   return d([
     d([
@@ -512,7 +500,6 @@ let multipleCompanyEntitiesView = (Company, entityType) => {
    ) )
   ],{class: "feedContainer"})
 } 
-
 
 let isEvent = entity => Database.get(entity).entityType === 46
 
@@ -812,7 +799,3 @@ let versionView = entity => {
     ], {class: "columns_1_2_1"}),
   ]) 
 } 
-
-
-
-
