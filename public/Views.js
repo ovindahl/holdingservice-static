@@ -106,6 +106,16 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
 
 let actionButton = Action => Action.isActionable ? submitButton( Action.label, async e => update(  await Action.actionFunction()  ) ) : d( Action.label, {style: "background-color: gray;"} ) 
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+
+
+
+
 
 // VALUE TYPE VIEWS
 
@@ -124,7 +134,6 @@ let fullDatomView = (Entity, attribute, isEditable) => {
   
 
   return d([
-    //isCalculatedField ? entityLabel(attribute) : attributeLabel( attribute ),
     entityLabel(attribute),
     valueView(Entity, attribute, isEditable)
   ], isArray ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
@@ -161,23 +170,19 @@ let valueView = (Entity, attribute, isEditable) => {
 
 let multipleValuesView = (Entity, attribute, isEditable) => {
 
-  
-  let isArray = true
   let valueType = Database.get(attribute, "attribute/valueType")
 
-  let storedValue = Entity.get(attribute)
-
   let valueTypeViews = {
-    "30": isArray ? multpleSimpleValuesRowView : singleTextView, //Tekst
-    "31": isArray ? multpleSimpleValuesRowView : singleNumberView, //Tall
-    "34": isArray ? multpleSimpleValuesRowView : functionTextView, //Funksjonstekst
-    "36": isArray ? multpleSimpleValuesRowView : booleanView, //Boolean
-    "40": isArray ? multpleSimpleValuesRowView : dropdownView, //Velg alternativ
-    "32": isArray ? multipleEntitiesReferenceRowView : singleEntityReferenceView,
-    "5721": isArray ? multpleSimpleValuesRowView : singleDateView, //Dato
+    "30": multpleSimpleValuesRowView, //Tekst
+    "31": multpleSimpleValuesRowView, //Tall
+    "34": multpleSimpleValuesRowView, //Funksjonstekst
+    "36": multpleSimpleValuesRowView, //Boolean
+    "40": multpleSimpleValuesRowView, //Velg alternativ
+    "32": multipleEntitiesReferenceRowView,
+    "5721": multpleSimpleValuesRowView, //Dato
     "38": datomConstructorRowView,
     "5824": fileView, //File
-    "41": isArray ? (Entity, attribute, index) => d(JSON.stringify(Entity.get(attribute)[index])) : input_singleCompanyEntity, //Company entity
+    "41": (Entity, attribute, index) => d(JSON.stringify(Entity.get(attribute)[index])), //Company entity
     "5849": eventConstructorsInProcessStepRowView, //Konstruksjon av ny hendelse
   }
 
@@ -194,9 +199,7 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "41": 0, //Company entity
     "5849":  {6: "Ny handling", 5848: "return true;", 5850: "return Company.createEvent(5000, Process.entity);"}, //Konstruksjon av ny hendelse
   }
-
   let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : ``
-
   return isEditable ? d([
     d([
       d( "#" ),
@@ -384,39 +387,42 @@ let eventConstructorsInProcessStepRowView = (Entity, attribute, index) => d([
 
 //Basic entity views
 
-let entityLabel = (entity, onClick) => d( [
+let entityLabel = entity => d([
+    d( `${ Database.get( entity ) ? Database.get( entity ).label : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", e => {
+      ClientApp.updateState({selectedEntity: entity})
+      AdminApp.updateState({selectedEntity: entity})
+      update(  )
+    }),
+  ], {style:"display: inline-flex;"})
+
+
+let entityLabelWithPopup = entity => d([
   d([
-    d( `${ Database.get( entity ) ? Database.get( entity ).label : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", e => update( AdminApp.updateState({selectedEntity: entity}) ) ),
-    d([
-      d( `${ Database.get( entity ) ? Database.get( entity ).label : "na."}` ),
-      d( "Entitet i databasen" ),
-      d( "[ TBD ]" ),
-    ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+    entityLabel(entity),
+    entityPopUp( entity ),
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
-let entityRedlinedValue = (value, prevValue) => d( [
-  span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
-  span( `${JSON.stringify(value)}`),
-], {style:"display: inline-flex;justify-content: flex-end;"} ) 
+let entityPopUp = entity => d([
+  d( `[${entity}] ${ Database.get( entity ) ? Database.get( entity ).label : "na."}` ),
+  br(),
+  d( "Entitet i databasen" ),
+  fullDatomView( Database.getEntity(entity), 19, false ),
+  br(),
+  d( "[ TBD ]" ),
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-let attributeLabel = attribute => d([
-  d([
-    span( Database.get(attribute, "entity/label"), "", {class: "entityLabel", style: `background-color:${Database.get( 42, "entityType/color" )};`}, "click", e => update(AdminApp.updateState({selectedEntity: attribute })) ),
-    d([
-      h3(`[${attribute}] ${Database.get(attribute, "entity/label")}`),
-      d([
-        entityLabel( 18 ),
-        entityLabel( Database.get(attribute, "attribute/valueType") )
-      ], {class: "columns_1_1"}),
-      d([
-        entityLabel( 5823 ),
-        span(`${Database.get(attribute, "attribute/isArray") ? "Flertall" : "Entall"}`, "", {style: "background-color:#7676f385;padding: 5px;"})
-      ], {class: "columns_1_1"}),
-      span("[t TBD]")
-    ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-  ], {class: "popupContainer", style:"display: inline-flex;"}),
-], {style:"display: inline-flex;"} )
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+
+
+
+
 
 
 // CLIENT PAGE VIEWS
@@ -424,22 +430,24 @@ let attributeLabel = attribute => d([
 let companyEntityInspectorPopup = (Company, companyEntity, t) => d([ companyEntityView(Company, companyEntity, t) ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 let companyEntityLabel = (Company, companyEntity) => d([
-  d( `${Company.get( companyEntity ).label}`, {class: "entityLabel", style: `background-color:${Company.get( companyEntity ).color};`}, "click", e => update( ClientApp.updateState({selectedEntity: companyEntity}) ) )
+    d( `${Company.get( companyEntity ) ? Company.get( companyEntity ).label : "na."}`, {class: "entityLabel", style: `background-color:${Company.get( companyEntity ) ? Company.get( companyEntity ).color : "gray"};`}, "click", e => update( ClientApp.updateState({selectedEntity: companyEntity}) ) ),
+  ], {style:"display: inline-flex;"})
+
+let companyEntityLabelWithPopup = (Company, companyEntity) => d([
+  d([
+    companyEntityLabel(Company, companyEntity),
+    companyEntityPopUp( Company, companyEntity ),
+  ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"}) 
 
 
-
-
-let companyEntityLabelWithPopup = (Company, companyEntity) => d( [
-    d([
-      companyEntityLabel(Company, companyEntity),
-      d([
-        d( Company.get( companyEntity ).companyDatoms.map( companyDatom => fullDatomView( Company.get( companyEntity ), companyDatom.attribute, false  ) )),
-        d( Database.get( Company.get(companyEntity, 19 ), "entityType/calculatedFields" ).map( companyCalculatedField => fullDatomView( Company.get( companyEntity ), companyCalculatedField, false  ) ) )
-      ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-    ], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-
+let companyEntityPopUp = (Company, companyEntity) => d([
+  d( `[${companyEntity}] ${ Company.get( companyEntity ) ? Company.get( companyEntity ).label : "na."}` ),
+  br(),
+  d( "Entitet i selskapsdokumentet" ),
+  br(),
+  d( "[ TBD ]" ),
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
 
@@ -448,17 +456,25 @@ let clientPage = Company => d([
   navBar(Company),
   d([
     d(""),
-    isDefined( ClientApp.S.selectedEntity ) 
-    ? isEvent( ClientApp.S.selectedEntity )
-     ? eventView( Company )
-     : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
-        ? multipleCompanyEntitiesView( Company, ClientApp.S.selectedEntity )
-        :  d([
-            submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: undefined }) ) ),
-            br(),
-            companyEntityView(Company, ClientApp.S.selectedEntity )
-            ])
-    : companyView( Company )
+    isCompany( ClientApp.S.selectedEntity ) 
+      ? companyView( Company )
+      : isEvent( ClientApp.S.selectedEntity )
+        ? eventView( Company )
+        : isProcess( ClientApp.S.selectedEntity )
+          ? d([
+              d([
+                d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
+                d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+              ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`}),
+              processTimelineView(Company, ClientApp.S.selectedEntity )
+            ],{class: "feedContainer"}) 
+          : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
+              ? multipleCompanyEntitiesView( Company, ClientApp.S.selectedEntity )
+              :  d([
+                  submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
+                  br(),
+                  companyEntityView(Company, ClientApp.S.selectedEntity )
+                  ])
   ], {class: "pageContainer"})
   
 ])
@@ -474,7 +490,7 @@ let multipleCompanyEntitiesView = (Company, entityType) => {
     ], {style: `display:grid;grid-template-columns: 1fr 7fr; margin: 5px;border: 1px solid #80808052;`}),
     entityLabel(entityType),
     d( Company.getAll(entityType).map( companyEntity => d([
-      companyEntityLabel(Company, companyEntity),
+      companyEntityLabelWithPopup(Company, companyEntity),
       d( eventTypeAttributes.map( attr => valueView(Company.get(companyEntity) , attr, false)   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} )
     ], {style: `display:grid;grid-template-columns: 1fr 7fr; margin: 5px;border: 1px solid #80808052;`}),
    ) )
@@ -482,31 +498,42 @@ let multipleCompanyEntitiesView = (Company, entityType) => {
 } 
 
 let isEvent = entity => Database.get(entity).entityType === 46
+let isProcess = entity => Database.get(entity).entityType === 5692
+let isCompany = entity => Database.get(entity).entityType === 5722
 
 let navBar = Company => d([
-  entityLabel( Company.entity, e => update( ClientApp.updateState({selectedEntity: undefined }) )  ),
-  isDefined( ClientApp.S.selectedEntity )
-    ? isEvent( ClientApp.S.selectedEntity )
+  entityLabelWithPopup( Company.entity  ),
+  isCompany( ClientApp.S.selectedEntity )
+    ? d("")
+    : isProcess( ClientApp.S.selectedEntity )
       ? d([
         span(" / "  ),
-        entityLabel( 46, e => update( ClientApp.updateState({selectedEntity: 46 }) ) ),
+        entityLabelWithPopup( 5692 ),
         span(" / "  ),
-        entityLabel( Company.getEvent( ClientApp.S.selectedEntity ).get( "event/process" )  ),
-        span(" / "  ),
-        entityLabel( ClientApp.S.selectedEntity  )
+        entityLabelWithPopup( ClientApp.S.selectedEntity  )
       ])
-      : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
+      : isEvent( ClientApp.S.selectedEntity )
         ? d([
           span(" / "  ),
-          entityLabel( ClientApp.S.selectedEntity, e => update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity }) ) ),
-        ])
-        : d([
+          entityLabelWithPopup( 5692 ),
           span(" / "  ),
-          entityLabel( Company.get( ClientApp.S.selectedEntity, 19 ), e => update( ClientApp.updateState({selectedEntity: Company.get( ClientApp.S.selectedEntity, 19 ) }) ) ),
+          entityLabelWithPopup( Company.getEvent( ClientApp.S.selectedEntity ).get( "event/process" )  ),
           span(" / "  ),
-          companyEntityLabel( Company, ClientApp.S.selectedEntity )
+          entityLabelWithPopup( 46 ),
+          span(" / "  ),
+          entityLabelWithPopup( ClientApp.S.selectedEntity  )
         ])
-    : d("")
+        : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
+          ? d([
+            span(" / "  ),
+            entityLabelWithPopup( ClientApp.S.selectedEntity, e => update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity }) ) ),
+          ])
+          : d([
+            span(" / "  ),
+            entityLabelWithPopup( Company.get( ClientApp.S.selectedEntity, 19 ), e => update( ClientApp.updateState({selectedEntity: Company.get( ClientApp.S.selectedEntity, 19 ) }) ) ),
+            span(" / "  ),
+            companyEntityLabelWithPopup( Company, ClientApp.S.selectedEntity )
+          ])
 ], {style: "display: flex;"})
 
 let companyView = Company => d([
@@ -516,10 +543,6 @@ let companyView = Company => d([
         d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
         d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} )
       ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`}),
-      /* d([
-        d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
-        d( Company.events.map( (event, i) =>  d([d([span( `${i+1 }`, {class: "entityLabel", style: `background-color: #9ad2ff;`})], {class: "popupContainer", style:"display: inline-flex;"})], {style:"display: inline-flex;"} )), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-      ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`}), */
       d( Company.processes.map( process => processTimelineView(Company, process) ) ),
       br(),
       d([
@@ -533,12 +556,14 @@ let companyView = Company => d([
     d([
       h3("Selskapets entiteter"),
       d( Company.entityTypes.map( entityType => d([
-        entityLabel(entityType, e => update( ClientApp.updateState({selectedEntity: entityType}) ) ),
-        d( Company.getAll(entityType).map( companyEntity => companyEntityLabel(Company, companyEntity) ) ),
+        entityLabelWithPopup(entityType  ),
+        d( Company.getAll(entityType).map( companyEntity => companyEntityLabelWithPopup(Company, companyEntity) ) ),
         br()
       ])))
     ], {class: "feedContainer"}),
   ])
+
+
 
 let balanceSheetView = Company => d([
       h3("Balanse"),
@@ -549,7 +574,7 @@ let balanceSheetView = Company => d([
           fullDatomView(Company.get(1), 6238),
           fullDatomView(Company.get(1), 6241),
           fullDatomView(Company.get(1), 6253),
-          d( Company.getAll(5812).map( security => companyEntityLabel(Company, security))   ),
+          d( Company.getAll(5812).map( security => companyEntityLabelWithPopup(Company, security))   ),
           fullDatomView(Company.get(1), 6254),
           fullDatomView(Company.get(1), 6255),
           fullDatomView(Company.get(1), 6256),
@@ -590,7 +615,7 @@ let balanceSheetView = Company => d([
           fullDatomView(Company.get(1), 6257),
           fullDatomView(Company.get(1), 6258),
           fullDatomView(Company.get(1), 6264),
-          d( Company.getAll(5811).map( loan => companyEntityLabel(Company, loan))   ),
+          d( Company.getAll(5811).map( loan => companyEntityLabelWithPopup(Company, loan))   ),
           fullDatomView(Company.get(1), 6269),
           fullDatomView(Company.get(1), 6272),
           fullDatomView(Company.get(1), 6273),
@@ -607,7 +632,7 @@ let processTimelineView = (Company, process) => {
   let processEventsTimes = Company.getProcess(process).events.map( event => Company.getEvent(event).t )
 
   return d([
-    entityLabel(process, e => {
+    entityLabelWithPopup(process, e => {
       update( ClientApp.updateState({selectedPage: "Prosesser", selectedEntity: Company.getProcess(process).events[0]}) )
     }  ),
     d( Company.events.map( (event, i) => ((i+1) < processEventsTimes[0] || (i+1) > processEventsTimes.slice( -1 )[0])
@@ -616,11 +641,7 @@ let processTimelineView = (Company, process) => {
       ? d([
           d([
               d( `${i+1}`, {class: "entityLabel", style: `background-color:${ event === ClientApp.S.selectedEntity ? "red" : "pink"};`}, "click", e => { update( ClientApp.updateState({selectedPage: "Prosesser", selectedEntity: event }) )} ),
-              d([
-                d( `Hendelse ${event}` ),
-                d( "Entitet i databasen" ),
-                d( "[ TBD ]" ),
-              ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+              entityPopUp( event ),
             ], {class: "popupContainer", style:"display: inline-flex;"})
         ], {style:"display: inline-flex;"} )
       : d("-" ) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
@@ -644,7 +665,7 @@ let eventView =  Company => {
 
 
   return d([
-    submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: undefined }) ) ),
+    submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
     br(),
     d([
       h3( "Prosessoversikt" ),
@@ -672,6 +693,16 @@ let eventView =  Company => {
   ])
 } 
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+
+
+
+
 // ADMIN PAGE VIEWS
 
 let adminPage = () => d([
@@ -680,11 +711,11 @@ let adminPage = () => d([
     span( "Holdingservice sin database" ),
     span(" / "  ),
     isDefined(AdminApp.S.selectedEntity)
-      ? entityLabel( Database.get(AdminApp.S.selectedEntity).entityType   )
+      ? entityLabelWithPopup( Database.get(AdminApp.S.selectedEntity).entityType   )
       : span(" ... "),
     span(" / "  ),
     isDefined(AdminApp.S.selectedEntity)
-      ? entityLabel( AdminApp.S.selectedEntity   )
+      ? entityLabelWithPopup( AdminApp.S.selectedEntity   )
       : span("Ingen entitet valgt.")
   ], {style: "padding: 1em;"}),
   d([
@@ -699,14 +730,14 @@ let sidebar_left = () => {
 let selectedEntityType = Database.get(AdminApp.S.selectedEntity, "entity/entityType")
 let selectedCategory = Database.get(AdminApp.S.selectedEntity, "entity/category")
 return d([
-  d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687, 5817, 5722].map( entityType => entityLabel(entityType, e => update(AdminApp.updateState({selectedEntity:  Database.getAll(entityType)[0] })) )) ),
+  d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687, 5817, 5722].map( entityType => entityLabelWithPopup(entityType, e => update(AdminApp.updateState({selectedEntity:  Database.getAll(entityType)[0] })) )) ),
   d( Database.getAll( selectedEntityType   ).map( entity => Database.get(entity, "entity/category" ) ).filter(filterUniqueValues)
     .sort( ( a , b ) => ('' + a).localeCompare(b) )
     .map( category => d( category, {class: category === selectedCategory ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, "click", 
       e => update( AdminApp.updateState({selectedEntity:  Database.getAll( selectedEntityType  ).find( e => Database.get(e, "entity/category") === category  ) }) )
       ))
   ),
-  d( Database.getAll( selectedEntityType ).filter( entity => Database.get(entity, "entity/category" ) === selectedCategory ).sort( sortEntitiesAlphabeticallyByLabel ).map( entity => entityLabel( entity, e => update( AdminApp.updateState({selectedEntity: entity} ) ) )))
+  d( Database.getAll( selectedEntityType ).filter( entity => Database.get(entity, "entity/category" ) === selectedCategory ).sort( sortEntitiesAlphabeticallyByLabel ).map( entity => entityLabelWithPopup( entity, e => update( AdminApp.updateState({selectedEntity: entity} ) ) )))
 ], {style: "display:flex;"})
 }
 
@@ -721,7 +752,7 @@ let adminEntityView = entity => {
     : d([
         d([
           d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
-          entityLabel(entity),
+          entityLabelWithPopup(entity),
         ], {class: "columns_1_1"}),
         versionView(entity),
         d( attributes.map( attribute => fullDatomView( Entity, attribute, true ) )),
@@ -760,3 +791,22 @@ let versionView = entity => {
     ], {class: "columns_1_2_1"}),
   ]) 
 } 
+
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+
+
+
+
+//ARCHIVE
+
+
+let entityRedlinedValue = (value, prevValue) => d( [
+  span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
+  span( `${JSON.stringify(value)}`),
+], {style:"display: inline-flex;justify-content: flex-end;"} ) 

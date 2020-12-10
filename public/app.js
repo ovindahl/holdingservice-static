@@ -456,7 +456,7 @@ const ClientApp = {
   S: {
     selectedPage: "Tidslinje",
     selectedCompany: 5723,
-    selectedEntity: undefined
+    selectedEntity: 5723
   },
   updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
   replaceState: newState => ClientApp.S = newState,
