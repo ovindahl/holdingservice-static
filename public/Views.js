@@ -708,7 +708,7 @@ let eventView =  Company => {
 let adminPage = () => d([
   d([d('<header><h1>Holdingservice Admin</h1></header>'),d([submitButton("Bytt til klient", e => update( ClientApp.updateState({selectedPage: "Prosesser"}) ) )], {style: "display:flex;"} )], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
   d([
-    span( "Holdingservice sin database" ),
+    entityLabelWithPopup( 47 ),
     span(" / "  ),
     isDefined(AdminApp.S.selectedEntity)
       ? entityLabelWithPopup( Database.get(AdminApp.S.selectedEntity).entityType   )
@@ -718,28 +718,27 @@ let adminPage = () => d([
       ? entityLabelWithPopup( AdminApp.S.selectedEntity   )
       : span("Ingen entitet valgt.")
   ], {style: "padding: 1em;"}),
+
   d([
-    sidebar_left( ),
-    adminEntityView( AdminApp.S.selectedEntity ),
+    d(""),
+    Database.get( AdminApp.S.selectedEntity, "entity/entityType" ) === 47
+      ? d([
+        multipleEntitiesView( AdminApp.S.selectedEntity ),
+        br(),
+        adminEntityView( AdminApp.S.selectedEntity )
+      ]) 
+      : adminEntityView( AdminApp.S.selectedEntity )
   ], {class: "pageContainer"})
+
 ])
 
-let sortEntitiesAlphabeticallyByLabel = ( a , b ) => ('' + a.label).localeCompare(b.label)
-
-let sidebar_left = () => {
-let selectedEntityType = Database.get(AdminApp.S.selectedEntity, "entity/entityType")
-let selectedCategory = Database.get(AdminApp.S.selectedEntity, "entity/category")
-return d([
-  d( [42, 43, 44, 45, 47, 5030, 5590, 5612, 5687, 5817, 5722].map( entityType => entityLabelWithPopup(entityType, e => update(AdminApp.updateState({selectedEntity:  Database.getAll(entityType)[0] })) )) ),
-  d( Database.getAll( selectedEntityType   ).map( entity => Database.get(entity, "entity/category" ) ).filter(filterUniqueValues)
-    .sort( ( a , b ) => ('' + a).localeCompare(b) )
-    .map( category => d( category, {class: category === selectedCategory ? "textButton textButton_selected" : "textButton", style: "background-color: #c9c9c9;" }, "click", 
-      e => update( AdminApp.updateState({selectedEntity:  Database.getAll( selectedEntityType  ).find( e => Database.get(e, "entity/category") === category  ) }) )
-      ))
-  ),
-  d( Database.getAll( selectedEntityType ).filter( entity => Database.get(entity, "entity/category" ) === selectedCategory ).sort( sortEntitiesAlphabeticallyByLabel ).map( entity => entityLabelWithPopup( entity, e => update( AdminApp.updateState({selectedEntity: entity} ) ) )))
-], {style: "display:flex;"})
-}
+let multipleEntitiesView = entityType => d([
+  entityLabel(entityType),
+  d( Database.getAll( entityType   ).map( entity => Database.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+    h3(category),
+    d( Database.getAll(entityType).filter( e => Database.get(e, "entity/category") === category ).map( entity => entityLabel(entity) ) ),
+  ])  ) )
+],{class: "feedContainer"})
 
 let adminEntityView = entity => {
 
