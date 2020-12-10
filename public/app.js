@@ -168,10 +168,7 @@ const Database = {
 
     Entity.Actions = [
       {label: "Slett", isActionable: true, actionFunction: async e => await Database.retractEntity(entity) },
-      {label: "Legg til", isActionable: true, actionFunction: async e => {
-        let newEntity = await Database.createEntity(Entity.entityType)
-        Database.selectEntity(newEntity.entity)
-      }  },
+      {label: "Legg til", isActionable: true, actionFunction: async e => await Database.createEntity(Entity.entityType)  },
     ]
 
     return Entity
@@ -406,6 +403,28 @@ const ActiveCompany = {
       await Database.updateEntity(event, attribute, newValue)
       ActiveCompany.refreshCompany(Event.company, event)
     }
+
+    let Company = ActiveCompany.getCompanyObject(Event.company)
+
+    Event.Actions = isArray(Database.get( Event.eventType , 6421))
+      ? Database.get( Event.eventType , 6421).map( actionObject => {
+        let label = actionObject[6]
+        let criteriumFunction = new Function( ["Database", "Company", "Process", "Event"], actionObject[5848] )
+        let isActionable = criteriumFunction(Database, Company, Company.getProcess( Event.process ), Event)
+        let actionFunctionString = actionObject[5850]
+        let actionFunction = isActionable 
+          ? e => new Function( ["Database", "Company", "Process", "Event"] , actionFunctionString ) (Database, Company, Company.getProcess( Event.process ), Event ) 
+          : undefined
+        let Action = {
+          label, isActionable, actionFunction
+        }
+        return Action
+      })
+      : []
+
+
+
+
     return Event
   },
   getCompanyEntityObject: (company, companyEntity, t) => {

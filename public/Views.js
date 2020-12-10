@@ -206,12 +206,14 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
       d( "Verdi" ),
       d("")
     ], {class: "columns_1_8_1"}),
-    d( Entity.get(attribute).map( (Value, index) => d([
-        positionInArrayView(Entity, attribute, index),
-        valueTypeViews[ valueType ](Entity, attribute, index),
-        submitButton( "[ X ]", async e => update( await Entity.removeValueEntry( attribute,  index ) )  )
-      ], {class: "columns_1_8_1", style: "margin: 5px;"} )) ),
-      submitButton( "[ + ]", async e => update( await Entity.addValueEntry( attribute,  startValue ) )  )
+    isArray( Entity.get(attribute) )
+      ?  d( Entity.get(attribute).map( (Value, index) => d([
+            positionInArrayView(Entity, attribute, index),
+            valueTypeViews[ valueType ](Entity, attribute, index),
+            submitButton( "[ X ]", async e => update( await Entity.removeValueEntry( attribute,  index ) )  )
+          ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
+      : d("Ingen verdier"),
+      submitButton( "[ + ]", async e => update( isArray( Entity.get(attribute) ) ? await Entity.addValueEntry( attribute,  startValue ) : await Entity.replaceValue( attribute,  [startValue] ) )  )
   ]) : ( valueType === 41 )
     ? d( Entity.get(attribute).map( (Value, index) => companyEntityLabel(ClientApp.getCompany(), Value) ))
     : d( Entity.get(attribute).map( (Value, index) => valueTypeViews[ valueType ](Entity, attribute, index) ))
@@ -374,7 +376,7 @@ let entitySearchBox = (Entity, attribute, updateFunction, index) => d([
 ])
 
 let multipleEntitiesReferenceRowView = (Entity, attribute, index) => d([
-  entityLabel(Entity.get(attribute)[index]),
+  entityLabelWithPopup(Entity.get(attribute)[index]),
   entitySearchBox(Entity, attribute, selectedEntity => async e => update( await Entity.replaceValueEntry( attribute, index, selectedEntity ) ), index)
 ])
 
@@ -387,8 +389,8 @@ let eventConstructorsInProcessStepRowView = (Entity, attribute, index) => d([
 
 //Basic entity views
 
-let entityLabel = entity => d([
-    d( `${ Database.get( entity ) ? Database.get( entity ).label : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", e => {
+let entityLabel = (entity, onClick) => d([
+    d( `${ Database.get( entity ) ? Database.get( entity ).label : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", isDefined(onClick) ? onClick : e => {
       ClientApp.updateState({selectedEntity: entity})
       AdminApp.updateState({selectedEntity: entity})
       update(  )
@@ -461,20 +463,10 @@ let clientPage = Company => d([
       : isEvent( ClientApp.S.selectedEntity )
         ? eventView( Company )
         : isProcess( ClientApp.S.selectedEntity )
-          ? d([
-              d([
-                d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
-                d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-              ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`}),
-              processTimelineView(Company, ClientApp.S.selectedEntity )
-            ],{class: "feedContainer"}) 
+          ? processView( Company )
           : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
               ? multipleCompanyEntitiesView( Company, ClientApp.S.selectedEntity )
-              :  d([
-                  submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
-                  br(),
-                  companyEntityView(Company, ClientApp.S.selectedEntity )
-                  ])
+              :  companyEntitiyPageView( Company )
   ], {class: "pageContainer"})
   
 ])
@@ -627,6 +619,35 @@ let balanceSheetView = Company => d([
       ], {class: "columns_1_1"})
   ], {class: "feedContainer"})
 
+
+
+let companyEntityView = (Company, companyEntity ) => d([
+  companyEntityLabel(Company, companyEntity),
+  d("<br>"),
+  d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
+  d("<br>"),
+  d( Company.get( companyEntity ).companyDatoms.map( companyDatom => fullDatomView( Company.get( companyEntity ), companyDatom.attribute, false  ) )),
+  d( Database.get( Company.get(companyEntity, 19 ), "entityType/calculatedFields" ).map( companyCalculatedField => fullDatomView( Company.get( companyEntity ), companyCalculatedField, false  ) ) )
+], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+
+let processView = Company => d([
+  entityLabel(ClientApp.S.selectedEntity),
+  br(),
+  d([
+    d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
+    d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+  ], {style: `display:grid;grid-template-columns: 1fr 3fr;`}),
+  processTimelineView(Company, ClientApp.S.selectedEntity ),
+  d(Database.get( Company.getProcess( ClientApp.S.selectedEntity ).processType, 5926).map( eventType => d([
+
+    entityLabel( eventType ),
+    d( Company.events.map( (event, i) => d( `${ ( Company.getProcess( ClientApp.S.selectedEntity ).events.includes(event) && Company.getEvent(event).eventType === eventType ) ? "X" : ""}`) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} )
+
+  ], {style: `display:grid;grid-template-columns: 1fr 3fr;`})  ) )
+],{class: "feedContainer"}) 
+
+
 let processTimelineView = (Company, process) => {
 
   let processEventsTimes = Company.getProcess(process).events.map( event => Company.getEvent(event).t )
@@ -650,14 +671,11 @@ let processTimelineView = (Company, process) => {
   ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`})
 }
 
-let companyEntityView = (Company, companyEntity ) => d([
-  companyEntityLabel(Company, companyEntity),
-  d("<br>"),
-  d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
-  d("<br>"),
-  d( Company.get( companyEntity ).companyDatoms.map( companyDatom => fullDatomView( Company.get( companyEntity ), companyDatom.attribute, false  ) )),
-  d( Database.get( Company.get(companyEntity, 19 ), "entityType/calculatedFields" ).map( companyCalculatedField => fullDatomView( Company.get( companyEntity ), companyCalculatedField, false  ) ) )
-], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+let companyEntitiyPageView = Company => d([
+  submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
+  br(),
+  companyEntityView(Company, ClientApp.S.selectedEntity )
+  ])
 
 let eventView =  Company => {
 
@@ -669,10 +687,10 @@ let eventView =  Company => {
     br(),
     d([
       h3( "Prosessoversikt" ),
-      d(Database.get( Event.processType, 5926).map( eventType => entityLabel( eventType ) ) ),
+      
       processTimelineView(Company, Event.process ),
       br(),
-      d(Company.getProcess(Database.get( ClientApp.S.selectedEntity, "event/process" ) ).Actions.map( Action => actionButton( Action )  ), {style: "display: flex;"})
+      //d(Company.getProcess(Database.get( ClientApp.S.selectedEntity, "event/process" ) ).Actions.map( Action => actionButton( Action )  ), {style: "display: flex;"})
     ], {class: "feedContainer"}),
     br(),
     d([
@@ -685,6 +703,11 @@ let eventView =  Company => {
         update(  )
       }   })
     ], {class: "feedContainer"} ),
+    br(),
+    d([
+      h3( "Neste steg" ),
+      d( Company.getEvent( ClientApp.S.selectedEntity ).Actions.map( Action => actionButton(Action) ) )
+    ], {class: "feedContainer"}),
     br(),
     d([
       h3("Selskapsentiteter som opprettes eller endres:"),
