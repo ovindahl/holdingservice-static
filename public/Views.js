@@ -458,15 +458,17 @@ let clientPage = Company => d([
   navBar(Company),
   d([
     d(""),
-    isCompany( ClientApp.S.selectedEntity ) 
-      ? companyView( Company )
-      : isEvent( ClientApp.S.selectedEntity )
-        ? eventView( Company )
-        : isProcess( ClientApp.S.selectedEntity )
-          ? processView( Company )
-          : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
-              ? multipleCompanyEntitiesView( Company, ClientApp.S.selectedEntity )
-              :  companyEntitiyPageView( Company )
+    isDefined( ClientApp.S.selectedEntity )
+      ? isCompany( ClientApp.S.selectedEntity ) 
+        ? companyView( Company )
+        : isEvent( ClientApp.S.selectedEntity )
+          ? eventView( Company )
+          : isProcess( ClientApp.S.selectedEntity )
+            ? processView( Company )
+            : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
+                ? multipleCompanyEntitiesView( Company, ClientApp.S.selectedEntity )
+                :  companyEntitiyPageView( Company )
+      : companyView( Company )
   ], {class: "pageContainer"})
   
 ])
@@ -495,37 +497,39 @@ let isCompany = entity => Database.get(entity).entityType === 5722
 
 let navBar = Company => d([
   entityLabelWithPopup( Company.entity  ),
-  isCompany( ClientApp.S.selectedEntity )
-    ? d("")
-    : isProcess( ClientApp.S.selectedEntity )
-      ? d([
-        span(" / "  ),
-        entityLabelWithPopup( 5692 ),
-        span(" / "  ),
-        entityLabelWithPopup( ClientApp.S.selectedEntity  )
-      ])
-      : isEvent( ClientApp.S.selectedEntity )
-        ? d([
-          span(" / "  ),
-          entityLabelWithPopup( 5692 ),
-          span(" / "  ),
-          entityLabelWithPopup( Company.getEvent( ClientApp.S.selectedEntity ).get( "event/process" )  ),
-          span(" / "  ),
-          entityLabelWithPopup( 46 ),
-          span(" / "  ),
-          entityLabelWithPopup( ClientApp.S.selectedEntity  )
-        ])
-        : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
+  isDefined( ClientApp.S.selectedEntity )
+    ? isCompany( ClientApp.S.selectedEntity )
+        ? d("")
+        : isProcess( ClientApp.S.selectedEntity )
           ? d([
             span(" / "  ),
-            entityLabelWithPopup( ClientApp.S.selectedEntity, e => update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity }) ) ),
-          ])
-          : d([
+            entityLabelWithPopup( 5692 ),
             span(" / "  ),
-            entityLabelWithPopup( Company.get( ClientApp.S.selectedEntity, 19 ), e => update( ClientApp.updateState({selectedEntity: Company.get( ClientApp.S.selectedEntity, 19 ) }) ) ),
-            span(" / "  ),
-            companyEntityLabelWithPopup( Company, ClientApp.S.selectedEntity )
+            entityLabelWithPopup( ClientApp.S.selectedEntity  )
           ])
+          : isEvent( ClientApp.S.selectedEntity )
+            ? d([
+              span(" / "  ),
+              entityLabelWithPopup( 5692 ),
+              span(" / "  ),
+              entityLabelWithPopup( Company.getEvent( ClientApp.S.selectedEntity ).get( "event/process" )  ),
+              span(" / "  ),
+              entityLabelWithPopup( 46 ),
+              span(" / "  ),
+              entityLabelWithPopup( ClientApp.S.selectedEntity  )
+            ])
+            : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 47
+              ? d([
+                span(" / "  ),
+                entityLabelWithPopup( ClientApp.S.selectedEntity, e => update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity }) ) ),
+              ])
+              : d([
+                span(" / "  ),
+                entityLabelWithPopup( Company.get( ClientApp.S.selectedEntity, 19 ), e => update( ClientApp.updateState({selectedEntity: Company.get( ClientApp.S.selectedEntity, 19 ) }) ) ),
+                span(" / "  ),
+                companyEntityLabelWithPopup( Company, ClientApp.S.selectedEntity )
+              ])
+    : d("")
 ], {style: "display: flex;"})
 
 let companyView = Company => d([
