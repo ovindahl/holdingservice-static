@@ -725,7 +725,7 @@ let processTimelineView = (Company, process) => {
     : Company.getProcess(process).events.includes(event)
       ? d([
           d([
-              d( `${i+1}`, {class: "entityLabel", style: `background-color:${ event === ClientApp.S.selectedEntity ? "red" : "pink"};`}, "click", e => update(  ClientApp.updateState({selectedEntity: event}) ) ),
+              d( `●`, {style: `color:${ Company.getEvent(event).isValid ? "green" : "red"};`}, "click", e => update(  ClientApp.updateState({selectedEntity: event}) ) ),
               entityPopUp( event ),
             ], {class: "popupContainer", style:"display: inline-flex;"})
         ], {style:"display: inline-flex;"} )
@@ -816,8 +816,8 @@ let eventActionsView = (Company, event) => Company.getEvent( event ).isLast
         ]),
         br(),
         actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
-          await Event.retract()
-          ClientApp.updateState({selectedEntity: isDefined(Event.prevEvent) ? Event.prevEvent : undefined })
+          await Company.getEvent( event ).retract()
+          ClientApp.updateState({selectedEntity: isDefined(Company.getEvent( event ).prevEvent) ? Company.getEvent( event ).prevEvent : undefined })
           update(  )
         }   })
   ], {class: "feedContainer"})  

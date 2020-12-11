@@ -210,16 +210,22 @@ const ActiveCompany = {
     let firstEventDateB = isDefined(firstEventB ) ? Database.get(firstEventB , 'event/date') : Date.now()
     return firstEventDateA - firstEventDateB;
   }),
-  getCompanyEvents: company => Database.getAll(46).filter( event => Database.get( Database.get(event, "event/process"), "process/company" ) === company  ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) ),
+  getCompanyEvents: company => Database.getAll(46)
+    .filter( event => Database.get( Database.get(event, "event/process"), "process/company" ) === company  )
+    .sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) ),
+  getCompanyEventsWithOutputDatoms: company => ActiveCompany.getCompanyEvents(company).filter( event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 ),
   constructDatom: (Company, Process, Event, t, datomConstructor) => {
     let event = Event.entity
     let company = Company.entity
     let entity = datomConstructor.isNew ? ActiveCompany.latestEntityID + datomConstructor.e : datomConstructor.e
     let attribute = datomConstructor.attribute
+
     let value;
       try {value = new Function( [`Company`, `Event`, `Process`, `latestEntityID`], datomConstructor.value )( Company, Event, Process, ActiveCompany.latestEntityID ) } 
       catch (error) {value = log("ERROR",{info: "Value calculation for datomconstructor failed", event, datomConstructor, error}) } 
     let Datom = {company, entity, attribute, value, event, t}
+
+
     return Datom
   },
   applyCompanyEvent: (company, event) => {
@@ -254,7 +260,8 @@ const ActiveCompany = {
 
     ActiveCompany.company = company;
     ActiveCompany.companyDatoms = [];
-    ActiveCompany.events = ActiveCompany.getCompanyEvents(company)
+    ActiveCompany.events = ActiveCompany.getCompanyEventsWithOutputDatoms(company)
+
     ActiveCompany.processes = ActiveCompany.getCompanyProcesses(company)
     ActiveCompany.latestEntityID = 0;
     ActiveCompany.events.forEach( event => ActiveCompany.applyCompanyEvent(company, event) )
