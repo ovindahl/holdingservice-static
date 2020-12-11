@@ -160,7 +160,7 @@ let valueView = (Entity, attribute, isEditable) => {
     "41": input_singleCompanyEntity, //Company entity
     "5849": undefined, //Konstruksjon av ny hendelse
     "6534": extendedFunctionView,
-    "6553": accountBalanceView,
+    "6553": accountBalanceRowView,
   }
 
   
@@ -188,7 +188,7 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "5824": fileView, //File
     "41": (Entity, attribute, index) => d(JSON.stringify(Entity.get(attribute)[index])), //Company entity
     "5849": eventConstructorsInProcessStepRowView, //Konstruksjon av ny hendelse
-    "6553": accountBalanceView,
+    "6553": accountBalanceRowView,
   }
 
   let startValuesByType = {
