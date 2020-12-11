@@ -391,8 +391,8 @@ let eventConstructorsInProcessStepRowView = (Entity, attribute, index) => d([
 
 let entityLabel = (entity, onClick) => d([
     d( `${ Database.get( entity ) ? Database.get( entity ).label : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", isDefined(onClick) ? onClick : e => {
-      ClientApp.updateState({selectedEntity: entity})
       AdminApp.updateState({selectedEntity: entity})
+      ClientApp.updateState({selectedPage: "Admin"})
       update(  )
     }),
   ], {style:"display: inline-flex;"})
@@ -451,8 +451,6 @@ let companyEntityPopUp = (Company, companyEntity) => d([
   d( "[ TBD ]" ),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-
-
 let clientPage = Company => d([
   d([d('<header><h1>Holdingservice Beta</h1></header>'),d([submitButton("Bytt til admin", e => update( ClientApp.updateState({selectedPage: "Admin"}) ) )], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
   navBar(Company),
@@ -496,7 +494,7 @@ let isProcess = entity => Database.get(entity).entityType === 5692
 let isCompany = entity => Database.get(entity).entityType === 5722
 
 let navBar = Company => d([
-  entityLabelWithPopup( Company.entity  ),
+  entityLabelWithPopup( Company.entity, e => update(  ClientApp.updateState({selectedEntity: Company.entity}) )),
   isDefined( ClientApp.S.selectedEntity )
     ? isCompany( ClientApp.S.selectedEntity )
         ? d("")
@@ -629,8 +627,10 @@ let timelineHeaderView = () => d([
 ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
 
 let processView = Company => d([
-  entityLabel(ClientApp.S.selectedEntity),
-  br(),
+  d([
+    entityLabel(5692),
+    entityLabelWithPopup(ClientApp.S.selectedEntity, e => update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity}) )),
+  ], {class: "columns_1_1"}),
   d([
     entityLabel(5687),
     entityLabel( Company.getProcess( ClientApp.S.selectedEntity ).processType )
@@ -661,15 +661,13 @@ let processTimelineView = (Company, process) => {
   let processEventsTimes = Company.getProcess(process).events.map( event => Company.getEvent(event).t )
 
   return d([
-    entityLabelWithPopup(process, e => {
-      update( ClientApp.updateState({selectedEntity: process}) )
-    }  ),
+    entityLabelWithPopup(process, e => update( ClientApp.updateState({selectedEntity: process}) )),
     d( Company.events.map( (event, i) => ((i+1) < processEventsTimes[0] || (i+1) > processEventsTimes.slice( -1 )[0])
     ? d(" ")
     : Company.getProcess(process).events.includes(event)
       ? d([
           d([
-              d( `${i+1}`, {class: "entityLabel", style: `background-color:${ event === ClientApp.S.selectedEntity ? "red" : "pink"};`}, "click", e => { update( ClientApp.updateState({selectedPage: "Prosesser", selectedEntity: event }) )} ),
+              d( `${i+1}`, {class: "entityLabel", style: `background-color:${ event === ClientApp.S.selectedEntity ? "red" : "pink"};`}, "click", e => update(  ClientApp.updateState({selectedEntity: event}) ) ),
               entityPopUp( event ),
             ], {class: "popupContainer", style:"display: inline-flex;"})
         ], {style:"display: inline-flex;"} )
@@ -712,7 +710,6 @@ let eventView =  Company => {
   let Event = Company.getEvent( ClientApp.S.selectedEntity )
   let Process = Event.getProcess()
 
-
   return d([
     submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
     br(),
@@ -726,7 +723,15 @@ let eventView =  Company => {
     ], {class: "feedContainer"}),
     br(),
     d([
-      h3( Database.get(Event.eventType, "entity/label") ),
+      d([
+        entityLabel(46),
+        entityLabelWithPopup(ClientApp.S.selectedEntity, e => update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity}) )),
+      ], {class: "columns_1_1"}),
+      d([
+        entityLabel(43),
+        entityLabel( Company.getProcess( ClientApp.S.selectedEntity ).eventType )
+      ], {class: "columns_1_1"}),
+      br(),
       d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
       br(),
       Event.isLast
