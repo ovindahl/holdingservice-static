@@ -159,8 +159,11 @@ let valueView = (Entity, attribute, isEditable) => {
     "5824": fileView, //File
     "41": input_singleCompanyEntity, //Company entity
     "5849": undefined, //Konstruksjon av ny hendelse
-    "6534": extendedFunctionView
+    "6534": extendedFunctionView,
+    "6553": accountBalanceView,
   }
+
+  
 
   let selectedView = isArray
     ? multipleValuesView(Entity, attribute, isEditable)
@@ -185,6 +188,7 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "5824": fileView, //File
     "41": (Entity, attribute, index) => d(JSON.stringify(Entity.get(attribute)[index])), //Company entity
     "5849": eventConstructorsInProcessStepRowView, //Konstruksjon av ny hendelse
+    "6553": accountBalanceView,
   }
 
   let startValuesByType = {
@@ -201,6 +205,7 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "5849":  {6: "Ny handling", 5848: "return true;", 5850: "return Company.createEvent(5000, Process.entity);"}, //Konstruksjon av ny hendelse
   }
   let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : ``
+
   return isEditable ? d([
     d([
       d( "#" ),
@@ -337,13 +342,6 @@ let extendedFunctionView = (Entity, attribute, isEditable) => {
 
 
 
-
-
-
-
-
-
-
 //Single value entity reference views
 
 let singleEntityReferenceView = (Entity, attribute, isEditable) => isEditable
@@ -443,6 +441,20 @@ let eventConstructorsInProcessStepRowView = (Entity, attribute, index) => d([
   textArea( Entity.get(attribute)[index][5850],  {class:"textArea_code"},  async e => update( await Entity.replaceValueEntry(attribute, index, mergerino(Entity.get(attribute)[index], {5850: submitInputValue(e).replaceAll(`"`, `'`)}) ) )),
   submitButton("[Slett]", async e => update( await Entity.removeValueEntry(attribute, index ) ) )
 ], {class: "columns_1_3_3_1"})
+
+let accountBalanceRowView = (Entity, attribute, index) => {
+
+  let Account = Entity.get(attribute)[index]
+
+  return d([
+    entityLabel(Account.account),
+    d( String(Account.amount) ),
+  ], {class: "columns_1_1"})
+
+
+}
+
+
 
 //Basic entity views
 
