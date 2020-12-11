@@ -538,7 +538,7 @@ let companyView = Company => d([
       d([
         d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
         d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} )
-      ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`}),
+      ], {style: `display:grid;grid-template-columns: 1fr 5fr;`}),
       d( Company.processes.map( process => processTimelineView(Company, process) ) ),
       br(),
       d([
@@ -639,17 +639,26 @@ let processView = Company => d([
   entityLabel(ClientApp.S.selectedEntity),
   br(),
   d([
+    entityLabel(5687),
+    entityLabel( Company.getProcess( ClientApp.S.selectedEntity ).processType )
+  ], {class: "columns_1_1"}),
+  br(),
+  d([
     d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
     d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-  ], {style: `display:grid;grid-template-columns: 1fr 3fr;`}),
+  ], {style: `display:grid;grid-template-columns: 1fr 5fr;`}),
   processTimelineView(Company, ClientApp.S.selectedEntity ),
   d(Database.get( Company.getProcess( ClientApp.S.selectedEntity ).processType, 5926).map( eventType => d([
 
     entityLabel( eventType ),
     d( Company.events.map( (event, i) => d( `${ ( Company.getProcess( ClientApp.S.selectedEntity ).events.includes(event) && Company.getEvent(event).eventType === eventType ) ? "X" : ""}`) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} )
 
-  ], {style: `display:grid;grid-template-columns: 1fr 3fr;`})  ) )
-],{class: "feedContainer"}) 
+  ], {style: `display:grid;grid-template-columns: 1fr 5fr;`})  ) ),
+  br(),
+  processProgressView(Company, ClientApp.S.selectedEntity),
+  br(),
+  processActionsView(Company,  ClientApp.S.selectedEntity )
+],{class: "feedContainer"})
 
 
 let processTimelineView = (Company, process) => {
@@ -670,10 +679,31 @@ let processTimelineView = (Company, process) => {
             ], {class: "popupContainer", style:"display: inline-flex;"})
         ], {style:"display: inline-flex;"} )
       : d("-" ) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-      
-      Company.getProcess(process).events.length == 0 ? submitButton( "[ X ]", async e => update( await Company.getProcess(process).retract() )  ) : d("")
-  ], {style: `display:grid;grid-template-columns: 1fr 8fr 1fr;`})
+  ], {style: `display:grid;grid-template-columns: 1fr 5fr;`})
 }
+
+let processProgressView = (Company, process) => d([
+  h3( "Kriterier for ferdigstilling av prosess" ),
+  d( Company.getProcess( process ).getCriteria().map( criterium => d([
+    entityLabel(criterium.criterium),
+    d(criterium.isComplete ? "✓" : "✖", {style: `background-color: ${criterium.isComplete? "green" : "#f5a1a170"} ;`})
+  ], {class: "columns_1_1"})  )),
+  br(),
+  d([
+    d("Prosessens status"),
+    d( Company.getProcess( process ).getCriteria().every( criterium => criterium.isComplete ) ? "Ferdig" : "I arbeid" )
+  ], {class: "columns_1_1"})
+], {class: "feedContainer"})
+
+let processActionsView = (Company, process) => d([
+  h3( "Handlinger" ),
+  d( Company.getProcess( process ).Actions.map( Action => actionButton(Action) ) ),
+  actionButton({label: `Slett prosessen inkl. ${Company.getProcess(process).events.length} hendelse(r)`, isActionable: true, actionFunction: async e => {
+    await Company.getProcess( process ).retract()
+    ClientApp.updateState({selectedEntity: undefined })
+    update(  )
+  }   })
+], {class: "feedContainer"})
 
 let companyEntitiyPageView = Company => d([
   submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
@@ -684,6 +714,7 @@ let companyEntitiyPageView = Company => d([
 let eventView =  Company => {
 
   let Event = Company.getEvent( ClientApp.S.selectedEntity )
+  let Process = Event.getProcess()
 
 
   return d([
@@ -691,27 +722,35 @@ let eventView =  Company => {
     br(),
     d([
       h3( "Prosessoversikt" ),
-      
+      processProgressView(Company, Process.entity ),
+      br(),
       processTimelineView(Company, Event.process ),
       br(),
-      //d(Company.getProcess(Database.get( ClientApp.S.selectedEntity, "event/process" ) ).Actions.map( Action => actionButton( Action )  ), {style: "display: flex;"})
+      processActionsView(Company, Event.process)
     ], {class: "feedContainer"}),
     br(),
     d([
       h3( Database.get(Event.eventType, "entity/label") ),
       d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
       br(),
-      actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
-        await Event.retract()
-        ClientApp.updateState({selectedEntity: isDefined(Event.prevEvent) ? Event.prevEvent : undefined })
-        update(  )
-      }   })
+      Event.isLast
+        ? actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
+          await Event.retract()
+          ClientApp.updateState({selectedEntity: isDefined(Event.prevEvent) ? Event.prevEvent : undefined })
+          update(  )
+        }   })
+        : d("")
     ], {class: "feedContainer"} ),
     br(),
+    Event.isValid ? 
     d([
       h3( "Neste steg" ),
       d( Company.getEvent( ClientApp.S.selectedEntity ).Actions.map( Action => actionButton(Action) ) )
-    ], {class: "feedContainer"}),
+    ], {class: "feedContainer"}) 
+    : d([
+        h3( "Feilmeldinger" ),
+        d( Event.errors.map( errorMessage => d(errorMessage, {style: "background-color: #f5a1a170;"})  ) ),
+      ], {class: "feedContainer"}),
     br(),
     d([
       h3("Selskapsentiteter som opprettes eller endres:"),
@@ -725,8 +764,6 @@ let eventView =  Company => {
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
-
-
 
 
 
