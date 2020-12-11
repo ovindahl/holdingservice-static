@@ -159,6 +159,7 @@ let valueView = (Entity, attribute, isEditable) => {
     "5824": fileView, //File
     "41": input_singleCompanyEntity, //Company entity
     "5849": undefined, //Konstruksjon av ny hendelse
+    "6534": extendedFunctionView
   }
 
   let selectedView = isArray
@@ -286,6 +287,62 @@ let fileView = (Entity, attribute, isEditable) => isEditable
           }
         )
     : d( JSON.stringify(Entity.get(attribute)) )
+
+
+
+
+
+
+let extendedFunctionView = (Entity, attribute, isEditable) => {
+
+      let Value = Entity.get(attribute)
+
+
+      return d([
+          d([
+            d("Navn"),
+            input( {value: Value.name}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {name: submitInputValue(e)})   ) )   ),
+          ], {class: "columns_1_1"}),
+          br(),
+          d([
+            d("Argumenter"),
+            d( Value.arguments.map( (argument, index) => d([
+              d(String(index+1)),
+              input( {value: argument}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.slice(0, index ).concat(submitInputValue(e)).concat(Value.arguments.slice(index + 1, Value.arguments.length))  })   ) ) ),
+              //Argument type TBD
+              /* dropdown("string", [
+                {value: "string", label: "String"},
+                {value: "number", label: "Number"},
+                {value: "object", label: "Object"},
+              ]), */
+              submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.concat("argument") }    ) ))),
+              submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.filter( (argument, i) => i !== index ) }    ) ))),
+            ], {class: "columns_1_1_1_1"}))),
+          ]),
+          br(),
+          d([
+            d("Statements"),
+            d( Value.statements.map( (statement, index) => d([
+              d(String(index+1)),
+              input( {value: statement}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.slice(0, index ).concat(submitInputValue(e)).concat(Value.statements.slice(index + 1, Value.statements.length))  })   ) ) ),
+              submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.concat("console.log('!');") }    ) ))),
+              submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.filter( (argument, i) => i !== index ) }    ) ))),
+            ], {class: "columns_1_1_1_1"}))),
+          ]),
+      ])
+    }
+
+
+
+
+
+
+
+
+
+
+
+
 
 //Single value entity reference views
 
@@ -531,6 +588,7 @@ let navBar = Company => d([
 ], {style: "display: flex;"})
 
 let companyView = Company => d([
+    br(),
     processesTimelineView( Company ),
     br(),
     balanceSheetView( Company ),
@@ -733,32 +791,37 @@ let eventView =  Company => {
       ], {class: "columns_1_1"}),
       br(),
       d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
-      br(),
-      Event.isLast
-        ? actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
+    ], {class: "feedContainer"} ),
+    br(),
+    eventActionsView(Company, ClientApp.S.selectedEntity ),
+    br(),
+    d([
+      h3("Selskapsentiteter som opprettes eller endres:"),
+      d(Company.getEvent( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
+    ], {class: "feedContainer"} )
+  ])
+} 
+
+
+let eventActionsView = (Company, event) => Company.getEvent( event ).isLast
+  ? d([
+      Company.getEvent( event ).isValid ? 
+      d([
+        h3( "Neste steg" ),
+        d( Company.getEvent( event ).Actions.map( Action => actionButton(Action) ) )
+      ], {class: "feedContainer"}) 
+      : d([
+          h3( "Feilmeldinger" ),
+          d( Company.getEvent( event ).errors.map( errorMessage => d(errorMessage, {style: "background-color: #f5a1a170;"})  ) ),
+        ]),
+        br(),
+        actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
           await Event.retract()
           ClientApp.updateState({selectedEntity: isDefined(Event.prevEvent) ? Event.prevEvent : undefined })
           update(  )
         }   })
-        : d("")
-    ], {class: "feedContainer"} ),
-    br(),
-    Event.isValid ? 
-    d([
-      h3( "Neste steg" ),
-      d( Company.getEvent( ClientApp.S.selectedEntity ).Actions.map( Action => actionButton(Action) ) )
-    ], {class: "feedContainer"}) 
-    : d([
-        h3( "Feilmeldinger" ),
-        d( Event.errors.map( errorMessage => d(errorMessage, {style: "background-color: #f5a1a170;"})  ) ),
-      ], {class: "feedContainer"}),
-    br(),
-    d([
-      h3("Selskapsentiteter som opprettes eller endres:"),
-      d(Event.entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
-    ], {class: "feedContainer"} )
-  ])
-} 
+  ], {class: "feedContainer"})  
+  : d("Ingen handlinger", {class: "feedContainer"})
 
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
