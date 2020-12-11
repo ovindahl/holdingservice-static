@@ -653,3 +653,49 @@ let init = async () => {
 }
 
 sideEffects.configureClient();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let a = () => {
+
+
+    let rows = Database.get(Process.events[0], 1759).sort( (rowA,rowB) => Number( moment( rowA['Dato (DD.MM.YYYY)'], 'DD.MM.YYYY' ).format('x') ) - Number( moment( rowB['Dato (DD.MM.YYYY)'], 'DD.MM.YYYY' ).format('x') )  )
+
+    let newDatoms = rows.map( (row, index) => [
+      newDatom(`row${index}`, "entity/entityType", 46 ),
+      newDatom(`row${index}`, "event/eventTypeEntity", 5705),
+      newDatom(`row${index}`, "event/process", Process.entity),
+      newDatom(`row${index}`, "event/date", Number( moment( row['Dato (DD.MM.YYYY)'], 'DD.MM.YYYY' ).format('x') ) ),
+      newDatom(`row${index}`, "bankTransaction/referenceNumber", row['Transaksjonsref.']),
+      newDatom(`row${index}`, "bankTransaction/bankAccount", Process.getFirstEvent( ).get(1082)),
+      newDatom(`row${index}`, "eventAttribute/1083", Number( row['Beløp (+/-) [100000.00]'] ) ),
+      newDatom(`row${index}`, "eventAttribute/1139", row['Beskrivelse']),
+    ]).flat()
+    
+    log({rows, Process, newDatoms })
+
+    //let newEvents = await Database.submitDatoms(newDatoms)
+    
+    return 'TBD'
+
+
+
+
+
+
+
+
+
+
+}

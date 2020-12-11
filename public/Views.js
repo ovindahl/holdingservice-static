@@ -608,6 +608,11 @@ let companyView = Company => d([
     balanceSheetView( Company ),
     br(),
     d([
+      h3("Selskapets saldobalanse"),
+      fullDatomView(Company.get(1), 6212),
+    ], {class: "feedContainer"}),
+    br(),
+    d([
       h3("Selskapets entiteter"),
       d( Company.entityTypes.map( entityType => d([
         entityLabelWithPopup(entityType  ),
@@ -734,6 +739,7 @@ let processTimelineView = (Company, process) => {
 
   let processEventsTimes = Company.getProcess(process).events.map( event => Company.getEvent(event).t )
 
+
   return d([
     entityLabelWithPopup(process, e => update( ClientApp.updateState({selectedEntity: process}) )),
     d( Company.events.map( (event, i) => ((i+1) < processEventsTimes[0] || (i+1) > processEventsTimes.slice( -1 )[0])
@@ -741,9 +747,9 @@ let processTimelineView = (Company, process) => {
     : Company.getProcess(process).events.includes(event)
       ? d([
           d([
-              d( `●`, {style: `color:${ Company.getEvent(event).isValid ? "green" : "red"};`}, "click", e => update(  ClientApp.updateState({selectedEntity: event}) ) ),
+              d( `●`, {style: `color:${ Company.getEvent(event).isValid ? "green" : "red"}; ${event === ClientApp.S.selectedEntity ? "border: 1px solid black;background-color: gray;" : "" } `} ),
               entityPopUp( event ),
-            ], {class: "popupContainer", style:"display: inline-flex;"})
+            ], {class: "popupContainer", style:"display: inline-flex;"}, "click", e => update(  ClientApp.updateState({selectedEntity: event}) ))
         ], {style:"display: inline-flex;"} )
       : d("-" ) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
     d( Company.getProcess( process ).isValid() ? "✓" : "WIP" )
@@ -787,14 +793,7 @@ let eventView =  Company => {
   return d([
     submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
     br(),
-    d([
-      h3( "Prosessoversikt" ),
-      processProgressView(Company, Process.entity ),
-      br(),
-      processTimelineView(Company, Event.process ),
-      br(),
-      processActionsView(Company, Event.process)
-    ], {class: "feedContainer"}),
+    d([processTimelineView(Company, Event.process ),], {class: "feedContainer"}),
     br(),
     d([
       h3( "Hendelse / steg i prosess" ),
@@ -820,18 +819,16 @@ let eventView =  Company => {
   ])
 } 
 
-
-let eventActionsView = (Company, event) => Company.getEvent( event ).isLast
-  ? d([
+let eventActionsView = (Company, event) => d([
       h3("Handlinger på hendelsesnivå"),
       Company.getEvent( event ).isValid ? d( Company.getEvent( event ).Actions.map( Action => actionButton(Action) ) ) : d( Company.getEvent( event ).errors.map( errorMessage => d(errorMessage, {style: "background-color: #f5a1a170;"})  ) ),
-      actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
+      br(),
+      Company.getEvent( event ).isLast ? actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
         await Company.getEvent( event ).retract()
         ClientApp.updateState({selectedEntity: isDefined(Company.getEvent( event ).prevEvent) ? Company.getEvent( event ).prevEvent : undefined })
         update(  )
-      }   })
+      }   }) : d("Slett påfølgende hendelser for  slette denne")
   ], {class: "feedContainer"})  
-  : d("Ingen handlinger", {class: "feedContainer"})
 
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
