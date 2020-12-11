@@ -395,7 +395,9 @@ const ActiveCompany = {
         .map( criterium => returnObject({criterium, label: Database.get( criterium, "entity/label" ), isComplete: new Function( ["Database", "Company", "Process"] , Database.get( criterium, "processValidator/validatorFunctionString" ) ) ( Database, Company, Process )  })    )
       : []
 
-    Process.Actions = Database.get(Process.processType, "processType/actions").map( actionObject => {
+    Process.isValid = () => Process.getCriteria().every( criterium => criterium.isComplete )
+
+    Process.getActions = () => Database.get(Process.processType, "processType/actions").map( actionObject => {
       let label = actionObject[6]
       let criteriumFunctionString = actionObject[5848]
       let criteriumFunction = new Function( ["Database", "Company", "Process"], criteriumFunctionString )
@@ -498,12 +500,8 @@ const ActiveCompany = {
       newDatom( "newEntity" , "process/processType", processType ),
       newDatom( "newEntity" , "entity/label", `${Database.get(processType, "entity/label")} for ${Database.get(company, "entity/label")}`  ),
     ] )
-    let firstEventType = Database.get(processType, 5926)[0]
-    let Process = ActiveCompany.getProcessObject(newProcess.entity)
-    let newEvent = await Process.createEvent( firstEventType )
     ActiveCompany.processes = ActiveCompany.getCompanyProcesses(company)
-    ActiveCompany.events = ActiveCompany.getCompanyEvents(company)
-    return Process
+    return newProcess
   }
 }
 

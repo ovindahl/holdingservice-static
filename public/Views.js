@@ -398,9 +398,9 @@ let entityLabel = (entity, onClick) => d([
   ], {style:"display: inline-flex;"})
 
 
-let entityLabelWithPopup = entity => d([
+let entityLabelWithPopup = (entity, onClick) => d([
   d([
-    entityLabel(entity),
+    entityLabel(entity, onClick),
     entityPopUp( entity ),
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
@@ -533,19 +533,7 @@ let navBar = Company => d([
 ], {style: "display: flex;"})
 
 let companyView = Company => d([
-    d([
-      h3("Selskapets prosesser"),
-      d([
-        d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
-        d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} )
-      ], {style: `display:grid;grid-template-columns: 1fr 5fr;`}),
-      d( Company.processes.map( process => processTimelineView(Company, process) ) ),
-      br(),
-      d([
-        h3("Handlinger"),
-        d(Company.Actions.map( Action => actionButton( Action ) ), {style: "display: flex;"})
-      ])  
-    ], {class: "feedContainer"}),
+    processesTimelineView( Company ),
     br(),
     balanceSheetView( Company ),
     br(),
@@ -635,6 +623,11 @@ let companyEntityView = (Company, companyEntity ) => d([
 ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
+let timelineHeaderView = () => d([
+  d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
+  d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
+
 let processView = Company => d([
   entityLabel(ClientApp.S.selectedEntity),
   br(),
@@ -643,22 +636,24 @@ let processView = Company => d([
     entityLabel( Company.getProcess( ClientApp.S.selectedEntity ).processType )
   ], {class: "columns_1_1"}),
   br(),
-  d([
-    d( `${2018}`, {class: "entityLabel", style: `background-color: black;color: white;`}),
-    d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-  ], {style: `display:grid;grid-template-columns: 1fr 5fr;`}),
+  timelineHeaderView(),
   processTimelineView(Company, ClientApp.S.selectedEntity ),
-  d(Database.get( Company.getProcess( ClientApp.S.selectedEntity ).processType, 5926).map( eventType => d([
-
-    entityLabel( eventType ),
-    d( Company.events.map( (event, i) => d( `${ ( Company.getProcess( ClientApp.S.selectedEntity ).events.includes(event) && Company.getEvent(event).eventType === eventType ) ? "X" : ""}`) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} )
-
-  ], {style: `display:grid;grid-template-columns: 1fr 5fr;`})  ) ),
   br(),
   processProgressView(Company, ClientApp.S.selectedEntity),
   br(),
   processActionsView(Company,  ClientApp.S.selectedEntity )
 ],{class: "feedContainer"})
+
+let processesTimelineView = Company => d([
+  h3("Selskapets prosesser"),
+  timelineHeaderView(),
+  d( Company.processes.map( process => processTimelineView(Company, process) ) ),
+  br(),
+  d([
+    h3("Handlinger"),
+    d(Company.Actions.map( Action => actionButton( Action ) ), {style: "display: flex;"})
+  ])  
+], {class: "feedContainer"})
 
 
 let processTimelineView = (Company, process) => {
@@ -667,7 +662,7 @@ let processTimelineView = (Company, process) => {
 
   return d([
     entityLabelWithPopup(process, e => {
-      update( ClientApp.updateState({selectedPage: "Prosesser", selectedEntity: Company.getProcess(process).events[0]}) )
+      update( ClientApp.updateState({selectedEntity: process}) )
     }  ),
     d( Company.events.map( (event, i) => ((i+1) < processEventsTimes[0] || (i+1) > processEventsTimes.slice( -1 )[0])
     ? d(" ")
@@ -679,7 +674,8 @@ let processTimelineView = (Company, process) => {
             ], {class: "popupContainer", style:"display: inline-flex;"})
         ], {style:"display: inline-flex;"} )
       : d("-" ) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-  ], {style: `display:grid;grid-template-columns: 1fr 5fr;`})
+    d( Company.getProcess( process ).isValid() ? "✓" : "WIP" )
+  ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
 }
 
 let processProgressView = (Company, process) => d([
@@ -691,13 +687,13 @@ let processProgressView = (Company, process) => d([
   br(),
   d([
     d("Prosessens status"),
-    d( Company.getProcess( process ).getCriteria().every( criterium => criterium.isComplete ) ? "Ferdig" : "I arbeid" )
+    d( Company.getProcess( process ).isValid() ? "Ferdig" : "I arbeid" )
   ], {class: "columns_1_1"})
 ], {class: "feedContainer"})
 
 let processActionsView = (Company, process) => d([
   h3( "Handlinger" ),
-  d( Company.getProcess( process ).Actions.map( Action => actionButton(Action) ) ),
+  d( Company.getProcess( process ).getActions().map( Action => actionButton(Action) ) ),
   actionButton({label: `Slett prosessen inkl. ${Company.getProcess(process).events.length} hendelse(r)`, isActionable: true, actionFunction: async e => {
     await Company.getProcess( process ).retract()
     ClientApp.updateState({selectedEntity: undefined })
