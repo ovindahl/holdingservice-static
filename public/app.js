@@ -219,11 +219,12 @@ const ActiveCompany = {
     let company = Company.entity
     let entity = datomConstructor.isNew ? ActiveCompany.latestEntityID + datomConstructor.e : datomConstructor.e
     let attribute = datomConstructor.attribute
+    let process = Process.entity
 
     let value;
       try {value = new Function( [`Company`, `Event`, `Process`, `latestEntityID`], datomConstructor.value )( Company, Event, Process, ActiveCompany.latestEntityID ) } 
       catch (error) {value = log("ERROR",{info: "Value calculation for datomconstructor failed", event, datomConstructor, error}) } 
-    let Datom = {company, entity, attribute, value, event, t}
+    let Datom = {company, process, entity, event, t, attribute, value}
 
 
     return Datom
@@ -240,19 +241,29 @@ const ActiveCompany = {
     ActiveCompany.storeDatoms(eventDatoms)
 
     ActiveCompany.latestEntityID = Math.max( ActiveCompany.latestEntityID,  eventDatoms.map( Datom => Datom.entity ).sort( (a, b) => a-b ).slice(-1)[0] )
+
+
+    
+
     ActiveCompany.updateCalculatedFieldCacheFromEvent(company, t)
   },
   updateCalculatedFieldCacheFromEvent: (company, t) => {
     let Company = ActiveCompany.getCompanyObject(company, t)
+    
     Company.entities.forEach( companyEntity => {
       let CompanyEntity = Company.getCompanyEntity( companyEntity )
-      Database.get( CompanyEntity.entityType , "entityType/calculatedFields" ).forEach( calculatedField => {
+      if( isDefined( CompanyEntity.entityType ) ){
+
+        Database.get( CompanyEntity.entityType , "entityType/calculatedFields" ).forEach( calculatedField => {
           let prevValue = Company.get(companyEntity, calculatedField, t )
           let value;
             try {value =  new Function( ["Entity", "Company"],  Database.get(calculatedField, 6048) )(CompanyEntity, Company) } 
             catch (err) {value = log("ERROR",{info: "CompanycalculatedValue calculation  failed", company, companyEntity, calculatedField, err}) }
             if( value !== prevValue  ){ ActiveCompany.calculatedFieldsCache.push({company, companyEntity, calculatedField, t, value}) }
       })
+
+      }else{log({info: "ERROR: company entityType not defined", Company, companyEntity, CompanyEntity} )}
+      
     })
   },
   constructCompany: company => {
@@ -260,22 +271,14 @@ const ActiveCompany = {
 
     ActiveCompany.company = company;
     ActiveCompany.companyDatoms = [];
-    ActiveCompany.events = ActiveCompany.getCompanyEventsWithOutputDatoms(company)
+    ActiveCompany.events = ActiveCompany.getCompanyEvents(company)
 
     ActiveCompany.processes = ActiveCompany.getCompanyProcesses(company)
     ActiveCompany.latestEntityID = 0;
-    ActiveCompany.events.forEach( event => ActiveCompany.applyCompanyEvent(company, event) )
+    ActiveCompany.getCompanyEventsWithOutputDatoms(company).forEach( event => ActiveCompany.applyCompanyEvent(company, event) )
     console.log(`Constructed Company ${company} in ${Date.now() -startTime} ms`)
 
-    //To be improved
-    ActiveCompany.Actions = Database.getAll(5687).map( processType => {
-      let label = "Ny prosess av typen: " + Database.get(processType, "entity/label");
-      let isActionable = true;
-      let actionFunction = async e => await Company.createProcess( processType )
-      let Action = {label, isActionable, actionFunction}
-      return Action
-    }  )
-    //To be improved
+    
     
   },
   refreshCompany: (company, updatedEvent) => {
@@ -325,7 +328,29 @@ const ActiveCompany = {
     Company.createEvent = async (eventType, process) => await ActiveCompany.getProcessObject( process ).createEvent( eventType )
     Company.createProcess = async processType => await ActiveCompany.createCompanyProcess(company, processType)
 
-    Company.Actions = ActiveCompany.Actions
+    Company.getActions = () => Database.get(6547, "company/actions" ).map(  actionObject => {
+      let label = actionObject[6]
+      let criteriumFunctionString = actionObject[5848]
+      let criteriumFunction = new Function( ["Database", "Company", "Process"], criteriumFunctionString )
+      let isActionable = criteriumFunction(Database, Company, undefined, undefined)
+      let actionFunctionString = actionObject[5850]
+      let actionFunction = isActionable 
+        ? e => new Function( ["Database", "Company", "Process"] , actionFunctionString ) (Database, Company, undefined, undefined) 
+        : undefined
+      let Action = {
+        label, isActionable, actionFunction
+      }
+      return Action
+    })
+
+
+
+
+
+
+
+
+
     return Company
   },
   getFromCompany: (company, companyEntity, attribute, t) => {
@@ -373,8 +398,8 @@ const ActiveCompany = {
     Process.processType =  Database.get(process, "process/processType" )
     Process.company = Database.get(process, "process/company" )
     Process.events = ActiveCompany.events.filter( event => Database.get(event, 'event/process') === process ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) )
-    
-    
+    Process.companyDatoms = ActiveCompany.companyDatoms.filter( companyDatom => companyDatom.process === process )
+    Process.entities = Process.companyDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
     
     let Company = ActiveCompany.getCompanyObject( Process.company )
     

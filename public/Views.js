@@ -591,6 +591,8 @@ let companyView = Company => d([
     br(),
     processesTimelineView( Company ),
     br(),
+    companyActionsView( Company ),
+    br(),
     balanceSheetView( Company ),
     br(),
     d([
@@ -603,7 +605,11 @@ let companyView = Company => d([
     ], {class: "feedContainer"}),
   ])
 
-
+let companyActionsView = Company => d([
+  h3("Handlinger på selskapsnivå"),
+  d(Company.getActions().map( Action => actionButton( Action ) ), {style: "display: flex;"})
+], {class: "feedContainer"}) 
+  
 
 let balanceSheetView = Company => d([
       h3("Balanse"),
@@ -668,7 +674,6 @@ let balanceSheetView = Company => d([
   ], {class: "feedContainer"})
 
 
-
 let companyEntityView = (Company, companyEntity ) => d([
   companyEntityLabel(Company, companyEntity),
   d("<br>"),
@@ -699,18 +704,17 @@ let processView = Company => d([
   br(),
   processProgressView(Company, ClientApp.S.selectedEntity),
   br(),
-  processActionsView(Company,  ClientApp.S.selectedEntity )
+  processActionsView(Company,  ClientApp.S.selectedEntity ),
+  d([
+    h3("Output fra prosessen:"),
+    d(Company.getProcess( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
+  ], {class: "feedContainer"} )
 ],{class: "feedContainer"})
 
 let processesTimelineView = Company => d([
   h3("Selskapets prosesser"),
   timelineHeaderView(),
-  d( Company.processes.map( process => processTimelineView(Company, process) ) ),
-  br(),
-  d([
-    h3("Handlinger"),
-    d(Company.Actions.map( Action => actionButton( Action ) ), {style: "display: flex;"})
-  ])  
+  d( Company.processes.map( process => processTimelineView(Company, process) ) ), 
 ], {class: "feedContainer"})
 
 
@@ -748,7 +752,7 @@ let processProgressView = (Company, process) => d([
 ], {class: "feedContainer"})
 
 let processActionsView = (Company, process) => d([
-  h3( "Handlinger" ),
+  h3( "Handlinger på prosessnivå" ),
   d( Company.getProcess( process ).getActions().map( Action => actionButton(Action) ) ),
   actionButton({label: `Slett prosessen inkl. ${Company.getProcess(process).events.length} hendelse(r)`, isActionable: true, actionFunction: async e => {
     await Company.getProcess( process ).retract()
@@ -781,6 +785,7 @@ let eventView =  Company => {
     ], {class: "feedContainer"}),
     br(),
     d([
+      h3( "Hendelse / steg i prosess" ),
       d([
         entityLabel(46),
         entityLabelWithPopup(ClientApp.S.selectedEntity, e => update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity}) )),
@@ -791,35 +796,28 @@ let eventView =  Company => {
       ], {class: "columns_1_1"}),
       br(),
       d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
+      br(),
+      eventActionsView(Company, ClientApp.S.selectedEntity ),
+      br(),
+      d([
+        h3("Output fra hendelsen:"),
+        d(Company.getEvent( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
+      ], {class: "feedContainer"} )
     ], {class: "feedContainer"} ),
-    br(),
-    eventActionsView(Company, ClientApp.S.selectedEntity ),
-    br(),
-    d([
-      h3("Selskapsentiteter som opprettes eller endres:"),
-      d(Company.getEvent( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
-    ], {class: "feedContainer"} )
+    
   ])
 } 
 
 
 let eventActionsView = (Company, event) => Company.getEvent( event ).isLast
   ? d([
-      Company.getEvent( event ).isValid ? 
-      d([
-        h3( "Neste steg" ),
-        d( Company.getEvent( event ).Actions.map( Action => actionButton(Action) ) )
-      ], {class: "feedContainer"}) 
-      : d([
-          h3( "Feilmeldinger" ),
-          d( Company.getEvent( event ).errors.map( errorMessage => d(errorMessage, {style: "background-color: #f5a1a170;"})  ) ),
-        ]),
-        br(),
-        actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
-          await Company.getEvent( event ).retract()
-          ClientApp.updateState({selectedEntity: isDefined(Company.getEvent( event ).prevEvent) ? Company.getEvent( event ).prevEvent : undefined })
-          update(  )
-        }   })
+      h3("Handlinger på hendelsesnivå"),
+      Company.getEvent( event ).isValid ? d( Company.getEvent( event ).Actions.map( Action => actionButton(Action) ) ) : d( Company.getEvent( event ).errors.map( errorMessage => d(errorMessage, {style: "background-color: #f5a1a170;"})  ) ),
+      actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
+        await Company.getEvent( event ).retract()
+        ClientApp.updateState({selectedEntity: isDefined(Company.getEvent( event ).prevEvent) ? Company.getEvent( event ).prevEvent : undefined })
+        update(  )
+      }   })
   ], {class: "feedContainer"})  
   : d("Ingen handlinger", {class: "feedContainer"})
 
