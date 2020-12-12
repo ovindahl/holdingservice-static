@@ -136,7 +136,7 @@ let fullDatomView = (Entity, attribute, isEditable) => {
   return d([
     entityLabel(attribute),
     valueView(Entity, attribute, isEditable)
-  ], isArray ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
+  ], (isArray || valueType === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
 
 }
 
@@ -300,7 +300,9 @@ let fileView = (Entity, attribute, isEditable) => isEditable
 
 let extendedFunctionView = (Entity, attribute, isEditable) => {
 
-      let Value = Entity.get(attribute)
+      let Value = isDefined(Entity.get(attribute)) ? Entity.get(attribute) : {name: "", arguments: [], statements: []}
+
+      
 
 
       return d([
@@ -320,9 +322,9 @@ let extendedFunctionView = (Entity, attribute, isEditable) => {
                 {value: "number", label: "Number"},
                 {value: "object", label: "Object"},
               ]), */
-              submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.concat("argument") }    ) ))),
               submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.filter( (argument, i) => i !== index ) }    ) ))),
-            ], {class: "columns_1_1_1_1"}))),
+            ], {class: "columns_1_8_1"}))),
+            submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.concat("argument") }    ) ))),
           ]),
           br(),
           d([
@@ -330,9 +332,9 @@ let extendedFunctionView = (Entity, attribute, isEditable) => {
             d( Value.statements.map( (statement, index) => d([
               d(String(index+1)),
               input( {value: statement}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.slice(0, index ).concat(submitInputValue(e)).concat(Value.statements.slice(index + 1, Value.statements.length))  })   ) ) ),
-              submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.concat("console.log('!');") }    ) ))),
               submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.filter( (argument, i) => i !== index ) }    ) ))),
-            ], {class: "columns_1_1_1_1"}))),
+            ], {class: "columns_1_8_1"}))),
+            submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.concat("console.log('!');") }    ) )))
           ]),
       ])
     }
@@ -624,7 +626,7 @@ let companyView = Company => d([
 
 let companyActionsView = Company => d([
   h3("Handlinger på selskapsnivå"),
-  d(Company.getActions().map( Action => actionButton( Action ) ), {style: "display: flex;"})
+  d( Database.getAll(6545).map(  actionEntity => Database.getFunction(actionEntity, 6574)   ? entityLabel( actionEntity, e => update(  Database.getFunction(actionEntity, 6575)( Database , Company ) ) ) : d("na.") ), {style: "display: flex;"})
 ], {class: "feedContainer"}) 
   
 

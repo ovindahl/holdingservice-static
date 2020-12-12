@@ -191,7 +191,15 @@ const Database = {
     try {options = new Function( ["Database"] , Database.get(attribute, "attribute/selectableEntitiesFilterFunction", tx) )( Database )}
     catch (error) { log(error, {info: "Could not get options for DB attribute", attribute, tx }) }
     return options
-  }
+  },
+  getFunction: (entity, attribute) => {
+    if(Database.get(attribute, "attribute/valueType") === 6534 ){
+      let functionObject = Database.get(entity, attribute)
+      let func = new Function( functionObject.arguments , functionObject.statements.join(";")  )
+      return func
+    }else{return log(undefined, {info: "getFunction ERROR: Valuetype is not function", entity, attribute})}
+    
+  },
 }
 
 let Logs = []
@@ -558,22 +566,28 @@ let applyMethodsToConstructedCompany = ( Database, constructedCompany ) => {
   
   Company.getProcess = process =>  createProcessObject( Database, Company, process )
   Company.getEvent = event =>  createEventObject( Database, Company, event )
+
+
+  
+ 
   
 
-  Company.getActions = () => Database.get(6547, "company/actions" ).map(  actionObject => {
-    let label = actionObject[6]
-    let criteriumFunctionString = actionObject[5848]
-    let criteriumFunction = new Function( ["Database", "Company", "Process"], criteriumFunctionString )
-    let isActionable = criteriumFunction(Database, Company, undefined, undefined)
-    let actionFunctionString = actionObject[5850]
-    let actionFunction = isActionable 
-      ? e => new Function( ["Database", "Company", "Process"] , actionFunctionString ) (Database, Company, undefined, undefined) 
-      : undefined
+  Company.getActions = () => Database.getAll(6545).map(  actionEntity => {
+
+
+    let isActionable = Database.getFunction(actionEntity, 6574)(Database, Company)
+  
+    let actionFunction = isActionable ? Database.getFunction(actionEntity, 6575) : undefined
+    
+    let label = Database.get(actionEntity, "entity/label")
+
     let Action = {
-      label, isActionable, actionFunction
+      label, isActionable, actionFunction, level: "company"
     }
     return Action
   })
+
+  
 
   Company.createEvent = async (eventType, process) => await Database.createEntity(46, [
     newDatom(`newEntity`, "event/eventTypeEntity", eventType),
@@ -972,3 +986,6 @@ const ActiveCompany = {
     return newProcess
   }
 } */
+
+
+
