@@ -196,6 +196,442 @@ const Database = {
 
 let Logs = []
 
+
+const ClientApp = {
+  Company: undefined,
+  S: {
+    selectedPage: "Tidslinje",
+    selectedCompany: 5723,
+    selectedEntity: 5723
+  },
+  updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
+  replaceState: newState => ClientApp.S = newState,
+  getCompany: () => Company, // Brukes i et par valueType views, bør fikses
+}
+
+const AdminApp = {
+  S: {
+    selectedPage: "Admin",
+    selectedEntity: 1,  
+  },
+  updateState: patch => AdminApp.S = mergerino( AdminApp.S, patch ),
+  replaceState: newState => AdminApp.S = newState,
+
+}
+
+let D = Database
+let Company = {}
+
+const sideEffects = {
+    isIdle: true,
+    appContainer: "appContainer",
+    updateDOM: elementTree => [
+        sideEffects.applyHTML,
+        sideEffects.applyEventListeners
+    ].forEach( stepFunction => stepFunction(elementTree) ),
+    applyHTML: elementTree => document.getElementById(sideEffects.appContainer).innerHTML = elementTree.map( element => element.html ).join(''),
+    applyEventListeners: elementTree => elementTree.map( element => Array.isArray(element.eventListeners) ? element.eventListeners : [] ).flat().forEach( eventListener => document.getElementById( eventListener.id ).addEventListener(eventListener.eventType, eventListener.action) ),
+    APIRequest: async (type, endPoint, stringBody) => {
+      if(sideEffects.isIdle){
+        sideEffects.isIdle = false;
+        let statusDiv = document.getElementById("APISYNCSTATUS")
+        if(!isNull(statusDiv)) {
+          statusDiv.innerHTML = "Laster";
+        }
+        let startTime = Date.now()
+        let APIendpoint = `https://holdingservice.appspot.com/api/${endPoint}`
+        let authToken = await sideEffects.auth0.getTokenSilently()
+        let headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken}
+        let response = (type === "GET") ? await fetch(APIendpoint, {method: "GET", headers: headers })
+                                        : (type === "POST") ? await fetch(APIendpoint, {method: "POST", headers: headers, body: stringBody })
+                                        : console.log("ERROR: Invalid HTTP method: ", type, endPoint, body )
+        let parsedResponse = await response.json()
+        console.log(`Executed ${type} request to '/${endPoint}' in ${Date.now() - startTime} ms.`, parsedResponse)
+        sideEffects.isIdle = true;
+        if(!isNull(statusDiv)) {
+          statusDiv.innerHTML = "Ledig"
+        }
+        
+        return parsedResponse;
+      }else{
+        log( {type, endPoint, stringBody}, "Declined HTTP request, another in progress:")
+        return null;
+      }
+    },
+    auth0: null,
+    configureClient: async () => {
+        sideEffects.auth0 = await createAuth0Client({
+          domain: "holdingservice.eu.auth0.com",
+          client_id: "3BjA7O8H2dGx2g2nhssoFie0vWWx7ne5",
+          audience: "localhost:3000/api"
+        }); //This call is for some reason never resolved..
+        if(await sideEffects.auth0.isAuthenticated()){
+            console.log("Authenticated");
+            init()
+        }else{
+            try{
+                await sideEffects.auth0.handleRedirectCallback();
+                window.history.replaceState({}, document.title, "/");
+                sideEffects.configureClient()
+              } catch (error) {
+                console.log("Not logged in.");
+                sideEffects.auth0.loginWithRedirect({redirect_uri: window.location.origin})
+              }
+        }
+        return true
+    
+    }
+}
+
+let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
+
+let update = () => {
+    D = Database
+    Company = ClientApp.Company
+    log({Company})
+    let startTime = Date.now()
+    let elementTree = ClientApp.S.selectedPage === "Admin" ? [ adminPage( Company ) ] : [ clientPage(Company) ]
+    sideEffects.updateDOM( elementTree )
+    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
+}
+
+let init = async () => {
+
+  Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
+  Database.entities = Database.Entities.map( serverEntity => serverEntity.entity )
+  Database.attributes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
+  Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
+  Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
+  Database.selectedEntity = 6
+
+  let company = Database.getAll( 5722 )[0]
+  let constructedCompany = createCompany( Database, company )
+  let Company = applyMethodsToConstructedCompany( Database, constructedCompany )
+  ClientApp.Company = Company
+
+  //ClientApp.update(  )
+
+  update(  )
+}
+
+sideEffects.configureClient();
+
+
+
+
+
+//Updated Company Construction pipeline
+
+let calculateDatomValue = (Company, Process, Event, valueFunctionString) => {
+  let value;
+  try {value = new Function( [`Company`, `Process`, `Event`], valueFunctionString )( Company, Process, Event ) } 
+    catch (error) {value = log(error,{info: "calculateDatomValue(Company, Process, Event, valueFunctionString) failed", Company, Process, Event, valueFunctionString}) }
+  return value;
+}
+
+let calculateFieldValue = (Company, Process, Event, CompanyEntity, valueFunctionString ) => {
+  let value;
+  try {value = new Function( [`Company`, `Process`, `Event`, `Entity`], valueFunctionString )( Company, Process, Event, CompanyEntity ) } 
+    catch (error) {value = log(error,{info: "calculateFieldValue(Company, Process, Event, CompanyEntity, valueFunctionString) failed", Company, Process, Event, CompanyEntity, valueFunctionString}) }
+  return value;
+}
+
+let createCompanyQueryObject = (Database, Company) => {
+
+
+  Company.getAll = entityType => {
+
+    let matchingDatoms = Company.companyDatoms
+    .filter( companyDatom => companyDatom.attribute === 19 )
+    .filter( companyDatom => companyDatom.value === entityType )
+
+    let entities = isDefined( matchingDatoms ) 
+      ? matchingDatoms.filter( filterUniqueValues ).map(  companyDatom => companyDatom.entity )
+      : []
+
+    return entities
+  } 
+    
+
+  Company.getDatom = (entity, attribute ) => Company.companyDatoms
+  .filter( companyDatom => companyDatom.entity === entity )
+  .filter( companyDatom => companyDatom.attribute === attribute )
+  .slice( -1 )[0]
+
+  Company.getCalculatedFieldObject = (companyEntity, calculatedField) => Company.calculatedFieldObjects
+    .filter( calculatedFieldObject => calculatedFieldObject.companyEntity === companyEntity && calculatedFieldObject.calculatedField === calculatedField  )
+    .slice( -1 )[0]
+
+
+  Company.get = (entity, attribute ) => {
+
+    if(isUndefined(attribute)){return {get: attr => Company.get( entity, attr )}}
+
+    if(Database.get(attribute, "entity/entityType") === 42){
+      let companyDatom = Company.getDatom(entity, attribute )
+      return isDefined( companyDatom ) ? companyDatom.value : undefined
+    }else{
+      let calculatedFieldObject = Company.getCalculatedFieldObject(entity, attribute )
+      return isDefined( calculatedFieldObject ) 
+        ? calculatedFieldObject.value 
+        : Database.get(attribute, "attribute/isArray" ) ? [] : undefined
+    }
+    
+  } 
+
+
+  return Company
+
+}
+
+
+
+let createCompany = ( Database, company ) => {
+
+  let startTime = Date.now()
+
+  let Company = {
+    entity: company
+  }
+
+  Company.t = 0
+  Company.companyDatoms = [];
+  Company.entities = [];
+  Company.calculatedFieldObjects = [];
+  Company.events = Database.getAll(46)
+    .filter( event => Database.get( Database.get(event, "event/process"), "process/company" ) === company  )
+    .sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) )
+
+  Company.processes = Database.getAll(5692).filter( process => Database.get(process , 'process/company' ) === company  ).sort( (processA, processB) => {
+    let processEventsA = Company.events.filter( e => Database.get(e, "event/process") === processA )
+    let firstEventA = processEventsA[0]
+    let firstEventDateA = isDefined(firstEventA) ? Database.get(firstEventA, 'event/date') : Date.now()
+    let processEventsB = Company.events.filter( e => Database.get(e, "event/process") === processB )
+    let firstEventB = processEventsB[0]
+    let firstEventDateB = isDefined(firstEventB ) ? Database.get(firstEventB , 'event/date') : Date.now()
+    return firstEventDateA - firstEventDateB;
+  })
+
+
+
+  Database.getEvent = event => Company.events.includes(event)
+    ? Database.get(event)
+    : undefined
+    
+
+  Database.getProcess = process => Company.processes.includes(process)
+  ? Database.get(process)
+  : undefined
+
+  Company.latestEntityID = 0;
+
+  let eventsToConstruct = Company.events.filter( event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 )
+
+
+  Company = eventsToConstruct.reduce( (Company, event) => {
+
+    
+
+    let t = Company.t + 1
+    let eventType = Database.get( event, "event/eventTypeEntity" )
+    let process = Database.get(event, "event/process")
+
+    let dbEvent = Database.getEvent( event )
+    let dbProcess = Database.getProcess( process )
+
+
+    let CompanyQueryObject = createCompanyQueryObject( Database, Company )
+
+    let Event = dbEvent //TBD
+    let Process = dbProcess //TBD
+
+    
+
+
+    let eventDatoms = Database.get( eventType, "eventType/newDatoms" ).map( datomConstructor => returnObject({
+      company, process, event, t,
+      entity: datomConstructor.isNew ? Company.latestEntityID + datomConstructor.e : datomConstructor.e,
+      attribute: datomConstructor.attribute,
+      value: calculateDatomValue( CompanyQueryObject, Process, Event, datomConstructor.value )
+    }) )
+
+    
+
+      let updatedCompany = {
+        entity: company,
+        t,
+        events: Company.events,
+        processes: Company.processes,
+        calculatedFieldObjects: Company.calculatedFieldObjects, //Frem til de oppdateres
+        companyDatoms: Company.companyDatoms.concat( eventDatoms ),
+        entities: eventDatoms.reduce( (entities, datom) => entities.includes( datom.entity ) ? entities : entities.concat(datom.entity), Company.entities ),
+        latestEntityID: eventDatoms.reduce( (maxEntity, eventDatom) => eventDatom.entity > maxEntity ? eventDatom.entity : maxEntity, Company.latestEntityID  ),
+      }
+
+      updatedCompany.calculatedFieldObjects = updatedCompany.entities.reduce( (calculatedFieldObjects, companyEntity ) => {
+
+        
+
+        let companyEntityType = updatedCompany.companyDatoms.find( companyDatom => companyDatom.entity === companyEntity && companyDatom.attribute === 19 ).value
+
+        
+
+        let updatedCompanyQueryObject = createCompanyQueryObject( Database, updatedCompany )
+
+        let CompanyEntity = {
+          entity: companyEntity,
+          get: attr => updatedCompanyQueryObject.get(companyEntity, attr)
+        }
+
+        
+
+        let updatedCalculatedFields = Database.get( companyEntityType , "entityType/calculatedFields" )
+          .map( calculatedField => returnObject({
+            company, companyEntity, calculatedField, t, 
+            value: calculateFieldValue( updatedCompanyQueryObject, Process, Event, CompanyEntity, Database.get( calculatedField, 6048) )
+          }))
+          .filter( calculatedFieldObject => {
+
+            let prevValueObject = updatedCompany.calculatedFieldObjects.find( calculatedField => calculatedField.companyEntity === companyEntity && calculatedField.calculatedField === calculatedField  )
+
+            let noPrevValue = isUndefined( prevValueObject )
+
+            let valueHasChanged = noPrevValue 
+              ? true
+              : calculatedFieldObject.value !== prevValueObject.value
+
+            return valueHasChanged
+          } )
+          return updatedCalculatedFields.length > 0 ? calculatedFieldObjects.concat(updatedCalculatedFields) : calculatedFieldObjects
+      } , Company.calculatedFieldObjects )
+
+
+
+      return updatedCompany
+    }, Company )
+
+    
+
+
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    console.log(`Constructed Company ${company} in ${Date.now() -startTime} ms`)
+
+    return Company
+
+}
+
+
+let createProcessObject = ( Database, Company, process ) => {
+  let Process = Database.get( process )
+  Process.events = Company.events.filter( event => Database.get(event, "event/process") === process )
+  Process.isValid = () => true
+  Process.getCriteria = () => []
+  Process.getActions = () => []
+  return Process
+}
+
+let createEventObject = ( Database, Company, event ) => {
+  let Event = Database.get( event )
+  Event.t =  Company.events.findIndex( e => e === event ) + 1
+  Event.process = Database.get(event, "event/process")
+  Event.entities = Company.entities.filter( companyEntity => Company.getDatom(companyEntity, 19).event === event )
+  return Event
+}
+
+
+let applyMethodsToConstructedCompany = ( Database, constructedCompany ) => {
+
+
+  let Company = constructedCompany
+  
+  
+  Company.getProcess = process =>  createProcessObject( Database, Company, process )
+  Company.getEvent = event =>  createEventObject( Database, Company, event )
+  
+
+  Company.getActions = () => Database.get(6547, "company/actions" ).map(  actionObject => {
+    let label = actionObject[6]
+    let criteriumFunctionString = actionObject[5848]
+    let criteriumFunction = new Function( ["Database", "Company", "Process"], criteriumFunctionString )
+    let isActionable = criteriumFunction(Database, Company, undefined, undefined)
+    let actionFunctionString = actionObject[5850]
+    let actionFunction = isActionable 
+      ? e => new Function( ["Database", "Company", "Process"] , actionFunctionString ) (Database, Company, undefined, undefined) 
+      : undefined
+    let Action = {
+      label, isActionable, actionFunction
+    }
+    return Action
+  })
+
+  Company.createEvent = async (eventType, process) => await Database.createEntity(46, [
+    newDatom(`newEntity`, "event/eventTypeEntity", eventType),
+    newDatom(`newEntity`, "event/process", process),
+    newDatom(`newEntity`, "event/date", Date.now() )
+  ]) //Fix through process / event actions instead? OR vice versa
+
+
+
+  
+
+
+
+
+
+  return Company
+
+
+}
+
+
+//Updated Company Construction pipeline -- END
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//Archive
+
+/* 
 const ActiveCompany = {
   company: undefined,
   companyDatoms: [],
@@ -230,6 +666,7 @@ const ActiveCompany = {
     return Datom
   },
   applyCompanyEvent: (company, event) => {
+
     let eventType = Database.get( event, "event/eventTypeEntity" )
 
     let t = ActiveCompany.events.findIndex( e => e === event  ) + 1
@@ -272,7 +709,6 @@ const ActiveCompany = {
     ActiveCompany.company = company;
     ActiveCompany.companyDatoms = [];
     ActiveCompany.events = ActiveCompany.getCompanyEvents(company)
-
     ActiveCompany.processes = ActiveCompany.getCompanyProcesses(company)
     ActiveCompany.latestEntityID = 0;
     ActiveCompany.getCompanyEventsWithOutputDatoms(company).forEach( event => ActiveCompany.applyCompanyEvent(company, event) )
@@ -410,7 +846,7 @@ const ActiveCompany = {
     Process.retract = async () => {
 
       let entities = [process].concat( Process.events )
-      await Database.retractEntities(entities)
+      await Database.retractEntities([process].concat( Process.events ))
       ActiveCompany.processes = ActiveCompany.getCompanyProcesses(Process.company)
       ActiveCompany.events = ActiveCompany.getCompanyEvents(Process.company)
       ActiveCompany.refreshCompany( Process.company, ActiveCompany.events[0] )
@@ -535,167 +971,4 @@ const ActiveCompany = {
     ActiveCompany.processes = ActiveCompany.getCompanyProcesses(company)
     return newProcess
   }
-}
-
-const ClientApp = {
-  S: {
-    selectedPage: "Tidslinje",
-    selectedCompany: 5723,
-    selectedEntity: 5723
-  },
-  updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
-  replaceState: newState => ClientApp.S = newState,
-  selectCompany: company => {
-    ActiveCompany.constructCompany(company)
-    ClientApp.updateState( {selectedCompany: company} )
-  },
-  getCompany: () => ActiveCompany.getCompanyObject( ClientApp.S.selectedCompany )
-}
-
-const AdminApp = {
-  S: {
-    selectedPage: "Admin",
-    selectedEntity: 1,  
-  },
-  updateState: patch => AdminApp.S = mergerino( AdminApp.S, patch ),
-  replaceState: newState => AdminApp.S = newState,
-
-}
-
-let D = Database
-let Company = {}
-
-const sideEffects = {
-    isIdle: true,
-    appContainer: "appContainer",
-    updateDOM: elementTree => [
-        sideEffects.applyHTML,
-        sideEffects.applyEventListeners
-    ].forEach( stepFunction => stepFunction(elementTree) ),
-    applyHTML: elementTree => document.getElementById(sideEffects.appContainer).innerHTML = elementTree.map( element => element.html ).join(''),
-    applyEventListeners: elementTree => elementTree.map( element => Array.isArray(element.eventListeners) ? element.eventListeners : [] ).flat().forEach( eventListener => document.getElementById( eventListener.id ).addEventListener(eventListener.eventType, eventListener.action) ),
-    APIRequest: async (type, endPoint, stringBody) => {
-      if(sideEffects.isIdle){
-        sideEffects.isIdle = false;
-        let statusDiv = document.getElementById("APISYNCSTATUS")
-        if(!isNull(statusDiv)) {
-          statusDiv.innerHTML = "Laster";
-        }
-        let startTime = Date.now()
-        let APIendpoint = `https://holdingservice.appspot.com/api/${endPoint}`
-        let authToken = await sideEffects.auth0.getTokenSilently()
-        let headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken}
-        let response = (type === "GET") ? await fetch(APIendpoint, {method: "GET", headers: headers })
-                                        : (type === "POST") ? await fetch(APIendpoint, {method: "POST", headers: headers, body: stringBody })
-                                        : console.log("ERROR: Invalid HTTP method: ", type, endPoint, body )
-        let parsedResponse = await response.json()
-        console.log(`Executed ${type} request to '/${endPoint}' in ${Date.now() - startTime} ms.`, parsedResponse)
-        sideEffects.isIdle = true;
-        if(!isNull(statusDiv)) {
-          statusDiv.innerHTML = "Ledig"
-        }
-        
-        return parsedResponse;
-      }else{
-        log( {type, endPoint, stringBody}, "Declined HTTP request, another in progress:")
-        return null;
-      }
-    },
-    auth0: null,
-    configureClient: async () => {
-        sideEffects.auth0 = await createAuth0Client({
-          domain: "holdingservice.eu.auth0.com",
-          client_id: "3BjA7O8H2dGx2g2nhssoFie0vWWx7ne5",
-          audience: "localhost:3000/api"
-        }); //This call is for some reason never resolved..
-        if(await sideEffects.auth0.isAuthenticated()){
-            console.log("Authenticated");
-            init()
-        }else{
-            try{
-                await sideEffects.auth0.handleRedirectCallback();
-                window.history.replaceState({}, document.title, "/");
-                sideEffects.configureClient()
-              } catch (error) {
-                console.log("Not logged in.");
-                sideEffects.auth0.loginWithRedirect({redirect_uri: window.location.origin})
-              }
-        }
-        return true
-    
-    }
-}
-
-let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
-
-let update = () => {
-    D = Database
-    Company = ActiveCompany.getCompanyObject( ActiveCompany.company )
-    let startTime = Date.now()
-    let elementTree = ClientApp.S.selectedPage === "Admin" ? [ adminPage( Company ) ] : [ clientPage(Company) ]
-    sideEffects.updateDOM( elementTree )
-    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
-}
-
-let init = async () => {
-
-  Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
-  Database.entities = Database.Entities.map( serverEntity => serverEntity.entity )
-  Database.attributes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
-  Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
-  Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-  Database.selectedEntity = 6
-
-  let company = Database.getAll( 5722 )[0]
-  log("Database initialized, constructing company " + company)
-  ClientApp.selectCompany(company)
-  update(  )
-}
-
-sideEffects.configureClient();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let a = () => {
-
-
-    let rows = Database.get(Process.events[0], 1759).sort( (rowA,rowB) => Number( moment( rowA['Dato (DD.MM.YYYY)'], 'DD.MM.YYYY' ).format('x') ) - Number( moment( rowB['Dato (DD.MM.YYYY)'], 'DD.MM.YYYY' ).format('x') )  )
-
-    let newDatoms = rows.map( (row, index) => [
-      newDatom(`row${index}`, "entity/entityType", 46 ),
-      newDatom(`row${index}`, "event/eventTypeEntity", 5705),
-      newDatom(`row${index}`, "event/process", Process.entity),
-      newDatom(`row${index}`, "event/date", Number( moment( row['Dato (DD.MM.YYYY)'], 'DD.MM.YYYY' ).format('x') ) ),
-      newDatom(`row${index}`, "bankTransaction/referenceNumber", row['Transaksjonsref.']),
-      newDatom(`row${index}`, "bankTransaction/bankAccount", Process.getFirstEvent( ).get(1082)),
-      newDatom(`row${index}`, "eventAttribute/1083", Number( row['Beløp (+/-) [100000.00]'] ) ),
-      newDatom(`row${index}`, "eventAttribute/1139", row['Beskrivelse']),
-    ]).flat()
-    
-    log({rows, Process, newDatoms })
-
-    //let newEvents = await Database.submitDatoms(newDatoms)
-    
-    return 'TBD'
-
-
-
-
-
-
-
-
-
-
-}
+} */

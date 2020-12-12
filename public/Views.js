@@ -501,7 +501,7 @@ let entityPopUp = entity => d([
 let companyEntityInspectorPopup = (Company, companyEntity, t) => d([ companyEntityView(Company, companyEntity, t) ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 let companyEntityLabel = (Company, companyEntity) => d([
-    d( `${Company.get( companyEntity ) ? Company.get( companyEntity ).label : "na."}`, {class: "entityLabel", style: `background-color:${Company.get( companyEntity ) ? Company.get( companyEntity ).color : "gray"};`}, "click", e => update( ClientApp.updateState({selectedEntity: companyEntity}) ) ),
+    d( `${Database.get( Company.get(companyEntity, 19), "entity/label")} # ${Company.entities.findIndex( e => e === companyEntity) + 1}`, {class: "entityLabel", style: `background-color:${Database.get( Company.get(companyEntity, 19), "entityType/color")};`}, "click", e => update( ClientApp.updateState({selectedEntity: companyEntity}) ) ),
   ], {style:"display: inline-flex;"})
 
 let companyEntityLabelWithPopup = (Company, companyEntity) => d([
@@ -513,7 +513,7 @@ let companyEntityLabelWithPopup = (Company, companyEntity) => d([
 
 
 let companyEntityPopUp = (Company, companyEntity) => d([
-  d( `[${companyEntity}] ${ Company.get( companyEntity ) ? Company.get( companyEntity ).label : "na."}` ),
+  d( `${Database.get( Company.get(companyEntity, 19), "entity/label")} # ${Company.entities.findIndex( e => e === companyEntity) + 1}` ),
   br(),
   d( "Entitet i selskapsdokumentet" ),
   br(),
@@ -614,7 +614,7 @@ let companyView = Company => d([
     br(),
     d([
       h3("Selskapets entiteter"),
-      d( Company.entityTypes.map( entityType => d([
+      d( Database.getAll(47).filter( entity => Database.get(entity, "entity/category") === "Entitetstyper i selskapsdokumentet" ).map( entityType => d([
         entityLabelWithPopup(entityType  ),
         d( Company.getAll(entityType).map( companyEntity => companyEntityLabelWithPopup(Company, companyEntity) ) ),
         br()
@@ -696,7 +696,7 @@ let companyEntityView = (Company, companyEntity ) => d([
   d("<br>"),
   d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
   d("<br>"),
-  d( Company.get( companyEntity ).companyDatoms.map( companyDatom => fullDatomView( Company.get( companyEntity ), companyDatom.attribute, false  ) )),
+  d( Database.get( Company.get(companyEntity, 19 ), "entityType/attributes" ).map( attribute => fullDatomView( Company.get( companyEntity ), attribute, false  ) )),
   d( Database.get( Company.get(companyEntity, 19 ), "entityType/calculatedFields" ).map( companyCalculatedField => fullDatomView( Company.get( companyEntity ), companyCalculatedField, false  ) ) )
 ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
@@ -722,10 +722,6 @@ let processView = Company => d([
   processProgressView(Company, ClientApp.S.selectedEntity),
   br(),
   processActionsView(Company,  ClientApp.S.selectedEntity ),
-  d([
-    h3("Output fra prosessen:"),
-    d(Company.getProcess( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
-  ], {class: "feedContainer"} )
 ],{class: "feedContainer"})
 
 let processesTimelineView = Company => d([
@@ -737,7 +733,11 @@ let processesTimelineView = Company => d([
 
 let processTimelineView = (Company, process) => {
 
-  let processEventsTimes = Company.getProcess(process).events.map( event => Company.getEvent(event).t )
+  let Process = Company.getProcess( process )
+
+  
+
+  let processEventsTimes = Process.events.map( event => Company.getEvent(event).t )
 
 
   return d([
@@ -773,7 +773,7 @@ let processActionsView = (Company, process) => d([
   h3( "Handlinger på prosessnivå" ),
   d( Company.getProcess( process ).getActions().map( Action => actionButton(Action) ) ),
   actionButton({label: `Slett prosessen inkl. ${Company.getProcess(process).events.length} hendelse(r)`, isActionable: true, actionFunction: async e => {
-    await Company.getProcess( process ).retract()
+    await Database.retractEntities([process].concat( Company.getProcess( process ).events ))
     ClientApp.updateState({selectedEntity: undefined })
     update(  )
   }   })
@@ -788,7 +788,6 @@ let companyEntitiyPageView = Company => d([
 let eventView =  Company => {
 
   let Event = Company.getEvent( ClientApp.S.selectedEntity )
-  let Process = Event.getProcess()
 
   return d([
     submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
@@ -806,7 +805,7 @@ let eventView =  Company => {
         entityLabel( Company.getProcess( ClientApp.S.selectedEntity ).eventType )
       ], {class: "columns_1_1"}),
       br(),
-      d( Database.get(Event.eventType, "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
+      d( Database.get(Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
       br(),
       eventActionsView(Company, ClientApp.S.selectedEntity ),
       br(),
@@ -824,8 +823,8 @@ let eventActionsView = (Company, event) => d([
       Company.getEvent( event ).isValid ? d( Company.getEvent( event ).Actions.map( Action => actionButton(Action) ) ) : d( Company.getEvent( event ).errors.map( errorMessage => d(errorMessage, {style: "background-color: #f5a1a170;"})  ) ),
       br(),
       Company.getEvent( event ).isLast ? actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
-        await Company.getEvent( event ).retract()
-        ClientApp.updateState({selectedEntity: isDefined(Company.getEvent( event ).prevEvent) ? Company.getEvent( event ).prevEvent : undefined })
+        await Database.retractEntities([event])
+        ClientApp.updateState({selectedEntity: undefined })
         update(  )
       }   }) : d("Slett påfølgende hendelser for  slette denne")
   ], {class: "feedContainer"})  
