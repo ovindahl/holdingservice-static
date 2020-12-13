@@ -626,7 +626,7 @@ let companyView = Company => d([
 
 let companyActionsView = Company => d([
   h3("Handlinger på selskapsnivå"),
-  d( Database.getAll(6545).map(  actionEntity => Database.getFunction(actionEntity, 6574)   ? entityLabel( actionEntity, e => update(  Database.getFunction(actionEntity, 6575)( Database , Company ) ) ) : d("na.") ), {style: "display: flex;"})
+  d( Company.getActions().map(  actionEntity => entityLabelWithPopup( actionEntity, async e => update( await Database.getFunction(actionEntity, 6575)( Database, Company ) ) ) ), {style: "display: flex;"})
 ], {class: "feedContainer"}) 
   
 
