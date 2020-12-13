@@ -314,7 +314,11 @@ let extendedFunctionView = (Entity, attribute, isEditable) => {
           d([
             d("Argumenter"),
             d( Value.arguments.map( (argument, index) => d([
-              d(String(index+1)),
+              d([
+                checkBox(true),
+                d(String(index)),
+                submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.filter( (argument, i) => i !== index ) }    ) )))
+              ], {class: "columns_1_1_1"}),
               input( {value: argument}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.slice(0, index ).concat(submitInputValue(e)).concat(Value.arguments.slice(index + 1, Value.arguments.length))  })   ) ) ),
               //Argument type TBD
               /* dropdown("string", [
@@ -322,18 +326,20 @@ let extendedFunctionView = (Entity, attribute, isEditable) => {
                 {value: "number", label: "Number"},
                 {value: "object", label: "Object"},
               ]), */
-              submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.filter( (argument, i) => i !== index ) }    ) ))),
-            ], {class: "columns_1_8_1"}))),
+            ], {class: "columns_1_9"}))),
             submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.concat("argument") }    ) ))),
           ]),
           br(),
           d([
             d("Statements"),
             d( Value.statements.map( (statement, index) => d([
-              d(String(index+1)),
-              input( {value: statement}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.slice(0, index ).concat(submitInputValue(e)).concat(Value.statements.slice(index + 1, Value.statements.length))  })   ) ) ),
-              submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.filter( (argument, i) => i !== index ) }    ) ))),
-            ], {class: "columns_1_8_1"}))),
+              d([
+                checkBox(true),
+                d(String(index)),
+                submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.filter( (argument, i) => i !== index ) }    ) ))),
+              ], {class: "columns_1_1_1"}),
+              textArea( statement, {style: "margin: 1em;font: -webkit-control;"} , async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.slice(0, index ).concat(  submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  ).concat(Value.statements.slice(index + 1, Value.statements.length))  })   ) ) ),
+            ], {class: "columns_1_9"}))),
             submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.concat("console.log('!');") }    ) )))
           ]),
       ])
@@ -626,7 +632,7 @@ let companyView = Company => d([
 
 let companyActionsView = Company => d([
   h3("Handlinger på selskapsnivå"),
-  d( Company.getActions().map(  actionEntity => entityLabelWithPopup( actionEntity, async e => update( await Database.getFunction(actionEntity, 6575)( Database, Company ) ) ) ), {style: "display: flex;"})
+  d( Company.getActions().map(  actionEntity => entityLabelWithPopup( actionEntity, async e => update( await Company.executeAction( actionEntity ) ) ) ), {style: "display: flex;"})
 ], {class: "feedContainer"}) 
   
 
@@ -722,7 +728,7 @@ let processView = Company => d([
   processTimelineView(Company, ClientApp.S.selectedEntity ),
   br(),
   processProgressView(Company, ClientApp.S.selectedEntity),
-  br(),
+  //br(),
   processActionsView(Company,  ClientApp.S.selectedEntity ),
 ],{class: "feedContainer"})
 
@@ -773,7 +779,7 @@ let processProgressView = (Company, process) => d([
 
 let processActionsView = (Company, process) => d([
   h3( "Handlinger på prosessnivå" ),
-  d( Company.getProcess( process ).getActions().map( Action => actionButton(Action) ) ),
+  //d( Company.getProcess( process ).getActions().map( Action => actionButton(Action) ) ),
   actionButton({label: `Slett prosessen inkl. ${Company.getProcess(process).events.length} hendelse(r)`, isActionable: true, actionFunction: async e => {
     await Database.retractEntities([process].concat( Company.getProcess( process ).events ))
     ClientApp.updateState({selectedEntity: undefined })
@@ -794,10 +800,13 @@ let eventView =  Company => {
   return d([
     submitButton(" <- Tilbake ", e => update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
     br(),
-    d([processTimelineView(Company, Event.process ),], {class: "feedContainer"}),
+    d([
+      h3( "Prosess" ),
+      processTimelineView(Company, Event.process )
+    ], {class: "feedContainer"}),
     br(),
     d([
-      h3( "Hendelse / steg i prosess" ),
+      h3( "Hendelse" ),
       d([
         entityLabel(46),
         entityLabelWithPopup(ClientApp.S.selectedEntity, e => update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity}) )),
@@ -808,15 +817,16 @@ let eventView =  Company => {
       ], {class: "columns_1_1"}),
       br(),
       d( Database.get(Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
-      br(),
-      eventActionsView(Company, ClientApp.S.selectedEntity ),
-      br(),
-      d([
-        h3("Output fra hendelsen:"),
-        d(Company.getEvent( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
-      ], {class: "feedContainer"} )
+      
+      //eventActionsView(Company, ClientApp.S.selectedEntity ),
+      //br(),
+      
     ], {class: "feedContainer"} ),
-    
+    br(),
+    d([
+      h3("Output fra hendelsen:"),
+      d(Company.getEvent( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
+    ], {class: "feedContainer"} )
   ])
 } 
 

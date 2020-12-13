@@ -547,14 +547,30 @@ let applyMethodsToConstructedCompany = constructedCompany => {
   Company.getProcess = process => Database.getProcess( Company, process )
   Company.getEvent = event =>  Database.getEvent( Company, event )
   Company.getActions = () => Database.getAll(6545).filter(  actionEntity => Database.getFunction(actionEntity, 6574) )
-  
 
-  
-
-  Company.createProcess = async processType => update( await Database.createEntity(5692, [
+  /* Company.createProcess = async processType => await Database.createEntity(5692, [
     newDatom(`newEntity`, "process/processType", processType),
     newDatom(`newEntity`, "process/company", Company.entity ),
-  ]) )
+  ]) */
+
+  Company.executeAction = async actionEntity => {
+
+    
+
+    let actionFunction = Database.getFunction(actionEntity, 6575)
+
+    let returnValue = actionFunction( Database, Company ) // Need to make this async
+
+    log("Executing action: ", {Company, actionEntity, returnValue})
+
+    return returnValue
+
+  }
+  
+
+  
+
+  
 
 
 
