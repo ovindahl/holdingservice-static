@@ -843,7 +843,7 @@ let eventView =  Company => {
       ], {class: "columns_1_1"}),
       d([
         entityLabel(43),
-        entityLabel( Company.getProcess( ClientApp.S.selectedEntity ).eventType )
+        entityLabel( Event.get("event/eventTypeEntity") )
       ], {class: "columns_1_1"}),
       br(),
       d( Database.get(Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),

@@ -183,6 +183,20 @@ const Database = {
     Entity.Actions = [
       {label: "Slett", isActionable: true, actionFunction: async e => await Database.retractEntity(entity) },
       {label: "Legg til", isActionable: true, actionFunction: async e => await Database.createEntity(Entity.entityType)  },
+      {label: "Lag kopi", isActionable: true, actionFunction: async e => {
+
+        let entityType = Entity.get("entity/entityType")
+        let entityTypeAttributes = Database.get( entityType, "entityType/attributes" )
+
+        let newEntityDatoms = entityTypeAttributes.map( attr => newDatom("newEntity", Database.attrName(attr), Entity.get(attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${Entity.get(6)}` ) )
+
+
+        let newEntity = await Database.createEntity(entityType, newEntityDatoms)
+
+        AdminApp.updateState({selectedEntity: newEntity.entity})
+
+
+      }   },
     ]
 
     return Entity
@@ -268,7 +282,7 @@ const Database = {
     Process.events = Company.events.filter( event => Database.get(event, "event/process") === process )
     Process.isValid = () => true
     Process.getCriteria = () => []
-    Process.getActions = () => [6628, 6636]
+    Process.getActions = () => [6628]
 
     Process.createEvent = async eventType => {
 
@@ -292,6 +306,10 @@ const Database = {
       let updateCallback = response => {
         ClientApp.updateState({selectedEntity: undefined})
         console.log({response}, "Callback fra Process.executeAction")
+        let initialCompany = Database.getCompany( Company.entity )
+        let eventsToConstruct = initialCompany.events.filter( event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 )
+        let constructedCompany = initialCompany.applyEvents( eventsToConstruct )
+        ClientApp.Company = constructedCompany
         update(  )
       } 
 
@@ -307,10 +325,10 @@ const Database = {
   getEvent: ( Company, event ) => {
     let Event = Database.get( event )
     Event.t =  Company.events.findIndex( e => e === event ) + 1
-    Event.process = Database.get(event, "event/process")
+    Event.process = Event.get("event/process")
     Event.entities = Company.entities.filter( companyEntity => Company.getDatom(companyEntity, 19).event === event )
 
-    Event.getActions = () => [6635]
+    Event.getActions = () => Database.get( Event.get("event/eventTypeEntity"), "eventType/actionFunctions" )
     Event.executeAction = async functionEntity => await Company.executeCompanyAction(functionEntity, Company.getProcess( Event.process ), Event)
 
     Event.executeAction = async functionEntity => {
