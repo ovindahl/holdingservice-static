@@ -169,7 +169,16 @@ const Database = {
 
     Entity.addValueEntry = async (attribute, newValue) => await Entity.replaceValue( attribute,  Entity.get(attribute).concat( newValue )  )
     Entity.removeValueEntry = async (attribute, index) => await Entity.replaceValue( attribute,  Entity.get(attribute).filter( (Value, i) => i !== index  ) )
-    Entity.replaceValueEntry = async (attribute, index, newValue) => await Entity.replaceValue( attribute,  Entity.get(attribute).filter( (Value, i) => i !== index  ).concat( newValue ) )
+
+
+
+
+
+
+    Entity.replaceValueEntry = async (attribute, index, newValue) => {
+      let Values = Entity.get(attribute)
+      await Entity.replaceValue( attribute,  Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
+    } 
 
     Entity.Actions = [
       {label: "Slett", isActionable: true, actionFunction: async e => await Database.retractEntity(entity) },
@@ -199,6 +208,28 @@ const Database = {
       return func
     }else{return log(undefined, {info: "getFunction ERROR: Valuetype is not function", entity, attribute})}
     
+  },
+  getGlobalFunction: entity => {
+
+
+    let globalFunction = Database.globalFunctions.find( globalFunction => globalFunction.entity === entity )
+
+    return isDefined(globalFunction) ? globalFunction.function : undefined
+  },
+  getGlobalAsyncFunction: functionEntity => {
+
+    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+
+    let argumentObjects = Database.get(functionEntity, "function/arguments")
+    let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
+    let statementObjects = Database.get(functionEntity, "function/statements")
+    let statements = statementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
+    let functionString = statements.join(";")
+    let GlobalAsyncFunction = new AsyncFunction( arguments ,functionString  )
+
+
+    return GlobalAsyncFunction
+
   },
   getCompany: company => {
   
@@ -237,7 +268,40 @@ const Database = {
     Process.events = Company.events.filter( event => Database.get(event, "event/process") === process )
     Process.isValid = () => true
     Process.getCriteria = () => []
-    Process.getActions = () => []
+    Process.getActions = () => [6628, 6636]
+
+    Process.createEvent = async eventType => {
+
+      let newEvent = await Database.createEntity(46, [
+        newDatom(`newEntity`, "event/eventTypeEntity", eventType),
+        newDatom(`newEntity`, "event/process", process),
+        newDatom(`newEntity`, "event/date", Date.now() )
+      ])
+  
+      /* let updatedCompany = mergerino({}, Company)
+      
+      updatedCompany.events = Company.events.concat( newEvent.entity ).sort(  (a,b) => Database.get(a, 'event/date' ) - Database.get(b, 'event/date' ) )
+      updatedCompany.companyDatoms = [] // Company.companyDatoms.filter( companyDatom => companyDatom.t <= updatedCompany.events.findIndex(newEvent.entity)  )
+      updatedCompany.applyEvents( updatedCompany.events )
+      update(  ) */
+    }
+
+    Process.executeAction = async functionEntity => {
+
+
+      let updateCallback = response => {
+        ClientApp.updateState({selectedEntity: undefined})
+        console.log({response}, "Callback fra Process.executeAction")
+        update(  )
+      } 
+
+
+      Company.executeCompanyAction( functionEntity, Process, undefined, updateCallback )
+    } 
+  
+
+
+
     return Process
   },
   getEvent: ( Company, event ) => {
@@ -245,6 +309,23 @@ const Database = {
     Event.t =  Company.events.findIndex( e => e === event ) + 1
     Event.process = Database.get(event, "event/process")
     Event.entities = Company.entities.filter( companyEntity => Company.getDatom(companyEntity, 19).event === event )
+
+    Event.getActions = () => [6635]
+    Event.executeAction = async functionEntity => await Company.executeCompanyAction(functionEntity, Company.getProcess( Event.process ), Event)
+
+    Event.executeAction = async functionEntity => {
+
+
+      let updateCallback = response => {
+        ClientApp.updateState({selectedEntity: undefined})
+        console.log({response}, "Callback fra Event.executeAction")
+        update(  )
+      } 
+
+
+      Company.executeCompanyAction( functionEntity, Company.getProcess(Event.process), Event, updateCallback )
+    } 
+
     return Event
   }
 }
@@ -358,6 +439,19 @@ let init = async () => {
   Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
   Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
   Database.selectedEntity = 6
+
+  Database.globalFunctions = Database.getAll(6615).map(  e => {
+
+    let argumentObjects = Database.get(e, "function/arguments")
+    let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
+    let statementObjects = Database.get(e, "function/statements")
+    let statements = statementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
+    let functionString = statements.join(";")
+
+    let globalFunction = new Function( arguments ,functionString  )
+    return returnObject({entity: e, function: globalFunction})
+  } )
+
 
   let company = Database.getAll( 5722 )[0]
   let initialCompany = Database.getCompany( company )
@@ -546,30 +640,16 @@ let applyMethodsToConstructedCompany = constructedCompany => {
   
   Company.getProcess = process => Database.getProcess( Company, process )
   Company.getEvent = event =>  Database.getEvent( Company, event )
-  Company.getActions = () => Database.getAll(6545).filter(  actionEntity => Database.getFunction(actionEntity, 6574) )
+  Company.getActions = () => [6620]
 
-  /* Company.createProcess = async processType => await Database.createEntity(5692, [
-    newDatom(`newEntity`, "process/processType", processType),
-    newDatom(`newEntity`, "process/company", Company.entity ),
-  ]) */
+  
 
-  Company.executeAction = async actionEntity => {
-
-    
-
-    let actionFunction = Database.getFunction(actionEntity, 6575)
-
-    let returnValue = actionFunction( Database, Company ) // Need to make this async
-
-    log("Executing action: ", {Company, actionEntity, returnValue})
-
-    return returnValue
-
+  Company.executeCompanyAction = async (functionEntity, Process, Event, callback) => {
+    let asyncFunction = Database.getGlobalAsyncFunction(functionEntity)
+    try {  asyncFunction( Database, Company, Process, Event).then( callback  )  } catch (error) { return error } 
   }
-  
 
-  
-
+  Company.executeActionFromCompanyLevel = globalFunction => Company.executeCompanyAction(globalFunction, undefined, undefined, response => update( log({response}, "AAAAAA") ) )
   
 
 

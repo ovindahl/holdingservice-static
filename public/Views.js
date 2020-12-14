@@ -95,7 +95,7 @@ let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("sele
 
 let optionsElement = optionObjects => optionObjects.map( o => `<option value="${o.value}">${o.label}</option>` ).join('')
 
-let checkBox = (isChecked, onClick) => input({type: "checkbox", value: isChecked}, "click", onClick)
+let checkBox = (isChecked, onClick) => input( mergerino( {type: "checkbox"},  isChecked ? {checked: "checked"} : {}) , "click", onClick)
 
 let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", e => {
   let button = document.getElementById(e.srcElement.id)
@@ -105,6 +105,7 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
 }  )
 
 let actionButton = Action => Action.isActionable ? submitButton( Action.label, async e => update(  await Action.actionFunction()  ) ) : d( Action.label, {style: "background-color: gray;"} ) 
+
 
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
@@ -189,6 +190,8 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "41": (Entity, attribute, index) => d(JSON.stringify(Entity.get(attribute)[index])), //Company entity
     "5849": eventConstructorsInProcessStepRowView, //Konstruksjon av ny hendelse
     "6553": accountBalanceRowView,
+    "6613": argumentRowView,
+    "6614": statementRowView,
   }
 
   let startValuesByType = {
@@ -203,6 +206,8 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "5824": "", //File
     "41": 0, //Company entity
     "5849":  {6: "Ny handling", 5848: "return true;", 5850: "return Company.createEvent(5000, Process.entity);"}, //Konstruksjon av ny hendelse
+    "6613": {"argument/name": "argumentNavn", "argument/valueType": 30},
+    "6614": {"statement/statement": "console.log('Hei!')", "statement/isEnabled": true},
   }
   let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : ``
 
@@ -349,7 +354,6 @@ let extendedFunctionView = (Entity, attribute, isEditable) => {
 
 
 
-
 //Single value entity reference views
 
 let singleEntityReferenceView = (Entity, attribute, isEditable) => isEditable
@@ -361,6 +365,37 @@ let input_singleCompanyEntity = (Entity, attribute, isEditable) => isEditable
   : companyEntityLabel(ClientApp.getCompany(), Entity.get( attribute ) )
 
 //Multiple value views
+
+let argumentRowView = (Entity, attribute, index) => {
+
+  let valueType = Database.get(attribute, "attribute/valueType") //6613
+
+  let Value = Entity.get(attribute)[index]
+
+  return d([
+    input( {value: Value["argument/name"] }, "change", async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"argument/name": submitInputValue(e)})  ) ) ),
+    dropdown( Value["argument/valueType"], Database.getAll(44).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ), async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }) ) ) )
+  ], {class: "columns_1_1"}) 
+
+}
+
+let statementRowView = (Entity, attribute, index) => {
+
+  let valueType = Database.get(attribute, "attribute/valueType") // 6614
+
+  let Value = Entity.get(attribute)[index]
+
+  
+
+  return d([
+    checkBox( Value["statement/isEnabled"] , async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"statement/isEnabled": Value["statement/isEnabled"] ? false : true  }) ) ) ),
+
+
+    textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;"} , async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }) ) ) )
+
+  ], {class: "columns_1_9"}) 
+
+}
 
 let multpleSimpleValuesRowView = (Entity, attribute, index) => {
 
@@ -632,7 +667,7 @@ let companyView = Company => d([
 
 let companyActionsView = Company => d([
   h3("Handlinger på selskapsnivå"),
-  d( Company.getActions().map(  actionEntity => entityLabelWithPopup( actionEntity, async e => update( await Company.executeAction( actionEntity ) ) ) ), {style: "display: flex;"})
+  d( Company.getActions().map(  actionEntity => entityLabelWithPopup( actionEntity, async e => update( await Company.executeActionFromCompanyLevel( actionEntity ) ) ) ), {style: "display: flex;"})
 ], {class: "feedContainer"}) 
   
 
@@ -779,12 +814,7 @@ let processProgressView = (Company, process) => d([
 
 let processActionsView = (Company, process) => d([
   h3( "Handlinger på prosessnivå" ),
-  //d( Company.getProcess( process ).getActions().map( Action => actionButton(Action) ) ),
-  actionButton({label: `Slett prosessen inkl. ${Company.getProcess(process).events.length} hendelse(r)`, isActionable: true, actionFunction: async e => {
-    await Database.retractEntities([process].concat( Company.getProcess( process ).events ))
-    ClientApp.updateState({selectedEntity: undefined })
-    update(  )
-  }   })
+  d( Company.getProcess( process ).getActions().map( globalFunction =>  entityLabelWithPopup(globalFunction, async e => await Company.getProcess( process ).executeAction(globalFunction) )  ) )
 ], {class: "feedContainer"})
 
 let companyEntitiyPageView = Company => d([
@@ -818,7 +848,7 @@ let eventView =  Company => {
       br(),
       d( Database.get(Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
       
-      //eventActionsView(Company, ClientApp.S.selectedEntity ),
+      eventActionsView(Company, ClientApp.S.selectedEntity ),
       //br(),
       
     ], {class: "feedContainer"} ),
@@ -832,13 +862,7 @@ let eventView =  Company => {
 
 let eventActionsView = (Company, event) => d([
       h3("Handlinger på hendelsesnivå"),
-      Company.getEvent( event ).isValid ? d( Company.getEvent( event ).Actions.map( Action => actionButton(Action) ) ) : d( Company.getEvent( event ).errors.map( errorMessage => d(errorMessage, {style: "background-color: #f5a1a170;"})  ) ),
-      br(),
-      Company.getEvent( event ).isLast ? actionButton({label: "Slett hendelse", isActionable: true, actionFunction: async e => {
-        await Database.retractEntities([event])
-        ClientApp.updateState({selectedEntity: undefined })
-        update(  )
-      }   }) : d("Slett påfølgende hendelser for  slette denne")
+      d( Company.getEvent( event ).getActions().map( globalFunction =>  entityLabelWithPopup(globalFunction, async e => await Company.getEvent( event ).executeAction(globalFunction) )  ) )
   ], {class: "feedContainer"})  
 
 //----------------------------------------------------------------------
