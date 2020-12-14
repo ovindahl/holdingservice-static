@@ -361,7 +361,9 @@ let singleEntityReferenceView = (Entity, attribute, isEditable) => isEditable
   : entityLabel(Entity.get(attribute))
 
 let input_singleCompanyEntity = (Entity, attribute, isEditable) => isEditable
-  ? dropdown( Entity.get( attribute ), ClientApp.getCompany().getOptions(attribute), async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
+  ? dropdown( Entity.get( attribute ), ClientApp.getCompany()
+    .getAll(5812) //To be fixed
+    .map( companyEntity => returnObject({value: Company.get(companyEntity).datoms[0].event, label: Company.get(companyEntity, 1101)})  ) , async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
   : companyEntityLabel(ClientApp.getCompany(), Entity.get( attribute ) )
 
 //Multiple value views
@@ -647,8 +649,8 @@ let companyView = Company => d([
     processesTimelineView( Company ),
     br(),
     companyActionsView( Company ),
-    br(),
-    balanceSheetView( Company ),
+    //br(),
+    //balanceSheetView( Company ),
     br(),
     d([
       h3("Selskapets saldobalanse"),
@@ -739,8 +741,12 @@ let companyEntityView = (Company, companyEntity ) => d([
   d("<br>"),
   d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
   d("<br>"),
-  d( Database.get( Company.get(companyEntity, 19 ), "entityType/attributes" ).map( attribute => fullDatomView( Company.get( companyEntity ), attribute, false  ) )),
-  d( Database.get( Company.get(companyEntity, 19 ), "entityType/calculatedFields" ).map( companyCalculatedField => fullDatomView( Company.get( companyEntity ), companyCalculatedField, false  ) ) )
+
+  d( Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => fullDatomView( Company.get( companyDatom.entity ), companyDatom.attribute, false  ) )),
+  
+
+  //d( Database.get( Company.get(companyEntity, 19 ), "entityType/attributes" ).map( attribute => fullDatomView( Company.get( companyEntity ), attribute, false  ) )),
+  d( Database.get( Company.get( companyEntity , 19 ), "entityType/calculatedFields" ).map( companyCalculatedField => fullDatomView( Company.get( companyEntity ), companyCalculatedField, false  ) ) )
 ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
@@ -756,7 +762,7 @@ let processView = Company => d([
   ], {class: "columns_1_1"}),
   d([
     entityLabel(5687),
-    entityLabel( Company.getProcess( ClientApp.S.selectedEntity ).processType )
+    entityLabel( Company.getProcess( ClientApp.S.selectedEntity ).get("process/processType") )
   ], {class: "columns_1_1"}),
   br(),
   timelineHeaderView(),

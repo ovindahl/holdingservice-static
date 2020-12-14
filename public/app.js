@@ -280,9 +280,10 @@ const Database = {
   getProcess: ( Company, process ) => {
     let Process = Database.get( process )
     Process.events = Company.events.filter( event => Database.get(event, "event/process") === process )
+    Process.getFirstEvent = () => Database.getEvent( Company, Process.events[0] )
     Process.isValid = () => true
     Process.getCriteria = () => []
-    Process.getActions = () => [6628]
+    Process.getActions = () => [6628, 6687]
 
     Process.createEvent = async eventType => {
 
@@ -316,8 +317,7 @@ const Database = {
 
       Company.executeCompanyAction( functionEntity, Process, undefined, updateCallback )
     } 
-  
-
+    
 
 
     return Process
@@ -536,7 +536,7 @@ let createCompanyQueryObject = (Database, Company) => {
 
   Company.get = (entity, attribute ) => {
 
-    if(isUndefined(attribute)){return {get: attr => Company.get( entity, attr )}}
+    if(isUndefined(attribute)){return {get: attr => Company.get( entity, attr ), datoms: Company.companyDatoms.filter( companyDatom => companyDatom.entity === entity ) }}
 
     if(Database.get(attribute, "entity/entityType") === 42){
       let companyDatom = Company.getDatom(entity, attribute )
@@ -596,16 +596,13 @@ let applyCompanyEvents = ( Company, eventsToConstruct ) => eventsToConstruct.red
 
     updatedCompany.calculatedFieldObjects = updatedCompany.entities.reduce( (calculatedFieldObjects, companyEntity ) => {
 
-      
-
       let companyEntityType = updatedCompany.companyDatoms.find( companyDatom => companyDatom.entity === companyEntity && companyDatom.attribute === 19 ).value
-
-      
 
       let updatedCompanyQueryObject = createCompanyQueryObject( Database, updatedCompany )
 
       let CompanyEntity = {
         entity: companyEntity,
+        event: event,
         get: attr => updatedCompanyQueryObject.get(companyEntity, attr)
       }
 
@@ -663,7 +660,7 @@ let applyMethodsToConstructedCompany = constructedCompany => {
   
   Company.getProcess = process => Database.getProcess( Company, process )
   Company.getEvent = event =>  Database.getEvent( Company, event )
-  Company.getActions = () => [6620]
+  Company.getActions = () => Database.getAll(6615).filter( e => Database.get(e, "entity/category") === "Selskapsfunksjoner" )
 
   
 
