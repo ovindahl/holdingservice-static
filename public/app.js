@@ -319,7 +319,13 @@ const Database = {
       let updateCallback = response => {
         ClientApp.updateState({selectedEntity: undefined})
         console.log({response}, "Callback fra Event.executeAction")
+
+        let initialCompany = Database.getCompany( Company.entity )
+        let eventsToConstruct = initialCompany.events.filter( event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 )
+        let constructedCompany = initialCompany.applyEvents( eventsToConstruct )
+        ClientApp.Company = constructedCompany
         update(  )
+
       } 
 
 
@@ -458,7 +464,6 @@ let init = async () => {
   let eventsToConstruct = initialCompany.events.filter( event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 )
   let constructedCompany = initialCompany.applyEvents( eventsToConstruct )
   ClientApp.Company = constructedCompany
-
   update(  )
 }
 
