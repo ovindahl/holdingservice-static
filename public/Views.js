@@ -107,6 +107,9 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
 let actionButton = Action => Action.isActionable ? submitButton( Action.label, async e => update(  await Action.actionFunction()  ) ) : d( Action.label, {style: "background-color: gray;"} ) 
 
 
+
+let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns: ${rowSpecification};`
+
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
@@ -186,6 +189,7 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "32": multipleEntitiesReferenceRowView,
     "5721": multpleSimpleValuesRowView, //Dato
     "38": datomConstructorRowView,
+    "6783": companyEntityConstructorRowView,
     "5824": fileView, //File
     "41": (Entity, attribute, index) => d(JSON.stringify(Entity.get(attribute)[index])), //Company entity
     "5849": eventConstructorsInProcessStepRowView, //Konstruksjon av ny hendelse
@@ -203,6 +207,7 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "40": 0, //Velg alternativ
     "32": 6,
     "38": {isNew: true, e: 1, attribute: 1001, value: `return ''` },
+    "6783": {companyEntityType: 6780, attributeAssertions: {} },
     "5824": "", //File
     "41": 0, //Company entity
     "5849":  {6: "Ny handling", 5848: "return true;", 5850: "return Company.createEvent(5000, Process.entity);"}, //Konstruksjon av ny hendelse
@@ -447,6 +452,64 @@ let datomConstructorRowView = (Entity, attribute, index) => d([
   ]),
   textArea(Entity.get(attribute)[index].value, {class:"textArea_code"}, async e => update( await Entity.replaceValueEntry( attribute, index, mergerino( Entity.get(attribute)[index], {value: submitInputValue(e)} ) ) ) )
 ], {class: "columns_1_1_1"})
+
+let companyEntityConstructorRowView = (Entity, attribute, index) => {
+
+  let entityConstructor = Entity.get(attribute)[index]
+  let companyEntityType = entityConstructor.companyEntityType
+
+
+  return d([
+    dropdown(
+      companyEntityType, 
+      Database.getAll(6778).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ),
+      async e => update( await Entity.replaceValueEntry( attribute, index, mergerino( entityConstructor, {companyEntityType: Number( submitInputValue(e) ), attributeAssertions: {}  } ) ) )
+      ),
+      br(),
+      d([
+        d( JSON.stringify( entityConstructor ) ),
+        d( Database.get( companyEntityType , "companyEntityType/attributes").map(  attr => {
+          let attributeAssertions = entityConstructor.attributeAssertions
+
+          let attributeAssertion = attributeAssertions[ attr ]
+
+          let isEnabled = isDefined(attributeAssertion) ? attributeAssertion.isEnabled : false
+          let valueFunction = isDefined(attributeAssertion) ? attributeAssertion.valueFunction : ""
+
+          let isEnabledUpdateFunction = async e =>  {
+            let updatedAssertion = mergerino(attributeAssertion, {isEnabled: isEnabled ? false : true })
+            update( await Entity.replaceValueEntry( attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion})  } ) ) )
+          } 
+          let valueFunctionUpdateFunction = async e => {
+
+            let updatedAssertion = mergerino(attributeAssertion, {valueFunction: submitInputValue(e), isEnabled: true })
+
+            update( await Entity.replaceValueEntry( attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion}) } ) ) )
+          } 
+  
+  
+  
+          return d([
+            checkBox( isEnabled , isEnabledUpdateFunction ),
+            entityLabelWithPopup(attr),
+            textArea(valueFunction, {class:"textArea_code"}, valueFunctionUpdateFunction )
+          ], {style: gridColumnsStyle("1fr 3fr 6fr") })
+        }  ) )
+      ])
+    
+  ])
+} 
+
+
+
+
+
+
+
+
+
+
+
 
 let entitySearchBox = (Entity, attribute, updateFunction, index) => d([
   input({id: `searchBox/${Entity.entity}/${attribute}/${index}`, value: Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] ? Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] : ""}, "input", 
