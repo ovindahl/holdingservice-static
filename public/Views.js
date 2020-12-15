@@ -207,7 +207,7 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
     "41": 0, //Company entity
     "5849":  {6: "Ny handling", 5848: "return true;", 5850: "return Company.createEvent(5000, Process.entity);"}, //Konstruksjon av ny hendelse
     "6613": {"argument/name": "argumentNavn", "argument/valueType": 30},
-    "6614": {"statement/statement": "console.log('Hei!')", "statement/isEnabled": true},
+    "6614": {"statement/statement": "console.log({Company, Process, Event})", "statement/isEnabled": true},
   }
   let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : ``
 

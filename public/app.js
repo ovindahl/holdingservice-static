@@ -327,6 +327,9 @@ const Database = {
     Event.t =  Company.events.findIndex( e => e === event ) + 1
     Event.process = Event.get("event/process")
     Event.entities = Company.entities.filter( companyEntity => Company.getDatom(companyEntity, 19).event === event )
+    let processEvents = Database.getProcess(Company, Event.process).events
+    let prevEvent = processEvents[  processEvents.findIndex( e => e  === event ) - 1 ]
+    Event.getPrevEvent = () => Database.getEvent(Company, prevEvent)
 
     Event.getActions = () => Database.get( Event.get("event/eventTypeEntity"), "eventType/actionFunctions" )
     Event.executeAction = async functionEntity => await Company.executeCompanyAction(functionEntity, Company.getProcess( Event.process ), Event)
@@ -494,9 +497,18 @@ sideEffects.configureClient();
 //Updated Company Construction pipeline
 
 let calculateDatomValue = (Company, Process, Event, valueFunctionString) => {
+  let eventType = Event.get("event/eventTypeEntity" )
+  let sharedStatements = Database.get( eventType, "eventType/sharedStatements" ) ? Database.get( eventType, "eventType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") : []
+  let functionString = (sharedStatements.length > 0) 
+    ? sharedStatements + ";" + valueFunctionString
+    : valueFunctionString;
+  
   let value;
-  try {value = new Function( [`Company`, `Process`, `Event`], valueFunctionString )( Company, Process, Event ) } 
-    catch (error) {value = log(error,{info: "calculateDatomValue(Company, Process, Event, valueFunctionString) failed", Company, Process, Event, valueFunctionString}) }
+  
+  try {value = new Function( [`Company`, `Process`, `Event`], functionString )( Company, Process, Event ) } 
+    catch (error) {value = log(error,{info: "calculateDatomValue(Company, Process, Event, valueFunctionString) failed", Company, Process, Event, sharedStatements, valueFunctionString, functionString}) }
+
+
   return value;
 }
 
@@ -576,6 +588,8 @@ let applyCompanyEvents = ( Company, eventsToConstruct ) => eventsToConstruct.red
   let Event = dbEvent //TBD
   let Process = dbProcess //TBD
 
+  
+
   let eventDatoms = Database.get( eventType, "eventType/newDatoms" ).map( datomConstructor => returnObject({
     company: Company.entity, process, event, t,
     entity: datomConstructor.isNew ? Company.latestEntityID + datomConstructor.e : datomConstructor.e,
@@ -596,19 +610,27 @@ let applyCompanyEvents = ( Company, eventsToConstruct ) => eventsToConstruct.red
 
     updatedCompany.calculatedFieldObjects = updatedCompany.entities.reduce( (calculatedFieldObjects, companyEntity ) => {
 
-      let companyEntityType = updatedCompany.companyDatoms.find( companyDatom => companyDatom.entity === companyEntity && companyDatom.attribute === 19 ).value
+      
+
+      
 
       let updatedCompanyQueryObject = createCompanyQueryObject( Database, updatedCompany )
 
       let CompanyEntity = {
         entity: companyEntity,
+        companyDatoms: updatedCompany.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity),
         event: event,
         get: attr => updatedCompanyQueryObject.get(companyEntity, attr)
       }
 
-      
 
-      let updatedCalculatedFields = Database.get( companyEntityType , "entityType/calculatedFields" )
+      let entityTypeDatom = CompanyEntity.companyDatoms.find( companyDatom => companyDatom.entity === companyEntity && companyDatom.attribute === 19 )
+      let entityTypeValue = isDefined(entityTypeDatom) ? entityTypeDatom.value : undefined
+      let companyEntityType = isNumber(entityTypeValue) ? entityTypeValue : log(  undefined, {info: "ERROR: CompanyEntity missing type", event, CompanyEntity})
+
+      let entityTypeCalculatedFields = isDefined(companyEntityType) ? Database.get( companyEntityType , "entityType/calculatedFields" ) : []
+      
+      let updatedCalculatedFields = entityTypeCalculatedFields
         .map( calculatedField => returnObject({
           company: Company.entity, companyEntity, calculatedField, t, 
           value: calculateFieldValue( updatedCompanyQueryObject, Process, Event, CompanyEntity, Database.get( calculatedField, 6048) )
