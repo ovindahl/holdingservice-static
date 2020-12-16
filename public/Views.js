@@ -131,11 +131,19 @@ let fullDatomView = (Entity, attribute, isEditable) => {
 
   let isCalculatedField = Database.get(attribute, "entity/entityType") === 5817
 
+  let view;
+
+  try {
+    view = valueView(Entity, attribute, isEditable)
+  } catch (error) {
+    view = d("ERROR: " + error)
+  }
+
   
 
   return d([
     entityLabel(attribute),
-    valueView(Entity, attribute, isEditable)
+    view
   ], (isArray || valueType === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
 
 }
@@ -355,9 +363,7 @@ let singleEntityReferenceView = (Entity, attribute, isEditable) => isEditable
   : entityLabel(Entity.get(attribute))
 
 let input_singleCompanyEntity = (Entity, attribute, isEditable) => isEditable
-  ? dropdown( Entity.get( attribute ), ClientApp.getCompany()
-    .getAll(6785) //To be fixed
-    .map( companyEntity => returnObject({value: Company.get(companyEntity).datoms[0].event, label: Company.get(companyEntity, 1101)})  ).concat( {value: 0, label: 'Velg verdipapir'} ) , async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
+  ? dropdown( Entity.get( attribute ), Entity.getOptions( attribute ), async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
   : companyEntityLabel(ClientApp.getCompany(), Entity.get( attribute ) )
 
 //Multiple value views
@@ -784,8 +790,9 @@ let companyEntityView = (Company, companyEntity ) => d([
   d("<br>"),
   d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
   d("<br>"),
-
   d( Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => fullDatomView( Company.get( companyDatom.entity ), companyDatom.attribute, false  ) )),
+
+  //d( Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => d(JSON.stringify(companyDatom)) )),
   
 
   //d( Database.get( Company.get(companyEntity, 19 ), "entityType/attributes" ).map( attribute => fullDatomView( Company.get( companyEntity ), attribute, false  ) )),

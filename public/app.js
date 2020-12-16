@@ -245,6 +245,15 @@ const Database = {
     return GlobalAsyncFunction
 
   },
+  getCompanyOptionsFunction: attr => {
+
+    let functionString = Database.get( attr, "attribute/selectableEntitiesFilterFunction"  )
+
+    let optionsFunction = new Function(["Company", "Entity"], functionString)
+
+    return optionsFunction
+
+  }, 
   getCompany: company => {
   
     let Company = {
@@ -599,7 +608,24 @@ let createCompanyQueryObject = (Database, Company) => {
 
   Company.get = (entity, attribute ) => {
 
-    if(isUndefined(attribute)){return {get: attr => Company.get( entity, attr ), datoms: Company.companyDatoms.filter( companyDatom => companyDatom.entity === entity ) }}
+    if(isUndefined(attribute)){
+      let CompanyEntity = {
+        companyDatoms: Company.companyDatoms.filter( companyDatom => companyDatom.entity === entity )
+      }
+      CompanyEntity.get = attr => {
+
+        let matchingDatoms = CompanyEntity.companyDatoms.filter( companyDatom => companyDatom.attribute === attr )
+
+        let latestDatom = matchingDatoms.length > 0 ? matchingDatoms.slice( -1 )[0] : undefined
+
+        let value = isDefined(latestDatom) ?  latestDatom.value : undefined
+        return value
+
+      } 
+      CompanyEntity.getOptions = attr => Database.getCompanyOptionsFunction( attr )( Company, CompanyEntity )
+
+      return CompanyEntity
+    }
 
     if(Database.get(attribute, "entity/entityType") === 42){
       let companyDatom = Company.getDatom(entity, attribute )
