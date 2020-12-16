@@ -36,7 +36,7 @@ const Database = {
     let valueTypeValidatorFunction = new Function("inputValue",  Database.get( valueType, "valueType/validatorFunctionString") )
 
     let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
-    let isValid_attribute = new Function("inputValue",  Database.get( Database.attr(attr), "attribute/validatorFunctionString") ) ( value )
+    let isValid_attribute = true
     let isValid_notNaN = valueInArray.every( arrayValue => !Number.isNaN(arrayValue) )
 
     //Add checks for whether attribtue is valid for the entity type?
@@ -205,7 +205,7 @@ const Database = {
     let Entity = Database.getEntity(entity)
     let calculatedValue;
     //NB: Outdated
-      try {calculatedValue = new Function( ["Entity", "Database"],  Database.get(calculatedField, 6048) ) (Entity, Database) } 
+      try {calculatedValue = new Function( ["Entity", "Database"],  Database.get(calculatedField, 6792) ) (Entity, Database) } //NB: Må konverteres til statements
       catch (error) {calculatedValue = log("ERROR",{info: "calculatedValue calculation  failed", entity, calculatedField, error}) }
     return calculatedValue
   },
@@ -282,9 +282,15 @@ const Database = {
   
     Company.latestEntityID = 0;
   
-    Company.applyEvents = events => applyCompanyEvents( Company, events )
-  
-    return Company
+    let eventsToConstruct = Company.events.filter( event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 )
+
+    let CompanyWithQueryMethods = createCompanyQueryObject(Database, Company )
+
+
+    let ConstructedCompany = applyCompanyEvents( CompanyWithQueryMethods, eventsToConstruct )
+
+
+    return ConstructedCompany
   
   },
   getProcess: ( Company, process ) => {
@@ -317,10 +323,7 @@ const Database = {
       let updateCallback = response => {
         ClientApp.updateState({selectedEntity: undefined})
         console.log({response}, "Callback fra Process.executeAction")
-        let initialCompany = Database.getCompany( Company.entity )
-        let eventsToConstruct = initialCompany.events.filter( event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 )
-        let constructedCompany = initialCompany.applyEvents( eventsToConstruct )
-        ClientApp.Company = constructedCompany
+        ClientApp.Company = Database.getCompany( Company.entity )
         update(  )
       } 
 
@@ -350,11 +353,7 @@ const Database = {
       let updateCallback = response => {
         ClientApp.updateState({selectedEntity: undefined})
         console.log({response}, "Callback fra Event.executeAction")
-
-        let initialCompany = Database.getCompany( Company.entity )
-        let eventsToConstruct = initialCompany.events.filter( event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 )
-        let constructedCompany = initialCompany.applyEvents( eventsToConstruct )
-        ClientApp.Company = constructedCompany
+        ClientApp.Company = Database.getCompany( Company.entity )
         update(  )
 
       } 
@@ -489,12 +488,8 @@ let init = async () => {
     return returnObject({entity: e, function: globalFunction})
   } )
 
-
   let company = Database.getAll( 5722 )[0]
-  let initialCompany = Database.getCompany( company )
-  let eventsToConstruct = initialCompany.events.filter( event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 )
-  let constructedCompany = initialCompany.applyEvents( eventsToConstruct )
-  ClientApp.Company = constructedCompany
+  ClientApp.Company = Database.getCompany( company )
   update(  )
 }
 
@@ -667,51 +662,38 @@ let createCompanyQueryObject = (Database, Company) => {
 }
 
 
-let applyCompanyEvents = ( Company, eventsToConstruct ) => eventsToConstruct.reduce( (Company, event) => {
+let applyCompanyEvents = ( dbCompany, eventsToConstruct ) => eventsToConstruct.reduce( (prevCompany, event) => {
 
-  let t = Company.t + 1
+  let t = prevCompany.t + 1
   let eventType = Database.get( event, "event/eventTypeEntity" )
   let process = Database.get(event, "event/process")
-  let CompanyQueryObject = createCompanyQueryObject( Database, Company )
 
-  let dbEvent = Database.getEvent( CompanyQueryObject, event )
-  let dbProcess = Database.getProcess( CompanyQueryObject, process )
-
-  let Event = dbEvent //TBD
-  let Process = dbProcess //TBD
+  let Event = Database.getEvent( prevCompany, event ) //TBD
+  let Process = Database.getProcess( prevCompany, process ) //TBD
 
   ///// Constructiong through events
 
-  let eventDatoms = Database.get( eventType, "eventType/newEntities" ) ? Database.get( eventType, "eventType/newEntities" ).map( (entityConstructor, index) => constructEntity( CompanyQueryObject, Process, Event, entityConstructor, index ) ).flat() : []
+  let eventDatoms = Database.get( eventType, "eventType/newEntities" ) ? Database.get( eventType, "eventType/newEntities" ).map( (entityConstructor, index) => constructEntity( prevCompany, Process, Event, entityConstructor, index ) ).flat() : []
 
-
-  ///// Constructiong through events
-  
-  /* Database.get( eventType, "eventType/newDatoms" ).map( datomConstructor => returnObject({
-    company: Company.entity, process, event, t,
-    entity: datomConstructor.isNew ? Company.latestEntityID + datomConstructor.e : datomConstructor.e,
-    attribute: datomConstructor.attribute,
-    value: calculateDatomValue( CompanyQueryObject, Process, Event, datomConstructor.value )
-  }) ) */
-
-
-  let updatedCompany = {
-    entity: Company.entity,
+  let Company = {
+    entity: prevCompany.entity,
     t,
-    events: Company.events,
-    processes: Company.processes,
-    calculatedFieldObjects: Company.calculatedFieldObjects, //Frem til de oppdateres
-    companyDatoms: Company.companyDatoms.concat( eventDatoms ),
-    entities: eventDatoms.reduce( (entities, datom) => entities.includes( datom.entity ) ? entities : entities.concat(datom.entity), Company.entities ),
-    latestEntityID: eventDatoms.reduce( (maxEntity, eventDatom) => eventDatom.entity > maxEntity ? eventDatom.entity : maxEntity, Company.latestEntityID  ),
+    events: prevCompany.events,
+    processes: prevCompany.processes,
+    calculatedFieldObjects: prevCompany.calculatedFieldObjects, //Frem til de oppdateres
+    companyDatoms: prevCompany.companyDatoms.concat( eventDatoms ),
+    entities: eventDatoms.reduce( (entities, datom) => entities.includes( datom.entity ) ? entities : entities.concat(datom.entity), prevCompany.entities ),
+    latestEntityID: eventDatoms.reduce( (maxEntity, eventDatom) => eventDatom.entity > maxEntity ? eventDatom.entity : maxEntity, prevCompany.latestEntityID  ),
   }
 
-  let updatedCompanyQueryObject = createCompanyQueryObject( Database, updatedCompany )
+  let updatedCompanyQueryObject = createCompanyQueryObject( Database, Company )
 
-  updatedCompany.calculatedFieldObjects = getCompanyCalculatedFields( updatedCompanyQueryObject, Process, Event ) 
+  Company.calculatedFieldObjects = getCompanyCalculatedFields( updatedCompanyQueryObject, Process, Event ) 
 
-  return updatedCompany
-  }, Company )
+  let CompanyWithQueryMethods = createCompanyQueryObject(Database, Company )
+
+  return CompanyWithQueryMethods
+  }, dbCompany )
 
 
 
@@ -837,57 +819,6 @@ let applyMethodsToConstructedCompany = constructedCompany => {
 
 
 //Updated Company Construction pipeline -- END
-
-
-
-
-
-
-/* updatedCompany.calculatedFieldObjects = updatedCompany.entities.reduce( ( calculatedFieldObjects, companyEntity ) => {
-
-    
-
-    
-
-    let updatedCompanyQueryObject = createCompanyQueryObject( Database, updatedCompany )
-
-    let CompanyEntity = {
-      entity: companyEntity,
-      companyDatoms: updatedCompany.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity),
-      event: event,
-      get: attr => updatedCompanyQueryObject.get(companyEntity, attr)
-    }
-
-
-    let entityTypeDatom = CompanyEntity.companyDatoms.find( companyDatom => companyDatom.entity === companyEntity && companyDatom.attribute === 19 )
-    let entityTypeValue = isDefined(entityTypeDatom) ? entityTypeDatom.value : undefined
-    let companyEntityType = isNumber(entityTypeValue) ? entityTypeValue : log(  undefined, {info: "ERROR: CompanyEntity missing type", event, CompanyEntity})
-
-    let entityTypeCalculatedFields = isDefined(companyEntityType) ? Database.get( companyEntityType , "entityType/calculatedFields" ) : []
-
-    
-    
-    let updatedCalculatedFields = entityTypeCalculatedFields
-      .map( calculatedField => returnObject({
-        company: Company.entity, companyEntity, calculatedField, t, 
-        value: calculateFieldValue( updatedCompanyQueryObject, Process, Event, CompanyEntity, Database.get( calculatedField, 6048) )
-      }))
-      .filter( calculatedFieldObject => {
-
-        let prevValueObject = updatedCompany.calculatedFieldObjects.find( calculatedField => calculatedField.companyEntity === companyEntity && calculatedField.calculatedField === calculatedField  )
-
-        let noPrevValue = isUndefined( prevValueObject )
-
-        let valueHasChanged = noPrevValue 
-          ? true
-          : calculatedFieldObject.value !== prevValueObject.value
-
-        return valueHasChanged
-      } )
-      return updatedCalculatedFields.length > 0 ? calculatedFieldObjects.concat(updatedCalculatedFields) : calculatedFieldObjects
-  } , Company.calculatedFieldObjects ) */
-
-
 
 
 
