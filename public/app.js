@@ -226,6 +226,18 @@ const Database = {
   },
   getGlobalFunction: entity => {
 
+    /* Database.globalFunctions = Database.getAll(6615).map(  e => {
+
+    let argumentObjects = Database.get(e, "function/arguments")
+    let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
+    let statementObjects = Database.get(e, "function/statements")
+    let statements = statementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
+    let functionString = statements.join(";")
+
+    let globalFunction = new Function( arguments ,functionString  )
+    return returnObject({entity: e, function: globalFunction})
+  } ) */
+
 
     let globalFunction = Database.globalFunctions.find( globalFunction => globalFunction.entity === entity )
 
@@ -258,7 +270,8 @@ const Database = {
   getCompany: company => {
   
     let Company = {
-      entity: company
+      entity: company,
+      tx: Database.tx //Burde være tx fra siste update i selskapets event/prosess/company, da har man en uniform vesionering
     }
   
     Company.t = 0
@@ -307,7 +320,6 @@ const ClientApp = {
   },
   updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
   replaceState: newState => ClientApp.S = newState,
-  getCompany: () => Company, // Brukes i et par valueType views, bør fikses
 }
 
 const AdminApp = {
@@ -388,7 +400,7 @@ let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, a
 
 let update = () => {
     D = Database
-    Company = applyMethodsToConstructedCompany( Database, ClientApp.Company ) 
+    Company = ClientApp.Company 
     
     let startTime = Date.now()
     let elementTree = ClientApp.S.selectedPage === "Admin" ? [ adminPage( Company ) ] : [ clientPage(Company) ]
@@ -405,17 +417,6 @@ let init = async () => {
   Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
   Database.selectedEntity = 6
 
-  Database.globalFunctions = Database.getAll(6615).map(  e => {
-
-    let argumentObjects = Database.get(e, "function/arguments")
-    let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
-    let statementObjects = Database.get(e, "function/statements")
-    let statements = statementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
-    let functionString = statements.join(";")
-
-    let globalFunction = new Function( arguments ,functionString  )
-    return returnObject({entity: e, function: globalFunction})
-  } )
 
   let company = Database.getAll( 5722 )[0]
   ClientApp.Company = Database.getCompany( company )
@@ -574,34 +575,7 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
     Process.getFirstEvent = () => Company.getEvent( Process.events[0] )
     Process.isValid = () => true
     Process.getCriteria = () => []
-    Process.getActions = () => [6628, 6687]
-
-    Process.createEvent = async eventType => {
-
-      let newEvent = await receivedDatabase.createEntity(46, [
-        newDatom(`newEntity`, "event/eventTypeEntity", eventType),
-        newDatom(`newEntity`, "event/process", process),
-        newDatom(`newEntity`, "event/date", Date.now() )
-      ])
-  
-    }
-
-    Process.executeAction = async functionEntity => {
-
-
-      let updateCallback = response => {
-        ClientApp.updateState({selectedEntity: undefined})
-        console.log({response}, "Callback fra Process.executeAction")
-        ClientApp.Company = receivedDatabase.getCompany( Company.entity )
-        update(  )
-      } 
-
-
-      Company.executeCompanyAction( functionEntity, Process, undefined, updateCallback )
-    } 
-    
-
-
+    Process.getActions = () => [6628, 6687].map( actionEntity => Company.getAction(receivedDatabase, Company, Process, undefined, actionEntity ) )
     return Process
   }
 
@@ -615,26 +589,33 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
     let prevEvent = processEvents[  processEvents.findIndex( e => e  === event ) - 1 ]
     Event.getPrevEvent = () => Company.getEvent( prevEvent )
 
-    Event.getActions = () => receivedDatabase.get( Event.get("event/eventTypeEntity"), "eventType/actionFunctions" )
-    Event.executeAction = async functionEntity => await Company.executeCompanyAction(functionEntity, Company.getProcess( Event.process ), Event)
-
-    Event.executeAction = async functionEntity => {
-
-
-      let updateCallback = response => {
-        ClientApp.updateState({selectedEntity: undefined})
-        console.log({response}, "Callback fra Event.executeAction")
-        ClientApp.Company = receivedDatabase.getCompany( Company.entity )
-        update(  )
-
-      } 
-
-
-      Company.executeCompanyAction( functionEntity, Company.getProcess(Event.process), Event, updateCallback )
-    } 
-
+    Event.getActions = () =>  receivedDatabase.get( Event.get("event/eventTypeEntity"), "eventType/actionFunctions" ).map( actionEntity => Company.getAction(receivedDatabase, Company, Process, Event, actionEntity ) )
+  
     return Event
   }
+
+
+  Company.getActions = () => receivedDatabase.getAll(6615)
+    .filter( e => receivedDatabase.get(e, "entity/category") === "Selskapsfunksjoner" )
+    .map( actionEntity => Company.getAction(receivedDatabase, Company, undefined, undefined, actionEntity ) )
+
+   Company.getAction = (receivedDatabase, Company, Process, Event, actionEntity ) => {
+    let asyncFunction = receivedDatabase.getGlobalAsyncFunction( actionEntity )
+      let Action = {
+        entity: actionEntity,
+        execute: async () => {
+
+            let callback = callBackArgument => {
+              console.log("Dette er callbacken fra action", {callBackArgument})
+              ClientApp.Company = Database.getCompany( company )
+              update(  )
+            }
+          console.log("Kjører Action.execute()", receivedDatabase, Company, Process, Event, actionEntity  )
+        try {  await asyncFunction( receivedDatabase, Company, Process, Event ).then( callback  )  } catch (error) { return error }
+        }
+      }
+    return Action
+   }
 
 
   return Company
@@ -655,8 +636,9 @@ let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct ) => e
 
   let eventDatoms = receivedDatabase.get( eventType, "eventType/newEntities" ) ? receivedDatabase.get( eventType, "eventType/newEntities" ).map( (entityConstructor, index) => constructEntity( receivedDatabase, prevCompany, Process, Event, entityConstructor, index ) ).flat() : []
 
-  let Company = {
+  let Company = createCompanyQueryObject( receivedDatabase, {
     entity: prevCompany.entity,
+    tx: prevCompany.tx,
     t,
     events: prevCompany.events,
     processes: prevCompany.processes,
@@ -664,15 +646,13 @@ let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct ) => e
     companyDatoms: prevCompany.companyDatoms.concat( eventDatoms ),
     entities: eventDatoms.reduce( (entities, datom) => entities.includes( datom.entity ) ? entities : entities.concat(datom.entity), prevCompany.entities ),
     latestEntityID: eventDatoms.reduce( (maxEntity, eventDatom) => eventDatom.entity > maxEntity ? eventDatom.entity : maxEntity, prevCompany.latestEntityID  ),
-  }
+  })
 
-  let updatedCompanyQueryObject = createCompanyQueryObject( receivedDatabase, Company )
 
-  Company.calculatedFieldObjects = getCompanyCalculatedFields( receivedDatabase, updatedCompanyQueryObject, Process, Event ) 
+  Company.calculatedFieldObjects = getCompanyCalculatedFields( receivedDatabase, Company, Process, Event ) 
 
-  let CompanyWithQueryMethods = createCompanyQueryObject(receivedDatabase, Company )
 
-  return CompanyWithQueryMethods
+  return Company
   }, dbCompany )
 
 
@@ -729,72 +709,6 @@ let calculateCalculatedFieldObjects = (receivedDatabase, Company, Process, Event
   return calculatedFieldObjects;
 
 }
-
-
-let applyMethodsToConstructedCompany = (receivedDatabase, constructedCompany) => {
-
-
-  let Company = constructedCompany
-
-  Company.events = receivedDatabase.getAll(46)
-      .filter( event => receivedDatabase.get( receivedDatabase.get(event, "event/process"), "process/company" ) === Company.entity  )
-      .sort(  (a,b) => receivedDatabase.get(a, 'event/date' ) - receivedDatabase.get(b, 'event/date' ) )
-  
-  Company.processes = receivedDatabase.getAll(5692).filter( process => receivedDatabase.get(process , 'process/company' ) === Company.entity  ).sort( (processA, processB) => {
-    let processEventsA = Company.events.filter( e => receivedDatabase.get(e, "event/process") === processA )
-    let firstEventA = processEventsA[0]
-    let firstEventDateA = isDefined(firstEventA) ? receivedDatabase.get(firstEventA, 'event/date') : Date.now()
-    let processEventsB = Company.events.filter( e => receivedDatabase.get(e, "event/process") === processB )
-    let firstEventB = processEventsB[0]
-    let firstEventDateB = isDefined(firstEventB ) ? receivedDatabase.get(firstEventB , 'event/date') : Date.now()
-    return firstEventDateA - firstEventDateB;
-  })
-  
-  
-  Company.getActions = () => receivedDatabase.getAll(6615).filter( e => receivedDatabase.get(e, "entity/category") === "Selskapsfunksjoner" )
-
-  
-
-  Company.executeCompanyAction = async (functionEntity, Process, Event, callback) => {
-    let asyncFunction = receivedDatabase.getGlobalAsyncFunction(functionEntity)
-    try {  asyncFunction( receivedDatabase, Company, Process, Event).then( callback  )  } catch (error) { return error } 
-  }
-
-  Company.executeActionFromCompanyLevel = globalFunction => Company.executeCompanyAction(globalFunction, undefined, undefined, response => update( log({response}, "AAAAAA") ) )
-  
-
-
-
-
-  //TBD
-  Company.createEvent = async (eventType, process) => {
-
-    let newEvent = await receivedDatabase.createEntity(46, [
-      newDatom(`newEntity`, "event/eventTypeEntity", eventType),
-      newDatom(`newEntity`, "event/process", process),
-      newDatom(`newEntity`, "event/date", Date.now() )
-    ])
-
-    let updatedCompany = mergerino({}, Company)
-    
-    updatedCompany.events = Company.events.concat( newEvent.entity ).sort(  (a,b) => receivedDatabase.get(a, 'event/date' ) - receivedDatabase.get(b, 'event/date' ) )
-    updatedCompany.companyDatoms = [] // Company.companyDatoms.filter( companyDatom => companyDatom.t <= updatedCompany.events.findIndex(newEvent.entity)  )
-    updatedCompany.applyEvents( updatedCompany.events )
-    update(  )
-  }
-
-
-
-
-
-
-
-
-  return Company
-
-
-}
-
 
 //Updated Company Construction pipeline -- END
 

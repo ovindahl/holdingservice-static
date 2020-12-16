@@ -236,7 +236,7 @@ let multipleValuesView = (Entity, attribute, isEditable) => {
       : d("Ingen verdier"),
       submitButton( "[ + ]", async e => update( isArray( Entity.get(attribute) ) ? await Entity.addValueEntry( attribute,  startValue ) : await Entity.replaceValue( attribute,  [startValue] ) )  )
   ]) : ( valueType === 41 )
-    ? d( Entity.get(attribute).map( (Value, index) => companyEntityLabel(ClientApp.getCompany(), Value) ))
+    ? d( Entity.get(attribute).map( (Value, index) => companyEntityLabel(ClientApp.Company, Value) ))
     : d( Entity.get(attribute).map( (Value, index) => valueTypeViews[ valueType ](Entity, attribute, index) ))
 
 }
@@ -365,7 +365,7 @@ let singleEntityReferenceView = (Entity, attribute, isEditable) => isEditable
 
 let input_singleCompanyEntity = (Entity, attribute, isEditable) => isEditable
   ? dropdown( Entity.get( attribute ), Entity.getOptions( attribute ), async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
-  : companyEntityLabel(ClientApp.getCompany(), Entity.get( attribute ) )
+  : companyEntityLabel(ClientApp.Company, Entity.get( attribute ) )
 
 //Multiple value views
 
@@ -723,7 +723,7 @@ let companyView = Company => d([
 
 let companyActionsView = Company => d([
   h3("Handlinger på selskapsnivå"),
-  d( Company.getActions().map(  actionEntity => entityLabelWithPopup( actionEntity, async e => update( await Company.executeActionFromCompanyLevel( actionEntity ) ) ) ), {style: "display: flex;"})
+  d( Company.getActions().map(  companyAction => entityLabelWithPopup( companyAction.entity, async e => update( await companyAction.execute() ) ), {style: "display: flex;"}) )
 ], {class: "feedContainer"}) 
   
 
@@ -875,7 +875,7 @@ let processProgressView = (Company, process) => d([
 
 let processActionsView = (Company, process) => d([
   h3( "Handlinger på prosessnivå" ),
-  d( Company.getProcess( process ).getActions().map( globalFunction =>  entityLabelWithPopup(globalFunction, async e => await Company.getProcess( process ).executeAction(globalFunction) )  ) )
+  d( Company.getProcess( process ).getActions().map( companyAction => entityLabelWithPopup( companyAction.entity, async e => update( await companyAction.execute() ) )  ) )
 ], {class: "feedContainer"})
 
 let companyEntitiyPageView = Company => d([
@@ -923,7 +923,7 @@ let eventView =  Company => {
 
 let eventActionsView = (Company, event) => d([
       h3("Handlinger på hendelsesnivå"),
-      d( Company.getEvent( event ).getActions().map( globalFunction =>  entityLabelWithPopup(globalFunction, async e => await Company.getEvent( event ).executeAction(globalFunction) )  ) )
+      d( Company.getEvent( event ).getActions().map( companyAction => entityLabelWithPopup( companyAction.entity, async e => update( await companyAction.execute() ) )  ) )
   ], {class: "feedContainer"})  
 
 //----------------------------------------------------------------------
