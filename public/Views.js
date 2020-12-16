@@ -134,8 +134,9 @@ let fullDatomView = (Entity, attribute, isEditable) => {
   let view;
 
   try {
-    view = valueView(Entity, attribute, isEditable)
+    view = valueView( Entity, attribute, isEditable)
   } catch (error) {
+    log({Entity, attribute, isEditable, valueType, isArray, isCalculatedField})
     view = d("ERROR: " + error)
   }
 
@@ -703,7 +704,11 @@ let companyView = Company => d([
     br(),
     d([
       h3("Selskapets saldobalanse"),
-      fullDatomView(Company.get(1), 6212),
+      d( Company.get(1, 6212 ).map( Account => d([
+        entityLabel(Account.account),
+        d( String(Account.amount) ),
+      ], {class: "columns_1_1"}) ))
+      //fullDatomView(Company.get(1), 6212),
     ], {class: "feedContainer"}),
     br(),
     d([
