@@ -988,7 +988,7 @@ let adminEntityView = entity => {
         d( attributes.map( attribute => fullDatomView( Entity, attribute, true ) )),
         br(),
         h3("Tillatte handlinger på entitetsnivå"),
-        d( Entity.Actions.map( Action => actionButton(Action) ) ),
+        d( Entity.getActions().map( Action => actionButton(Action) ) ),
       ], {class: "feedContainer"} )
   : d("Ingen entitet valgt.", {class: "feedContainer"})
     
