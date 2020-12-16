@@ -1,8 +1,5 @@
 let constructCompanyDocument = (receivedDatabase, company ) => {
 
-
-
-
     let Company = {
         entity: company,
         tx: receivedDatabase.tx //Burde være tx fra siste update i selskapets event/prosess/company, da har man en uniform vesionering
@@ -29,10 +26,9 @@ let constructCompanyDocument = (receivedDatabase, company ) => {
     
       Company.latestEntityID = 0;
     
-      let eventsToConstruct = Company.events.filter( event => receivedDatabase.get( receivedDatabase.get(event, "event/eventTypeEntity"), "eventType/newDatoms" ).length > 0 )
+      let eventsToConstruct = Company.events.filter( event => receivedDatabase.get(  receivedDatabase.get(event, "event/eventTypeEntity"), "eventType/newEntities" ).length > 0 )
   
       let CompanyWithQueryMethods = createCompanyQueryObject( receivedDatabase, Company )
-  
   
       let ConstructedCompany = applyCompanyEvents( receivedDatabase, CompanyWithQueryMethods, eventsToConstruct )
   
@@ -47,88 +43,88 @@ let constructCompanyDocument = (receivedDatabase, company ) => {
 
 let constructEntity = ( receivedDatabase, Company, Process, Event, entityConstructor, index) => {
 
-    let eventType = Event.get("event/eventTypeEntity" )
-    let sharedStatements = receivedDatabase.get( eventType, "eventType/sharedStatements" ) 
-      ? receivedDatabase.get( eventType, "eventType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") 
-      : []
-  
-    let sharedStatementsString = (sharedStatements.length > 0) ? sharedStatements + ";" : ""
-  
-  
-    let companyEntityType = entityConstructor.companyEntityType
-    let attributeAssertions = entityConstructor.attributeAssertions
-  
-    let entity = Company.latestEntityID + index + 1
-  
-    let generatedyDatoms =  receivedDatabase.get( companyEntityType , "companyEntityType/attributes") 
-      .filter( attr => isUndefined( attributeAssertions[ attr ] ) 
-        ? false 
-        : isUndefined( attributeAssertions[ attr ].isEnabled )
-          ? false
-          : attributeAssertions[ attr ].isEnabled
-         )
-      .map(  attr => {
-  
-      let companyDatom = {
-        entity, company: Company.entity, process: Process.entity , event: Event.entity, t: Event.t,
-        attribute: attr
-      }
-  
-      let valueFunctionString = attributeAssertions[ attr ].valueFunction
-  
-      let functionString = sharedStatementsString + valueFunctionString;
-  
-      try {companyDatom.value = new Function( [`Company`, `Process`, `Event`], functionString )( Company, Process, Event ) } 
-      catch (error) {companyDatom.value = log(error,{info: "constructEntity(Company, Process, Event, entityConstructor) failed", Company, Process, Event, sharedStatements, valueFunctionString, functionString}) }
-  
-      return companyDatom
-    } )
-  
-    let companyEntityTypeDatom = {
+  let eventType = Event.get("event/eventTypeEntity" )
+  let sharedStatements = receivedDatabase.get( eventType, "eventType/sharedStatements" ) 
+    ? receivedDatabase.get( eventType, "eventType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") 
+    : []
+
+  let sharedStatementsString = (sharedStatements.length > 0) ? sharedStatements + ";" : ""
+
+
+  let companyEntityType = entityConstructor.companyEntityType
+  let attributeAssertions = entityConstructor.attributeAssertions
+
+  let entity = Company.latestEntityID + index + 1
+
+  let generatedyDatoms =  receivedDatabase.get( companyEntityType , "companyEntityType/attributes") 
+    .filter( attr => isUndefined( attributeAssertions[ attr ] ) 
+      ? false 
+      : isUndefined( attributeAssertions[ attr ].isEnabled )
+        ? false
+        : attributeAssertions[ attr ].isEnabled
+        )
+    .map(  attr => {
+
+    let companyDatom = {
       entity, company: Company.entity, process: Process.entity , event: Event.entity, t: Event.t,
-      attribute: 6781,
-      value: companyEntityType
+      attribute: attr
     }
-  
-  
-    let entityDatoms = [companyEntityTypeDatom].concat(generatedyDatoms)
-  
-    return entityDatoms
+
+    let valueFunctionString = attributeAssertions[ attr ].valueFunction
+
+    let functionString = sharedStatementsString + valueFunctionString;
+
+    try {companyDatom.value = new Function( [`Company`, `Process`, `Event`], functionString )( Company, Process, Event ) } 
+    catch (error) {companyDatom.value = log(error,{info: "constructEntity(Company, Process, Event, entityConstructor) failed", Company, Process, Event, sharedStatements, valueFunctionString, functionString}) }
+
+    return companyDatom
+  } )
+
+  let companyEntityTypeDatom = {
+    entity, company: Company.entity, process: Process.entity , event: Event.entity, t: Event.t,
+    attribute: 6781,
+    value: companyEntityType
   }
+
+
+  let entityDatoms = [companyEntityTypeDatom].concat(generatedyDatoms)
+
+  return entityDatoms
+}
   
 let createCompanyQueryObject = (receivedDatabase, Company) => {
 
-Company.getAll = entityType => {
+    Company.getAll = entityType => {
 
-    let matchingDatoms = Company.companyDatoms
-    .filter( companyDatom => companyDatom.attribute === 6781 )
-    .filter( companyDatom => companyDatom.value === entityType )
+        let matchingDatoms = Company.companyDatoms
+        .filter( companyDatom => companyDatom.attribute === 6781 )
+        .filter( companyDatom => companyDatom.value === entityType )
 
-    let entities = isDefined( matchingDatoms ) 
-    ? matchingDatoms.filter( filterUniqueValues ).map(  companyDatom => companyDatom.entity )
-    : []
+        let entities = isDefined( matchingDatoms ) 
+        ? matchingDatoms.filter( filterUniqueValues ).map(  companyDatom => companyDatom.entity )
+        : []
 
-    return entities
-} 
-    
+        return entities
+    } 
+        
 
-Company.getDatom = (entity, attribute ) => Company.companyDatoms
-.filter( companyDatom => companyDatom.entity === entity )
-.filter( companyDatom => companyDatom.attribute === attribute )
-.slice( -1 )[0]
-
-Company.getCalculatedFieldObject = (companyEntity, calculatedField) => Company.calculatedFieldObjects
-    .filter( calculatedFieldObject => calculatedFieldObject.companyEntity === companyEntity && calculatedFieldObject.calculatedField === calculatedField  )
+    Company.getDatom = (entity, attribute ) => Company.companyDatoms
+    .filter( companyDatom => companyDatom.entity === entity )
+    .filter( companyDatom => companyDatom.attribute === attribute )
     .slice( -1 )[0]
 
+    Company.getCalculatedFieldObject = (companyEntity, calculatedField) => Company.calculatedFieldObjects
+        .filter( calculatedFieldObject => calculatedFieldObject.companyEntity === companyEntity && calculatedFieldObject.calculatedField === calculatedField  )
+        .slice( -1 )[0]
 
-Company.get = (entity, attribute ) => {
 
-    if(isUndefined(attribute)){
-    let CompanyEntity = {
-        entity,
-        companyDatoms: Company.companyDatoms.filter( companyDatom => companyDatom.entity === entity )
-    }
+    Company.get = (entity, attribute ) => {
+
+        if(isUndefined(attribute)){
+        let CompanyEntity = {
+            entity,
+            companyDatoms: Company.companyDatoms.filter( companyDatom => companyDatom.entity === entity )
+        }
     
 
     
@@ -179,55 +175,57 @@ Company.get = (entity, attribute ) => {
         : receivedDatabase.get(attribute, "attribute/isArray" ) ? [] : undefined
     }
     
-} 
+    } 
 
 
 
-Company.getProcess = process => {
-    let Process = receivedDatabase.get( process )
-    Process.events = Company.events.filter( event => receivedDatabase.get(event, "event/process") === process )
-    Process.getFirstEvent = () => Company.getEvent( Process.events[0] )
-    Process.isValid = () => true
-    Process.getCriteria = () => []
-    Process.getActions = () => [6628, 6687].map( actionEntity => Company.getAction(receivedDatabase, Company, Process, undefined, actionEntity ) )
-    return Process
-}
+    Company.getProcess = process => {
+        let Process = receivedDatabase.get( process )
+        Process.events = Company.events.filter( event => receivedDatabase.get(event, "event/process") === process )
+        Process.getFirstEvent = () => Company.getEvent( Process.events[0] )
+        Process.isValid = () => true
+        Process.getCriteria = () => []
+        Process.getActions = () => [6628, 6687].map( actionEntity => Company.getAction(receivedDatabase, Company, Process, undefined, actionEntity ) )
+        return Process
+    }
 
-Company.getEvent = event => {
+    Company.getEvent = event => {
 
-    let Event = receivedDatabase.get( event )
-    Event.t =  Company.events.findIndex( e => e === event ) + 1
-    Event.process = Event.get("event/process")
-    Event.entities = Company.entities.filter( companyEntity => Company.getDatom(companyEntity, 6781).event === event )
-    let processEvents = Company.events.filter( event => receivedDatabase.get(event, "event/process") === Event.process )
-    let prevEvent = processEvents[  processEvents.findIndex( e => e  === event ) - 1 ]
-    Event.getPrevEvent = () => Company.getEvent( prevEvent )
+        let Event = receivedDatabase.get( event )
+        Event.t =  Company.events.findIndex( e => e === event ) + 1
+        Event.process = Event.get("event/process")
+        Event.entities = Company.entities.filter( companyEntity => Company.getDatom(companyEntity, 6781).event === event )
+        let processEvents = Company.events.filter( event => receivedDatabase.get(event, "event/process") === Event.process )
+        let prevEvent = processEvents[  processEvents.findIndex( e => e  === event ) - 1 ]
+        Event.getPrevEvent = () => Company.getEvent( prevEvent )
 
-    Event.getActions = () =>  receivedDatabase.get( Event.get("event/eventTypeEntity"), "eventType/actionFunctions" ).map( actionEntity => Company.getAction(receivedDatabase, Company, Company.getProcess(Event.process), Event, actionEntity ) )
+        Event.getActions = () =>  receivedDatabase.get( Event.get("event/eventTypeEntity"), "eventType/actionFunctions" ).map( actionEntity => Company.getAction(receivedDatabase, Company, Company.getProcess(Event.process), Event, actionEntity ) )
 
-    return Event
-}
+        return Event
+    }
 
 
-Company.getActions = () => receivedDatabase.getAll(6615)
-    .filter( e => receivedDatabase.get(e, "entity/category") === "Selskapsfunksjoner" )
-    .map( actionEntity => Company.getAction(receivedDatabase, Company, undefined, undefined, actionEntity ) )
+    Company.getActions = () => receivedDatabase.getAll(6615)
+        .filter( e => receivedDatabase.get(e, "entity/category") === "Selskapsfunksjoner" )
+        .map( actionEntity => Company.getAction(receivedDatabase, Company, undefined, undefined, actionEntity ) )
+
 
     Company.getAction = (receivedDatabase, Company, Process, Event, actionEntity ) => {
-    let asyncFunction = receivedDatabase.getGlobalAsyncFunction( actionEntity )
-    let Action = {
-        entity: actionEntity,
-        execute: async () => {
+      let asyncFunction = receivedDatabase.getGlobalAsyncFunction( actionEntity )
+      let Action = {
+          entity: actionEntity,
+          execute: async () => {
 
-            let callback = callBackArgument => {
-            console.log("Dette er callbacken fra action", {callBackArgument})
-            ClientApp.Company = receivedDatabase.getCompany( company )
-            update(  )
-            }
-        console.log("Kjører Action.execute()", receivedDatabase, Company, Process, Event, actionEntity  )
-        try {  await asyncFunction( receivedDatabase, Company, Process, Event ).then( callback  )  } catch (error) { return error }
-        }
-    }
+              let callback = callBackArgument => {
+                console.log("Dette er callbacken fra action", {callBackArgument})
+                ClientApp.Company = receivedDatabase.getCompany( company )
+                update(  )
+              }
+
+            console.log("Kjører Action.execute()", receivedDatabase, Company, Process, Event, actionEntity  )
+            try {  await asyncFunction( receivedDatabase, Company, Process, Event ).then( callback  )  } catch (error) { return error }
+          }
+      }
     return Action
     }
 
@@ -236,8 +234,9 @@ return Company
 
 }
   
-  
 let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct ) => eventsToConstruct.reduce( (prevCompany, event) => {
+
+  
   
     let t = prevCompany.t + 1
     let eventType = receivedDatabase.get( event, "event/eventTypeEntity" )
@@ -246,10 +245,13 @@ let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct ) => e
     let Event = prevCompany.getEvent( event ) //TBD
     let Process = prevCompany.getProcess( process ) //TBD
   
+  
     ///// Constructiong through events
   
     let eventDatoms = receivedDatabase.get( eventType, "eventType/newEntities" ) ? receivedDatabase.get( eventType, "eventType/newEntities" ).map( (entityConstructor, index) => constructEntity( receivedDatabase, prevCompany, Process, Event, entityConstructor, index ) ).flat() : []
-  
+
+    //log({t, Event, eventDatoms})
+
     let Company = createCompanyQueryObject( receivedDatabase, {
       entity: prevCompany.entity,
       tx: prevCompany.tx,
@@ -268,8 +270,6 @@ let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct ) => e
   
     return Company
     }, dbCompany )
-  
-  
   
 let getCompanyCalculatedFields = (receivedDatabase, Company, Process, Event) => Company.entities.reduce( ( calculatedFieldObjects, companyEntity ) => {
   
@@ -295,7 +295,6 @@ let getCompanyCalculatedFields = (receivedDatabase, Company, Process, Event) => 
     
   } , Company.calculatedFieldObjects )
   
-  
 let calculateFieldValue = (receivedDatabase, Company, Process, Event, CompanyEntity, calculatedField ) => {
   
     let newValueFunctionString = receivedDatabase.get( calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";")
@@ -305,7 +304,7 @@ let calculateFieldValue = (receivedDatabase, Company, Process, Event, CompanyEnt
       catch (error) {value = log(error,{info: "calculateFieldValue(Company, Process, Event, CompanyEntity, valueFunctionString) failed", Company, Process, Event, CompanyEntity, newValueFunctionString}) }
   
     return value;
-  }
+}
   
 let calculateCalculatedFieldObjects = (receivedDatabase, Company, Process, Event, companyEntity) => {
   
@@ -322,7 +321,7 @@ let calculateCalculatedFieldObjects = (receivedDatabase, Company, Process, Event
   
     return calculatedFieldObjects;
   
-  }
+}
   
   //Updated Company Construction pipeline -- END
   
