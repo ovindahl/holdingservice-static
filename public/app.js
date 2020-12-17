@@ -1,3 +1,65 @@
+const sideEffects = {
+  isIdle: true,
+  appContainer: "appContainer",
+  updateDOM: elementTree => [
+      sideEffects.applyHTML,
+      sideEffects.applyEventListeners
+  ].forEach( stepFunction => stepFunction(elementTree) ),
+  applyHTML: elementTree => document.getElementById(sideEffects.appContainer).innerHTML = elementTree.map( element => element.html ).join(''),
+  applyEventListeners: elementTree => elementTree.map( element => Array.isArray(element.eventListeners) ? element.eventListeners : [] ).flat().forEach( eventListener => document.getElementById( eventListener.id ).addEventListener(eventListener.eventType, eventListener.action) ),
+  APIRequest: async (type, endPoint, stringBody) => {
+    if(sideEffects.isIdle){
+      sideEffects.isIdle = false;
+      let statusDiv = document.getElementById("APISYNCSTATUS")
+      if(!isNull(statusDiv)) {
+        statusDiv.innerHTML = "Laster";
+      }
+      let startTime = Date.now()
+      let APIendpoint = `https://holdingservice.appspot.com/api/${endPoint}`
+      let authToken = await sideEffects.auth0.getTokenSilently()
+      let headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken}
+      let response = (type === "GET") ? await fetch(APIendpoint, {method: "GET", headers: headers })
+                                      : (type === "POST") ? await fetch(APIendpoint, {method: "POST", headers: headers, body: stringBody })
+                                      : console.log("ERROR: Invalid HTTP method: ", type, endPoint, body )
+      let parsedResponse = await response.json()
+      console.log(`Executed ${type} request to '/${endPoint}' in ${Date.now() - startTime} ms.`, parsedResponse)
+      sideEffects.isIdle = true;
+      if(!isNull(statusDiv)) {
+        statusDiv.innerHTML = "Ledig"
+      }
+      
+      return parsedResponse;
+    }else{
+      log( {type, endPoint, stringBody}, "Declined HTTP request, another in progress:")
+      return null;
+    }
+  },
+  auth0: null,
+  configureClient: async () => {
+      sideEffects.auth0 = await createAuth0Client({
+        domain: "holdingservice.eu.auth0.com",
+        client_id: "3BjA7O8H2dGx2g2nhssoFie0vWWx7ne5",
+        audience: "localhost:3000/api"
+      }); //This call is for some reason never resolved..
+      if(await sideEffects.auth0.isAuthenticated()){
+          console.log("Authenticated");
+          init()
+      }else{
+          try{
+              await sideEffects.auth0.handleRedirectCallback();
+              window.history.replaceState({}, document.title, "/");
+              sideEffects.configureClient()
+            } catch (error) {
+              console.log("Not logged in.");
+              sideEffects.auth0.loginWithRedirect({redirect_uri: window.location.origin})
+            }
+      }
+      return true
+  
+  }
+}
+
+
 const Database = {
   tx: null,
   Entities: [],
@@ -292,8 +354,6 @@ const Database = {
   },
 }
 
-let Logs = []
-
 
 const ClientApp = {
   Company: undefined,
@@ -318,66 +378,7 @@ const AdminApp = {
 let D = Database
 let Company = {}
 
-const sideEffects = {
-    isIdle: true,
-    appContainer: "appContainer",
-    updateDOM: elementTree => [
-        sideEffects.applyHTML,
-        sideEffects.applyEventListeners
-    ].forEach( stepFunction => stepFunction(elementTree) ),
-    applyHTML: elementTree => document.getElementById(sideEffects.appContainer).innerHTML = elementTree.map( element => element.html ).join(''),
-    applyEventListeners: elementTree => elementTree.map( element => Array.isArray(element.eventListeners) ? element.eventListeners : [] ).flat().forEach( eventListener => document.getElementById( eventListener.id ).addEventListener(eventListener.eventType, eventListener.action) ),
-    APIRequest: async (type, endPoint, stringBody) => {
-      if(sideEffects.isIdle){
-        sideEffects.isIdle = false;
-        let statusDiv = document.getElementById("APISYNCSTATUS")
-        if(!isNull(statusDiv)) {
-          statusDiv.innerHTML = "Laster";
-        }
-        let startTime = Date.now()
-        let APIendpoint = `https://holdingservice.appspot.com/api/${endPoint}`
-        let authToken = await sideEffects.auth0.getTokenSilently()
-        let headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken}
-        let response = (type === "GET") ? await fetch(APIendpoint, {method: "GET", headers: headers })
-                                        : (type === "POST") ? await fetch(APIendpoint, {method: "POST", headers: headers, body: stringBody })
-                                        : console.log("ERROR: Invalid HTTP method: ", type, endPoint, body )
-        let parsedResponse = await response.json()
-        console.log(`Executed ${type} request to '/${endPoint}' in ${Date.now() - startTime} ms.`, parsedResponse)
-        sideEffects.isIdle = true;
-        if(!isNull(statusDiv)) {
-          statusDiv.innerHTML = "Ledig"
-        }
-        
-        return parsedResponse;
-      }else{
-        log( {type, endPoint, stringBody}, "Declined HTTP request, another in progress:")
-        return null;
-      }
-    },
-    auth0: null,
-    configureClient: async () => {
-        sideEffects.auth0 = await createAuth0Client({
-          domain: "holdingservice.eu.auth0.com",
-          client_id: "3BjA7O8H2dGx2g2nhssoFie0vWWx7ne5",
-          audience: "localhost:3000/api"
-        }); //This call is for some reason never resolved..
-        if(await sideEffects.auth0.isAuthenticated()){
-            console.log("Authenticated");
-            init()
-        }else{
-            try{
-                await sideEffects.auth0.handleRedirectCallback();
-                window.history.replaceState({}, document.title, "/");
-                sideEffects.configureClient()
-              } catch (error) {
-                console.log("Not logged in.");
-                sideEffects.auth0.loginWithRedirect({redirect_uri: window.location.origin})
-              }
-        }
-        return true
-    
-    }
-}
+
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 

@@ -973,7 +973,7 @@ let eventView =  Company => {
         entityLabel( Event.get("event/eventTypeEntity") )
       ], {class: "columns_1_1"}),
       br(),
-      d( Database.get( log(Event).get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
+      d( Database.get( Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
       
       eventActionsView(Company, ClientApp.S.selectedEntity ),
       //br(),
@@ -1078,7 +1078,6 @@ let versionView = entity => {
         submitButton("<", e => Database.setLocalState(entity, {tx: prevVersion  })),
         d([
           d(`${versions.findIndex( v => v === selectedVersion ) + 1} / ${versions.length}`),
-          //submitButton("Gjenopprett", async e => console.log(Entity) ),
         ]),
         submitButton(">", e => Database.setLocalState(entity, {tx: nextVersion  })),
         submitButton(">>", e => Database.setLocalState(entity, {tx: lastVersion })),
