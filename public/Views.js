@@ -893,7 +893,7 @@ let processProgressView = (Company, process) => d([
 
 let processActionsView = (Company, process) => d([
   h3( "Handlinger på prosessnivå" ),
-  d( Company.getProcess( process ).getActions().map( companyAction => entityLabelWithPopup( companyAction.entity, async e => update( await companyAction.execute() ) )  ) )
+  d( Company.getProcessActions( process ).map( companyAction => actionButton(companyAction)  ) )
 ], {class: "feedContainer"})
 
 let companyEntitiyPageView = Company => d([
@@ -941,7 +941,7 @@ let eventView =  Company => {
 
 let eventActionsView = (Company, event) => d([
       h3("Handlinger på hendelsesnivå"),
-      d( Company.getEvent( event ).getActions().map( companyAction => entityLabelWithPopup( companyAction.entity, async e => update( await companyAction.execute() ) )  ) )
+      d( Company.getEventActions( event ).map(  companyAction => actionButton(companyAction)  ) )
   ], {class: "feedContainer"})  
 
 //----------------------------------------------------------------------

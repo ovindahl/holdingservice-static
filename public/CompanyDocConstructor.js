@@ -1,42 +1,36 @@
-let constructCompanyDocument = (receivedDatabase, company, updateCallback ) => {
+let constructCompanyDocument = (receivedDatabase, company ) => {
 
-    let Company = {
+    let dbCompany = {
         entity: company,
         tx: receivedDatabase.tx //Burde være tx fra siste update i selskapets event/prosess/company, da har man en uniform vesionering
       }
     
-      Company.t = 0
-      Company.companyDatoms = [];
-      Company.entities = [];
-      Company.calculatedFieldObjects = [];
-      Company.events = receivedDatabase.getAll(46)
+      dbCompany.t = 0
+      dbCompany.companyDatoms = [];
+      dbCompany.entities = [];
+      dbCompany.calculatedFieldObjects = [];
+      dbCompany.events = receivedDatabase.getAll(46)
         .filter( event => receivedDatabase.get( receivedDatabase.get(event, "event/process"), "process/company" ) === company  )
         .sort(  (a,b) => receivedDatabase.get(a, 'event/date' ) - receivedDatabase.get(b, 'event/date' ) )
     
-      Company.processes = receivedDatabase.getAll(5692).filter( process => receivedDatabase.get(process , 'process/company' ) === company  ).sort( (processA, processB) => {
-        let processEventsA = Company.events.filter( e => receivedDatabase.get(e, "event/process") === processA )
+        dbCompany.processes = receivedDatabase.getAll(5692).filter( process => receivedDatabase.get(process , 'process/company' ) === company  ).sort( (processA, processB) => {
+        let processEventsA = dbCompany.events.filter( e => receivedDatabase.get(e, "event/process") === processA )
         let firstEventA = processEventsA[0]
         let firstEventDateA = isDefined(firstEventA) ? receivedDatabase.get(firstEventA, 'event/date') : Date.now()
-        let processEventsB = Company.events.filter( e => receivedDatabase.get(e, "event/process") === processB )
+        let processEventsB = dbCompany.events.filter( e => receivedDatabase.get(e, "event/process") === processB )
         let firstEventB = processEventsB[0]
         let firstEventDateB = isDefined(firstEventB ) ? receivedDatabase.get(firstEventB , 'event/date') : Date.now()
         return firstEventDateA - firstEventDateB;
       })
     
     
-      Company.latestEntityID = 0;
+      dbCompany.latestEntityID = 0;
     
-      let eventsToConstruct = Company.events.filter( event => receivedDatabase.get(  receivedDatabase.get(event, "event/eventTypeEntity"), "eventType/newEntities" ).length > 0 )
+      let eventsToConstruct = dbCompany.events.filter( event => receivedDatabase.get(  receivedDatabase.get(event, "event/eventTypeEntity"), "eventType/newEntities" ).length > 0 )
   
-      let CompanyWithQueryMethods = createCompanyQueryObject( receivedDatabase, Company, updateCallback )
+      let constructedCompany = applyCompanyEvents( receivedDatabase, dbCompany, eventsToConstruct )
   
-      let ConstructedCompany = applyCompanyEvents( receivedDatabase, CompanyWithQueryMethods, eventsToConstruct, updateCallback )
-  
-  
-      return ConstructedCompany
-
-     
-
+      return constructedCompany
 
 }
 
@@ -93,7 +87,7 @@ let constructEntity = ( receivedDatabase, Company, Process, Event, entityConstru
   return entityDatoms
 }
   
-let createCompanyQueryObject = (receivedDatabase, Company, updateCallback) => {
+let createCompanyQueryObject = (receivedDatabase, Company) => {
 
     Company.getAll = entityType => {
 
@@ -186,7 +180,7 @@ let createCompanyQueryObject = (receivedDatabase, Company, updateCallback) => {
         Process.getFirstEvent = () => Company.getEvent( Process.events[0] )
         Process.isValid = () => true
         Process.getCriteria = () => []
-        Process.getActions = () => [6628, 6687].map( actionEntity => Company.getAction(receivedDatabase, Company, Process, undefined, actionEntity ) )
+        
         return Process
     }
 
@@ -200,47 +194,7 @@ let createCompanyQueryObject = (receivedDatabase, Company, updateCallback) => {
         let prevEvent = processEvents[  processEvents.findIndex( e => e  === event ) - 1 ]
         Event.getPrevEvent = () => Company.getEvent( prevEvent )
 
-        Event.getActions = () =>  receivedDatabase.get( Event.get("event/eventTypeEntity"), "eventType/actionFunctions" ).map( actionEntity => Company.getAction(receivedDatabase, Company, Company.getProcess(Event.process), Event, actionEntity ) )
-
         return Event
-    }
-
-
-    Company.getActions = () => receivedDatabase.getAll(6615)
-        .filter( e => receivedDatabase.get(e, "entity/category") === "Selskapsfunksjoner" )
-        .map( actionEntity => Company.getAction(receivedDatabase, Company, undefined, undefined, actionEntity ) )
-
-
-    Company.getAction = (receivedDatabase, Company, Process, Event, actionEntity ) => {
-
-
-      let asyncFunction = receivedDatabase.getGlobalAsyncFunction( actionEntity )
-
-      let argumentObjects = Database.get(actionEntity, "function/arguments")
-      let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
-
-      let criteriumStatementObjects = Database.get(actionEntity, "function/criteriumStatements") ? Database.get(actionEntity, "function/criteriumStatements") : []
-      let criteriumStatements = criteriumStatementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
-
-      let criteriumFunctionString = criteriumStatements.join(";")
-      let criteriumFunction = new Function( arguments, criteriumFunctionString  )    
-
-      let isActionable = criteriumFunction( receivedDatabase, Company  )
-
-      
-
-      let Action = {
-          entity: actionEntity,
-          isActionable,
-          execute: isActionable ? async () => {
-
-              
-
-            console.log("Kjører Action.execute()", receivedDatabase, Company, Process, Event, actionEntity  )
-            try {  await asyncFunction( receivedDatabase, Company, Process, Event ).then( updateCallback  )  } catch (error) { return error }
-          } : () =>  update( log({info: "Action is not actionable:", actionEntity}) ) 
-      }
-    return Action
     }
 
 
@@ -248,16 +202,16 @@ return Company
 
 }
   
-let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct, updateCallback ) => eventsToConstruct.reduce( (prevCompany, event) => {
+let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct ) => eventsToConstruct.reduce( (prevCompany, event) => {
 
-  
-  
+    prevCompany = createCompanyQueryObject( receivedDatabase, prevCompany)
+    
     let t = prevCompany.t + 1
     let eventType = receivedDatabase.get( event, "event/eventTypeEntity" )
     let process = receivedDatabase.get(event, "event/process")
   
-    let Event = prevCompany.getEvent( event ) //TBD
-    let Process = prevCompany.getProcess( process ) //TBD
+    let Event = prevCompany.getEvent( event )
+    let Process = prevCompany.getProcess( process )
   
   
     ///// Constructiong through events
@@ -276,7 +230,7 @@ let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct, updat
       companyDatoms: prevCompany.companyDatoms.concat( eventDatoms ),
       entities: eventDatoms.reduce( (entities, datom) => entities.includes( datom.entity ) ? entities : entities.concat(datom.entity), prevCompany.entities ),
       latestEntityID: eventDatoms.reduce( (maxEntity, eventDatom) => eventDatom.entity > maxEntity ? eventDatom.entity : maxEntity, prevCompany.latestEntityID  ),
-    }, updateCallback)
+    })
   
   
     Company.calculatedFieldObjects = getCompanyCalculatedFields( receivedDatabase, Company, Process, Event ) 

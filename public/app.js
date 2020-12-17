@@ -6,7 +6,6 @@ const Database = {
     let updatedEntity = Database.get(entity)
     updatedEntity.localState = mergerino(updatedEntity.localState, newState) 
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
-    update( )
     return;
   },
   getLocalState: entity => {
@@ -58,17 +57,6 @@ const Database = {
   },
   createEntity: async (entityType, newEntityDatoms) => {
 
-    /* let Datoms = Database.get( entityType, "entityType/attributes")
-      .map( attribute => newDatom("newEntity", Database.attrName(attribute), new Function("S", Database.get(attribute, "attribute/startValue") )( Database )))
-      .filter( datom => datom.attribute !== "entity/entityType" )
-      .filter( datom => datom.attribute !== "entity/label" )
-      .concat([
-        newDatom("newEntity", "entity/entityType", entityType ),
-        newDatom("newEntity", "entity/label", `[${Database.get(entityType, "entity/label")} uten navn]` ),
-        newDatom("newEntity", "entity/category", `Mangler kategori` )
-      ])
-    if(Array.isArray(newEntityDatoms)){Datoms = Datoms.concat(newEntityDatoms)} */
-
 
     let D = [newDatom("newEntity", "entity/entityType", entityType )]
     if(Array.isArray(newEntityDatoms)){D = D.concat(newEntityDatoms)}
@@ -96,6 +84,7 @@ const Database = {
       let retractionDatoms = activeDatoms.map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
       return retractionDatoms
     } ).flat()
+    
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
 
 
@@ -106,17 +95,11 @@ const Database = {
     Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
     Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
     //To be systematized ---
-
-
-
-
-
-
-    update( )
+    return serverResponse
   },
   submitDatoms: async datoms => {
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) )
-    update( )
+    return serverResponse
   },
   attrName: attribute => {
     if( isNumber(attribute)  ){
@@ -222,13 +205,93 @@ const Database = {
   getCompanyOptionsFunction: attr => new Function(["Company", "Entity"], Database.get( attr, "attribute/selectableEntitiesFilterFunction"  )), 
   getCompany: company => {
 
-    let updateCallback = callBackArgument => {
-      console.log("Dette er callbacken fra action")
-      ClientApp.selectCompany( company )
-      update(  )
+    let Company = constructCompanyDocument( Database, company )
+
+
+    Company.getAction = ( updateCallback, actionEntity, Event, Process ) => {
+
+      let asyncFunction = Database.getGlobalAsyncFunction( actionEntity )
+      let argumentObjects = Database.get(actionEntity, "function/arguments")
+      let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
+
+      let criteriumStatementObjects = Database.get(actionEntity, "function/criteriumStatements") ? Database.get(actionEntity, "function/criteriumStatements") : []
+      let criteriumStatements = criteriumStatementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
+
+      let criteriumFunctionString = criteriumStatements.join(";")
+      let criteriumFunction = new Function( arguments, criteriumFunctionString  )    
+
+      let isActionable = criteriumFunction( Database, Company  )
+
+      
+
+      let Action = {
+          entity: actionEntity,
+          isActionable,
+          execute: async () => {
+            if( isActionable ) {
+              try {  await asyncFunction( Database, Company, Process, Event ).then( updateCallback  )  } catch (error) { return log(error, {info: "ERROR: Action.execute() failed" } ) }
+            } else { update( log({info: "Action is not actionable:", actionEntity}) )  }
+
+          }
+      }
+    return Action
     }
 
-    let Company = constructCompanyDocument( Database, company, updateCallback )
+    Company.getActions = () => Database.getAll(6615).filter( e => Database.get(e, "entity/category") === "Selskapsfunksjoner" ).map( actionEntity => {
+
+      let updateCallback = selectedEntity => {
+
+        ClientApp.recalculateCompany( company )
+        ClientApp.updateState( {selectedEntity } )
+        log( "Handling på selskapsnivå gjennomført" )
+      } 
+
+      let Action =  Company.getAction( updateCallback , actionEntity )
+      return Action
+    })
+
+
+
+
+
+
+
+    Company.getProcessActions = process => [6628, 6687].map( actionEntity => {
+
+      let updateCallback = selectedEntity => {
+        ClientApp.recalculateCompany( company )
+        ClientApp.updateState( {selectedEntity } )
+        log( "Handling på prosessnivå gjennomført" )
+      } 
+
+
+
+
+      let Action = Company.getAction( updateCallback , actionEntity, undefined, Company.getProcess( process ) )
+      return Action
+    }  )
+    
+    
+    
+    
+    
+    
+    Company.getEventActions = event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/actionFunctions" ).map( actionEntity =>   {
+
+      let updateCallback = selectedEntity => {
+
+        ClientApp.recalculateCompany( company )
+        ClientApp.updateState( {selectedEntity } )
+        log( "Handling på hendelsessnivå gjennomført" )
+
+
+      } 
+      let Action = Company.getAction( updateCallback , actionEntity, Company.getEvent( event ),  Company.getProcess( Database.get(event, "event/process") ),  )
+      return Action
+
+    }  )
+
+      
 
     return Company
 
@@ -245,13 +308,7 @@ const ClientApp = {
   },
   updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
   replaceState: newState => ClientApp.S = newState,
-  selectCompany: company => {
-
-    ClientApp.Company = Database.getCompany( company )
-    ClientApp.selectedEntity = company
-    ClientApp.selectedPage = "Tidslinje"
-
-  } 
+  recalculateCompany: company => ClientApp.Company = Database.getCompany( company ),
 }
 
 const AdminApp = {
@@ -351,7 +408,8 @@ let init = async () => {
 
 
   let company = Database.getAll( 5722 )[0]
-  ClientApp.selectCompany( company )
+  ClientApp.recalculateCompany( company )
+  ClientApp.updateState( {selectedEntity: company } )
   update(  )
 }
 
