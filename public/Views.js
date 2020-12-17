@@ -497,32 +497,47 @@ let companyEntityConstructorRowView = (Entity, attribute, index) => {
 
 
 
-let entitySearchBox = (Entity, attribute, updateFunction, index) => d([
-  input({id: `searchBox/${Entity.entity}/${attribute}/${index}`, value: Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] ? Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] : ""}, "input", 
-    e => {
-    Database.setLocalState(Entity.entity, {[`searchstring/${attribute}/${index}`]: e.srcElement.value  })
-    let searchBoxElement = document.getElementById(`searchBox/${Entity.entity}/${attribute}/${index}`)
-    searchBoxElement.focus()
-    let val = searchBoxElement.value
-    searchBoxElement.value = ""
-    searchBoxElement.value = val
-  }),
-  isDefined( Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] )
-  ? d([
-        d( Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`] ),
-        d( Entity.getOptions(attribute).map( optionObject => optionObject.value ).filter( e => {
-              let searchString = Database.getLocalState(Entity.entity)[`searchstring/${attribute}/${index}`]
-              let label = Database.get(e, "entity/label")
-              let isMatch = label.toUpperCase().includes(searchString.toUpperCase())
-              return isMatch
-            }  )
-            .map( ent => d([entityLabel(ent, updateFunction(ent) )] )  )
-            
-          , {class: "searchResults"})
-      ], {class: "searchResultsContainer"})
-  : d("")
+let entitySearchBox = (Entity, attribute, updateFunction, index) => {
+
+  let entity = Entity.entity ? Entity.entity : Entity[index].entity
+
+
+
+
+
+  return d([
+    input({id: `searchBox/${entity}/${attribute}/${index}`, value: Database.getLocalState(entity)[`searchstring/${attribute}/${index}`] ? Database.getLocalState(entity)[`searchstring/${attribute}/${index}`] : ""}, "input", 
+      e => {
+      Database.setLocalState(entity, {[`searchstring/${attribute}/${index}`]: e.srcElement.value  })
+  
+  
+        
+  
+      let searchBoxElement = document.getElementById(`searchBox/${entity}/${attribute}/${index}`)
+      searchBoxElement.focus()
+      let val = searchBoxElement.value
+      searchBoxElement.value = ""
+      searchBoxElement.value = val
+    }),
+    isDefined( Database.getLocalState(entity)[`searchstring/${attribute}/${index}`] )
+    ? d([
+          d( Database.getLocalState(entity)[`searchstring/${attribute}/${index}`] ),
+          d( Database.getEntity(entity).getOptions(attribute).map( optionObject => optionObject.value ).filter( e => {
+                let searchString = Database.getLocalState(entity)[`searchstring/${attribute}/${index}`]
+                let label = Database.get(e, "entity/label")
+                let isMatch = label.toUpperCase().includes(searchString.toUpperCase())
+                return isMatch
+              }  )
+              .map( ent => d([entityLabel(ent, updateFunction(ent) )] )  )
+              
+            , {class: "searchResults"})
+        ], {class: "searchResultsContainer"})
+    : d("")
+
 
 ])
+
+} 
 
 let multipleEntitiesReferenceRowView = (Entity, attribute, index) => d([
   entityLabelWithPopup(Entity.get(attribute)[index]),
@@ -631,7 +646,12 @@ let companyEntityPopUp = (Company, companyEntity) => d([
 
 let clientPage = Company => d([
   d([d('<header><h1>Holdingservice Beta</h1></header>'),d([
-    d([dropdown( Company.entity, Database.getAll( 5722 ).map( company => returnObject({value: company, label: Database.get(company, "entity/label")  })  ), e => update( ClientApp.selectCompany( Number(submitInputValue(e))  ) )   )]),
+    d([dropdown( Company.entity, Database.getAll( 5722 ).map( company => returnObject({value: company, label: Database.get(company, "entity/label")  })  ), e => {
+      let company = Number( submitInputValue(e) )
+      ClientApp.recalculateCompany( company )
+      ClientApp.updateState( {selectedEntity: company } )
+      update(  )
+    })]),
     submitButton("Bytt til admin", e => update( ClientApp.updateState({selectedPage: "Admin"}) ) )
   ], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
   //dropdown( Company.entity, Database.getAll( 5722 ).map( company => returnObject({value: company, label: Database.get(company, "entity/label")  })  ), e => update( ClientApp.selectCompany( Number(submitInputValue(e))  ) )   ),

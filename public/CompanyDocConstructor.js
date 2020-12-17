@@ -30,7 +30,7 @@ let constructCompanyDocument = (receivedDatabase, company ) => {
   
       let constructedCompany = applyCompanyEvents( receivedDatabase, dbCompany, eventsToConstruct )
   
-      return constructedCompany
+      return createCompanyQueryObject( receivedDatabase, constructedCompany )
 
 }
 

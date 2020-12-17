@@ -6,6 +6,7 @@ const Database = {
     let updatedEntity = Database.get(entity)
     updatedEntity.localState = mergerino(updatedEntity.localState, newState) 
     Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
+    update()
     return;
   },
   getLocalState: entity => {
@@ -210,6 +211,7 @@ const Database = {
 
     Company.getAction = ( actionEntity, Event, Process ) => {
 
+
       let asyncFunction = Database.getGlobalAsyncFunction( actionEntity )
       let argumentObjects = Database.get(actionEntity, "function/arguments")
       let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
@@ -220,7 +222,7 @@ const Database = {
       let criteriumFunctionString = criteriumStatements.join(";")
       let criteriumFunction = new Function( arguments, criteriumFunctionString  )    
 
-      let isActionable = criteriumFunction( Database, Company  )
+      let isActionable = criteriumFunction( Database, Company, Process, Event  )
 
       let updateCallback = selectedEntity => {
         ClientApp.recalculateCompany( company )
@@ -239,7 +241,9 @@ const Database = {
             } else { update( log({info: "Action is not actionable:", actionEntity}) )  }
 
           }
-      }
+    }
+
+
     return Action
     }
 
