@@ -568,7 +568,7 @@ let accountBalanceRowView = (Entity, attribute, index) => {
 //Basic entity views
 
 let entityLabel = (entity, onClick) => d([
-    d( `${ Database.get( entity ) ? Database.get( entity ).label : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", isDefined(onClick) ? onClick : e => {
+    d( `${ Database.get( entity ) ? Database.get( entity ).label() : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", isDefined(onClick) ? onClick : e => {
       AdminApp.updateState({selectedEntity: entity})
       ClientApp.updateState({selectedPage: "Admin"})
       update(  )
@@ -584,7 +584,7 @@ let entityLabelWithPopup = (entity, onClick) => d([
 ], {style:"display: inline-flex;"} )
 
 let entityPopUp = entity => d([
-  d( `[${entity}] ${ Database.get( entity ) ? Database.get( entity ).label : "na."}` ),
+  d( `[${entity}] ${ Database.get( entity ) ? Database.get( entity ).label() : "na."}` ),
   br(),
   d( "Entitet i databasen" ),
   //fullDatomView( Database.getEntity(entity), 6781, false ),
@@ -602,7 +602,7 @@ let entityPopUp = entity => d([
 
 let actionButton = companyAction => d([
   d([
-    d( `${ Database.get( companyAction.entity ).label}`, {class: "entityLabel", style: `background-color:${companyAction.isActionable ? Database.get( companyAction.entity ).color : "gray" }`}, "click", companyAction.isActionable ? async e => update( await companyAction.execute() ) : e => console.log("Not actionable") ),
+    d( `${ companyAction.label}`, {class: "entityLabel", style: `background-color:${companyAction.isActionable ? "yellow" : "gray" }`}, "click", companyAction.isActionable ? async e => update( await companyAction.execute() ) : e => console.log("Not actionable") ),
     entityPopUp( companyAction.entity ),
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )

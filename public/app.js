@@ -144,7 +144,14 @@ const Database = {
     Entity.get = (attr, version) => Database.get(entity, attr, version)
     Entity.getOptions = attr => Database.getOptions(attr)
     Entity.entityType = Entity.get("entity/entityType")
-    Entity.label = Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
+
+    Entity.label = () => (Entity.entityType === 5692)
+      ? `[${entity}] Prosess ${ClientApp.Company.processes.findIndex( p => p === entity ) + 1}: ${Database.get( Database.get(entity, "process/processType"), "entity/label")} `
+      : Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
+
+
+
+
     Entity.color = Database.get( Entity.entityType, "entityType/color") ? Database.get( Entity.entityType, "entityType/color") : "#bfbfbf"
     Entity.isLocked = false;
     Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
@@ -209,7 +216,7 @@ const Database = {
     let Company = constructCompanyDocument( Database, company )
 
 
-    Company.getAction = ( actionEntity, Event, Process ) => {
+    Company.getAction = ( actionEntity, Event, Process, Wildcard ) => {
 
 
       let asyncFunction = Database.getGlobalAsyncFunction( actionEntity )
@@ -234,10 +241,11 @@ const Database = {
 
       let Action = {
           entity: actionEntity,
+          label: Database.getEntity(actionEntity).label(),
           isActionable,
           execute: async () => {
             if( isActionable ) {
-              try {  await asyncFunction( Database, Company, Process, Event ).then( updateCallback  )  } catch (error) { return log(error, {info: "ERROR: Action.execute() failed" } ) }
+              try {  await asyncFunction( Database, Company, Process, Event, Wildcard ).then( updateCallback  )  } catch (error) { return log(error, {info: "ERROR: Action.execute() failed" } ) }
             } else { update( log({info: "Action is not actionable:", actionEntity}) )  }
 
           }
@@ -247,7 +255,18 @@ const Database = {
     return Action
     }
 
-    Company.getActions = () => Database.getAll(6615).filter( e => Database.get(e, "entity/category") === "Selskapsfunksjoner" ).map( actionEntity => Company.getAction( actionEntity ) )
+    Company.getActions = () => Database.getAll(5687)
+      .map( processType => returnObject({
+        isActionable: Database.get(processType, "processType/creationCriteria")
+        .filter( statement =>  statement["statement/isEnabled"] )
+        .every( statement => new Function( ["Database", "Company" ], statement["statement/statement"] )( Database, Company )  ),
+        label: "Opprett prosess: " + Database.getEntity(processType).label() ,
+        execute: async () => {
+          let newEntity = await Database.createEntity(5692, [ newDatom( 'newEntity' , 'process/company', Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ) ] )
+          ClientApp.recalculateCompany( company )
+          ClientApp.updateState( {selectedEntity: newEntity.entity } )
+        }
+      })  )
 
 
 
