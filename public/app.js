@@ -208,7 +208,7 @@ const Database = {
     let Company = constructCompanyDocument( Database, company )
 
 
-    Company.getAction = ( updateCallback, actionEntity, Event, Process ) => {
+    Company.getAction = ( actionEntity, Event, Process ) => {
 
       let asyncFunction = Database.getGlobalAsyncFunction( actionEntity )
       let argumentObjects = Database.get(actionEntity, "function/arguments")
@@ -221,6 +221,12 @@ const Database = {
       let criteriumFunction = new Function( arguments, criteriumFunctionString  )    
 
       let isActionable = criteriumFunction( Database, Company  )
+
+      let updateCallback = selectedEntity => {
+        ClientApp.recalculateCompany( company )
+        ClientApp.updateState( {selectedEntity } )
+        log( "Handling gjennomført" )
+      } 
 
       
 
@@ -237,61 +243,13 @@ const Database = {
     return Action
     }
 
-    Company.getActions = () => Database.getAll(6615).filter( e => Database.get(e, "entity/category") === "Selskapsfunksjoner" ).map( actionEntity => {
-
-      let updateCallback = selectedEntity => {
-
-        ClientApp.recalculateCompany( company )
-        ClientApp.updateState( {selectedEntity } )
-        log( "Handling på selskapsnivå gjennomført" )
-      } 
-
-      let Action =  Company.getAction( updateCallback , actionEntity )
-      return Action
-    })
+    Company.getActions = () => Database.getAll(6615).filter( e => Database.get(e, "entity/category") === "Selskapsfunksjoner" ).map( actionEntity => Company.getAction( actionEntity ) )
 
 
 
-
-
-
-
-    Company.getProcessActions = process => [6628, 6687].map( actionEntity => {
-
-      let updateCallback = selectedEntity => {
-        ClientApp.recalculateCompany( company )
-        ClientApp.updateState( {selectedEntity } )
-        log( "Handling på prosessnivå gjennomført" )
-      } 
-
-
-
-
-      let Action = Company.getAction( updateCallback , actionEntity, undefined, Company.getProcess( process ) )
-      return Action
-    }  )
+    Company.getProcessActions = process => [6628, 6687].map( actionEntity => Company.getAction( actionEntity, undefined, Company.getProcess( process ) ) )
     
-    
-    
-    
-    
-    
-    Company.getEventActions = event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/actionFunctions" ).map( actionEntity =>   {
-
-      let updateCallback = selectedEntity => {
-
-        ClientApp.recalculateCompany( company )
-        ClientApp.updateState( {selectedEntity } )
-        log( "Handling på hendelsessnivå gjennomført" )
-
-
-      } 
-      let Action = Company.getAction( updateCallback , actionEntity, Company.getEvent( event ),  Company.getProcess( Database.get(event, "event/process") ),  )
-      return Action
-
-    }  )
-
-      
+    Company.getEventActions = event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/actionFunctions" ).map( actionEntity => Company.getAction( actionEntity, Company.getEvent( event ),  Company.getProcess( Database.get(event, "event/process") )  )  )
 
     return Company
 

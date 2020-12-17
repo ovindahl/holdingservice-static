@@ -204,11 +204,13 @@ return Company
   
 let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct ) => eventsToConstruct.reduce( (prevCompany, event) => {
 
-    prevCompany = createCompanyQueryObject( receivedDatabase, prevCompany)
-    
     let t = prevCompany.t + 1
     let eventType = receivedDatabase.get( event, "event/eventTypeEntity" )
     let process = receivedDatabase.get(event, "event/process")
+
+    prevCompany = createCompanyQueryObject( receivedDatabase, prevCompany)
+    
+    
   
     let Event = prevCompany.getEvent( event )
     let Process = prevCompany.getProcess( process )
