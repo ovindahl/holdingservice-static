@@ -368,8 +368,7 @@ let init = async () => {
   Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
   Database.selectedEntity = 6
 
-
-  let company = Database.getAll( 5722 )[0]
+  let company = 6829
   ClientApp.recalculateCompany( company )
   ClientApp.updateState( {selectedEntity: company } )
   update(  )
