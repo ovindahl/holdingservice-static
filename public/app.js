@@ -308,7 +308,7 @@ const Database = {
           execute: async () => {
             if( isActionable ) {
               try {  await asyncFunction( Database, Company, Process, Event, Wildcard ).then( updateCallback  )  } catch (error) { return log(error, {info: "ERROR: Action.execute() failed" } ) }
-            } else { update( log({info: "Action is not actionable:", actionEntity}) )  }
+            } else { ClientApp.update( log({info: "Action is not actionable:", actionEntity}) )  }
 
           }
     }
@@ -363,6 +363,15 @@ const ClientApp = {
   updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
   replaceState: newState => ClientApp.S = newState,
   recalculateCompany: company => ClientApp.Company = Database.getCompany( company ),
+  update: () => {
+    D = Database
+    Company = ClientApp.Company 
+    
+    let startTime = Date.now()
+    let elementTree = [clientPage(Company)]
+    sideEffects.updateDOM( elementTree )
+    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
+}
 }
 
 const AdminApp = {
@@ -372,7 +381,15 @@ const AdminApp = {
   },
   updateState: patch => AdminApp.S = mergerino( AdminApp.S, patch ),
   replaceState: newState => AdminApp.S = newState,
-
+  update: () => {
+    D = Database
+    Company = ClientApp.Company 
+    
+    let startTime = Date.now()
+    let elementTree = [ adminPage( Company ) ]
+    sideEffects.updateDOM( elementTree )
+    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
+}
 }
 
 let D = Database
@@ -404,7 +421,7 @@ let init = async () => {
   let company = 6829
   ClientApp.recalculateCompany( company )
   ClientApp.updateState( {selectedEntity: company } )
-  update(  )
+  ClientApp.update(  )
 }
 
 sideEffects.configureClient();
