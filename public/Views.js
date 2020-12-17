@@ -132,6 +132,10 @@ let fullDatomView = (Entity, attribute, isEditable) => {
 
   let view;
 
+  let border = isUndefined( Entity.get(attribute)  ) ? "border: 1px solid red;" : ""
+
+  let styleObject = (isArray || valueType === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;" + border} : {class: "columns_1_1", style: "margin: 5px;"+border}
+
   try {
     view = valueView( Entity, attribute, isEditable)
   } catch (error) {
@@ -144,7 +148,7 @@ let fullDatomView = (Entity, attribute, isEditable) => {
   return d([
     entityLabel(attribute),
     view
-  ], (isArray || valueType === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {class: "columns_1_1", style: "margin: 5px;"} )  
+  ], styleObject )  
 
 }
 
@@ -860,6 +864,7 @@ let processView = Company => d([
   br(),
   timelineHeaderView(),
   processTimelineView(Company, ClientApp.S.selectedEntity ),
+  d( Company.getProcess( ClientApp.S.selectedEntity ).events.map( event => eventTimelineView(Company, ClientApp.S.selectedEntity, event)  ) ),
   br(),
   processProgressView(Company, ClientApp.S.selectedEntity),
   //br(),
@@ -877,8 +882,6 @@ let processTimelineView = (Company, process) => {
 
   let Process = Company.getProcess( process )
 
-  
-
   let processEventsTimes = Process.events.map( event => Company.getEvent(event).t )
 
 
@@ -894,7 +897,32 @@ let processTimelineView = (Company, process) => {
             ], {class: "popupContainer", style:"display: inline-flex;"}, "click", e => update(  ClientApp.updateState({selectedEntity: event}) ))
         ], {style:"display: inline-flex;"} )
       : d("-" ) ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-    d( Company.getProcess( process ).isValid() ? "✓" : "WIP" )
+    actionButton( mergerino(Company.getAction(6628, undefined, Process  ), {label: "[ X ]"})  ) 
+  ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
+}
+
+let eventTimelineView = (Company, process, event) => {
+
+  let Process = Company.getProcess( process )
+
+  let Event = Company.getEvent( event )
+
+  let processEventsTimes = Process.events.map( event => Company.getEvent(event).t )
+
+
+  return d([
+    entityLabelWithPopup( Event.get("event/eventTypeEntity") , e => update( ClientApp.updateState({selectedEntity: process}) )),
+    d( Company.events.map( (processEvent, i) => ((i+1) < processEventsTimes[0] || (i+1) > processEventsTimes.slice( -1 )[0])
+    ? d(" ")
+    : processEvent === event
+      ? d([
+          d([
+              d( `●`, {style: `color:${ Company.getEvent(event).isValid ? "green" : "red"}; ${event === ClientApp.S.selectedEntity ? "border: 1px solid black;background-color: gray;" : "" } `} ),
+              entityPopUp( event ),
+            ], {class: "popupContainer", style:"display: inline-flex;"}, "click", e => update(  ClientApp.updateState({selectedEntity: event}) ))
+        ], {style:"display: inline-flex;"} )
+      : d(" ") ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
+      actionButton( mergerino(Company.getAction(6635, Event, Process  ), {label: "[ X ]"})  ) 
   ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
 }
 
@@ -945,7 +973,7 @@ let eventView =  Company => {
         entityLabel( Event.get("event/eventTypeEntity") )
       ], {class: "columns_1_1"}),
       br(),
-      d( Database.get(Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
+      d( Database.get( log(Event).get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
       
       eventActionsView(Company, ClientApp.S.selectedEntity ),
       //br(),

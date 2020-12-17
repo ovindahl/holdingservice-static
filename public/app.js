@@ -270,12 +270,25 @@ const Database = {
 
 
 
-    Company.getProcessActions = process => [6628, 6687].map( actionEntity => Company.getAction( actionEntity, undefined, Company.getProcess( process ) ) )
+    Company.getProcessActions = process => {
+
+      let processActions = [6628].map( actionEntity => Company.getAction( actionEntity, undefined, Company.getProcess( process ) ) )
+
+      let newEventActions = Database.get( Database.get( process , "process/processType") , "processType/eventTypes").map( eventType => returnObject({
+        isActionable: true,
+        label: "Opprett hendelse: " + Database.getEntity(eventType).label(),
+        execute: async () => {
+          let newEvent = await Database.createEntity(46, [ newDatom( 'newEntity' , 'event/process', process  ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ) ])
+          ClientApp.recalculateCompany( company )
+          }
+      })   )
+
+      return processActions.concat( newEventActions )
+    } 
     
-    Company.getEventActions = event => Database.get( Database.get(event, "event/eventTypeEntity"), "eventType/actionFunctions" ).map( actionEntity => Company.getAction( actionEntity, Company.getEvent( event ),  Company.getProcess( Database.get(event, "event/process") )  )  )
+    Company.getEventActions = event => [Company.getAction(6635, Company.getEvent(event), Company.getProcess( Database.get(event, "event/process") )  )]
 
     return Company
-
   },
 }
 

@@ -25,6 +25,8 @@ let constructCompanyDocument = (receivedDatabase, company ) => {
     
     
       dbCompany.latestEntityID = 0;
+
+      log({dbCompany})
     
       let eventsToConstruct = dbCompany.events.filter( event => receivedDatabase.get(  receivedDatabase.get(event, "event/eventTypeEntity"), "eventType/newEntities" ).length > 0 )
   
