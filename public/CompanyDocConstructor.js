@@ -1,4 +1,4 @@
-let constructCompanyDocument = (receivedDatabase, company ) => {
+let constructCompanyDocument = (receivedDatabase, company, updateCallback ) => {
 
     let Company = {
         entity: company,
@@ -28,16 +28,17 @@ let constructCompanyDocument = (receivedDatabase, company ) => {
     
       let eventsToConstruct = Company.events.filter( event => receivedDatabase.get(  receivedDatabase.get(event, "event/eventTypeEntity"), "eventType/newEntities" ).length > 0 )
   
-      let CompanyWithQueryMethods = createCompanyQueryObject( receivedDatabase, Company )
+      let CompanyWithQueryMethods = createCompanyQueryObject( receivedDatabase, Company, updateCallback )
   
-      let ConstructedCompany = applyCompanyEvents( receivedDatabase, CompanyWithQueryMethods, eventsToConstruct )
+      let ConstructedCompany = applyCompanyEvents( receivedDatabase, CompanyWithQueryMethods, eventsToConstruct, updateCallback )
   
   
       return ConstructedCompany
 
+     
+
 
 }
-
 
 //Updated Company Construction pipeline
 
@@ -92,7 +93,7 @@ let constructEntity = ( receivedDatabase, Company, Process, Event, entityConstru
   return entityDatoms
 }
   
-let createCompanyQueryObject = (receivedDatabase, Company) => {
+let createCompanyQueryObject = (receivedDatabase, Company, updateCallback) => {
 
     Company.getAll = entityType => {
 
@@ -211,20 +212,33 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
 
 
     Company.getAction = (receivedDatabase, Company, Process, Event, actionEntity ) => {
+
+
       let asyncFunction = receivedDatabase.getGlobalAsyncFunction( actionEntity )
+
+      let argumentObjects = Database.get(actionEntity, "function/arguments")
+      let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
+
+      let criteriumStatementObjects = Database.get(actionEntity, "function/criteriumStatements") ? Database.get(actionEntity, "function/criteriumStatements") : []
+      let criteriumStatements = criteriumStatementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
+
+      let criteriumFunctionString = criteriumStatements.join(";")
+      let criteriumFunction = new Function( arguments, criteriumFunctionString  )    
+
+      let isActionable = criteriumFunction( receivedDatabase, Company  )
+
+      
+
       let Action = {
           entity: actionEntity,
-          execute: async () => {
+          isActionable,
+          execute: isActionable ? async () => {
 
-              let callback = callBackArgument => {
-                console.log("Dette er callbacken fra action", {callBackArgument})
-                ClientApp.Company = receivedDatabase.getCompany( company )
-                update(  )
-              }
+              
 
             console.log("Kjører Action.execute()", receivedDatabase, Company, Process, Event, actionEntity  )
-            try {  await asyncFunction( receivedDatabase, Company, Process, Event ).then( callback  )  } catch (error) { return error }
-          }
+            try {  await asyncFunction( receivedDatabase, Company, Process, Event ).then( updateCallback  )  } catch (error) { return error }
+          } : () =>  update( log({info: "Action is not actionable:", actionEntity}) ) 
       }
     return Action
     }
@@ -234,7 +248,7 @@ return Company
 
 }
   
-let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct ) => eventsToConstruct.reduce( (prevCompany, event) => {
+let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct, updateCallback ) => eventsToConstruct.reduce( (prevCompany, event) => {
 
   
   
@@ -262,7 +276,7 @@ let applyCompanyEvents = ( receivedDatabase, dbCompany, eventsToConstruct ) => e
       companyDatoms: prevCompany.companyDatoms.concat( eventDatoms ),
       entities: eventDatoms.reduce( (entities, datom) => entities.includes( datom.entity ) ? entities : entities.concat(datom.entity), prevCompany.entities ),
       latestEntityID: eventDatoms.reduce( (maxEntity, eventDatom) => eventDatom.entity > maxEntity ? eventDatom.entity : maxEntity, prevCompany.latestEntityID  ),
-    })
+    }, updateCallback)
   
   
     Company.calculatedFieldObjects = getCompanyCalculatedFields( receivedDatabase, Company, Process, Event ) 

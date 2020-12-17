@@ -220,7 +220,19 @@ const Database = {
     return GlobalAsyncFunction
   },
   getCompanyOptionsFunction: attr => new Function(["Company", "Entity"], Database.get( attr, "attribute/selectableEntitiesFilterFunction"  )), 
-  getCompany: company => constructCompanyDocument( Database, company ),
+  getCompany: company => {
+
+    let updateCallback = callBackArgument => {
+      console.log("Dette er callbacken fra action")
+      ClientApp.selectCompany( company )
+      update(  )
+    }
+
+    let Company = constructCompanyDocument( Database, company, updateCallback )
+
+    return Company
+
+  },
 }
 
 let Logs = []
@@ -229,12 +241,17 @@ let Logs = []
 const ClientApp = {
   Company: undefined,
   S: {
-    selectedPage: "Tidslinje",
-    selectedCompany: 5723,
-    selectedEntity: 5723
+    t0: Date.now()
   },
   updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
   replaceState: newState => ClientApp.S = newState,
+  selectCompany: company => {
+
+    ClientApp.Company = Database.getCompany( company )
+    ClientApp.selectedEntity = company
+    ClientApp.selectedPage = "Tidslinje"
+
+  } 
 }
 
 const AdminApp = {
@@ -334,7 +351,7 @@ let init = async () => {
 
 
   let company = Database.getAll( 5722 )[0]
-  ClientApp.Company = Database.getCompany( company )
+  ClientApp.selectCompany( company )
   update(  )
 }
 

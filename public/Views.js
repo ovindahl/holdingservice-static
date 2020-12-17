@@ -104,7 +104,6 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
   onClick(e)
 }  )
 
-let actionButton = Action => Action.isActionable ? submitButton( Action.label, async e => update(  await Action.actionFunction()  ) ) : d( Action.label, {style: "background-color: gray;"} ) 
 
 
 
@@ -344,6 +343,7 @@ let extendedFunctionView = (Entity, attribute, isEditable) => {
           d([
             d("Statements"),
             d( Value.statements.map( (statement, index) => d([
+              
               d([
                 checkBox(true),
                 d(String(index)),
@@ -463,7 +463,6 @@ let companyEntityConstructorRowView = (Entity, attribute, index) => {
       ),
       br(),
       d([
-        d( JSON.stringify( entityConstructor ) ),
         d( Database.get( companyEntityType , "companyEntityType/attributes").map(  attr => {
           let attributeAssertions = entityConstructor.attributeAssertions
 
@@ -579,6 +578,21 @@ let entityPopUp = entity => d([
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
+
+
+//Action button
+
+
+
+
+let actionButton = companyAction => d([
+  d([
+    d( `${ Database.get( companyAction.entity ).label}`, {class: "entityLabel", style: `background-color:${companyAction.isActionable ? Database.get( companyAction.entity ).color : "gray" }`}, "click", companyAction.isActionable ? async e => update( await companyAction.execute() ) : e => console.log("Not actionable") ),
+    entityPopUp( companyAction.entity ),
+  ], {class: "popupContainer", style:"display: inline-flex;"})
+], {style:"display: inline-flex;"} )
+
+
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
@@ -616,7 +630,11 @@ let companyEntityPopUp = (Company, companyEntity) => d([
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 let clientPage = Company => d([
-  d([d('<header><h1>Holdingservice Beta</h1></header>'),d([submitButton("Bytt til admin", e => update( ClientApp.updateState({selectedPage: "Admin"}) ) )], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
+  d([d('<header><h1>Holdingservice Beta</h1></header>'),d([
+    d([dropdown( Company.entity, Database.getAll( 5722 ).map( company => returnObject({value: company, label: Database.get(company, "entity/label")  })  ), e => update( ClientApp.selectCompany( Number(submitInputValue(e))  ) )   )]),
+    submitButton("Bytt til admin", e => update( ClientApp.updateState({selectedPage: "Admin"}) ) )
+  ], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
+  //dropdown( Company.entity, Database.getAll( 5722 ).map( company => returnObject({value: company, label: Database.get(company, "entity/label")  })  ), e => update( ClientApp.selectCompany( Number(submitInputValue(e))  ) )   ),
   navBar(Company),
   d([
     d(""),
@@ -723,7 +741,7 @@ let companyView = Company => d([
 
 let companyActionsView = Company => d([
   h3("Handlinger på selskapsnivå"),
-  d( Company.getActions().map(  companyAction => entityLabelWithPopup( companyAction.entity, async e => update( await companyAction.execute() ) ), {style: "display: flex;"}) )
+  d( Company.getActions().map(  companyAction => actionButton(companyAction) , {style: "display: flex;"}) )
 ], {class: "feedContainer"}) 
   
 
@@ -988,7 +1006,7 @@ let adminEntityView = entity => {
         d( attributes.map( attribute => fullDatomView( Entity, attribute, true ) )),
         br(),
         h3("Tillatte handlinger på entitetsnivå"),
-        d( Entity.getActions().map( Action => actionButton(Action) ) ),
+        d( Entity.getActions().map( Action => Action.isActionable ? submitButton( Action.label, async e => update(  await Action.actionFunction()  ) ) : d( Action.label, {style: "background-color: gray;"} )  ) ),
       ], {class: "feedContainer"} )
   : d("Ingen entitet valgt.", {class: "feedContainer"})
     
