@@ -125,8 +125,7 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 let entityLabel = (entity, onClick) => d([
   d( `${ Database.get( entity ) ? Database.get( entity ).label() : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", isDefined(onClick) ? onClick : e => {
     AdminApp.updateState({selectedEntity: entity})
-    ClientApp.updateState({selectedPage: "Admin"})
-    update(  )
+    AdminApp.update()
   }),
 ], {style:"display: inline-flex;"})
 

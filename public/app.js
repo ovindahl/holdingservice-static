@@ -59,7 +59,6 @@ const sideEffects = {
   }
 }
 
-
 const Database = {
   tx: null,
   Entities: [],
@@ -334,8 +333,6 @@ const Database = {
         }
       })  )
 
-
-
     Company.getProcessActions = process => {
 
       let processActions = [6628].map( actionEntity => Company.getAction( actionEntity, undefined, Company.getProcess( process ) ) )
@@ -352,7 +349,10 @@ const Database = {
       return processActions.concat( newEventActions )
     } 
     
-    Company.getEventActions = event => [Company.getAction(6635, Company.getEvent(event), Company.getProcess( Database.get(event, "event/process") )  )]
+    Company.getEventActions = event => [
+      Company.getAction(6635, Company.getEvent(event), Company.getProcess( Database.get(event, "event/process") )  ),
+      returnObject({isActionable: true, label: "Oppdatter selskapsdokumentet", execute: () => ClientApp.recalculateCompany( company )  })
+    ]
 
     return Company
   },
@@ -405,8 +405,6 @@ const AdminApp = {
 
 let D = Database
 let Company = {}
-
-
 
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
