@@ -360,6 +360,7 @@ const Database = {
 
 
 const ClientApp = {
+  isActive: false,
   Company: undefined,
   S: {
     t0: Date.now()
@@ -368,6 +369,8 @@ const ClientApp = {
   replaceState: newState => ClientApp.S = newState,
   recalculateCompany: company => ClientApp.Company = Database.getCompany( company ),
   update: () => {
+    AdminApp.isActive = false
+    ClientApp.isActive = true
     D = Database
     Company = ClientApp.Company 
     
@@ -379,6 +382,7 @@ const ClientApp = {
 }
 
 const AdminApp = {
+  isActive: false,
   S: {
     selectedPage: "Admin",
     selectedEntity: 1,  
@@ -386,6 +390,9 @@ const AdminApp = {
   updateState: patch => AdminApp.S = mergerino( AdminApp.S, patch ),
   replaceState: newState => AdminApp.S = newState,
   update: () => {
+    ClientApp.isActive = false
+    AdminApp.isActive = true
+    
     D = Database
     Company = ClientApp.Company 
     
@@ -408,7 +415,7 @@ let update = () => {
     Company = ClientApp.Company 
     
     let startTime = Date.now()
-    let elementTree = ClientApp.S.selectedPage === "Admin" ? [ adminPage( Company ) ] : [ clientPage(Company) ]
+    let elementTree = AdminApp.isActive ? [ adminPage( Company ) ] : [ clientPage(Company) ]
     sideEffects.updateDOM( elementTree )
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 }

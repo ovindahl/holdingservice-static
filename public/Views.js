@@ -243,7 +243,7 @@ let eventTimelineView = (Company, process, event) => {
 
 
   return d([
-    entityLabelWithPopup( Event.get("event/eventTypeEntity") , e => ClientApp.update( ClientApp.updateState({selectedEntity: process}) )),
+    entityLabelWithPopup( Event.get("event/eventTypeEntity") ),
     d( Company.events.map( (processEvent, i) => ((i+1) < processEventsTimes[0] || (i+1) > processEventsTimes.slice( -1 )[0])
     ? d(" ")
     : processEvent === event
