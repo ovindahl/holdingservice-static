@@ -38,13 +38,21 @@ let constructCompanyDocument = (receivedDatabase, company ) => {
 
 let constructEntity = ( receivedDatabase, Company, Process, Event, entityConstructor, index) => {
 
-  let eventType = Event.get("event/eventTypeEntity" )
-  let sharedStatements = receivedDatabase.get( eventType, "eventType/sharedStatements" ) 
-    ? receivedDatabase.get( eventType, "eventType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") 
+  let processType = Process.get("process/processType" )
+  let processTypeSharedStatements = receivedDatabase.get( processType, "processType/sharedStatements")
+    ? receivedDatabase.get( processType, "processType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] )
     : []
 
-  let sharedStatementsString = (sharedStatements.length > 0) ? sharedStatements + ";" : ""
+  let eventType = Event.get("event/eventTypeEntity" )
+  let eventTypeSharedStatements = receivedDatabase.get( eventType, "eventType/sharedStatements" ) 
+  ? receivedDatabase.get( eventType, "eventType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] )
+  : []
 
+
+
+  let sharedStatements = processTypeSharedStatements.concat(eventTypeSharedStatements)
+
+  let sharedStatementsString = (sharedStatements.length > 0) ? sharedStatements.join(";") + ";" : ""
 
   let companyEntityType = entityConstructor.companyEntityType
   let attributeAssertions = entityConstructor.attributeAssertions
@@ -84,6 +92,8 @@ let constructEntity = ( receivedDatabase, Company, Process, Event, entityConstru
 
   let entityDatoms = [companyEntityTypeDatom].concat(generatedyDatoms)
 
+  
+
   return entityDatoms
 }
   
@@ -95,9 +105,11 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
         .filter( companyDatom => companyDatom.attribute === 6781 )
         .filter( companyDatom => companyDatom.value === entityType )
 
-        let entities = isDefined( matchingDatoms ) 
-        ? matchingDatoms.filter( filterUniqueValues ).map(  companyDatom => companyDatom.entity )
-        : []
+        let entities = isDefined(entityType)
+          ? isDefined( matchingDatoms ) 
+            ? matchingDatoms.map(  companyDatom => companyDatom.entity ).filter( filterUniqueValues )
+            : []
+          : Company.companyDatoms.map(  companyDatom => companyDatom.entity ).filter( filterUniqueValues )
 
         return entities
     } 
@@ -118,6 +130,7 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
         if(isUndefined(attribute)){
         let CompanyEntity = {
             entity,
+            companyEntityType: Company.companyDatoms[0].value,
             companyDatoms: Company.companyDatoms.filter( companyDatom => companyDatom.entity === entity )
         }
     
@@ -157,6 +170,8 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
 
     CompanyEntity.companyEntityType = CompanyEntity.get(6781)
 
+    CompanyEntity.label = () => `${receivedDatabase.get( CompanyEntity.companyEntityType, "entity/label")} # ${Company.getAll(CompanyEntity.companyEntityType).findIndex( e => e === CompanyEntity.entity) + 1}`
+
     return CompanyEntity
     }
 
@@ -177,6 +192,10 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
     Company.getProcess = process => {
         let Process = receivedDatabase.get( process )
         Process.events = Company.events.filter( event => receivedDatabase.get(event, "event/process") === process )
+        Process.companyDatoms = Company.companyDatoms.filter( companyDatom => companyDatom.process === process )
+        Process.entities = Process.companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
+
+
         Process.getFirstEvent = () => Company.getEvent( Process.events[0] )
         Process.isValid = () => true
         Process.getCriteria = () => []

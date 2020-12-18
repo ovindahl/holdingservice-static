@@ -120,6 +120,70 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
+//Basic entity views
+
+let entityLabel = (entity, onClick) => d([
+  d( `${ Database.get( entity ) ? Database.get( entity ).label() : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", isDefined(onClick) ? onClick : e => {
+    AdminApp.updateState({selectedEntity: entity})
+    ClientApp.updateState({selectedPage: "Admin"})
+    update(  )
+  }),
+], {style:"display: inline-flex;"})
+
+
+let entityLabelWithPopup = (entity, onClick) => d([
+d([
+  entityLabel(entity, onClick),
+  entityPopUp( entity ),
+], {class: "popupContainer", style:"display: inline-flex;"})
+], {style:"display: inline-flex;"} )
+
+let entityPopUp = entity => d([
+d([
+  entityLabel( 6 ),
+  d( Database.get( entity ) ? Database.get( entity ).label() : "na." ),
+], {class: "columns_1_1"}),
+d([
+  d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
+  d(String(entity)),
+], {class: "columns_1_1"}),
+d([
+  entityLabel( 47 ),
+  entityLabel( Database.get( entity, "entity/entityType" ) ),
+], {class: "columns_1_1"}),
+br(),
+submitButton("Rediger", e => AdminApp.update( AdminApp.updateState({selectedEntity: entity}) )  ),
+br(),
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+//Entity Views
+
+let getAdminEntityView = ( Entity ) => d([
+  d([
+    d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
+    entityLabelWithPopup(Entity.entity),
+  ], {class: "columns_1_1"}),
+  d( Database.get( Entity.get("entity/entityType"), "entityType/attributes" ).map( attribute => fullDatomView( Entity, attribute, true ) )),
+  br(),
+  d( Entity.getActions().map( Action => Action.isActionable ? submitButton( Action.label, async e => AdminApp.update(  await Action.actionFunction()  ) ) : d( Action.label, {style: "background-color: gray;"} )  ) ),
+], {class: "feedContainer"} )
+
+let companyEntityView = (Company, companyEntity ) => d([
+  companyEntityLabel(Company, companyEntity),
+  d("<br>"),
+  d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
+  d("<br>"),
+  d( Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => fullDatomView( Company.get( companyDatom.entity ), companyDatom.attribute, false  ) )),
+
+  //d( Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => d(JSON.stringify(companyDatom)) )),
+  
+
+  //d( Database.get( Company.get(companyEntity, 19 ), "entityType/attributes" ).map( attribute => fullDatomView( Company.get( companyEntity ), attribute, false  ) )),
+  d( Database.get( Company.get( companyEntity , 6781 ), "companyEntityType/calculatedFields" ).map( companyCalculatedField => fullDatomView( Company.get( companyEntity ), companyCalculatedField, false  ) ) )
+], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+    
+    //----------------
+
 
 // VALUE TYPE VIEWS
 
@@ -152,7 +216,7 @@ let fullDatomView = (Entity, attribute, isEditable) => {
     
   
     return d([
-      entityLabel(attribute),
+      entityLabelWithPopup(attribute),
       view
     ], styleObject )  
   
@@ -362,8 +426,8 @@ let fullDatomView = (Entity, attribute, isEditable) => {
   //Single valueType entity reference views
   
   let singleEntityReferenceView = (Entity, attribute, isEditable) => isEditable
-    ? d([ entityLabel( Entity.get(attribute) ), entitySearchBox(Entity, attribute, ent => async e => update( await Entity.replaceValue( attribute,  ent ) ), 1) ])
-    : entityLabel(Entity.get(attribute))
+    ? d([ entityLabelWithPopup( Entity.get(attribute) ), entitySearchBox(Entity, attribute, ent => async e => update( await Entity.replaceValue( attribute,  ent ) ), 1) ])
+    : entityLabelWithPopup(Entity.get(attribute))
   
   let input_singleCompanyEntity = (Entity, attribute, isEditable) => isEditable
     ? dropdown( Entity.get( attribute ), Entity.getOptions( attribute ), async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
@@ -530,7 +594,7 @@ let fullDatomView = (Entity, attribute, isEditable) => {
                   let isMatch = label.toUpperCase().includes(searchString.toUpperCase())
                   return isMatch
                 }  )
-                .map( ent => d([entityLabel(ent, updateFunction(ent) )] )  )
+                .map( ent => d([entityLabelWithPopup(ent, updateFunction(ent) )] )  )
                 
               , {class: "searchResults"})
           ], {class: "searchResultsContainer"})
@@ -558,7 +622,7 @@ let fullDatomView = (Entity, attribute, isEditable) => {
     let Account = Entity.get(attribute)[index]
   
     return d([
-      entityLabel(Account.account),
+      entityLabelWithPopup(Account.account),
       d( String(Account.amount) ),
     ], {class: "columns_1_1"})
   

@@ -209,7 +209,9 @@ const Database = {
 
     Entity.label = () => (Entity.entityType === 5692)
       ? `[${entity}] Prosess ${ClientApp.Company.processes.findIndex( p => p === entity ) + 1}: ${Database.get( Database.get(entity, "process/processType"), "entity/label")} `
-      : Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
+      : (Entity.entityType === 46)
+        ? `[${entity}] Hendelse ${ClientApp.Company.events.findIndex( e => e === entity ) + 1}: ${Database.get( Database.get(entity, "event/eventTypeEntity"), "entity/label")} `
+        : Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
 
 
 
@@ -241,6 +243,8 @@ const Database = {
 
       }   },
     ]
+
+    Entity.getView = () => getAdminEntityView( Entity )
 
     return Entity
   },
@@ -340,7 +344,7 @@ const Database = {
         isActionable: true,
         label: "Opprett hendelse: " + Database.getEntity(eventType).label(),
         execute: async () => {
-          let newEvent = await Database.createEntity(46, [ newDatom( 'newEntity' , 'event/process', process  ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ) ])
+          let newEvent = await Database.createEntity(46, [ newDatom( 'newEntity' , 'event/process', process  ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , "event/date", Date.now() ) ])
           ClientApp.recalculateCompany( company )
           }
       })   )
