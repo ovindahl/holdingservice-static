@@ -15,12 +15,6 @@ let actionButton = companyAction => d([
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
-
-
-
-
-
-
 // CLIENT PAGE VIEWS
 
 let companyEntityLabel = (Company, companyEntity) => d([
@@ -29,7 +23,7 @@ let companyEntityLabel = (Company, companyEntity) => d([
 
 let companyEntityLabelWithPopup = (Company, companyEntity) => d([
   d([
-    companyEntityLabel(Company, companyEntity),
+    companyEntityLabel( Company, companyEntity),
     companyEntityPopUp( Company, companyEntity ),
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"}) 
@@ -46,6 +40,10 @@ let companyEntityPopUp = (Company, companyEntity) => d([
     d(String(companyEntity)),
   ], {class: "columns_1_1"}),
   d([
+    entityLabel( 47 ),
+    entityLabel( 6778 ),
+  ], {class: "columns_1_1"}),
+  d([
     entityLabel( 6781 ),
     entityLabel( Company.get( companyEntity, 6781 ) ),
   ], {class: "columns_1_1"}),
@@ -53,13 +51,6 @@ let companyEntityPopUp = (Company, companyEntity) => d([
     d([span( `Opphavshendelse`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
     entityLabel( Company.get( companyEntity ).event, e => ClientApp.update( ClientApp.updateState({selectedEntity: Company.get( companyEntity ).event }) ) ),
   ], {class: "columns_1_1"}),
-
-
-  d( Company.get(companyEntity).label() ),
-  br(),
-  d( "Entitet i selskapsdokumentet" ),
-  br(),
-  d( "[ TBD ]" ),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
@@ -140,11 +131,11 @@ let navBar = Company => d([
             : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 6778
               ? d([
                 span(" / "  ),
-                entityLabelWithPopup( ClientApp.S.selectedEntity, e => ClientApp.update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity }) ) ),
+                companyEntityLabelWithPopup( Company, ClientApp.S.selectedEntity, e => ClientApp.update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity }) ) ),
               ])
               : d([
                 span(" / "  ),
-                entityLabelWithPopup( Company.get( ClientApp.S.selectedEntity, 6778 ), e => ClientApp.update( ClientApp.updateState({selectedEntity: Company.get( ClientApp.S.selectedEntity, 6781 ) }) ) ),
+                entityLabelWithPopup( Company.get( ClientApp.S.selectedEntity, 6781 ), e => ClientApp.update( ClientApp.updateState({selectedEntity: Company.get( ClientApp.S.selectedEntity, 6781 ) }) ) ),
                 span(" / "  ),
                 companyEntityLabelWithPopup( Company, ClientApp.S.selectedEntity )
               ])
@@ -243,7 +234,7 @@ let eventTimelineView = (Company, process, event) => {
 
 
   return d([
-    entityLabelWithPopup( Event.get("event/eventTypeEntity") ),
+    entityLabelWithPopup( Event.get("event/eventTypeEntity"), e => ClientApp.update(  ClientApp.updateState({selectedEntity: event}) )  ),
     d( Company.events.map( (processEvent, i) => ((i+1) < processEventsTimes[0] || (i+1) > processEventsTimes.slice( -1 )[0])
     ? d(" ")
     : processEvent === event

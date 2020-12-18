@@ -237,6 +237,7 @@ const Database = {
         let entityType = Entity.get("entity/entityType")
         let entityTypeAttributes = Database.get( entityType, "entityType/attributes" )
         let newEntityDatoms = entityTypeAttributes.map( attr => newDatom("newEntity", Database.attrName(attr), Entity.get(attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${Entity.get(6)}` ) )
+        if(entityType === 42){ newEntityDatoms.push( newDatom( "newEntity", "attr/name", "attr/" + Date.now() )  ) }
         let newEntity = await Database.createEntity(entityType, newEntityDatoms)
         AdminApp.updateState({selectedEntity: newEntity.entity})
 
@@ -351,13 +352,13 @@ const Database = {
     
     Company.getEventActions = event => [
       Company.getAction(6635, Company.getEvent(event), Company.getProcess( Database.get(event, "event/process") )  ),
-      returnObject({isActionable: true, label: "Oppdatter selskapsdokumentet", execute: () => ClientApp.recalculateCompany( company )  })
+      returnObject({isActionable: true, label: "Oppdatter selskapsdokumentet", execute: () => ClientApp.recalculateCompany( company )  }),
+      Company.getAction(7090, Company.getEvent(event), Company.getProcess( Database.get(event, "event/process") )  ),
     ]
 
     return Company
   },
 }
-
 
 const ClientApp = {
   isActive: false,
@@ -434,7 +435,5 @@ let init = async () => {
 }
 
 sideEffects.configureClient();
-
-
 
 //Archive

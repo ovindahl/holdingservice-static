@@ -168,10 +168,10 @@ let getAdminEntityView = ( Entity ) => d([
 ], {class: "feedContainer"} )
 
 let companyEntityView = (Company, companyEntity ) => d([
-  companyEntityLabel(Company, companyEntity),
+  companyEntityLabelWithPopup(Company, companyEntity),
   d("<br>"),
-  d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
-  d("<br>"),
+  //d(`Etter hendelse ${Company.t} (${moment( Company.getEvent( Company.events[ Company.t - 1 ] ).get( "event/date" )).format("DD/MM/YYYY")})`),
+  //d("<br>"),
   d( Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => fullDatomView( Company.get( companyDatom.entity ), companyDatom.attribute, false  ) )),
 
   //d( Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => d(JSON.stringify(companyDatom)) )),
@@ -300,7 +300,7 @@ let fullDatomView = (Entity, attribute, isEditable) => {
         : d("Ingen verdier"),
         submitButton( "[ + ]", async e => update( isArray( Entity.get(attribute) ) ? await Entity.addValueEntry( attribute,  startValue ) : await Entity.replaceValue( attribute,  [startValue] ) )  )
     ]) : ( valueType === 41 )
-      ? d( Entity.get(attribute).map( (Value, index) => companyEntityLabel(ClientApp.Company, Value) ))
+      ? d( Entity.get(attribute).map( (Value, index) => companyEntityLabelWithPopup(ClientApp.Company, Value) ))
       : d( Entity.get(attribute).map( (Value, index) => valueTypeViews[ valueType ](Entity, attribute, index) ))
   
   }
@@ -430,7 +430,7 @@ let fullDatomView = (Entity, attribute, isEditable) => {
   
   let input_singleCompanyEntity = (Entity, attribute, isEditable) => isEditable
     ? dropdown( Entity.get( attribute ), Entity.getOptions( attribute ), async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
-    : companyEntityLabel(ClientApp.Company, Entity.get( attribute ) )
+    : companyEntityLabelWithPopup(ClientApp.Company, Entity.get( attribute ) )
   
   //Multiple valueType views
   
