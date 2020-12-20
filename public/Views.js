@@ -264,12 +264,29 @@ let eventView =  Company => {
 
   let Event = Company.getEvent( ClientApp.S.selectedEntity )
 
+  let Process = Company.getProcess( Event.process )
+
+  let prevEvent = Process.events[ Process.events.findIndex( e => e === Event.entity ) - 1  ]
+  let nextEvent = Process.events[ Process.events.findIndex( e => e === Event.entity ) + 1  ]
+
   return d([
     submitButton(" <- Tilbake ", e => ClientApp.update( ClientApp.updateState({selectedEntity: Company.entity }) ) ),
     br(),
     d([
       h3( "Prosess" ),
-      processTimelineView(Company, Event.process )
+      processTimelineView(Company, Event.process ),
+      br(),
+      d([
+        d([
+          submitButton("<---", e => ClientApp.update( ClientApp.updateState({selectedEntity: prevEvent }) ) ),
+          entityLabel(prevEvent)
+        ], {class: "columns_1_1"}),
+        d([
+          entityLabel(nextEvent),
+          submitButton("--->", e => ClientApp.update( ClientApp.updateState({selectedEntity: nextEvent }) ) ),
+        ], {class: "columns_1_1"}),
+        
+      ], {class: "columns_1_1"})
     ], {class: "feedContainer"}),
     br(),
     d([
@@ -283,7 +300,7 @@ let eventView =  Company => {
         entityLabelWithPopup( Event.get("event/eventTypeEntity") )
       ], {class: "columns_1_1"}),
       br(),
-      d( Database.get( Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  fullDatomView( Event , attribute, true )  )),
+      d( Database.get( Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute =>  Database.getEntityAttribute( Event.entity, attribute ).getView()  )),
       
       eventActionsView(Company, ClientApp.S.selectedEntity ),
       //br(),
