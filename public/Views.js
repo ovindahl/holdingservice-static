@@ -85,19 +85,11 @@ let clientPage = Company => d([
 
 let multipleCompanyEntitiesView = (Company, entityType) => {
 
-  let eventTypeAttributes = D.get( entityType,  6779)
+  let eventTypeAttributes = Database.get( entityType,  6779)
 
   return d([
-    d([
-      d(""),
-      d( eventTypeAttributes.map( attr => entityLabelWithPopup(attr)  ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} )
-    ], {style: `display:grid;grid-template-columns: 1fr 7fr; margin: 5px;border: 1px solid #80808052;`}),
-    entityLabelWithPopup(entityType),
-    d( Company.getAll(entityType).map( companyEntity => d([
-      companyEntityLabelWithPopup(Company, companyEntity),
-      d( eventTypeAttributes.map( attr => valueView(Company.get(companyEntity) , attr, false)   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} )
-    ], {style: `display:grid;grid-template-columns: 1fr 7fr; margin: 5px;border: 1px solid #80808052;`}),
-   ) )
+    d( eventTypeAttributes.map( attr => d([entityLabelWithPopup(attr)])   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} ),
+    d( Company.getAll(entityType).map( companyEntity => d( eventTypeAttributes.map( attribute => companyValueView(Company, companyEntity, attribute)   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} ) ) )
   ],{class: "feedContainer"})
 } 
 
@@ -131,7 +123,7 @@ let navBar = Company => d([
             : Database.get( ClientApp.S.selectedEntity, "entity/entityType" ) === 6778
               ? d([
                 span(" / "  ),
-                companyEntityLabelWithPopup( Company, ClientApp.S.selectedEntity, e => ClientApp.update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity }) ) ),
+                entityLabelWithPopup( ClientApp.S.selectedEntity, e => ClientApp.update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity }) ) ),
               ])
               : d([
                 span(" / "  ),
@@ -341,55 +333,34 @@ let balanceSheetView = Company => d([
     d([
       h3("Eiendeler"),
       d("Anleggsmidler"),
-      CompanyCalculatedFieldView(Company, 6238),
-      CompanyCalculatedFieldView(Company, 6238),
-      CompanyCalculatedFieldView(Company, 6241),
-      CompanyCalculatedFieldView(Company, 6253),
-      //d( Company.getAll(5812).map( security => companyEntityLabelWithPopup(Company, security))   ),
-      CompanyCalculatedFieldView(Company, 6254),
-      CompanyCalculatedFieldView(Company, 6255),
-      CompanyCalculatedFieldView(Company, 6256),
-      CompanyCalculatedFieldView(Company, 6260),
-      CompanyCalculatedFieldView(Company, 6262),
-      CompanyCalculatedFieldView(Company, 6270),
-      CompanyCalculatedFieldView(Company, 6240),
-      CompanyCalculatedFieldView(Company, 6275),
-      CompanyCalculatedFieldView(Company, 6277),
-      CompanyCalculatedFieldView(Company, 6279),
-      CompanyCalculatedFieldView(Company, 6286),
+      d(
+        [6238,  6241, 6253, 6254, 6255, 6256, 6260, 6262, 6270, 6240, 6275, 6277, 6279, 6286]
+          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) > 0 )
+          .map( calculateField => CompanyCalculatedFieldView(Company, calculateField)  )  
+          ),
       br(),
       d("Omløpsmidler"),
-      CompanyCalculatedFieldView(Company, 6248),
-      CompanyCalculatedFieldView(Company, 6274),
-      CompanyCalculatedFieldView(Company, 6276),
-      CompanyCalculatedFieldView(Company, 6287),
-      br(),
-      CompanyCalculatedFieldView(Company, 6288),
-      br(),
+      d(
+        [6248,  6274, 6276, 6276, 6287, 6288]
+          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) > 0 )
+          .map( calculateField => CompanyCalculatedFieldView(Company, calculateField)  )  
+        )
     ], {style: "margin: 5px;border: 1px solid #80808052;"}),
     d([
       h3("Gjeld og egenkapital"),
       d("Egenkapital"),
-      CompanyCalculatedFieldView(Company, 6237),
-      CompanyCalculatedFieldView(Company, 6246),
-      CompanyCalculatedFieldView(Company, 6278),
-      CompanyCalculatedFieldView(Company, 6281),
-      CompanyCalculatedFieldView(Company, 6295),
+      d(
+        [6237,  6246, 6278, 6281, 6295]
+          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) > 0 )
+          .map( calculateField => CompanyCalculatedFieldView(Company, calculateField)  )  
+      ),
       br(),
       d("Gjeld"),
-      CompanyCalculatedFieldView(Company, 6247),
-      CompanyCalculatedFieldView(Company, 6259),
-      CompanyCalculatedFieldView(Company, 6280),
-      CompanyCalculatedFieldView(Company, 6257),
-      CompanyCalculatedFieldView(Company, 6258),
-      CompanyCalculatedFieldView(Company, 6264),
-      //d( Company.getAll(5811).map( loan => companyEntityLabelWithPopup(Company, loan))   ),
-      CompanyCalculatedFieldView(Company, 6269),
-      CompanyCalculatedFieldView(Company, 6272),
-      CompanyCalculatedFieldView(Company, 6273),
-      CompanyCalculatedFieldView(Company, 6294),
-      br(),
-      CompanyCalculatedFieldView(Company, 6296),
+      d(
+        [6247,  6259, 6280, 6257, 6258, 6264, 6269, 6272, 6273, 6294, 6296]
+          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) > 0 )
+          .map( calculateField => CompanyCalculatedFieldView(Company, calculateField)  )  
+      ),
     ], {style: "margin: 5px;border: 1px solid #80808052;"}),
   ], {class: "columns_1_1"})
 ], {class: "feedContainer"})

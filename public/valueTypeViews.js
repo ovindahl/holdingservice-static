@@ -156,29 +156,26 @@ br(),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
-let companyDatomView = (Company, companyEntity, attribute) => {
+let companyDatomView = (Company, companyEntity, attribute) => d([
+  entityLabelWithPopup(attribute),
+  companyValueView(Company, companyEntity, attribute)
+], {class: "columns_1_1"}) 
+
+let companyValueView = (Company, companyEntity, attribute) => {
 
   try {
-    return d([
-      entityLabelWithPopup(attribute),
-      isDefined( Company.get(companyEntity, attribute) )
-        ? attribute === 6777 
-          ? companyEntityLabelWithPopup(Company, Company.get(companyEntity, attribute) )
-          : [1653, 6781, 1099].includes(attribute)
-            ? entityLabel( Company.get(companyEntity, attribute) )
-            : d( JSON.stringify(Company.get(companyEntity, attribute) )  )
-        : d("na.")
-      
-    ], {class: "columns_1_1"}) 
+    return isDefined( Company.get(companyEntity, attribute) )
+    ? attribute === 6777 
+      ? companyEntityLabelWithPopup(Company, Company.get(companyEntity, attribute) )
+      : [1653, 6781, 1099].includes(attribute)
+        ? entityLabel( Company.get(companyEntity, attribute) )
+        : d( JSON.stringify(Company.get(companyEntity, attribute) )  )
+    : d("na.")
   } catch (error) {
     return d(error)
   }
 
-
-
-
-
-} 
+}
 
 
 //Entity Views
