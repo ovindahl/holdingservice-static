@@ -359,6 +359,22 @@ let entityView = (Entity) => d([
   d( Entity.getActions().map( Action => Action.isActionable ? submitButton( Action.label, async e => AdminApp.update(  await Action.actionFunction()  ) ) : d( Action.label, {style: "background-color: gray;"} )  ) )
 ], {class: "feedContainer"} )
 
+let entityVersionPopup = (entity, attribute, version) => {
+
+  let EntityDatoms = Database.getEntity( entity ).Datoms.filter( Datom => Datom.attribute === Database.attrName(attribute) )
+
+  return d([
+      d( EntityDatoms.reverse().slice(1, 5).map( Datom => d([
+        d( moment(Datom.tx).format("YYYY-MM-DD") ),
+        d(JSON.stringify(Datom.value)),
+        submitButton( "Gjenopprett", Database.get(entity, "entity/entityType") === 46 
+          ? async e => ClientApp.update( await Database.updateEntity( entity, Datom.attribute, Datom.value ) )
+          : async e => AdminApp.update( await Database.updateEntity( entity,  Datom.attribute, Datom.value ) )  
+        )
+      ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) )
+    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+} 
+
 
 let basicInputView_editable = ( formattedValue, updateFunction ) => input( {value: formattedValue, style: isDefined( formattedValue ) ? "" : "background-color: red;" }, "change", updateFunction  )
 let textAreaView = ( formattedValue, updateFunction ) => textArea( formattedValue, {class:"textArea_code"}, updateFunction )

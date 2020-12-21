@@ -269,9 +269,15 @@ const Database = {
         isArray 
           ? (valueType === 32) ? newMultipleValuesView(Entity, attribute) : multipleValuesView( Entity, attribute, isEditable ) 
           : singleValueView( entity, attribute, version ),
-        d( "v" + EntityDatoms.length )
+        d([
+          d([
+            d( "v" + EntityDatoms.length ),
+            entityVersionPopup(entity, attribute, version)
+          ], {class: "popupContainer"})
+          ], {style:"display: inline-flex;"} )
       ], styleObject )  
     }
+
 
     return EntityAttribute
 
@@ -387,6 +393,11 @@ const Database = {
     return Company
   },
 }
+
+
+
+
+
 
 const ClientApp = {
   isActive: false,
