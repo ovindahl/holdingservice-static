@@ -364,6 +364,10 @@ let entityVersionPopup = (entity, attribute, version) => {
   let EntityDatoms = Database.getEntity( entity ).Datoms.filter( Datom => Datom.attribute === Database.attrName(attribute) )
 
   return d([
+    d([
+      d( "Endret"),
+      d("Tidligere verdi")
+    ], {style: gridColumnsStyle("2fr 2fr 1fr")}),
       d( EntityDatoms.reverse().slice(1, 5).map( Datom => d([
         d( moment(Datom.tx).format("YYYY-MM-DD") ),
         d(JSON.stringify(Datom.value)),

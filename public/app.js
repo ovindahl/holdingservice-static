@@ -271,7 +271,7 @@ const Database = {
           : singleValueView( entity, attribute, version ),
         d([
           d([
-            d( "v" + EntityDatoms.length ),
+            d( "v" + EntityDatoms.length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
             entityVersionPopup(entity, attribute, version)
           ], {class: "popupContainer"})
           ], {style:"display: inline-flex;"} )
