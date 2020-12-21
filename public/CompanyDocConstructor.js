@@ -217,6 +217,21 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
         return Event
     }
 
+    Company.calculateCompanyCalculatedField = calculatedField => {
+
+      let newValueFunctionString = receivedDatabase.get( calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";")
+  
+      let value;
+      try {value = new Function( [`Company`, `Process`, `Event`, `Entity`], newValueFunctionString )( Company, undefined, undefined, undefined ) } 
+        catch (error) {value = log(error,{info: " Company.calculateCompanyCalculatedField()", Company, calculatedField, newValueFunctionString}) }
+    
+      return value;
+
+
+
+
+    }
+
 
 return Company
 

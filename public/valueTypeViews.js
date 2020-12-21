@@ -156,14 +156,29 @@ br(),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
-let companyDatomView = (Company, companyEntity, attribute) => d([
-  entityLabelWithPopup(attribute),
-  attribute === 6777 
-    ? companyEntityLabelWithPopup(Company, Company.get(companyEntity, attribute) )
-    : [1653, 6781].includes(attribute)
-      ? entityLabel( Company.get(companyEntity, attribute) )
-      : d( JSON.stringify(Company.get(companyEntity, attribute) )  )
-], {class: "columns_1_1"}) 
+let companyDatomView = (Company, companyEntity, attribute) => {
+
+  try {
+    return d([
+      entityLabelWithPopup(attribute),
+      isDefined( Company.get(companyEntity, attribute) )
+        ? attribute === 6777 
+          ? companyEntityLabelWithPopup(Company, Company.get(companyEntity, attribute) )
+          : [1653, 6781, 1099].includes(attribute)
+            ? entityLabel( Company.get(companyEntity, attribute) )
+            : d( JSON.stringify(Company.get(companyEntity, attribute) )  )
+        : d("na.")
+      
+    ], {class: "columns_1_1"}) 
+  } catch (error) {
+    return d(error)
+  }
+
+
+
+
+
+} 
 
 
 //Entity Views
@@ -383,7 +398,7 @@ let entityVersionPopup = (entity, attribute, version) => {
 
 
 let basicInputView_editable = ( formattedValue, updateFunction ) => input( {
-  value: formattedValue, style: isDefined( formattedValue ) 
+  value: formattedValue, style: isDefined( formattedValue )
     ? isNumber(formattedValue) 
       ? `text-align: right;` 
       : "" 
@@ -456,14 +471,14 @@ let functionView = ( formattedValue, updateFunction ) => {
 
 let selectCompanyEntityView = ( formattedValue, updateFunction, options, Company ) => {
 
-  log({formattedValue, options, Company})
+  let isValidCompanyEntity = Company.events.includes(formattedValue)
 
   let datalistID = getNewElementID()
   return d([
-    companyEntityLabelWithPopup( Company, Company.getEvent(formattedValue).entities[0] ),
+    isValidCompanyEntity ? companyEntityLabelWithPopup( Company, Company.getEvent(formattedValue).entities[0] ) : d("tom"),
 
     dropdown(
-      formattedValue, 
+      isValidCompanyEntity ? formattedValue : "Velg", 
       Company.getAll().map( companyEntity => returnObject({value: Company.get(companyEntity).event, label: Company.get(companyEntity).label() }) ),
       updateFunction 
       )

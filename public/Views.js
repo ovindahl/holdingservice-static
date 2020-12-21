@@ -156,6 +156,8 @@ let companyView = Company => d([
       ], {class: "columns_1_1"}) ))
     ], {class: "feedContainer"}),
     br(),
+    balanceSheetView(Company),
+    br(),
     d([
       h3("Selskapets entiteter"),
       d( Database.getAll(6778).map( entityType => d([
@@ -327,6 +329,71 @@ let eventActionsView = (Company, event) => d([
 
 
 
+let CompanyCalculatedFieldView = (Company, calculateField) => d([
+  entityLabelWithPopup(calculateField),
+  d( String( Math.round( Company.calculateCompanyCalculatedField(calculateField) )  ), {style: `text-align: right;` } )
+], {class: "columns_1_1"})
+
+
+let balanceSheetView = Company => d([
+  h3("Balanse"),
+  d([
+    d([
+      h3("Eiendeler"),
+      d("Anleggsmidler"),
+      CompanyCalculatedFieldView(Company, 6238),
+      CompanyCalculatedFieldView(Company, 6238),
+      CompanyCalculatedFieldView(Company, 6241),
+      CompanyCalculatedFieldView(Company, 6253),
+      //d( Company.getAll(5812).map( security => companyEntityLabelWithPopup(Company, security))   ),
+      CompanyCalculatedFieldView(Company, 6254),
+      CompanyCalculatedFieldView(Company, 6255),
+      CompanyCalculatedFieldView(Company, 6256),
+      CompanyCalculatedFieldView(Company, 6260),
+      CompanyCalculatedFieldView(Company, 6262),
+      CompanyCalculatedFieldView(Company, 6270),
+      CompanyCalculatedFieldView(Company, 6240),
+      CompanyCalculatedFieldView(Company, 6275),
+      CompanyCalculatedFieldView(Company, 6277),
+      CompanyCalculatedFieldView(Company, 6279),
+      CompanyCalculatedFieldView(Company, 6286),
+      br(),
+      d("Omløpsmidler"),
+      CompanyCalculatedFieldView(Company, 6248),
+      CompanyCalculatedFieldView(Company, 6274),
+      CompanyCalculatedFieldView(Company, 6276),
+      CompanyCalculatedFieldView(Company, 6287),
+      br(),
+      CompanyCalculatedFieldView(Company, 6288),
+      br(),
+    ], {style: "margin: 5px;border: 1px solid #80808052;"}),
+    d([
+      h3("Gjeld og egenkapital"),
+      d("Egenkapital"),
+      CompanyCalculatedFieldView(Company, 6237),
+      CompanyCalculatedFieldView(Company, 6246),
+      CompanyCalculatedFieldView(Company, 6278),
+      CompanyCalculatedFieldView(Company, 6281),
+      CompanyCalculatedFieldView(Company, 6295),
+      br(),
+      d("Gjeld"),
+      CompanyCalculatedFieldView(Company, 6247),
+      CompanyCalculatedFieldView(Company, 6259),
+      CompanyCalculatedFieldView(Company, 6280),
+      CompanyCalculatedFieldView(Company, 6257),
+      CompanyCalculatedFieldView(Company, 6258),
+      CompanyCalculatedFieldView(Company, 6264),
+      //d( Company.getAll(5811).map( loan => companyEntityLabelWithPopup(Company, loan))   ),
+      CompanyCalculatedFieldView(Company, 6269),
+      CompanyCalculatedFieldView(Company, 6272),
+      CompanyCalculatedFieldView(Company, 6273),
+      CompanyCalculatedFieldView(Company, 6294),
+      br(),
+      CompanyCalculatedFieldView(Company, 6296),
+    ], {style: "margin: 5px;border: 1px solid #80808052;"}),
+  ], {class: "columns_1_1"})
+], {class: "feedContainer"})
+
 // ADMIN PAGE VIEWS
 
 let adminPage = () => d([
@@ -384,66 +451,6 @@ let entityRedlinedValue = (value, prevValue) => d( [
 
 
 
-let balanceSheetView = Company => d([
-  h3("Balanse"),
-  d([
-    d([
-      h3("Eiendeler"),
-      d("Anleggsmidler"),
-      fullDatomView(Company.get(1), 6238),
-      fullDatomView(Company.get(1), 6241),
-      fullDatomView(Company.get(1), 6253),
-      d( Company.getAll(5812).map( security => companyEntityLabelWithPopup(Company, security))   ),
-      fullDatomView(Company.get(1), 6254),
-      fullDatomView(Company.get(1), 6255),
-      fullDatomView(Company.get(1), 6256),
-      fullDatomView(Company.get(1), 6260),
-      fullDatomView(Company.get(1), 6262),
-      fullDatomView(Company.get(1), 6270),
-      fullDatomView(Company.get(1), 6240),
-      fullDatomView(Company.get(1), 6275),
-      fullDatomView(Company.get(1), 6277),
-      fullDatomView(Company.get(1), 6279),
-      fullDatomView(Company.get(1), 6286),
-      br(),
 
-      d("Omløpsmidler"),
-      fullDatomView(Company.get(1), 6248),
-      fullDatomView(Company.get(1), 6274),
-      fullDatomView(Company.get(1), 6276),
-
-      fullDatomView(Company.get(1), 6287),
-
-      br(),
-      fullDatomView(Company.get(1), 6288),
-      br(),
-    ], {style: "margin: 5px;border: 1px solid #80808052;"}),
-    d([
-      h3("Gjeld og egenkapital"),
-      d("Egenkapital"),
-      fullDatomView(Company.get(1), 6237),
-      fullDatomView(Company.get(1), 6246),
-      fullDatomView(Company.get(1), 6278),
-      fullDatomView(Company.get(1), 6281),
-      fullDatomView(Company.get(1), 6295),
-      br(),
-      d("Gjeld"),
-      fullDatomView(Company.get(1), 6247),
-      fullDatomView(Company.get(1), 6259),
-      fullDatomView(Company.get(1), 6280),
-      fullDatomView(Company.get(1), 6257),
-      fullDatomView(Company.get(1), 6258),
-      fullDatomView(Company.get(1), 6264),
-      d( Company.getAll(5811).map( loan => companyEntityLabelWithPopup(Company, loan))   ),
-      fullDatomView(Company.get(1), 6269),
-      fullDatomView(Company.get(1), 6272),
-      fullDatomView(Company.get(1), 6273),
-      fullDatomView(Company.get(1), 6275),
-      fullDatomView(Company.get(1), 6294),
-      br(),
-      fullDatomView(Company.get(1), 6296),
-    ], {style: "margin: 5px;border: 1px solid #80808052;"}),
-  ], {class: "columns_1_1"})
-], {class: "feedContainer"})
 
  */
