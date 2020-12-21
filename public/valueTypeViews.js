@@ -159,8 +159,10 @@ br(),
 let companyDatomView = (Company, companyEntity, attribute) => d([
   entityLabelWithPopup(attribute),
   attribute === 6777 
-    ? companyEntityLabelWithPopup(Company, companyEntity)
-    : d( JSON.stringify(Company.get(companyEntity, attribute) )  )
+    ? companyEntityLabelWithPopup(Company, Company.get(companyEntity, attribute) )
+    : [1653, 6781].includes(attribute)
+      ? entityLabel( Company.get(companyEntity, attribute) )
+      : d( JSON.stringify(Company.get(companyEntity, attribute) )  )
 ], {class: "columns_1_1"}) 
 
 
@@ -380,7 +382,13 @@ let entityVersionPopup = (entity, attribute, version) => {
 } 
 
 
-let basicInputView_editable = ( formattedValue, updateFunction ) => input( {value: formattedValue, style: isDefined( formattedValue ) ? "" : "background-color: red;" }, "change", updateFunction  )
+let basicInputView_editable = ( formattedValue, updateFunction ) => input( {
+  value: formattedValue, style: isDefined( formattedValue ) 
+    ? isNumber(formattedValue) 
+      ? `text-align: right;` 
+      : "" 
+    : "background-color: red;" 
+  }, "change", updateFunction  )
 let textAreaView = ( formattedValue, updateFunction ) => textArea( formattedValue, {class:"textArea_code"}, updateFunction )
 let boolView = ( formattedValue, updateFunction ) => input( {value: formattedValue}, "click", updateFunction )
 
@@ -445,6 +453,27 @@ let functionView = ( formattedValue, updateFunction ) => {
   ])
 }
 
+
+let selectCompanyEntityView = ( formattedValue, updateFunction, options, Company ) => {
+
+  log({formattedValue, options, Company})
+
+  let datalistID = getNewElementID()
+  return d([
+    companyEntityLabelWithPopup( Company, Company.getEvent(formattedValue).entities[0] ),
+
+    dropdown(
+      formattedValue, 
+      Company.getAll().map( companyEntity => returnObject({value: Company.get(companyEntity).event, label: Company.get(companyEntity).label() }) ),
+      updateFunction 
+      )
+
+
+    //htmlElementObject("datalist", {id:datalistID}, optionsElement( Company.getAll() ) ),
+    //input({value: formattedValue, list: datalistID, style: `text-align: right;`}, "change", updateFunction),
+    ])
+}
+
 let placeholderView = ( formattedValue, updateFunction ) => d( JSON.stringify( formattedValue )  )
 
 const valueTypeViews_single = {
@@ -456,14 +485,14 @@ const valueTypeViews_single = {
   "32": entityRefView,
   "5721": basicInputView_editable, //Dato
   "5824": fileuploadView, //File
-
+  "41": selectCompanyEntityView, //Company entity, ie. from user selection
 
   
   "6534": placeholderView, //ExpandedFunction - TBD
 
 
   "6553": placeholderView, //Accbal -- only non-editable
-  "41": placeholderView, //Company entity -- only non-editable
+  
 
 
   "6613": placeholderView, //function statements - only multiple
@@ -505,8 +534,9 @@ let singleValueView = ( entity, attribute, version ) => {
 
   let options = [32, 40].includes(valueType) ? Database.getOptions( attribute ) : []
 
+  let Company = [41].includes(valueType) ? ClientApp.Company : undefined
 
-  let valueView = viewFunction( formattedValue, updateFunction, options )
+  let valueView = viewFunction( formattedValue, updateFunction, options, Company )
 
   return valueView
 

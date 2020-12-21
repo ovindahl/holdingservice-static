@@ -208,6 +208,7 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
         let Event = receivedDatabase.get( event )
         Event.t =  Company.events.findIndex( e => e === event ) + 1
         Event.process = Event.get("event/process")
+        Event.companyDatoms = Company.companyDatoms.filter( companyDatom => companyDatom.event === event )
         Event.entities = Company.entities.filter( companyEntity => Company.getDatom(companyEntity, 6781).event === event )
         let processEvents = Company.events.filter( event => receivedDatabase.get(event, "event/process") === Event.process )
         let prevEvent = processEvents[  processEvents.findIndex( e => e  === event ) - 1 ]
