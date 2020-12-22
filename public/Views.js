@@ -183,27 +183,47 @@ let timelineHeaderView = () => d([
   d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} ),
 ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
 
-let processView = Company => d([
-  d([
-    entityLabelWithPopup(5692),
-    entityLabelWithPopup(ClientApp.S.selectedEntity, e => ClientApp.update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity}) )),
-  ], {class: "columns_1_1"}),
-  d([
-    entityLabelWithPopup(5687),
-    entityLabelWithPopup( Company.getProcess( ClientApp.S.selectedEntity ).get("process/processType") )
-  ], {class: "columns_1_1"}),
-  br(),
-  timelineHeaderView(),
-  processTimelineView2(Company, ClientApp.S.selectedEntity ),
-  d( Company.getProcess( ClientApp.S.selectedEntity ).events.map( event => eventTimelineView(Company, ClientApp.S.selectedEntity, event)  ) ),
-  br(),
-  processActionsView(Company,  ClientApp.S.selectedEntity ),
-  br(),
-  d([
-    h3("Output fra prosessen:"),
-    d(Company.getProcess( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
-  ], {class: "feedContainer"} )
-],{class: "feedContainer"})
+let processView = Company => {
+
+  let process = ClientApp.S.selectedEntity
+  let Process = Company.getProcess( process )
+
+  let prevProcess = Company.processes[ Company.processes.findIndex( p => p === process ) - 1  ]
+  let nextProcess = Company.processes[ Company.processes.findIndex( p => p === process ) + 1  ]
+  return d([
+    d([
+      entityLabelWithPopup(5692),
+      entityLabelWithPopup(ClientApp.S.selectedEntity, e => ClientApp.update( ClientApp.updateState({selectedEntity: ClientApp.S.selectedEntity}) )),
+    ], {class: "columns_1_1"}),
+    d([
+      entityLabelWithPopup(5687),
+      entityLabelWithPopup( Company.getProcess( ClientApp.S.selectedEntity ).get("process/processType") )
+    ], {class: "columns_1_1"}),
+    br(),
+    d([
+      d([
+        submitButton("<---", e => ClientApp.update( ClientApp.updateState({selectedEntity: prevProcess }) ) ),
+        entityLabel(prevProcess)
+      ], {class: "columns_1_1"}),
+      d([
+        entityLabel(nextProcess),
+        submitButton("--->", e => ClientApp.update( ClientApp.updateState({selectedEntity: nextProcess }) ) ),
+      ], {class: "columns_1_1"}),
+      
+    ], {class: "columns_1_1"}),
+    br(),
+    timelineHeaderView(),
+    processTimelineView2(Company, ClientApp.S.selectedEntity ),
+    d( Company.getProcess( ClientApp.S.selectedEntity ).events.map( event => eventTimelineView(Company, ClientApp.S.selectedEntity, event)  ) ),
+    br(),
+    processActionsView(Company,  ClientApp.S.selectedEntity ),
+    br(),
+    d([
+      h3("Output fra prosessen:"),
+      d(Company.getProcess( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
+    ], {class: "feedContainer"} )
+  ],{class: "feedContainer"})
+} 
 
 let processesTimelineView = Company => d([
   h3("Selskapets prosesser"),
