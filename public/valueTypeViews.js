@@ -394,6 +394,20 @@ let entityVersionPopup = (entity, attribute, version) => {
 } 
 
 
+let entityAttributeView = EntityAttribute => d([
+  entityLabelWithPopup(EntityAttribute.attribute),
+  EntityAttribute.isArray  
+    ? (EntityAttribute.valueType === 32) ? newMultipleValuesView(Database.getEntity(EntityAttribute.entity), EntityAttribute.attribute) : multipleValuesView( Database.getEntity(EntityAttribute.entity), EntityAttribute.attribute, true ) 
+    : singleValueView( EntityAttribute.entity, EntityAttribute.attribute ),
+  d([
+    d([
+      d( "v" + EntityAttribute.Datoms.length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
+      entityVersionPopup(EntityAttribute.entity, EntityAttribute.attribute)
+    ], {class: "popupContainer"})
+    ], {style:"display: inline-flex;"} )
+], (EntityAttribute.isArray || EntityAttribute.valueType === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
+
+
 let basicInputView_editable = ( formattedValue, updateFunction ) => input( {
   value: formattedValue, style: isDefined( formattedValue )
     ? isNumber(formattedValue) 
@@ -413,7 +427,7 @@ let entityRefView = ( formattedValue, updateFunction, options ) => {
     input({value: formattedValue, list: datalistID, style: `text-align: right;`}, "change", updateFunction),
     ])
 }
-let fileuploadView = ( formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", e => updateFunction)
+let fileuploadView = ( formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", updateFunction)
 
 let functionView = ( formattedValue, updateFunction ) => {
 
@@ -470,7 +484,6 @@ let selectCompanyEntityView = ( formattedValue, updateFunction, options, Company
 
   let isValidCompanyEntity = Company.events.includes(formattedValue)
 
-  let datalistID = getNewElementID()
   return d([
     isValidCompanyEntity ? companyEntityLabelWithPopup( Company, Company.getEvent(formattedValue).entities[0] ) : d("tom"),
 
@@ -480,9 +493,6 @@ let selectCompanyEntityView = ( formattedValue, updateFunction, options, Company
       updateFunction 
       )
 
-
-    //htmlElementObject("datalist", {id:datalistID}, optionsElement( Company.getAll() ) ),
-    //input({value: formattedValue, list: datalistID, style: `text-align: right;`}, "change", updateFunction),
     ])
 }
 
@@ -533,9 +543,25 @@ let singleValueView = ( entity, attribute, version ) => {
   let unFormatFunction = new Function(["submittedValue"], Database.get(valueType, "valueType/unformatFunction") ) 
   
 
-  let updateFunction = async e => {
+  let updateFunction = (valueType === 5824)
+  ? async element => {
+
+    let updateFunction = () => ClientApp.update(  )
+
+    let submitFunction = new Function(["Database", "entity", "attribute", "element", "updateFunction"], Database.get(valueType, "valueType/unformatFunction") )
+
+    
+
+    submitFunction(Database, entity, attribute, element, updateFunction)
+    
+
+    
+
+  }
+  : async e => {
 
     let submittedValue = submitInputValue( e )
+    
     let unformattedValue = unFormatFunction( submittedValue )
     let updatedEntity = await Database.updateEntity( entity, attribute, unformattedValue)
 

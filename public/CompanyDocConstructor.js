@@ -99,11 +99,12 @@ let constructEntity = ( receivedDatabase, Company, Process, Event, entityConstru
   
 let createCompanyQueryObject = (receivedDatabase, Company) => {
 
-    Company.getAll = entityType => {
+    Company.getAll = (entityType, t) => {
 
         let matchingDatoms = Company.companyDatoms
         .filter( companyDatom => companyDatom.attribute === 6781 )
         .filter( companyDatom => companyDatom.value === entityType )
+        .filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
 
         let entities = isDefined(entityType)
           ? isDefined( matchingDatoms ) 
@@ -115,90 +116,93 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
     } 
         
 
-    Company.getDatom = (entity, attribute ) => Company.companyDatoms
-    .filter( companyDatom => companyDatom.entity === entity )
-    .filter( companyDatom => companyDatom.attribute === attribute )
-    .slice( -1 )[0]
+    Company.getDatom = ( entity, attribute, t ) => Company.companyDatoms
+      .filter( companyDatom => companyDatom.entity === entity )
+      .filter( companyDatom => companyDatom.attribute === attribute )
+      .filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
+      .slice( -1 )[0]
 
-    Company.getCalculatedFieldObject = (companyEntity, calculatedField) => Company.calculatedFieldObjects
-        .filter( calculatedFieldObject => calculatedFieldObject.companyEntity === companyEntity && calculatedFieldObject.calculatedField === calculatedField  )
-        .slice( -1 )[0]
+    Company.getCalculatedFieldObject = (companyEntity, calculatedField, t ) => Company.calculatedFieldObjects
+      .filter( calculatedFieldObject => calculatedFieldObject.companyEntity === companyEntity && calculatedFieldObject.calculatedField === calculatedField  )
+      .filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
+      .slice( -1 )[0]
+
+    Company.getEntity = ( entity, attribute, t ) => {
+
+            let CompanyEntity = {
+              entity,
+              companyEntityType: Company.companyDatoms[0].value,
+              companyDatoms: Company.companyDatoms.filter( companyDatom => companyDatom.entity === entity )
+          }
 
 
-    Company.get = (entity, attribute ) => {
 
-        if(isUndefined(attribute)){
-        let CompanyEntity = {
-            entity,
-            companyEntityType: Company.companyDatoms[0].value,
-            companyDatoms: Company.companyDatoms.filter( companyDatom => companyDatom.entity === entity )
-        }
-    
+      CompanyEntity.get = attr => {
 
-    
-    CompanyEntity.get = attr => {
+          if( receivedDatabase.get(attr, "entity/entityType") === 42 ){
 
-        if( receivedDatabase.get(attr, "entity/entityType") === 42 ){
+          let matchingDatoms = CompanyEntity.companyDatoms.filter( companyDatom => companyDatom.attribute === attr )
 
-        let matchingDatoms = CompanyEntity.companyDatoms.filter( companyDatom => companyDatom.attribute === attr )
+          let latestDatom = matchingDatoms.length > 0 ? matchingDatoms.slice( -1 )[0] : undefined
 
-        let latestDatom = matchingDatoms.length > 0 ? matchingDatoms.slice( -1 )[0] : undefined
+          let value = isDefined(latestDatom) ?  latestDatom.value : undefined
+          return value
 
-        let value = isDefined(latestDatom) ?  latestDatom.value : undefined
-        return value
+          }else if ( receivedDatabase.get(attr, "entity/entityType") === 5817 ){
 
-        }else if ( receivedDatabase.get(attr, "entity/entityType") === 5817 ){
+          let calculatedFieldObject = Company.getCalculatedFieldObject(CompanyEntity. entity, attr )
 
-        let calculatedFieldObject = Company.getCalculatedFieldObject(CompanyEntity. entity, attr )
+          return isDefined( calculatedFieldObject ) 
+              ? calculatedFieldObject.value 
+              : receivedDatabase.get(attribute, "attribute/isArray" ) ? [] : undefined
 
+          }else{ return log(undefined, {info: "ERROR: CompanyEntity.get(), attr is not attribute or calculcatedField", CompanyEntity, attr }) }
+
+          
+
+      } 
+      CompanyEntity.getOptions = attr => receivedDatabase.getCompanyOptionsFunction( attr )( Company, CompanyEntity )
+
+
+
+
+      CompanyEntity.event = CompanyEntity.companyDatoms[0].event
+
+
+      CompanyEntity.companyEntityType = CompanyEntity.get(6781)
+
+      CompanyEntity.label = () => `${receivedDatabase.get( CompanyEntity.companyEntityType, "entity/label")} # ${Company.getAll(CompanyEntity.companyEntityType).findIndex( e => e === CompanyEntity.entity) + 1}`
+
+      return CompanyEntity
+    }
+
+
+    Company.get = (entity, attribute, t ) => {
+
+      if(isUndefined(attribute)){ return Company.getEntity( entity, attribute, t ) }
+
+      if(receivedDatabase.get(attribute, "entity/entityType") === 42){
+        let companyDatom = Company.getDatom( entity, attribute, t )
+        return isDefined( companyDatom ) ? companyDatom.value : undefined
+      }else{
+        let calculatedFieldObject = Company.getCalculatedFieldObject( entity, attribute, t )
         return isDefined( calculatedFieldObject ) 
             ? calculatedFieldObject.value 
             : receivedDatabase.get(attribute, "attribute/isArray" ) ? [] : undefined
-
-        }else{ return log(undefined, {info: "ERROR: CompanyEntity.get(), attr is not attribute or calculcatedField", CompanyEntity, attr }) }
-
-        
-
-    } 
-    CompanyEntity.getOptions = attr => receivedDatabase.getCompanyOptionsFunction( attr )( Company, CompanyEntity )
-
-
-
-
-    CompanyEntity.event = CompanyEntity.companyDatoms[0].event
-
-
-    CompanyEntity.companyEntityType = CompanyEntity.get(6781)
-
-    CompanyEntity.label = () => `${receivedDatabase.get( CompanyEntity.companyEntityType, "entity/label")} # ${Company.getAll(CompanyEntity.companyEntityType).findIndex( e => e === CompanyEntity.entity) + 1}`
-
-    return CompanyEntity
+      }
+      
     }
 
-    if(receivedDatabase.get(attribute, "entity/entityType") === 42){
-    let companyDatom = Company.getDatom(entity, attribute )
-    return isDefined( companyDatom ) ? companyDatom.value : undefined
-    }else{
-    let calculatedFieldObject = Company.getCalculatedFieldObject(entity, attribute )
-    return isDefined( calculatedFieldObject ) 
-        ? calculatedFieldObject.value 
-        : receivedDatabase.get(attribute, "attribute/isArray" ) ? [] : undefined
-    }
-    
-    } 
 
 
+    Company.getProcess = (process, t) => {
 
-    Company.getProcess = process => {
         let Process = receivedDatabase.get( process )
         Process.events = Company.events.filter( event => receivedDatabase.get(event, "event/process") === process )
-        Process.companyDatoms = Company.companyDatoms.filter( companyDatom => companyDatom.process === process )
+        Process.companyDatoms = Company.companyDatoms.filter( companyDatom => companyDatom.process === process ).filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
         Process.entities = Process.companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
 
-
         Process.getFirstEvent = () => Company.getEvent( Process.events[0] )
-        Process.isValid = () => true
-        Process.getCriteria = () => []
         
         return Process
     }
@@ -209,7 +213,7 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
         Event.t =  Company.events.findIndex( e => e === event ) + 1
         Event.process = Event.get("event/process")
         Event.companyDatoms = Company.companyDatoms.filter( companyDatom => companyDatom.event === event )
-        Event.entities = Company.entities.filter( companyEntity => Company.getDatom(companyEntity, 6781).event === event )
+        Event.entities = Event.companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
         let processEvents = Company.events.filter( event => receivedDatabase.get(event, "event/process") === Event.process )
         let prevEvent = processEvents[  processEvents.findIndex( e => e  === event ) - 1 ]
         Event.getPrevEvent = () => Company.getEvent( prevEvent )
@@ -217,7 +221,7 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
         return Event
     }
 
-    Company.calculateCompanyCalculatedField = calculatedField => {
+    Company.calculateCompanyCalculatedField = (calculatedField, t) => {
 
       let newValueFunctionString = receivedDatabase.get( calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";")
   

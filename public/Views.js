@@ -335,14 +335,14 @@ let balanceSheetView = Company => d([
       d("Anleggsmidler"),
       d(
         [6238,  6241, 6253, 6254, 6255, 6256, 6260, 6262, 6270, 6240, 6275, 6277, 6279, 6286]
-          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) > 0 )
+          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) !== 0 )
           .map( calculateField => CompanyCalculatedFieldView(Company, calculateField)  )  
           ),
       br(),
       d("Omløpsmidler"),
       d(
         [6248,  6274, 6276, 6276, 6287, 6288]
-          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) > 0 )
+          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) !== 0 )
           .map( calculateField => CompanyCalculatedFieldView(Company, calculateField)  )  
         )
     ], {style: "margin: 5px;border: 1px solid #80808052;"}),
@@ -351,14 +351,14 @@ let balanceSheetView = Company => d([
       d("Egenkapital"),
       d(
         [6237,  6246, 6278, 6281, 6295]
-          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) > 0 )
+          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) !== 0 )
           .map( calculateField => CompanyCalculatedFieldView(Company, calculateField)  )  
       ),
       br(),
       d("Gjeld"),
       d(
         [6247,  6259, 6280, 6257, 6258, 6264, 6269, 6272, 6273, 6294, 6296]
-          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) > 0 )
+          .filter( calculateField => Company.calculateCompanyCalculatedField(calculateField) !== 0 )
           .map( calculateField => CompanyCalculatedFieldView(Company, calculateField)  )  
       ),
     ], {style: "margin: 5px;border: 1px solid #80808052;"}),

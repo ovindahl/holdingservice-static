@@ -63,20 +63,6 @@ const Database = {
   tx: null,
   Entities: [],
   entities: [],
-  setLocalState: (entity, newState) => {
-    let updatedEntity = Database.get(entity)
-    updatedEntity.localState = mergerino(updatedEntity.localState, newState) 
-    Database.Entities = Database.Entities.filter( Entity => Entity.entity !== updatedEntity.entity ).concat( updatedEntity )
-    update()
-    return;
-  },
-  getLocalState: entity => {
-    let serverEntity = Database.get(entity)
-    let localState = serverEntity.localState 
-      ? serverEntity.localState
-      : {tx: serverEntity.Datoms.map( Datom => Datom.tx ).filter( tx => !isUndefined(tx) ).sort().slice(-1)[0]}
-    return localState
-  },
   updateEntity: async (entity, attribute, value) => {
 
     let attr = Database.attr(attribute)
@@ -184,7 +170,7 @@ const Database = {
       if( isDefined(attribute) ){
         if( Database.isAttribute(attribute) ){
           let Datom = Database.getDatom(entity, attribute, version)
-          if(isUndefined(Datom)){return undefined} //, `[ Database.get(${entity}, ${attribute}, ${version}) ]: No attribute ${attribute} datoms exist for entity ${entity}`)}
+          if(isUndefined(Datom)){return undefined}
           else{ return Datom.value}
         }else if( Database.isCalculatedField(attribute) ){return log(undefined, `[ Database.get(${entity}, ${attribute}, ${version}) ]: Calculated fields for non-company entities not supported`) } //returns calculatedField
       }else{return Database.getEntity(entity)}
@@ -201,10 +187,12 @@ const Database = {
   },
   getEntity: entity => {
     let serverEntity = Database.Entities.find( serverEntity => serverEntity.entity === entity  )
+
     let Entity = serverEntity;
+    Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
     Entity.get = (attr, version) => Database.get(entity, attr, version)
-    Entity.getOptions = attr => Database.getOptions(attr)
     Entity.entityType = Entity.get("entity/entityType")
+    Entity.color = Database.get( Entity.entityType, "entityType/color") ? Database.get( Entity.entityType, "entityType/color") : "#bfbfbf"
 
     Entity.label = () => (Entity.entityType === 5692)
       ? `[${entity}] Prosess ${ClientApp.Company.processes.findIndex( p => p === entity ) + 1}: ${Database.get( Database.get(entity, "process/processType"), "entity/label")} `
@@ -212,15 +200,10 @@ const Database = {
         ? `[${entity}] Hendelse ${ClientApp.Company.events.findIndex( e => e === entity ) + 1}: ${Database.get( Database.get(entity, "event/eventTypeEntity"), "entity/label")} `
         : Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
 
-
-
-
-    Entity.color = Database.get( Entity.entityType, "entityType/color") ? Database.get( Entity.entityType, "entityType/color") : "#bfbfbf"
-    Entity.isLocked = false;
-    Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
-
+    
+    
+    Entity.getOptions = attr => Database.getOptions(attr)
     Entity.replaceValue = async (attribute, newValue) => Database.updateEntity(entity, attribute, newValue )
-
     Entity.addValueEntry = async (attribute, newValue) => await Entity.replaceValue( attribute,  Entity.get(attribute).concat( newValue )  )
     Entity.removeValueEntry = async (attribute, index) => await Entity.replaceValue( attribute,  Entity.get(attribute).filter( (Value, i) => i !== index  ) )
 
@@ -251,36 +234,18 @@ const Database = {
   getEntityAttribute: (entity, attribute, version) => {
 
     let Entity = Database.getEntity( entity )
-
+    let EntityAttributeDatoms = Entity.Datoms.filter( Datom => Datom.attribute === Database.attrName(attribute) )
     let valueType = Database.get(attribute, "attribute/valueType")
     let isArray = Database.get(attribute, "attribute/isArray")
-    let isCalculatedField = Database.get(attribute, "entity/entityType") === 5817
-
-    let isEditable = true
-
-    let EntityDatoms = Entity.Datoms.filter( Datom => Datom.attribute === Database.attrName(attribute) )
-
-    let styleObject = (isArray || valueType === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"}
 
     let EntityAttribute = {
-      Datoms: EntityDatoms,
-      getView: () => d([
-        entityLabelWithPopup(attribute),
-        isArray 
-          ? (valueType === 32) ? newMultipleValuesView(Entity, attribute) : multipleValuesView( Entity, attribute, isEditable ) 
-          : singleValueView( entity, attribute, version ),
-        d([
-          d([
-            d( "v" + EntityDatoms.length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
-            entityVersionPopup(entity, attribute, version)
-          ], {class: "popupContainer"})
-          ], {style:"display: inline-flex;"} )
-      ], styleObject )  
+      entity, attribute, valueType, isArray,
+      Datoms: EntityAttributeDatoms,
     }
 
+    EntityAttribute.getView = () => entityAttributeView( EntityAttribute )
 
     return EntityAttribute
-
   },
   getAll: entityType => Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity), //Kan bli sirkulær med isAttribute
   getOptions: (attribute, tx ) => {
