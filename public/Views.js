@@ -15,6 +15,18 @@ let actionButton = companyAction => d([
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
+
+let svg = (width, height, innerhtml) => htmlElementObject("svg", {width, height}, innerhtml)
+
+
+let rect = (attributesObject, onclick) => htmlElementObject( "rect", attributesObject, "", "click", onclick )
+
+let circle = (attributesObject, onclick) => htmlElementObject( "circle", attributesObject, "", "click", onclick )
+
+
+
+
+
 // CLIENT PAGE VIEWS
 
 let companyEntityLabel = (Company, companyEntity) => d([
@@ -182,16 +194,21 @@ let processView = Company => d([
   ], {class: "columns_1_1"}),
   br(),
   timelineHeaderView(),
-  processTimelineView(Company, ClientApp.S.selectedEntity ),
+  processTimelineView2(Company, ClientApp.S.selectedEntity ),
   d( Company.getProcess( ClientApp.S.selectedEntity ).events.map( event => eventTimelineView(Company, ClientApp.S.selectedEntity, event)  ) ),
   br(),
   processActionsView(Company,  ClientApp.S.selectedEntity ),
+  br(),
+  d([
+    h3("Output fra prosessen:"),
+    d(Company.getProcess( ClientApp.S.selectedEntity ).entities.map( companyEntity => companyEntityView( Company, companyEntity ) )),
+  ], {class: "feedContainer"} )
 ],{class: "feedContainer"})
 
 let processesTimelineView = Company => d([
   h3("Selskapets prosesser"),
   timelineHeaderView(),
-  d( Company.processes.map( process => processTimelineView(Company, process) ) ), 
+  d( Company.processes.map( process => processTimelineView2(Company, process) ) ), 
 ], {class: "feedContainer"})
 
 
@@ -218,28 +235,79 @@ let processTimelineView = (Company, process) => {
   ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
 }
 
+let processTimelineView2 = (Company, process) => {
+
+  let Process = Company.getProcess( process )
+
+  let firstDate = moment( "2020-01-01", "YYYY-MM-DD" )
+
+  let width = 400;
+  let height = 50;
+
+  let daysInYear = 365
+  let leftPadding = 10;
+  let rightPadding = 10;
+
+  let dayWidth = ( width - leftPadding - rightPadding)  / daysInYear;
+
+
+  let firstProcessEvent = Process.events[0]
+
+  let firstEventX = dayWidth * moment( Database.get(firstProcessEvent, "event/date"), "x" ).diff(firstDate, 'days')
+
+  let lastProcessEvent = Process.events.slice(-1)[0]
+
+  let lastEventX = dayWidth * moment( Database.get(lastProcessEvent, "event/date"), "x" ).diff(firstDate, 'days')
+
+  let processWidth = lastEventX - firstEventX + 5
+
+  let rectHeigth = 10;
+
+  let processRect = rect({x: firstEventX, y: "50%", width: processWidth, height: rectHeigth, class: "processRect"}, e => ClientApp.update( ClientApp.updateState({selectedEntity: process}) ) )
+
+
+  return d([
+    entityLabelWithPopup(process, e => ClientApp.update( ClientApp.updateState({selectedEntity: process}) )),
+    svg(width, height, [processRect]  ),
+    actionButton( mergerino(Company.getAction(6628, undefined, Process  ), {label: "[ X ]"})  ) 
+  ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
+
+}
+
+
+
+
+
 let eventTimelineView = (Company, process, event) => {
 
   let Process = Company.getProcess( process )
 
   let Event = Company.getEvent( event )
 
-  let processEventsTimes = Process.events.map( event => Company.getEvent(event).t )
+  let firstDate = moment( "2020-01-01", "YYYY-MM-DD" )
+
+  
+
+  let width = 400;
+  let height = 50;
+
+  let daysInYear = 365
+  let leftPadding = 10;
+  let rightPadding = 10;
+
+  let dayWidth = ( width - leftPadding - rightPadding)  / daysInYear;
+
+  let eventX = dayWidth * moment( Database.get(event, "event/date"), "x" ).diff(firstDate, 'days')
+
+  let circleRadius = 5
+
+  let eventCirc = circle({cx: eventX, cy: "50%", r: circleRadius, class: "eventCircle"}, e => ClientApp.update( ClientApp.updateState({selectedEntity: event}) ) )
 
 
   return d([
     entityLabelWithPopup( Event.get("event/eventTypeEntity"), e => ClientApp.update(  ClientApp.updateState({selectedEntity: event}) )  ),
-    d( Company.events.map( (processEvent, i) => ((i+1) < processEventsTimes[0] || (i+1) > processEventsTimes.slice( -1 )[0])
-    ? d(" ")
-    : processEvent === event
-      ? d([
-          d([
-              d( `●`, {style: `color:${ Company.getEvent(event).isValid ? "green" : "red"}; ${event === ClientApp.S.selectedEntity ? "border: 1px solid black;background-color: gray;" : "" } `} ),
-              entityPopUp( event ),
-            ], {class: "popupContainer", style:"display: inline-flex;"}, "click", e => ClientApp.update(  ClientApp.updateState({selectedEntity: event}) ))
-        ], {style:"display: inline-flex;"} )
-      : d(" ") ), {style: `display:grid;grid-template-columns: repeat(${Company.events.length}, 1fr);background-color: #8080802b;margin: 5px;`} ),
-      actionButton( mergerino(Company.getAction(6635, Event, Process  ), {label: "[ X ]"})  ) 
+    svg(width, height, [eventCirc]  ),
+    actionButton( mergerino(Company.getAction(6635, Event, Process  ), {label: "[ X ]"})  ) 
   ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
 }
 
@@ -268,7 +336,7 @@ let eventView =  Company => {
     br(),
     d([
       h3( "Prosess" ),
-      processTimelineView(Company, Event.process ),
+      processTimelineView2(Company, Event.process ),
       br(),
       d([
         d([

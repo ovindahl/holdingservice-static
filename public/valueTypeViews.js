@@ -165,8 +165,10 @@ let companyValueView = (Company, companyEntity, attribute) => {
 
   try {
     return isDefined( Company.get(companyEntity, attribute) )
-    ? attribute === 6777 
-      ? companyEntityLabelWithPopup(Company, Company.get(companyEntity, attribute) )
+    ? Database.get(attribute, "attribute/valueType") === 41
+      ? Database.get(attribute, "attribute/isArray")
+        ? d( Company.get(companyEntity, attribute).map( companyEnt => companyEntityLabelWithPopup(Company, companyEnt ) ) )
+        : companyEntityLabelWithPopup(Company, Company.get(companyEntity, attribute) )
       : [1653, 6781, 1099].includes(attribute)
         ? entityLabel( Company.get(companyEntity, attribute) )
         : d( JSON.stringify(Company.get(companyEntity, attribute) )  )

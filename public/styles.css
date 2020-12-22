@@ -34,6 +34,21 @@ body {background-color: #F2F3F5;}
     background-color: lightgray;
 }
 
+.eventCircle {
+    fill: #ff00004f;
+}
+
+.eventCircle:hover {
+    fill: red;
+}
+
+.processRect {
+    fill: #a2c1dc8f;
+}
+
+.processRect:hover {
+    fill: blue;
+}
 
 
 .pageContainer {
