@@ -106,11 +106,13 @@ let clientPage = Company => {
       })]),
       submitButton("Bytt til admin", e => AdminApp.update(  ) )
     ], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
-    //dropdown( Company.entity, Database.getAll( 5722 ).map( company => returnObject({value: company, label: Database.get(company, "entity/label")  })  ), e => update( ClientApp.selectCompany( Number(submitInputValue(e))  ) )   ),
     d([
+      d("Mine selskap"),
+      d("   /   "),
       entityLabelWithPopup(Company.entity, e => update( ClientApp.updateState({selectedEntity: Company.entity}) ) ),
+      d("   /   "),
       d("SelectedEntity: " + ClientApp.S.selectedEntity),  //navBar(Company),
-    ]),
+    ], {style: "display: flex;"}),
     
     d([
       d(""),
@@ -138,7 +140,7 @@ let accountingYearView = Company => d([
 ])
 
 let companyEntitiesPageView = Company => d([
-  h3("Selskapets entiteter"),
+  h3("Alle selskapsdokumenter"),
   d( Database.getAll(6778).map( entityType => d([
     entityLabelWithPopup( entityType, e => ClientApp.update( ClientApp.updateState({selectedEntity: entityType }) ) ),
     d( Company.getAll(entityType).map( companyEntity => companyEntityLabelWithPopup(Company, companyEntity) ) ),
@@ -198,13 +200,58 @@ let navBar = Company => d([
 ], {style: "display: flex;"})
 
 let companyView = Company => d([
+
   d([
     d([
       entityLabelWithPopup(5722),
       entityLabelWithPopup(Company.entity),
     ], {class: "columns_1_1"}),
-    br(),
-    br(),
+  ], {class: "feedContainer"}),
+  br(),
+  d([
+    h3("Selskapets balanse"),
+    d(`Siste registrerte hendelse: ${ moment(Company.getEvent(Company.events.slice(-1)[0]).get("event/date"), "x").format("YYYY-MM-DD")  }`),
+    d([
+      d([
+        h3("Eiendeler"),
+        d([
+          entityLabelWithPopup(6785),
+          d( Company.getAll(6785).map( security => d([
+            companyEntityLabelWithPopup(Company, security),
+            d("1000", {style: `text-align: right;`})
+          ], {class: "columns_1_1"})  ) )
+        ], {style: gridColumnsStyle("1fr 3fr") }),
+        d([
+          entityLabelWithPopup(7310),
+          d( Company.getAll(7310).map( bankAccount => d([
+            companyEntityLabelWithPopup(Company, bankAccount),
+            d("1000", {style: `text-align: right;`})
+          ], {class: "columns_1_1"}) ) )
+        ], {style: gridColumnsStyle("1fr 3fr") }),
+      ], {style: `padding: 1em;`}),
+      d([
+        h3("Egenkapital og gjeld"),
+        d([
+          entityLabelWithPopup(6790),
+          d( Company.getAll(6790).map( actor => d([
+            companyEntityLabelWithPopup(Company, actor),
+            d("1000", {style: `text-align: right;`})
+          ], {class: "columns_1_1"})  ) )
+        ], {style: gridColumnsStyle("1fr 3fr") }),
+        d([
+          entityLabelWithPopup(6791),
+          d( Company.getAll(6791).map( loan => d([
+            companyEntityLabelWithPopup(Company, loan),
+            d("1000", {style: `text-align: right;`})
+          ], {class: "columns_1_1"})  ) )
+        ], {style: gridColumnsStyle("1fr 3fr") }),
+      ], {style: `padding: 1em;`}),
+
+    ], {class: "columns_1_1"})
+    
+  ], {class: "feedContainer"}),
+  br(),
+  d([
     h3("Registrerte regnskapsår"),
     d( [7407, 7406].map( accountingYear => {
 
@@ -226,7 +273,7 @@ let companyView = Company => d([
           ]),
           d([
             entityLabelWithPopup(6778, e => ClientApp.update( ClientApp.updateState({selectedEntity: 6778 }) ) ),
-            d( Database.getAll(6778).map( entityType => entityLabelWithPopup( entityType, e => ClientApp.update( ClientApp.updateState({selectedEntity: entityType }) ) )))
+            d( [7047, 7079, 7321, 6780, 6820, 6802].map( entityType => entityLabelWithPopup( entityType, e => ClientApp.update( ClientApp.updateState({selectedEntity: entityType }) ) )))
           ])
         ], {class: "columns_1_1"}),
         br(),
@@ -234,6 +281,9 @@ let companyView = Company => d([
       ])
     } )),
   ], {class: "feedContainer"}),
+
+    
+  
   ])
 
 let companyActionsView = Company => d([
