@@ -327,7 +327,7 @@ const Database = {
         .every( statement => new Function( ["Database", "Company" ], statement["statement/statement"] )( Database, Company )  ),
         label: "Opprett prosess: " + Database.getEntity(processType).label() ,
         execute: async () => {
-          let newEntity = await Database.createEntity(5692, [ newDatom( 'newEntity' , 'process/company', Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ) ] )
+          let newEntity = await Database.createEntity(5692, [ newDatom( 'newEntity' , 'process/company', Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ), newDatom( 'newEntity' , 'process/accountingYear', 7407 ) ] )
           ClientApp.recalculateCompany( company )
           ClientApp.updateState( {selectedEntity: newEntity.entity } )
         }
