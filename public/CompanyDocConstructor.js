@@ -77,7 +77,7 @@ let constructEntity = ( receivedDatabase, Company, Process, Event, entityConstru
 
     let functionString = sharedStatementsString + valueFunctionString;
 
-    try {companyDatom.value = new Function( [`Company`, `Process`, `Event`], functionString )( Company, Process, Event ) } 
+    try {companyDatom.value = new Function( [`Database`, `Company`, `Process`, `Event`], functionString )( receivedDatabase, Company, Process, Event ) }  //NB: SOme event types are using Database (eg. "Relasjon til selskapet"). Should only go through Company?
     catch (error) {companyDatom.value = log(error,{info: "constructEntity(Company, Process, Event, entityConstructor) failed", Company, Process, Event, sharedStatements, valueFunctionString, functionString}) }
 
     return companyDatom

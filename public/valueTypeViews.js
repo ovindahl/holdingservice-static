@@ -122,33 +122,33 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 
 //Basic entity views
 
-let entityLabel = (entity, onClick) => d([
-  d( `${ Database.get( entity ) ? Database.get( entity ).label() : "na."}`, {class: "entityLabel", style: `background-color:${Database.get( entity ) ? Database.get( entity ).color : "gray" }`}, "click", isDefined(onClick) ? onClick : e => {
+let entityLabel = (DB, entity, onClick) => d([
+  d( `${ DB.get( entity ) ? DB.get( entity ).label() : "na."}`, {class: "entityLabel", style: `background-color:${DB.get( entity ) ? DB.get( entity ).color : "gray" }`}, "click", isDefined(onClick) ? onClick : e => {
     AdminApp.updateState({selectedEntity: entity})
     AdminApp.update()
   }),
 ], {style:"display: inline-flex;"})
 
 
-let entityLabelWithPopup = (entity, onClick) => d([
+let entityLabelWithPopup = ( DB, entity, onClick) => d([
 d([
-  entityLabel(entity, onClick),
-  entityPopUp( entity ),
+  entityLabel( DB, entity, onClick),
+  entityPopUp( DB, entity ),
 ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
-let entityPopUp = entity => d([
+let entityPopUp = (DB, entity) => d([
 d([
-  entityLabel( 6 ),
-  d( Database.get( entity ) ? Database.get( entity ).label() : "na." ),
+  entityLabel( DB,  6 ),
+  d( DB.get( entity ) ? DB.get( entity ).label() : "na." ),
 ], {class: "columns_1_1"}),
 d([
   d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
   d(String(entity)),
 ], {class: "columns_1_1"}),
 d([
-  entityLabel( 47 ),
-  entityLabel( Database.get( entity, "entity/entityType" ) ),
+  entityLabel( DB,  47 ),
+  entityLabel( DB,  DB.get( entity, "entity/entityType" ) ),
 ], {class: "columns_1_1"}),
 br(),
 submitButton("Rediger", e => AdminApp.update( AdminApp.updateState({selectedEntity: entity}) )  ),
@@ -156,21 +156,21 @@ br(),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
-let companyDatomView = (Company, companyEntity, attribute) => d([
-  entityLabelWithPopup(attribute),
-  companyValueView(Company, companyEntity, attribute)
+let companyDatomView = (DB, Company, companyEntity, attribute) => d([
+  entityLabelWithPopup( DB, attribute),
+  companyValueView(DB, Company, companyEntity, attribute)
 ], {class: "columns_1_1"}) 
 
-let companyValueView = (Company, companyEntity, attribute) => {
+let companyValueView = (DB, Company, companyEntity, attribute) => {
 
   try {
     return isDefined( Company.get(companyEntity, attribute) )
-    ? Database.get(attribute, "attribute/valueType") === 41
-      ? Database.get(attribute, "attribute/isArray")
-        ? d( Company.get(companyEntity, attribute).map( companyEnt => companyEntityLabelWithPopup(Company, companyEnt ) ) )
-        : companyEntityLabelWithPopup(Company, Company.get(companyEntity, attribute) )
+    ? DB.get(attribute, "attribute/valueType") === 41
+      ? DB.get(attribute, "attribute/isArray")
+        ? d( Company.get(companyEntity, attribute).map( companyEnt => companyEntityLabelWithPopup(DB, Company, companyEnt ) ) )
+        : companyEntityLabelWithPopup(DB, Company, Company.get(companyEntity, attribute) )
       : [1653, 6781, 1099].includes(attribute)
-        ? entityLabel( Company.get(companyEntity, attribute) )
+        ? entityLabel( DB,  Company.get(companyEntity, attribute) )
         : d( JSON.stringify(Company.get(companyEntity, attribute) )  )
     : d("na.")
   } catch (error) {
@@ -182,11 +182,11 @@ let companyValueView = (Company, companyEntity, attribute) => {
 
 //Entity Views
 
-let companyEntityView = (Company, companyEntity ) => d([
-  companyEntityLabelWithPopup(Company, companyEntity),
+let companyEntityView = (DB, Company, companyEntity ) => d([
+  companyEntityLabelWithPopup(DB, Company, companyEntity),
   d("<br>"),
-  d( Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => companyDatomView( Company, companyEntity, companyDatom.attribute ) )),
-  d( Database.get( Company.get( companyEntity , 6781 ), "companyEntityType/calculatedFields" ).map( companyCalculatedField => companyDatomView( Company, companyEntity, companyCalculatedField ) ) )
+  d( Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => companyDatomView( DB, Company, companyEntity, companyDatom.attribute ) )),
+  d( DB.get( Company.get( companyEntity , 6781 ), "companyEntityType/calculatedFields" ).map( companyCalculatedField => companyDatomView( DB, Company, companyEntity, companyCalculatedField ) ) )
 ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
     
     //----------------
@@ -194,9 +194,9 @@ let companyEntityView = (Company, companyEntity ) => d([
 
 // VALUE TYPE VIEWS
 
-  let multipleValuesView = (Entity, attribute, isEditable) => {
+  let multipleValuesView = (DB, Entity, attribute, isEditable) => {
   
-    let valueType = Database.get(attribute, "attribute/valueType")
+    let valueType = DB.get(attribute, "attribute/valueType")
   
     let valueTypeViews = {
       "6783": companyEntityConstructorRowView,
@@ -223,14 +223,14 @@ let companyEntityView = (Company, companyEntity ) => d([
       isArray( Entity.get(attribute) )
         ?  d( Entity.get(attribute).map( (Value, index) => d([
               positionInArrayView(Entity, attribute, index),
-              valueTypeViews[ valueType ](Entity, attribute, index),
+              valueTypeViews[ valueType ](DB, Entity, attribute, index),
               submitButton( "[ X ]", async e => update( await Entity.removeValueEntry( attribute,  index ) )  )
             ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
         : d("Ingen verdier"),
         submitButton( "[ + ]", async e => update( isArray( Entity.get(attribute) ) ? await Entity.addValueEntry( attribute,  startValue ) : await Entity.replaceValue( attribute,  [startValue] ) )  )
     ]) : ( valueType === 41 )
       ? d( Entity.get(attribute).map( (Value, index) => companyEntityLabelWithPopup(ClientApp.Company, Value) ))
-      : d( Entity.get(attribute).map( (Value, index) => valueTypeViews[ valueType ](Entity, attribute, index) ))
+      : d( Entity.get(attribute).map( (Value, index) => valueTypeViews[ valueType ](DB, Entity, attribute, index) ))
   
   }
   
@@ -263,7 +263,7 @@ let companyEntityView = (Company, companyEntity ) => d([
   
   //Company entities
   
-  let input_singleCompanyEntity = (Entity, attribute, isEditable) => isEditable
+  let input_singleCompanyEntity = (DB, Entity, attribute, isEditable) => isEditable
     ? dropdown( Entity.get( attribute ), Entity.getOptions( attribute ), async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
     : companyEntityLabelWithPopup(ClientApp.Company, Entity.get( attribute ) )
   
@@ -272,7 +272,7 @@ let companyEntityView = (Company, companyEntity ) => d([
       let Account = Entity.get(attribute)[index]
     
       return d([
-        entityLabelWithPopup(Account.account),
+        entityLabelWithPopup( DB, Account.account),
         d( String(Account.amount) ),
       ], {class: "columns_1_1"})
     
@@ -284,22 +284,22 @@ let companyEntityView = (Company, companyEntity ) => d([
     
   //Multiple valueType views
   
-  let argumentRowView = (Entity, attribute, index) => {
+  let argumentRowView = (DB, Entity, attribute, index) => {
   
-    let valueType = Database.get(attribute, "attribute/valueType") //6613
+    let valueType = DB.get(attribute, "attribute/valueType") //6613
   
     let Value = Entity.get(attribute)[index]
   
     return d([
       input( {value: Value["argument/name"] }, "change", async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"argument/name": submitInputValue(e)})  ) ) ),
-      dropdown( Value["argument/valueType"], Database.getAll(44).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ), async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }) ) ) )
+      dropdown( Value["argument/valueType"], DB.getAll(44).map( e => returnObject({value: e, label: DB.get(e, "entity/label")}) ), async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }) ) ) )
     ], {class: "columns_1_1"}) 
   
   }
   
-  let statementRowView = (Entity, attribute, index) => {
+  let statementRowView = (DB, Entity, attribute, index) => {
   
-    let valueType = Database.get(attribute, "attribute/valueType") // 6614
+    let valueType = DB.get(attribute, "attribute/valueType") // 6614
   
     let Value = Entity.get(attribute)[index]
   
@@ -315,7 +315,7 @@ let companyEntityView = (Company, companyEntity ) => d([
   
   }
   
-  let companyEntityConstructorRowView = (Entity, attribute, index) => {
+  let companyEntityConstructorRowView = (DB, Entity, attribute, index) => {
   
     let entityConstructor = Entity.get(attribute)[index]
     let companyEntityType = entityConstructor.companyEntityType
@@ -324,12 +324,12 @@ let companyEntityView = (Company, companyEntity ) => d([
     return d([
       dropdown(
         companyEntityType, 
-        Database.getAll(6778).map( e => returnObject({value: e, label: Database.get(e, "entity/label")}) ),
+        DB.getAll(6778).map( e => returnObject({value: e, label: DB.get(e, "entity/label")}) ),
         async e => update( await Entity.replaceValueEntry( attribute, index, mergerino( entityConstructor, {companyEntityType: Number( submitInputValue(e) ), attributeAssertions: {}  } ) ) )
         ),
         br(),
         d([
-          d( Database.get( companyEntityType , "companyEntityType/attributes").map(  attr => {
+          d( DB.get( companyEntityType , "companyEntityType/attributes").map(  attr => {
             let attributeAssertions = entityConstructor.attributeAssertions
   
             let attributeAssertion = attributeAssertions[ attr ]
@@ -352,7 +352,7 @@ let companyEntityView = (Company, companyEntity ) => d([
     
             return d([
               checkBox( isEnabled , isEnabledUpdateFunction ),
-              entityLabelWithPopup(attr),
+              entityLabelWithPopup( DB, attr),
               textArea(valueFunction, {class:"textArea_code"}, valueFunctionUpdateFunction )
             ], {style: gridColumnsStyle("1fr 3fr 6fr") })
           }  ) )
@@ -366,18 +366,18 @@ let companyEntityView = (Company, companyEntity ) => d([
 
 //NEW VIEWS
 
-let entityView = (Entity) => d([
+let entityView = (DB, Entity) => d([
   d([
     d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
-    entityLabelWithPopup(Entity.entity),
+    entityLabelWithPopup( DB, Entity.entity),
   ], {class: "columns_1_1"}),
-  d( Database.get( Entity.get("entity/entityType"), "entityType/attributes" ).map( attribute => Database.getEntityAttribute( Entity.entity, attribute ).getView() ) ),
+  d( DB.get( Entity.get("entity/entityType"), "entityType/attributes" ).map( attribute => DB.getEntityAttribute( Entity.entity, attribute ).getView(DB) ) ),
   d( Entity.getActions().map( Action => Action.isActionable ? submitButton( Action.label, async e => AdminApp.update(  await Action.actionFunction()  ) ) : d( Action.label, {style: "background-color: gray;"} )  ) )
 ], {class: "feedContainer"} )
 
-let entityVersionPopup = (entity, attribute, version) => {
+let entityVersionPopup = (DB, entity, attribute, version) => {
 
-  let EntityDatoms = Database.getEntity( entity ).Datoms.filter( Datom => Datom.attribute === Database.attrName(attribute) )
+  let EntityDatoms = DB.getEntity( entity ).Datoms.filter( Datom => Datom.attribute === DB.attrName(attribute) )
 
   return d([
     d([
@@ -387,51 +387,57 @@ let entityVersionPopup = (entity, attribute, version) => {
       d( EntityDatoms.reverse().slice(1, 5).map( Datom => d([
         d( moment(Datom.tx).format("YYYY-MM-DD") ),
         d(JSON.stringify(Datom.value)),
-        submitButton( "Gjenopprett", Database.get(entity, "entity/entityType") === 46 
-          ? async e => ClientApp.update( await Database.updateEntity( entity, Datom.attribute, Datom.value ) )
-          : async e => AdminApp.update( await Database.updateEntity( entity,  Datom.attribute, Datom.value ) )  
+        submitButton( "Gjenopprett", DB.get(entity, "entity/entityType") === 46 
+          ? async e => {
+            ClientApp.DB = await Transactor.updateEntity( DB, entity, Datom.attribute, Datom.value )
+            ClientApp.update(  )
+          } 
+          : async e => {
+            ClientApp.DB = await Transactor.updateEntity( DB, entity,  Datom.attribute, Datom.value )
+            AdminApp.update(  )
+          } 
         )
       ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) )
     ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 } 
 
 
-let entityAttributeView = EntityAttribute => d([
-  entityLabelWithPopup(EntityAttribute.attribute),
+let entityAttributeView = (DB, EntityAttribute) => d([
+  entityLabelWithPopup( DB, EntityAttribute.attribute),
   EntityAttribute.isArray  
-    ? (EntityAttribute.valueType === 32) ? newMultipleValuesView(Database.getEntity(EntityAttribute.entity), EntityAttribute.attribute) : multipleValuesView( Database.getEntity(EntityAttribute.entity), EntityAttribute.attribute, true ) 
-    : singleValueView( EntityAttribute.entity, EntityAttribute.attribute ),
+    ? (EntityAttribute.valueType === 32) ? newMultipleValuesView(DB, DB.getEntity(EntityAttribute.entity), EntityAttribute.attribute) : multipleValuesView(DB, DB.getEntity(EntityAttribute.entity), EntityAttribute.attribute, true ) 
+    : singleValueView( DB, EntityAttribute.entity, EntityAttribute.attribute ),
   d([
     d([
       d( "v" + EntityAttribute.Datoms.length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
-      entityVersionPopup(EntityAttribute.entity, EntityAttribute.attribute)
+      entityVersionPopup(DB, EntityAttribute.entity, EntityAttribute.attribute)
     ], {class: "popupContainer"})
     ], {style:"display: inline-flex;"} )
 ], (EntityAttribute.isArray || EntityAttribute.valueType === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
 
 
-let basicInputView_editable = ( formattedValue, updateFunction ) => input( {
+let basicInputView_editable = ( DB, formattedValue, updateFunction ) => input( {
   value: formattedValue, style: isDefined( formattedValue )
     ? isNumber(formattedValue) 
       ? `text-align: right;` 
       : "" 
     : "background-color: red;" 
   }, "change", updateFunction  )
-let textAreaView = ( formattedValue, updateFunction ) => textArea( formattedValue, {class:"textArea_code"}, updateFunction )
-let boolView = ( formattedValue, updateFunction ) => input( {value: formattedValue}, "click", updateFunction )
+let textAreaView = ( DB, formattedValue, updateFunction ) => textArea( formattedValue, {class:"textArea_code"}, updateFunction )
+let boolView = ( DB, formattedValue, updateFunction ) => input( {value: formattedValue}, "click", updateFunction )
 
-let optionsViews = ( formattedValue, updateFunction, options )  => dropdown( formattedValue, options , updateFunction )
-let entityRefView = ( formattedValue, updateFunction, options ) => {
+let optionsViews = ( DB, formattedValue, updateFunction, options )  => dropdown( formattedValue, options , updateFunction )
+let entityRefView = ( DB, formattedValue, updateFunction, options ) => {
   let datalistID = getNewElementID()
   return d([
-    entityLabelWithPopup( formattedValue ), 
+    entityLabelWithPopup( DB,  formattedValue ), 
     htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
     input({value: formattedValue, list: datalistID, style: `text-align: right;`}, "change", updateFunction),
     ])
 }
-let fileuploadView = ( formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", updateFunction)
+let fileuploadView = ( DB, formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", updateFunction)
 
-let functionView = ( formattedValue, updateFunction ) => {
+let functionView = ( DB, formattedValue, updateFunction ) => {
 
   //TBD
   
@@ -482,12 +488,12 @@ let functionView = ( formattedValue, updateFunction ) => {
 }
 
 
-let selectCompanyEntityView = ( formattedValue, updateFunction, options, Company ) => {
+let selectCompanyEntityView = ( DB, formattedValue, updateFunction, options, Company ) => {
 
   let isValidCompanyEntity = Company.events.includes(formattedValue)
 
   return d([
-    isValidCompanyEntity ? companyEntityLabelWithPopup( Company, Company.getEvent(formattedValue).entities[0] ) : d("tom"),
+    isValidCompanyEntity ? companyEntityLabelWithPopup( DB, Company, Company.getEvent(formattedValue).entities[0] ) : d("tom"),
 
     dropdown(
       isValidCompanyEntity ? formattedValue : "Velg", 
@@ -498,7 +504,7 @@ let selectCompanyEntityView = ( formattedValue, updateFunction, options, Company
     ])
 }
 
-let placeholderView = ( formattedValue, updateFunction ) => d( JSON.stringify( formattedValue )  )
+let placeholderView = ( DB, formattedValue, updateFunction ) => d( JSON.stringify( formattedValue )  )
 
 const valueTypeViews_single = {
   "30": basicInputView_editable, //Tekst
@@ -528,21 +534,21 @@ const valueTypeViews_single = {
 
 
 
-let singleValueView = ( entity, attribute, version ) => {
+let singleValueView = ( DB, entity, attribute, version ) => {
 
 
-  let valueType = Database.get(attribute, "attribute/valueType")
+  let valueType = DB.get(attribute, "attribute/valueType")
 
 
   let viewFunction = valueTypeViews_single[ valueType ]
 
-  let formatFunction = new Function(["storedValue"], Database.get(valueType, "valueType/formatFunction") )
+  let formatFunction = new Function(["storedValue"], DB.get(valueType, "valueType/formatFunction") )
 
-  let storedValue = Database.get(entity, attribute, version )
+  let storedValue = DB.get(entity, attribute, version )
 
   let formattedValue = formatFunction( storedValue  )
 
-  let unFormatFunction = new Function(["submittedValue"], Database.get(valueType, "valueType/unformatFunction") ) 
+  let unFormatFunction = new Function(["submittedValue"], DB.get(valueType, "valueType/unformatFunction") ) 
   
 
   let updateFunction = (valueType === 5824)
@@ -550,11 +556,11 @@ let singleValueView = ( entity, attribute, version ) => {
 
     let updateFunction = () => ClientApp.update(  )
 
-    let submitFunction = new Function(["Database", "entity", "attribute", "element", "updateFunction"], Database.get(valueType, "valueType/unformatFunction") )
+    let submitFunction = new Function(["Database", "entity", "attribute", "element", "updateFunction"], DB.get(valueType, "valueType/unformatFunction") )
 
     
 
-    submitFunction(Database, entity, attribute, element, updateFunction)
+    submitFunction(DB, entity, attribute, element, updateFunction)
     
 
     
@@ -565,44 +571,44 @@ let singleValueView = ( entity, attribute, version ) => {
     let submittedValue = submitInputValue( e )
     
     let unformattedValue = unFormatFunction( submittedValue )
-    let updatedEntity = await Database.updateEntity( entity, attribute, unformattedValue)
-
-    if( Database.get(entity, "entity/entityType") === 46 ){  ClientApp.update( updatedEntity.entity )  }else{ AdminApp.update( updatedEntity.entity ) }
+    let updatedDB = await Transactor.updateEntity( DB, entity, attribute, unformattedValue )
+    ClientApp.DB = updatedDB
+    if( DB.get(entity, "entity/entityType") === 46 ){  ClientApp.update(  )  }else{ AdminApp.update(  ) }
 
   }
 
 
-  let options = [32, 40].includes(valueType) ? Database.getOptions( attribute ) : []
+  let options = [32, 40].includes(valueType) ? DB.getOptions( attribute ) : []
 
   let Company = [41].includes(valueType) ? ClientApp.Company : undefined
 
-  let valueView = viewFunction( formattedValue, updateFunction, options, Company )
+  let valueView = viewFunction( DB, formattedValue, updateFunction, options, Company )
 
   return valueView
 
 
 }
 
-let multipleEntityRefsRowView = ( formattedValue, updateFunction, options ) => {
+let multipleEntityRefsRowView = ( DB, formattedValue, updateFunction, options ) => {
   let datalistID = getNewElementID()
   return d([
     htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
     input({value: formattedValue, list: datalistID, style: `text-align: right;`}, "change", updateFunction),
-    entityLabelWithPopup( formattedValue ), 
+    entityLabelWithPopup( DB,  formattedValue ), 
     ])
 } 
 
 
-let newMultipleValuesView = (Entity, attribute ) => {
+let newMultipleValuesView = (DB, Entity, attribute ) => {
   
 
   
 
-  let valueType = Database.get(attribute, "attribute/valueType")
+  let valueType = DB.get(attribute, "attribute/valueType")
 
-  if( valueType === 6783 ){ return companyEntityConstructorRowView( Entity, attribute, index )  }
-  if( valueType === 6613 ){ return argumentRowView( Entity, attribute, index )  }
-  if( valueType === 6614 ){ return statementRowView( Entity, attribute, index )  }
+  if( valueType === 6783 ){ return companyEntityConstructorRowView( DB, Entity, attribute, index )  }
+  if( valueType === 6613 ){ return argumentRowView( DB, Entity, attribute, index )  }
+  if( valueType === 6614 ){ return statementRowView( DB, Entity, attribute, index )  }
 
   let valueTypeViews_multiple = {
     "32": multipleEntityRefsRowView,
@@ -620,13 +626,13 @@ let newMultipleValuesView = (Entity, attribute ) => {
 
 
   let viewFunction = valueTypeViews_multiple[ valueType ]
-  let formatFunction = new Function(["storedValue"], Database.get(valueType, "valueType/formatFunction") )
-  let unFormatFunction = new Function(["submittedValue"], Database.get(valueType, "valueType/unformatFunction") ) 
+  let formatFunction = new Function(["storedValue"], DB.get(valueType, "valueType/formatFunction") )
+  let unFormatFunction = new Function(["submittedValue"], DB.get(valueType, "valueType/unformatFunction") ) 
   let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : ``
 
   let entity = Entity.entity
 
-  let storedValues = Database.get( entity, attribute )
+  let storedValues = DB.get( entity, attribute )
 
   let getUpdateFunction = index => async e => {
     let submittedValue = submitInputValue( e )
@@ -661,13 +667,13 @@ let newMultipleValuesView = (Entity, attribute ) => {
     update( await Entity.replaceValue( attribute,  newArray ) )
   }   ) : d("")
 
-  let options = [ 32 ].includes(valueType) ? Database.getOptions( attribute ) : []
+  let options = [ 32 ].includes(valueType) ? DB.getOptions( attribute ) : []
 
   return d([
     isArray( storedValues )
       ?  d( storedValues.map( (storedValue, index) => d([
             positionInArrayView(Entity, attribute, index),
-            viewFunction(  formatFunction( storedValue ), getUpdateFunction( index ) , options  ),
+            viewFunction(  DB, formatFunction( storedValue ), getUpdateFunction( index ) , options  ),
             submitButton( "[ X ]", async e => update(  await Entity.replaceValue( attribute,  storedValues.filter( (Value, i) => i !== index  ) ) )  )
           ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
       : d("Ingen verdier"),

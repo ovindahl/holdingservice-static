@@ -33,6 +33,7 @@ app.get("/", (req,res)=>{res.send(`
         <script src="/static/valueTypeViews.js"></script>
         <script src="/static/Views.js"></script>
         <script src="/static/CompanyDocConstructor.js"></script>
+        <script src="/static/DatabaseConstructor.js"></script>
         <script src="/static/app.js"></script>
     </body>
   </html>

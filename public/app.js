@@ -59,7 +59,188 @@ const sideEffects = {
   }
 }
 
-const Database = {
+const ClientApp = {
+  isActive: false,
+  Company: undefined,
+  S: {
+    t0: Date.now()
+  },
+  updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
+  replaceState: newState => ClientApp.S = newState,
+  recalculateCompany: company => ClientApp.Company = constructCompany( ClientApp.DB, company ),
+  update: () => {
+    AdminApp.isActive = false
+    ClientApp.isActive = true
+    
+    let startTime = Date.now()
+    let elementTree = [clientPage( ClientApp.DB, ClientApp.Company )]
+    sideEffects.updateDOM( elementTree )
+    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
+}
+}
+
+const AdminApp = {
+  isActive: false,
+  S: {
+    selectedPage: "Admin",
+    selectedEntity: 1,  
+  },
+  updateState: patch => AdminApp.S = mergerino( AdminApp.S, patch ),
+  replaceState: newState => AdminApp.S = newState,
+  update: () => {
+    ClientApp.isActive = false
+    AdminApp.isActive = true
+    
+    Company = ClientApp.Company 
+    
+    let startTime = Date.now()
+    let elementTree = [ adminPage( ClientApp.DB, Company ) ]
+    sideEffects.updateDOM( elementTree )
+    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
+}
+}
+
+let Company = {}
+
+let update = () => {
+    Company = ClientApp.Company 
+    
+    let startTime = Date.now()
+    let elementTree = AdminApp.isActive ? [ adminPage( ClientApp.DB, Company ) ] : [ clientPage(ClientApp.DB, Company) ]
+    sideEffects.updateDOM( elementTree )
+    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
+}
+
+
+let constructCompany = (DB, company) => {
+
+  let Company = constructCompanyDocument( DB, company )
+
+
+  Company.getAction = ( actionEntity, Event, Process, Wildcard ) => {
+
+
+    let asyncFunction = DB.getGlobalAsyncFunction( actionEntity )
+    let argumentObjects = DB.get(actionEntity, "function/arguments")
+    let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
+
+    let criteriumStatementObjects = DB.get(actionEntity, "function/criteriumStatements") ? DB.get(actionEntity, "function/criteriumStatements") : []
+    let criteriumStatements = criteriumStatementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
+
+    let criteriumFunctionString = criteriumStatements.join(";")
+    let criteriumFunction = new Function( arguments, criteriumFunctionString  )    
+
+    let isActionable = criteriumFunction( DB, Company, Process, Event  )
+
+    let updateCallback = selectedEntity => {
+      ClientApp.recalculateCompany( company )
+      ClientApp.updateState( {selectedEntity } )
+      log( "Handling gjennomført" )
+    } 
+
+    
+
+    let Action = {
+        entity: actionEntity,
+        label: DB.getEntity(actionEntity).label(),
+        isActionable,
+        execute: async () => {
+          if( isActionable ) {
+            try {  await asyncFunction( DB, Company, Process, Event, Wildcard ).then( updateCallback  )  } catch (error) { return log(error, {info: "ERROR: Action.execute() failed" } ) }
+          } else { ClientApp.update( log({info: "Action is not actionable:", actionEntity}) )  }
+
+        }
+  }
+
+
+  return Action
+  }
+
+  Company.getActions = () => DB.getAll(5687)
+    .map( processType => returnObject({
+      isActionable: DB.get(processType, "processType/creationCriteria")
+      .filter( statement =>  statement["statement/isEnabled"] )
+      .every( statement => new Function( ["Database", "Company" ], statement["statement/statement"] )( DB, Company )  ),
+      label: "Opprett prosess: " + DB.getEntity(processType).label() ,
+      execute: async () => {
+        let newEntity = await Transactor.createEntity(DB, 5692, [ newDatom( 'newEntity' , 'process/company', Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ), newDatom( 'newEntity' , 'process/accountingYear', 7407 ) ] )
+        ClientApp.recalculateCompany( company )
+        ClientApp.updateState( {selectedEntity: newEntity.entity } )
+      }
+    })  )
+
+  Company.getProcessActions = process => {
+
+    let processActions = [6628].map( actionEntity => Company.getAction( actionEntity, undefined, Company.getProcess( process ) ) )
+
+    let newEventActions = DB.get( DB.get( process , "process/processType") , "processType/eventTypes").map( eventType => returnObject({
+      isActionable: true,
+      label: "Opprett hendelse: " + DB.getEntity(eventType).label(),
+      execute: async () => {
+        let newEvent = await Transactor.createEntity(DB, 46, [ newDatom( 'newEntity' , 'event/process', process  ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , "event/date", Date.now() ) ])
+        ClientApp.recalculateCompany( company )
+        }
+    })   )
+
+    return processActions.concat( newEventActions )
+  } 
+  
+  Company.getEventActions = event => [
+    Company.getAction(6635, Company.getEvent(event), Company.getProcess( DB.get(event, "event/process") )  ),
+    returnObject({isActionable: true, label: "Oppdatter selskapsdokumentet", execute: () => ClientApp.recalculateCompany( company )  }),
+    Company.getAction(7090, Company.getEvent(event), Company.getProcess( DB.get(event, "event/process") )  ),
+  ]
+
+  return Company
+}
+
+
+let init = async () => {
+  let Entities = await sideEffects.APIRequest("GET", "Entities", null)
+  let initialDatabase = constructDatabase( Entities )
+  ClientApp.DB = initialDatabase
+  let company = 6829
+  ClientApp.Company = constructCompany( initialDatabase, company )
+  ClientApp.updateState( {selectedEntity: company } )
+  ClientApp.update(  )
+}
+
+sideEffects.configureClient();
+
+/* 
+var Stream = {
+  update: newDatoms => {
+
+    // new Datoms should first be applied to DB on client side
+    // UI should then update
+    // THEN  new datoms can sync to DB
+    // if sync is unsuccessfull, error should be shown
+
+    // Maybe just separate Transactor from readDB
+
+    console.log( newDatoms )
+
+    let updatedDB = Database.applyDatoms( newDatoms )
+
+    console.log( { Datoms, updatedDB } )
+
+    ClientApp.update( updatedDB )
+
+    Database.syncDatoms( newDatoms )
+
+  }
+} */
+
+
+
+//Archive
+
+
+
+
+
+
+const DatabaseBackup = {
   tx: null,
   Entities: [],
   entities: [],
@@ -227,7 +408,7 @@ const Database = {
       }   },
     ]
 
-    Entity.getView = () => entityView( Entity )
+    Entity.getView = DB => entityView( DB, Entity )
 
     return Entity
   },
@@ -243,7 +424,7 @@ const Database = {
       Datoms: EntityAttributeDatoms,
     }
 
-    EntityAttribute.getView = () => entityAttributeView( EntityAttribute )
+    EntityAttribute.getView = DB => entityAttributeView( DB, EntityAttribute )
 
     return EntityAttribute
   },
@@ -358,86 +539,3 @@ const Database = {
     return Company
   },
 }
-
-
-
-
-
-
-const ClientApp = {
-  isActive: false,
-  Company: undefined,
-  S: {
-    t0: Date.now()
-  },
-  updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
-  replaceState: newState => ClientApp.S = newState,
-  recalculateCompany: company => ClientApp.Company = Database.getCompany( company ),
-  update: () => {
-    AdminApp.isActive = false
-    ClientApp.isActive = true
-    D = Database
-    Company = ClientApp.Company 
-    
-    let startTime = Date.now()
-    let elementTree = [clientPage(Company)]
-    sideEffects.updateDOM( elementTree )
-    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
-}
-}
-
-const AdminApp = {
-  isActive: false,
-  S: {
-    selectedPage: "Admin",
-    selectedEntity: 1,  
-  },
-  updateState: patch => AdminApp.S = mergerino( AdminApp.S, patch ),
-  replaceState: newState => AdminApp.S = newState,
-  update: () => {
-    ClientApp.isActive = false
-    AdminApp.isActive = true
-    
-    D = Database
-    Company = ClientApp.Company 
-    
-    let startTime = Date.now()
-    let elementTree = [ adminPage( Company ) ]
-    sideEffects.updateDOM( elementTree )
-    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
-}
-}
-
-let D = Database
-let Company = {}
-
-let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
-
-let update = () => {
-    D = Database
-    Company = ClientApp.Company 
-    
-    let startTime = Date.now()
-    let elementTree = AdminApp.isActive ? [ adminPage( Company ) ] : [ clientPage(Company) ]
-    sideEffects.updateDOM( elementTree )
-    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
-}
-
-let init = async () => {
-
-  Database.Entities = await sideEffects.APIRequest("GET", "Entities", null)
-  Database.entities = Database.Entities.map( serverEntity => serverEntity.entity )
-  Database.attributes = Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
-  Database.attrNames = mergeArray(Database.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
-  Database.tx = Database.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-  Database.selectedEntity = 6
-
-  let company = 6829
-  ClientApp.recalculateCompany( company )
-  ClientApp.updateState( {selectedEntity: company } )
-  ClientApp.update(  )
-}
-
-sideEffects.configureClient();
-
-//Archive
