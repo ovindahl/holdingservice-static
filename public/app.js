@@ -61,19 +61,28 @@ const sideEffects = {
 
 const ClientApp = {
   isActive: false,
-  Company: undefined,
   S: {
     t0: Date.now()
   },
   updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
   replaceState: newState => ClientApp.S = newState,
   recalculateCompany: company => ClientApp.Company = constructCompany( ClientApp.DB, company ),
-  update: () => {
+  update: (prevState, patch) => {
     AdminApp.isActive = false
     ClientApp.isActive = true
+
+
+    let State = {
+        created: Date.now(),
+        DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
+        Company: Object.keys(patch).includes( "Company" ) ? patch.Company : prevState.Company,
+        S: mergerino(prevState.S, patch.S)
+      }
+
+    log({prevState, patch, State})
     
     let startTime = Date.now()
-    let elementTree = [clientPage( ClientApp.DB, ClientApp.Company )]
+    let elementTree = [clientPage( State )]
     sideEffects.updateDOM( elementTree )
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 }
@@ -198,11 +207,19 @@ let constructCompany = (DB, company) => {
 let init = async () => {
   let Entities = await sideEffects.APIRequest("GET", "Entities", null)
   let initialDatabase = constructDatabase( Entities )
-  ClientApp.DB = initialDatabase
   let company = 6829
-  ClientApp.Company = constructCompany( initialDatabase, company )
-  ClientApp.updateState( {selectedEntity: company } )
-  ClientApp.update(  )
+  let initialCompany = constructCompany( initialDatabase, company )
+
+  let initialS = {selectedEntity: company }
+
+  let initialState = {
+    created: Date.now(),
+    DB: initialDatabase,
+    Company: initialCompany,
+    S: initialS
+  }
+
+  ClientApp.update( {}, initialState )
 }
 
 sideEffects.configureClient();

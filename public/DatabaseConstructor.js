@@ -94,6 +94,7 @@ let constructDatabase = Entities => {
     DB.isCalculatedField = calculatedField => DB.getAll(5817).includes( calculatedField )
   
     DB.getDatom = (entity, attribute, version) => {
+
       let serverEntity = DB.Entities.find( serverEntity => serverEntity.entity === entity  )
       let Datom = serverEntity.Datoms
             .filter( Datom => Datom.attribute === DB.attrName(attribute) )
@@ -111,12 +112,15 @@ let constructDatabase = Entities => {
       Entity.get = (attr, version) => DB.get(entity, attr, version)
       Entity.entityType = Entity.get("entity/entityType")
       Entity.color = DB.get( Entity.entityType, "entityType/color") ? DB.get( Entity.entityType, "entityType/color") : "#bfbfbf"
-  
-      Entity.label = () => (Entity.entityType === 5692)
+      
+      Entity.label = () => Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
+
+
+      /* Entity.label = () => (Entity.entityType === 5692)
         ? `[${entity}] Prosess ${ClientApp.Company.processes.findIndex( p => p === entity ) + 1}: ${DB.get( DB.get(entity, "process/processType"), "entity/label")} `
         : (Entity.entityType === 46)
           ? `[${entity}] Hendelse ${ClientApp.Company.events.findIndex( e => e === entity ) + 1}: ${DB.get( DB.get(entity, "event/eventTypeEntity"), "entity/label")} `
-          : Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
+          : Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn." */
   
       
       
@@ -133,32 +137,7 @@ let constructDatabase = Entities => {
         let Values = Entity.get(attribute)
         await Entity.replaceValue( attribute,  Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
       } 
-  
-      Entity.getActions = () =>  [
-        {label: "Slett", isActionable: true, actionFunction: async e => {
-          ClientApp.DB =  await Transactor.retractEntity(DB, entity)
-          AdminApp.updateState({selectedEntity: ClientApp.DB.Entities.slice(-1)[0].entity})
-          ClientApp.update()
-        } },
-        {label: "Legg til", isActionable: true, actionFunction: async e => {
-          ClientApp.DB =  await Transactor.createEntity(DB, Entity.entityType) 
-          AdminApp.updateState({selectedEntity: ClientApp.DB.Entities.slice(-1)[0].entity})
-          AdminApp.update()
-        }   },
-        {label: "Lag kopi", isActionable: true, actionFunction: async e => {
-  
-          let entityType = Entity.get("entity/entityType")
-          let entityTypeAttributes = DB.get( entityType, "entityType/attributes" )
-          let newEntityDatoms = entityTypeAttributes.map( attr => newDatom("newEntity", DB.attrName(attr), Entity.get(attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${Entity.get(6)}` ) )
-          if(entityType === 42){ newEntityDatoms.push( newDatom( "newEntity", "attr/name", "attr/" + Date.now() )  ) }
-          ClientApp.DB =  await Transactor.createEntity(DB, entityType, newEntityDatoms)
-          AdminApp.updateState({selectedEntity: ClientApp.DB.Entities.slice(-1)[0].entity})
-          AdminApp.update()
-        }   },
-      ]
-  
-      Entity.getView = DB => entityView( DB, Entity )
-  
+    
       return Entity
     }
   
@@ -174,7 +153,7 @@ let constructDatabase = Entities => {
         Datoms: EntityAttributeDatoms,
       }
   
-      EntityAttribute.getView = DB => entityAttributeView( DB, EntityAttribute )
+      EntityAttribute.getView =  State => entityAttributeView( State, entity, attribute )
   
       return EntityAttribute
     }
