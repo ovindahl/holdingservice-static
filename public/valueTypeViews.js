@@ -121,7 +121,7 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 //Basic entity views
 
 let entityLabel = (State, entity, onClick) => d([
-  d( `${ State.DB.get( entity ) ? State.DB.get( entity ).label() : "na."}`, {class: "entityLabel", style: `background-color:${State.DB.get( entity ) ? State.DB.get( entity ).color : "gray" }`}, "click", isDefined(onClick) ? onClick : e => ClientApp.update( State, {S: {selectedEntity: entity}} ) ),
+  d( `${ State.DB.get( entity ) ? State.DB.get( entity ).label() : "na."}`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray" }`}, "click", isDefined(onClick) ? onClick : e => ClientApp.update( State, {S: {selectedEntity: entity}} ) ),
 ], {style:"display: inline-flex;"})
 
 
@@ -219,10 +219,14 @@ let companyEntityView = (State, companyEntity ) => d([
         ?  d( State.DB.get(entity, attribute).map( (Value, index) => d([
               positionInArrayView(State, entity, attribute, index),
               valueTypeViews[ valueType ](State, entity, attribute, index),
-              submitButton( "[ X ]", async e => update( await Entity.removeValueEntry( attribute,  index ) )  )
+              submitButton( "[ X ]", async e => ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).filter( (Value, i) => i !== index  )  )} ) )
             ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
         : d("Ingen verdier"),
-        submitButton( "[ + ]", async e => update( isArray( State.DB.get( entity, attribute) ) ? await Entity.addValueEntry( attribute,  startValue ) : await Entity.replaceValue( attribute,  [startValue] ) )  )
+        submitButton( "[ + ]", async e => isArray( State.DB.get( entity, attribute) ) 
+          ? ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).concat(startValue)  )} )
+          : ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, [startValue]  )} )
+        )
+
     ]) : ( valueType === 41 )
       ? d( State.DB.get( entity, attribute).map( (Value, index) => companyEntityLabelWithPopup(State, Value) ))
       : d( State.DB.get( entity, attribute).map( (Value, index) => valueTypeViews[ valueType ]( State, Entity, attribute, index) ))
@@ -242,7 +246,10 @@ let companyEntityView = (State, companyEntity ) => d([
     let movedDown = Values[index - 1]
     let stillAfter = Values.filter( (Value, i) => i > index )
     let newArray = stillBefore.concat( movedUp ).concat( movedDown ).concat( stillAfter )
-    update( await Entity.replaceValue( attribute,  newArray ) )
+
+
+    ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, newArray  )} )
+
   }   ) : d("")
   
   let moveDownButton = (State, entity, attribute, index) => index < State.DB.get(entity, attribute).length - 1 ? submitButton( "↓", async e => {
@@ -252,14 +259,14 @@ let companyEntityView = (State, companyEntity ) => d([
     let movedDown = Values[index]
     let stillAfter = Values.filter( (Value, i) => i > index +1 )
     let newArray = stillBefore.concat( movedUp ).concat( movedDown ).concat( stillAfter )
-    update( await Entity.replaceValue( attribute,  newArray ) )
+    ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, newArray  )} )
   }   ) : d("")
   
   
   //Company entities
   
   let input_singleCompanyEntity = ( State, entity, attribute, isEditable) => isEditable
-    ? dropdown( State.DB.get( entity,  attribute ), Entity.getOptions( attribute ), async e => update( await Entity.replaceValue(attribute, Number(submitInputValue(e))  ) ) )
+    ? dropdown( State.DB.get( entity,  attribute ), Entity.getOptions( attribute ), async e => ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, Number(submitInputValue(e))  )} ) )
     : companyEntityLabelWithPopup(ClientApp.Company, State.DB.get( entity,  attribute ) )
   
   let accountBalanceRowView = (entity, attribute, index) => {
@@ -286,8 +293,9 @@ let companyEntityView = (State, companyEntity ) => d([
     let Value = State.DB.get(entity, attribute)[index]
   
     return d([
-      input( {value: Value["argument/name"] }, "change", async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"argument/name": submitInputValue(e)})  ) ) ),
-      dropdown( Value["argument/valueType"], State.DB.getAll(44).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ), async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }) ) ) )
+      input( {value: Value["argument/name"] }, "change", async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/name": submitInputValue(e)}))} ) ),
+      dropdown( Value["argument/valueType"], State.DB.getAll(44).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ), async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }))} )
+      )
     ], {class: "columns_1_1"}) 
   
   }
@@ -301,10 +309,10 @@ let companyEntityView = (State, companyEntity ) => d([
     
   
     return d([
-      checkBox( Value["statement/isEnabled"] , async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"statement/isEnabled": Value["statement/isEnabled"] ? false : true  }) ) ) ),
+      checkBox( Value["statement/isEnabled"] , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/isEnabled": Value["statement/isEnabled"] ? false : true  }))} )),
   
   
-      textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;"} , async e => update( await Entity.replaceValueEntry( attribute,  index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }) ) ) )
+      textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;"} , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }))}) )
   
     ], {class: "columns_1_9"}) 
   
@@ -320,7 +328,7 @@ let companyEntityView = (State, companyEntity ) => d([
       dropdown(
         companyEntityType, 
         State.DB.getAll(6778).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ),
-        async e => update( await Entity.replaceValueEntry( attribute, index, mergerino( entityConstructor, {companyEntityType: Number( submitInputValue(e) ), attributeAssertions: {}  } ) ) )
+        async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {companyEntityType: Number( submitInputValue(e) ), attributeAssertions: {}  } ))} )
         ),
         br(),
         d([
@@ -334,13 +342,15 @@ let companyEntityView = (State, companyEntity ) => d([
   
             let isEnabledUpdateFunction = async e =>  {
               let updatedAssertion = mergerino(attributeAssertion, {isEnabled: isEnabled ? false : true })
-              update( await Entity.replaceValueEntry( attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion})  } ) ) )
+
+              ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion})  } ))} )
+
             } 
             let valueFunctionUpdateFunction = async e => {
   
               let updatedAssertion = mergerino(attributeAssertion, {valueFunction: submitInputValue(e), isEnabled: true })
   
-              update( await Entity.replaceValueEntry( attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion}) } ) ) )
+              ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion}) } ))} )
             } 
     
     
@@ -378,7 +388,7 @@ let entityActionsView = (State, entity) => {
 
   let Actions = [
     {label: "Slett", isActionable: true, actionFunction: async e => ClientApp.update( State, {S: {DB: await Transactor.retractEntity( State.DB, entity) }} ) },
-    {label: "Legg til", isActionable: true, actionFunction: async e => ClientApp.update( State, {S: {DB: await Transactor.createEntity( State.DB, Entity.entityType)  }} ) },
+    {label: "Legg til", isActionable: true, actionFunction: async e => ClientApp.update( State, {S: {DB: await Transactor.createEntity( State.DB, State.DB.get(entity, "entity/entityType"))  }} ) },
     {label: "Lag kopi", isActionable: true, actionFunction: async e => {
 
       let entityType = State.DB.get( entity, "entity/entityType")
@@ -461,7 +471,8 @@ let functionView = ( State, formattedValue, updateFunction ) => {
 
 
   return d([
-      d([
+        d("TBD")
+      /* d([
         d("Navn"),
         input( {value: Value.name}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {name: submitInputValue(e)})   ) )   ),
       ], {class: "columns_1_1"}),
@@ -476,11 +487,11 @@ let functionView = ( State, formattedValue, updateFunction ) => {
           ], {class: "columns_1_1_1"}),
           input( {value: argument}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.slice(0, index ).concat(submitInputValue(e)).concat(Value.arguments.slice(index + 1, Value.arguments.length))  })   ) ) ),
           //Argument type TBD
-          /* dropdown("string", [
+          dropdown("string", [
             {value: "string", label: "String"},
             {value: "number", label: "Number"},
             {value: "object", label: "Object"},
-          ]), */
+          ]),
         ], {class: "columns_1_9"}))),
         submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.concat("argument") }    ) ))),
       ]),
@@ -497,8 +508,8 @@ let functionView = ( State, formattedValue, updateFunction ) => {
           textArea( statement, {style: "margin: 1em;font: -webkit-control;"} , async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.slice(0, index ).concat(  submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  ).concat(Value.statements.slice(index + 1, Value.statements.length))  })   ) ) ),
         ], {class: "columns_1_9"}))),
         submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.concat("console.log('!');") }    ) )))
-      ]),
-  ])
+      ]),*/
+  ]) 
 }
 
 
@@ -639,8 +650,8 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
   let getUpdateFunction = index => async e => {
     let submittedValue = submitInputValue( e )
     let unformattedValue = unFormatFunction( submittedValue )
-    let updatedDB = await Entity.replaceValue( attribute,  storedValues.slice(0, index ).concat( unformattedValue ).concat( storedValues.slice(index + 1, storedValues.length ) ) )
-    return ClientApp.update( State, {DB: updatedDB }  )
+
+    ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, storedValues.slice(0, index ).concat( unformattedValue ).concat( storedValues.slice(index + 1, storedValues.length ) ) ) }  )
   }
 
   let options = [ 32 ].includes(valueType) ? State.DB.getOptions( attribute ) : []
@@ -650,13 +661,13 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
       ?  d( storedValues.map( (storedValue, index) => d([
             positionInArrayView(State, entity, attribute, index),
             viewFunction(  State, formatFunction( storedValue ), getUpdateFunction( index ) , options  ),
-            submitButton( "[ X ]", async e => update(  await Entity.replaceValue( attribute,  storedValues.filter( (Value, i) => i !== index  ) ) )  )
+            submitButton( "[ X ]", async e => ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, storedValues.filter( (Value, i) => i !== index  )  )} ) )
           ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
       : d("Ingen verdier"),
-      submitButton( "[ + ]", async e => update( isArray( State.DB.get( entity, attribute) ) 
-        ? await Entity.replaceValue( attribute,  storedValues.concat( startValue )  )
-        : await Entity.replaceValue( attribute,  [startValue] ) 
-        )  )
+      submitButton( "[ + ]", async e => {
+        let newDBversion = await Transactor.updateEntity(State.DB, entity, attribute, isArray( State.DB.get( entity, attribute) ) ? storedValues.concat( startValue ) : [startValue]  )
+        ClientApp.update( State, {DB: newDBversion} )
+      } )
   ])
 
 }

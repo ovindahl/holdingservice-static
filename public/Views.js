@@ -21,6 +21,49 @@ let svg = (width, height, innerhtml) => htmlElementObject("svg", {width, height}
 let rect = (attributesObject, onclick) => htmlElementObject( "rect", attributesObject, "", "click", onclick )
 let circle = (attributesObject, onclick) => htmlElementObject( "circle", attributesObject, "", "click", onclick )
 
+// SESSION PANEL
+
+let sessionStatePanel = (States, Patches) => d( States.map( (State, index) => sessionStateLabel(
+  State, 
+  Patches[index],
+  index, 
+  States[index-1] 
+    ? States[index-1].DB 
+      ? (State.DB.tx > States[index-1].DB.tx )
+      : true
+    : false,
+  )   ), {style: "display: flex;"} )
+
+let sessionStateLabel = (State, Patch, index, dbUpdated ) => d([
+  d(` ${dbUpdated ? " ~ " : ""} ${index} `  , {style: `padding: 3px;margin: 5px; ${State.S.isAdmin ? "background-color:black;color: #57ff57;" : "background-color:#2979ff;color: white;"}`} ),
+  sessionStatePopup( State, Patch )
+], {class: "popupContainer"})
+
+let sessionStatePopup = (State, Patch) => {
+
+  return d([
+    d([
+      d("DB-versjon:"),
+      d( State.DB ? String(State.DB.tx) : " - " )
+    ], {class: "columns_1_1"}),
+    br(),
+    d([
+      d("Company-versjon:"),
+      d( State.Company ? String(State.Company.tx) : " - " )
+    ], {class: "columns_1_1"}),
+    br(),
+    d([
+      d("Klient-state:"),
+      d( JSON.stringify(State.S) )
+    ], {class: "columns_1_1"}),
+    br(),
+    d([
+      d("Siste endring:"),
+      d(JSON.stringify(Patch.S))
+    ], {class: "columns_1_1"})
+    
+    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+} 
 
 // CLIENT PAGE VIEWS
 
@@ -90,16 +133,14 @@ let clientPage = State => {
       d([dropdown(State.Company.entity, State.DB.getAll( 5722 ).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => {
         let company = Number( submitInputValue(e) )
 
-        let constructedCompany = constructCompany( State.DB, company )
+        let constructedCompany = constructCompany( State,  State.DB, company )
 
-        let newState = {
-          created: Date.now(),
-          DB: State.DB,
+        let patch = {
           Company: constructedCompany,
           S: {selectedEntity: company }
         }
 
-        ClientApp.update( newState )
+        ClientApp.update( State, patch )
 
       })]),
       submitButton("Bytt til admin", e => ClientApp.update( State, {S: {isAdmin: true, selectedEntity: undefined, selectedCompanyEntity: undefined }  } ) )
@@ -121,7 +162,7 @@ let getEntityNavBar = State => {
 
   let entityTypeViewController = {
     "47": () => d([
-          entityLabelWithPopup( State, State.S.selectedEntity, e => ClientApp.update( State, {S: {selectedEntity: State.S.entityType }}) ),
+          entityLabelWithPopup( State, State.S.selectedEntity, e => ClientApp.update( State, {S: {selectedEntity: State.S.selectedEntity }}) ),
         ]),
     "5722": () => d( "" ),
     "7403": () => entityLabelWithPopup( State.DB, State.S.selectedEntity, e => ClientApp.update( State, {S: {selectedEntity: State.S.selectedEntity }} ) ),
@@ -513,7 +554,7 @@ let adminPage = State => d([
     entityLabelWithPopup( State,  47, e => ClientApp.update( State, {S: {selectedEntity: 47 } }) ),
     span(" / "  ),
     isDefined(State.S.selectedEntity)
-      ? entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity).entityType, e => ClientApp.update( State, {S: {selectedEntity: State.DB.get(State.S.selectedEntity).entityType}})   )
+      ? entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity, "entity/entityType"), e => ClientApp.update( State, {S: {selectedEntity: State.DB.get(State.S.selectedEntity, "entity/entityType")}})   )
       : span(" ... "),
     span(" / "  ),
     isDefined(State.S.selectedEntity)

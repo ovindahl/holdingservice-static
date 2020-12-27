@@ -1,5 +1,6 @@
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
+
 const Transactor = {
     updateEntity: async (DB, entity, attribute, value) => {
   
@@ -34,6 +35,12 @@ const Transactor = {
         console.log("DB.updateEntity did not pass validation.", {entity, attr, value, validators: {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN }})
         return null;
       }
+    },
+    addValueEntry: async (DB, entity, attribute, newValue) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).concat( newValue ) ),
+    removeValueEntry: async (DB, entity, attribute, index) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).filter( (Value, i) => i !== index  ) ),
+    replaceValueEntry: async (DB, entity, attribute, index, newValue) => {
+      let Values = DB.get(entity, attribute)
+      return await Transactor.updateEntity( DB, entity, attribute, Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
     },
     createEntity: async (DB, entityType, newEntityDatoms) => {
   
@@ -106,37 +113,15 @@ let constructDatabase = Entities => {
   
     DB.getEntity = entity => {
       let serverEntity = DB.Entities.find( serverEntity => serverEntity.entity === entity  )
-  
+
       let Entity = serverEntity;
+
       Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
       Entity.get = (attr, version) => DB.get(entity, attr, version)
-      Entity.entityType = Entity.get("entity/entityType")
-      Entity.color = DB.get( Entity.entityType, "entityType/color") ? DB.get( Entity.entityType, "entityType/color") : "#bfbfbf"
       
       Entity.label = () => Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
-
-
-      /* Entity.label = () => (Entity.entityType === 5692)
-        ? `[${entity}] Prosess ${ClientApp.Company.processes.findIndex( p => p === entity ) + 1}: ${DB.get( DB.get(entity, "process/processType"), "entity/label")} `
-        : (Entity.entityType === 46)
-          ? `[${entity}] Hendelse ${ClientApp.Company.events.findIndex( e => e === entity ) + 1}: ${DB.get( DB.get(entity, "event/eventTypeEntity"), "entity/label")} `
-          : Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn." */
-  
-      
       
       Entity.getOptions = attr => DB.getOptions(attr)
-  
-      Entity.replaceValue = async (attribute, newValue) => {
-        let newDBversion = await Transactor.updateEntity(DB, entity, attribute, newValue )
-        if( Entity.get("entity/entityType") === 46 ){  ClientApp.update( {DB: newDBversion} )  }else{ AdminApp.update( {DB: newDBversion} ) }
-      } 
-      Entity.addValueEntry = async (attribute, newValue) => await Entity.replaceValue( attribute,  Entity.get(attribute).concat( newValue )  )
-      Entity.removeValueEntry = async (attribute, index) => await Entity.replaceValue( attribute,  Entity.get(attribute).filter( (Value, i) => i !== index  ) )
-  
-      Entity.replaceValueEntry = async (attribute, index, newValue) => {
-        let Values = Entity.get(attribute)
-        await Entity.replaceValue( attribute,  Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
-      } 
     
       return Entity
     }

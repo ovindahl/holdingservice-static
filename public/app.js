@@ -59,212 +59,56 @@ const sideEffects = {
   }
 }
 
-
-
-
-var States = []
-var Patches = []
-
 const ClientApp = {
-  isActive: false,
-  S: {
-    t0: Date.now()
-  },
-  updateState: patch => ClientApp.S = mergerino( ClientApp.S, patch ),
-  replaceState: newState => ClientApp.S = newState,
-  recalculateCompany: company => ClientApp.Company = constructCompany( ClientApp.DB, company ),
-  update: (prevState, patch) => {
+    States: [],
+    Patches: [],
+    update: (prevState, patch) => {
 
-    let State = {
-        created: Date.now(),
-        DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
-        Company: Object.keys(patch).includes( "Company" ) ? patch.Company : prevState.Company,
-        S: mergerino(prevState.S, patch.S)
-      }
-
-    States.push(State)
-    Patches.push(patch)
-
-    log({prevState, patch, State})
-    
-    let startTime = Date.now()
-
-
-
-
-
-    let elementTree = [
-      sessionStatePanel( States, Patches ),
-      State.S.isAdmin ? adminPage( State ) : clientPage( State )
-    ]
-    
-    sideEffects.updateDOM( elementTree )
-    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
-}
-}
-
-let sessionStatePanel = (States, Patches) => d( States.map( (State, index) => sessionStateLabel(
-  State, 
-  Patches[index],
-  index, 
-  States[index-1] 
-    ? States[index-1].DB 
-      ? (State.DB.tx > States[index-1].DB.tx )
-      : true
-    : false,
-  )   ), {style: "display: flex;"} )
-
-let sessionStateLabel = (State, Patch, index, dbUpdated ) => d([
-  d(` ${dbUpdated ? " ~ " : ""} ${index} `  , {style: `padding: 3px;margin: 5px; ${State.S.isAdmin ? "background-color:black;color: #57ff57;" : "background-color:#2979ff;color: white;"}`} ),
-  sessionStatePopup( State, Patch )
-], {class: "popupContainer"})
-
-let sessionStatePopup = (State, Patch) => {
-
-  return d([
-    d([
-      d("DB-versjon:"),
-      d( State.DB ? String(State.DB.tx) : " - " )
-    ], {class: "columns_1_1"}),
-    br(),
-    d([
-      d("Company-versjon:"),
-      d( State.Company ? String(State.Company.tx) : " - " )
-    ], {class: "columns_1_1"}),
-    br(),
-    d([
-      d("Klient-state:"),
-      d( JSON.stringify(State.S) )
-    ], {class: "columns_1_1"}),
-    br(),
-    d([
-      d("Siste endring:"),
-      d(JSON.stringify(Patch.S))
-    ], {class: "columns_1_1"})
-    
-    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-} 
-
-
-let Company = {}
-
-
-
-let constructCompany = (DB, company) => {
-
-  let Company = constructCompanyDocument( DB, company )
-
-
-  Company.getAction = ( actionEntity, Event, Process, Wildcard ) => {
-
-
-    let asyncFunction = DB.getGlobalAsyncFunction( actionEntity )
-    let argumentObjects = DB.get(actionEntity, "function/arguments")
-    let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
-
-    let criteriumStatementObjects = DB.get(actionEntity, "function/criteriumStatements") ? DB.get(actionEntity, "function/criteriumStatements") : []
-    let criteriumStatements = criteriumStatementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
-
-    let criteriumFunctionString = criteriumStatements.join(";")
-    let criteriumFunction = new Function( arguments, criteriumFunctionString  )    
-
-    let isActionable = criteriumFunction( DB, Company, Process, Event  )
-
-    let updateCallback = selectedEntity => {
-      ClientApp.recalculateCompany( company )
-      ClientApp.updateState( {selectedEntity } )
-      log( "Handling gjennomført" )
-    } 
-
-    
-
-    let Action = {
-        entity: actionEntity,
-        label: DB.getEntity(actionEntity).label(),
-        isActionable,
-        execute: async () => {
-          if( isActionable ) {
-            try {  await asyncFunction( DB, Company, Process, Event, Wildcard ).then( updateCallback  )  } catch (error) { return log(error, {info: "ERROR: Action.execute() failed" } ) }
-          } else { ClientApp.update( log({info: "Action is not actionable:", actionEntity}) )  }
-
+      let State = {
+          created: Date.now(),
+          DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
+          Company: Object.keys(patch).includes( "Company" ) ? patch.Company : prevState.Company,
+          S: mergerino(prevState.S, patch.S)
         }
+
+      ClientApp.States.push(State)
+      ClientApp.Patches.push(patch)
+
+      log({prevState, patch, State})
+      
+      let startTime = Date.now()
+
+
+      let elementTree = [
+        sessionStatePanel( ClientApp.States, ClientApp.Patches ),
+        State.S.isAdmin ? adminPage( State ) : clientPage( State )
+      ]
+      
+      sideEffects.updateDOM( elementTree )
+      console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
   }
-
-
-  return Action
-  }
-
-  Company.getActions = () => DB.getAll(5687)
-    .map( processType => returnObject({
-      isActionable: DB.get(processType, "processType/creationCriteria")
-      .filter( statement =>  statement["statement/isEnabled"] )
-      .every( statement => new Function( ["Database", "Company" ], statement["statement/statement"] )( DB, Company )  ),
-      label: "Opprett prosess: " + DB.getEntity(processType).label() ,
-      execute: async () => {
-        let newEntity = await Transactor.createEntity(DB, 5692, [ newDatom( 'newEntity' , 'process/company', Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ), newDatom( 'newEntity' , 'process/accountingYear', 7407 ) ] )
-        ClientApp.recalculateCompany( company )
-        ClientApp.updateState( {selectedEntity: newEntity.entity } )
-      }
-    })  )
-
-  Company.getProcessActions = process => {
-
-    let processActions = [6628].map( actionEntity => Company.getAction( actionEntity, undefined, Company.getProcess( process ) ) )
-
-    let newEventActions = DB.get( DB.get( process , "process/processType") , "processType/eventTypes").map( eventType => returnObject({
-      isActionable: true,
-      label: "Opprett hendelse: " + DB.getEntity(eventType).label(),
-      execute: async () => {
-        let newEvent = await Transactor.createEntity(DB, 46, [ newDatom( 'newEntity' , 'event/process', process  ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , "event/date", Date.now() ) ])
-        ClientApp.recalculateCompany( company )
-        }
-    })   )
-
-    return processActions.concat( newEventActions )
-  } 
-  
-  Company.getEventActions = event => [
-    Company.getAction(6635, Company.getEvent(event), Company.getProcess( DB.get(event, "event/process") )  ),
-    returnObject({isActionable: true, label: "Oppdatter selskapsdokumentet", execute: () => ClientApp.recalculateCompany( company )  }),
-    Company.getAction(7090, Company.getEvent(event), Company.getProcess( DB.get(event, "event/process") )  ),
-  ]
-
-  return Company
 }
-
 
 let init = async () => {
 
-  let preDataState = {
-    created: Date.now(),
-    isAdmin: false,
-    DB: undefined,
-    Company: undefined,
-    S: {selectedEntity: undefined }
-  }
-
-
-  ClientApp.update( {}, preDataState )
-
+  ClientApp.update( {}, {created: Date.now(), isAdmin: false} )
 
   let Entities = await sideEffects.APIRequest("GET", "Entities", null)
-
 
   if( Entities.length > 0 ){
 
     let initialDatabase = constructDatabase( Entities )
     let company = 6829
-    let initialCompany = constructCompany( initialDatabase, company )
+    let initialCompany = constructCompany( {}, initialDatabase, company )
 
 
-    ClientApp.update( preDataState, {
+    ClientApp.update( {}, {
       DB: initialDatabase,
       Company: initialCompany,
       S: {selectedEntity: company }
     } )
     
-  }else{ ClientApp.update( preDataState, {S: {isError: true, error: "ERROR: Mottok ingen data fra databasen. Last på nytt om 30 sek." }} ) }
-
+  }else{ ClientApp.update( {}, {S: {isError: true, error: "ERROR: Mottok ingen data fra databasen. Last på nytt om 30 sek." }} ) }
   
 }
 
