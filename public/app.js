@@ -59,6 +59,12 @@ const sideEffects = {
   }
 }
 
+
+
+
+var States = []
+var Patches = []
+
 const ClientApp = {
   isActive: false,
   S: {
@@ -68,9 +74,6 @@ const ClientApp = {
   replaceState: newState => ClientApp.S = newState,
   recalculateCompany: company => ClientApp.Company = constructCompany( ClientApp.DB, company ),
   update: (prevState, patch) => {
-    AdminApp.isActive = false
-    ClientApp.isActive = true
-
 
     let State = {
         created: Date.now(),
@@ -79,52 +82,72 @@ const ClientApp = {
         S: mergerino(prevState.S, patch.S)
       }
 
+    States.push(State)
+    Patches.push(patch)
+
     log({prevState, patch, State})
     
     let startTime = Date.now()
-    let elementTree = [clientPage( State )]
+
+
+
+
+
+    let elementTree = [
+      sessionStatePanel( States, Patches ),
+      State.S.isAdmin ? adminPage( State ) : clientPage( State )
+    ]
+    
     sideEffects.updateDOM( elementTree )
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 }
 }
 
-const AdminApp = {
-  isActive: false,
-  S: {
-    selectedPage: "Admin",
-    selectedEntity: 1,  
-  },
-  updateState: patch => AdminApp.S = mergerino( AdminApp.S, patch ),
-  replaceState: newState => AdminApp.S = newState,
-  update: (prevState, patch) => {
-    ClientApp.isActive = false
-    AdminApp.isActive = true
+let sessionStatePanel = (States, Patches) => d( States.map( (State, index) => sessionStateLabel(
+  State, 
+  Patches[index],
+  index, 
+  States[index-1] 
+    ? States[index-1].DB 
+      ? (State.DB.tx > States[index-1].DB.tx )
+      : true
+    : false,
+  )   ), {style: "display: flex;"} )
 
-    let State = {
-      created: Date.now(),
-      DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
-      S: mergerino(prevState.S, patch.S)
-    }
+let sessionStateLabel = (State, Patch, index, dbUpdated ) => d([
+  d(` ${dbUpdated ? " ~ " : ""} ${index} `  , {style: `padding: 3px;margin: 5px; ${State.S.isAdmin ? "background-color:black;color: #57ff57;" : "background-color:#2979ff;color: white;"}`} ),
+  sessionStatePopup( State, Patch )
+], {class: "popupContainer"})
+
+let sessionStatePopup = (State, Patch) => {
+
+  return d([
+    d([
+      d("DB-versjon:"),
+      d( State.DB ? String(State.DB.tx) : " - " )
+    ], {class: "columns_1_1"}),
+    br(),
+    d([
+      d("Company-versjon:"),
+      d( State.Company ? String(State.Company.tx) : " - " )
+    ], {class: "columns_1_1"}),
+    br(),
+    d([
+      d("Klient-state:"),
+      d( JSON.stringify(State.S) )
+    ], {class: "columns_1_1"}),
+    br(),
+    d([
+      d("Siste endring:"),
+      d(JSON.stringify(Patch.S))
+    ], {class: "columns_1_1"})
     
-    log({prevState, patch, State})
-    
-    let startTime = Date.now()
-    let elementTree = [ adminPage( State ) ]
-    sideEffects.updateDOM( elementTree )
-    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
-}
-}
+    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+} 
+
 
 let Company = {}
 
-let update = () => {
-    Company = ClientApp.Company 
-    
-    let startTime = Date.now()
-    let elementTree = AdminApp.isActive ? [ adminPage( ClientApp.DB, Company ) ] : [ clientPage(ClientApp.DB, Company) ]
-    sideEffects.updateDOM( elementTree )
-    console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
-}
 
 
 let constructCompany = (DB, company) => {
@@ -211,21 +234,38 @@ let constructCompany = (DB, company) => {
 
 
 let init = async () => {
-  let Entities = await sideEffects.APIRequest("GET", "Entities", null)
-  let initialDatabase = constructDatabase( Entities )
-  let company = 6829
-  let initialCompany = constructCompany( initialDatabase, company )
 
-  let initialS = {selectedEntity: company }
-
-  let initialState = {
+  let preDataState = {
     created: Date.now(),
-    DB: initialDatabase,
-    Company: initialCompany,
-    S: initialS
+    isAdmin: false,
+    DB: undefined,
+    Company: undefined,
+    S: {selectedEntity: undefined }
   }
 
-  ClientApp.update( {}, initialState )
+
+  ClientApp.update( {}, preDataState )
+
+
+  let Entities = await sideEffects.APIRequest("GET", "Entities", null)
+
+
+  if( Entities.length > 0 ){
+
+    let initialDatabase = constructDatabase( Entities )
+    let company = 6829
+    let initialCompany = constructCompany( initialDatabase, company )
+
+
+    ClientApp.update( preDataState, {
+      DB: initialDatabase,
+      Company: initialCompany,
+      S: {selectedEntity: company }
+    } )
+    
+  }else{ ClientApp.update( preDataState, {S: {isError: true, error: "ERROR: Mottok ingen data fra databasen. Last på nytt om 30 sek." }} ) }
+
+  
 }
 
 sideEffects.configureClient();
@@ -426,7 +466,7 @@ const DatabaseBackup = {
         let newEntityDatoms = entityTypeAttributes.map( attr => newDatom("newEntity", Database.attrName(attr), Entity.get(attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${Entity.get(6)}` ) )
         if(entityType === 42){ newEntityDatoms.push( newDatom( "newEntity", "attr/name", "attr/" + Date.now() )  ) }
         let newEntity = await Database.createEntity(entityType, newEntityDatoms)
-        AdminApp.updateState({selectedEntity: newEntity.entity})
+        ClientApp.updateState({selectedEntity: newEntity.entity})
 
       }   },
     ]

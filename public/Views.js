@@ -63,6 +63,9 @@ let companyEntityPopUp = (State, companyEntity) => d([
 
 let clientPage = State => {
 
+  if(State.S.isError){return d(State.S.error) }
+  if(isUndefined(State.DB)){return d("Laster..") }
+
   let selectedEntityType = isDefined( State.DB.get( State.S.selectedEntity, "entity/entityType" ) ) 
     ? State.DB.get( State.S.selectedEntity, "entity/entityType" )
     : 5722
@@ -99,7 +102,7 @@ let clientPage = State => {
         ClientApp.update( newState )
 
       })]),
-      submitButton("Bytt til admin", e => AdminApp.update( State, {S: {selectedEntity: State.S.selectedEntity }  } ) )
+      submitButton("Bytt til admin", e => ClientApp.update( State, {S: {isAdmin: true, selectedEntity: undefined, selectedCompanyEntity: undefined }  } ) )
     ], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
     getEntityNavBar( State ),
     d([
@@ -505,16 +508,16 @@ let balanceSheetView = ( State) => d([
 // ADMIN PAGE VIEWS
 
 let adminPage = State => d([
-  d([d('<header><h1>Holdingservice Admin</h1></header>'),d([submitButton("Bytt til klient", e => ClientApp.update( State, {S: {selectedEntity: undefined}}) )], {style: "display:flex;"} )], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
+  d([d('<header><h1>Holdingservice Admin</h1></header>'),d([submitButton("Bytt til klient", e => ClientApp.update( State, {S: {isAdmin: false, selectedEntity: undefined}}) )], {style: "display:flex;"} )], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
   d([
-    entityLabelWithPopup( State,  47, e => AdminApp.update( State, {S: {selectedEntity: 47}}) ),
+    entityLabelWithPopup( State,  47, e => ClientApp.update( State, {S: {selectedEntity: 47 } }) ),
     span(" / "  ),
     isDefined(State.S.selectedEntity)
-      ? entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity).entityType, e => AdminApp.update( State, {S: {selectedEntity: State.DB.get(State.S.selectedEntity).entityType}})   )
+      ? entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity).entityType, e => ClientApp.update( State, {S: {selectedEntity: State.DB.get(State.S.selectedEntity).entityType}})   )
       : span(" ... "),
     span(" / "  ),
     isDefined(State.S.selectedEntity)
-      ? entityLabelWithPopup( State,  State.S.selectedEntity, e => AdminApp.update( State, {S: {selectedEntity: State.S.selectedEntity}})   )
+      ? entityLabelWithPopup( State,  State.S.selectedEntity, e => ClientApp.update( State, {S: {selectedEntity: State.S.selectedEntity}})   )
       : span("Ingen entitet valgt.")
   ], {style: "padding: 1em;"}),
 
@@ -535,7 +538,7 @@ let multipleEntitiesView = (State, entityType) => d([
   entityLabelWithPopup( State, entityType),
   d(State.DB.getAll( entityType   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
     h3(category),
-    d(State.DB.getAll(entityType).filter( e => State.DB.get(e, "entity/category") === category ).map( entity => entityLabelWithPopup( State, entity, e => AdminApp.update( State, {S: {selectedEntity: entity}})  ) ) ),
+    d(State.DB.getAll(entityType).filter( e => State.DB.get(e, "entity/category") === category ).map( entity => entityLabelWithPopup( State, entity, e => ClientApp.update( State, {S: {selectedEntity: entity}})  ) ) ),
   ])  ) )
 ],{class: "feedContainer"})
 
