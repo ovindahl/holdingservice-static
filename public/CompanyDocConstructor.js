@@ -45,14 +45,13 @@ let constructCompany = (State, DB, company) => {
 
   Company.getActions = () => DB.getAll(5687)
     .map( processType => returnObject({
-      isActionable: DB.get(processType, "processType/creationCriteria")
-      .filter( statement =>  statement["statement/isEnabled"] )
-      .every( statement => new Function( ["Database", "Company" ], statement["statement/statement"] )( DB, Company )  ),
+      isActionable: DB.get(processType, "processType/creationCriteria").filter( statement =>  statement["statement/isEnabled"] ).every( statement => new Function( ["Database", "Company" ], statement["statement/statement"] )( DB, Company )  ),
       label: "Opprett prosess: " + DB.getEntity(processType).label() ,
-      execute: async () => {
+      execute: async State => {
         let updatedDB = await Transactor.createEntity(DB, 5692, [ newDatom( 'newEntity' , 'process/company', Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ), newDatom( 'newEntity' , 'process/accountingYear', 7407 ) ] )
         let updatedCompany = constructCompany( State,  updatedDB, company )
-        ClientApp.update( State, {DB: updatedDB, Company: updatedCompany, selectedEntity: updatedCompany.entity } )
+        let patch = {DB: updatedDB, Company: updatedCompany}
+        return patch
       }
     })  )
 
@@ -63,13 +62,11 @@ let constructCompany = (State, DB, company) => {
     let newEventActions = DB.get( DB.get( process , "process/processType") , "processType/eventTypes").map( eventType => returnObject({
       isActionable: true,
       label: "Opprett hendelse: " + DB.getEntity(eventType).label(),
-      execute: async () => {
-        
+      execute: async State => {
         let updatedDB = await Transactor.createEntity(DB, 46, [ newDatom( 'newEntity' , 'event/process', process  ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , "event/date", Date.now() ) ])
         let updatedCompany = constructCompany( State,  updatedDB, company )
-        ClientApp.update( State, {DB: updatedDB, Company: updatedCompany, selectedEntity: updatedCompany.entity } )
-
-
+        let patch = {DB: updatedDB, Company: updatedCompany}
+        return patch
         }
     })   )
 
@@ -78,9 +75,10 @@ let constructCompany = (State, DB, company) => {
   
   Company.getEventActions = event => [
     Company.getAction(6635, Company.getEvent(event), Company.getProcess( DB.get(event, "event/process") )  ),
-    returnObject({isActionable: true, label: "Oppdatter selskapsdokumentet", execute: () => {
-      let updatedCompany = constructCompany( State,  DB, company )
-      ClientApp.update( State, {Company: updatedCompany, selectedEntity: updatedCompany.entity } )
+    returnObject({isActionable: true, label: "Oppdatter selskapsdokumentet", execute: State => {
+      let updatedCompany = constructCompany( State,  State.DB, company )
+      let patch = {Company: updatedCompany}
+      return patch
     }   }),
     Company.getAction(7090, Company.getEvent(event), Company.getProcess( DB.get(event, "event/process") )  ),
   ]
@@ -423,16 +421,3 @@ let calculateCalculatedFieldObjects = (DB, Company, Process, Event, companyEntit
 }
   
   //Updated Company Construction pipeline -- END
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  

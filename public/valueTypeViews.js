@@ -152,7 +152,7 @@ br(),
 
 
 let companyDatomView = (State, companyEntity, attribute) => d([
-  entityLabelWithPopup( State, attribute),
+  entityLabelWithPopup( State, attribute, e => console.log("Cannot access AdminPage from here")),
   companyValueView(State, companyEntity, attribute)
 ], {class: "columns_1_1"}) 
 
@@ -165,7 +165,7 @@ let companyValueView = (State, companyEntity, attribute) => {
         ? d( State.Company.get(companyEntity, attribute).map( companyEnt => companyEntityLabelWithPopup(State, companyEnt ) ) )
         : companyEntityLabelWithPopup(State, State.Company.get(companyEntity, attribute) )
       : [1653, 6781, 1099].includes(attribute)
-        ? entityLabel( State, State.Company.get(companyEntity, attribute) )
+        ? entityLabel( State, State.Company.get(companyEntity, attribute), e => console.log("Cannot access AdminPage from here") )
         : d( JSON.stringify( State.Company.get(companyEntity, attribute) )  )
     : d("na.")
   } catch (error) {

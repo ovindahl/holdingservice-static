@@ -2,6 +2,11 @@ let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, a
 
 
 const Transactor = {
+    submitDatoms: async datoms => {
+    let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) )
+    let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
+    return updatedDB
+    },
     updateEntity: async (DB, entity, attribute, value) => {
   
       let attr = DB.attr(attribute)
@@ -51,7 +56,6 @@ const Transactor = {
       let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
       return updatedDB
     },
-    retractEntity: async (DB, entity) => Transactor.retractEntities(DB, [entity]),
     retractEntities: async (DB, entities) => {    
       let retractionDatoms = entities.map( entity => {
         let Datoms = DB.get(entity).Datoms
@@ -65,11 +69,7 @@ const Transactor = {
       let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !retractedEntities.includes(oldEntity.entity)  ) )
       return updatedDB
     },
-    submitDatoms: async datoms => {
-      let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) )
-      let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
-      return updatedDB
-    }
+    retractEntity: async (DB, entity) => Transactor.retractEntities(DB, [entity])
 }
 
 let constructDatabase = Entities => {
@@ -138,7 +138,6 @@ let constructDatabase = Entities => {
         Datoms: EntityAttributeDatoms,
       }
   
-      EntityAttribute.getView =  State => entityAttributeView( State, entity, attribute )
   
       return EntityAttribute
     }
