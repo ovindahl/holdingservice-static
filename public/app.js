@@ -96,14 +96,20 @@ const AdminApp = {
   },
   updateState: patch => AdminApp.S = mergerino( AdminApp.S, patch ),
   replaceState: newState => AdminApp.S = newState,
-  update: () => {
+  update: (prevState, patch) => {
     ClientApp.isActive = false
     AdminApp.isActive = true
+
+    let State = {
+      created: Date.now(),
+      DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
+      S: mergerino(prevState.S, patch.S)
+    }
     
-    Company = ClientApp.Company 
+    log({prevState, patch, State})
     
     let startTime = Date.now()
-    let elementTree = [ adminPage( ClientApp.DB, Company ) ]
+    let elementTree = [ adminPage( State ) ]
     sideEffects.updateDOM( elementTree )
     console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 }

@@ -127,8 +127,8 @@ let constructDatabase = Entities => {
       Entity.getOptions = attr => DB.getOptions(attr)
   
       Entity.replaceValue = async (attribute, newValue) => {
-        ClientApp.DB = await Transactor.updateEntity(DB, entity, attribute, newValue )
-        if( Entity.get("entity/entityType") === 46 ){  ClientApp.update(  )  }else{ AdminApp.update(  ) }
+        let newDBversion = await Transactor.updateEntity(DB, entity, attribute, newValue )
+        if( Entity.get("entity/entityType") === 46 ){  ClientApp.update( {DB: newDBversion} )  }else{ AdminApp.update( {DB: newDBversion} ) }
       } 
       Entity.addValueEntry = async (attribute, newValue) => await Entity.replaceValue( attribute,  Entity.get(attribute).concat( newValue )  )
       Entity.removeValueEntry = async (attribute, index) => await Entity.replaceValue( attribute,  Entity.get(attribute).filter( (Value, i) => i !== index  ) )

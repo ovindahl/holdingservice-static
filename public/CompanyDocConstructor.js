@@ -164,8 +164,6 @@ let createCompanyQueryObject = (receivedDatabase, Company) => {
       CompanyEntity.getOptions = attr => receivedDatabase.getCompanyOptionsFunction( attr )( Company, CompanyEntity )
 
 
-      log({ entity, attribute})
-
       CompanyEntity.event = CompanyEntity.companyDatoms[0].event
 
 

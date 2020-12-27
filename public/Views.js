@@ -1,9 +1,9 @@
 //Action button
 
 
-let actionButton = companyAction => d([
+let actionButton = (State, companyAction) => d([
   d([
-    d( `${ companyAction.label}`, {class: "entityLabel", style: `background-color:${companyAction.isActionable ? "yellow" : "gray" }`}, "click", companyAction.isActionable ? async e => ClientApp.update( await companyAction.execute() ) : e => console.log("Not actionable") ),
+    d( `${ companyAction.label}`, {class: "entityLabel", style: `background-color:${companyAction.isActionable ? "yellow" : "gray" }`}, "click", companyAction.isActionable ? async e => ClientApp.update(State,  await companyAction.execute() ) : e => console.log("Not actionable") ),
     //entityPopUp( companyAction.entity ),
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
@@ -99,7 +99,7 @@ let clientPage = State => {
         ClientApp.update( newState )
 
       })]),
-      submitButton("Bytt til admin", e => AdminApp.update(  ) )
+      submitButton("Bytt til admin", e => AdminApp.update( State, {S: {selectedEntity: State.S.selectedEntity }  } ) )
     ], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
     getEntityNavBar( State ),
     d([
@@ -117,23 +117,23 @@ let getEntityNavBar = State => {
     : 5722
 
   let entityTypeViewController = {
-    "47": State => d([
-          entityLabelWithPopup( State, State.S.entityType, e => ClientApp.update( State, {S: {selectedEntity: State.S.entityType }}) ),
+    "47": () => d([
+          entityLabelWithPopup( State, State.S.selectedEntity, e => ClientApp.update( State, {S: {selectedEntity: State.S.entityType }}) ),
         ]),
     "5722": () => d( "" ),
-    "7403": accountingYear => entityLabelWithPopup( State.DB, accountingYear, e => ClientApp.update( State, {S: {selectedEntity: accountingYear }} ) ),
-    "5692": process => d([
-      entityLabelWithPopup( State, State.DB.get( process, "process/accountingYear"), e => ClientApp.update( State, {S: {selectedEntity: State.DB.get( process, "process/accountingYear") }}) ),
-      entityLabelWithPopup( State, process, e => ClientApp.update( State, {S: {selectedEntity: process }}) ),
+    "7403": () => entityLabelWithPopup( State.DB, State.S.selectedEntity, e => ClientApp.update( State, {S: {selectedEntity: State.S.selectedEntity }} ) ),
+    "5692": () => d([
+      entityLabelWithPopup( State, State.DB.get( State.S.selectedEntity, "process/accountingYear"), e => ClientApp.update( State, {S: {selectedEntity: State.DB.get( State.S.selectedEntity, "process/accountingYear") }}) ),
+      entityLabelWithPopup( State, State.S.selectedEntity, e => ClientApp.update( State, {S: {selectedEntity: State.S.selectedEntity }}) ),
     ]),
-    "46": event => d([
-      entityLabelWithPopup( State, State.DB.get( State.DB.get(event, "event/process"), "process/accountingYear"), e => ClientApp.update( State, {S: {selectedEntity: State.DB.get( State.DB.get(event, "event/process"), "process/accountingYear") }}) ),
-      entityLabelWithPopup( State, State.DB.get(event, "event/process"), e => ClientApp.update( State, {S: {selectedEntity: State.DB.get(event, "event/process")}}) ),
-      entityLabelWithPopup( State, event, e => ClientApp.update( State, {S: {selectedEntity: event}})  ),
+    "46": () => d([
+      entityLabelWithPopup( State, State.DB.get( State.DB.get(State.S.selectedEntity, "event/process"), "process/accountingYear"), e => ClientApp.update( State, {S: {selectedEntity: State.DB.get( State.DB.get(State.S.selectedEntity, "event/process"), "process/accountingYear") }}) ),
+      entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity, "event/process"), e => ClientApp.update( State, {S: {selectedEntity: State.DB.get(State.S.selectedEntity, "event/process")}}) ),
+      entityLabelWithPopup( State, State.S.selectedEntity, e => ClientApp.update( State, {S: {selectedEntity: State.S.selectedEntity}})  ),
     ]),
-    "6778": companyEntityType =>  d([
+    "6778": () =>  d([
       entityLabelWithPopup( State, 6778, e => ClientApp.update( State, {S: {selectedEntity: 6778}}) ),
-      entityLabelWithPopup( State,  companyEntityType , e => ClientApp.update( State, {S: {selectedEntity: companyEntityType, selectedCompanyEntity: undefined }}  ) ),
+      entityLabelWithPopup( State, State.Company.get(State.S.selectedCompanyEntity, 6781)  , e => ClientApp.update( State, {S: {selectedEntity: State.S.selectedCompanyEntity, selectedCompanyEntity: undefined }}  ) ),
       isDefined(State.S.selectedCompanyEntity) ? companyEntityLabelWithPopup(State, State.S.selectedCompanyEntity) : d("")
     ])
   }
@@ -143,7 +143,7 @@ let getEntityNavBar = State => {
 
   return d([
     entityLabelWithPopup( State, State.Company.entity, e => ClientApp.update( State, {S: {selectedEntity: State.Company.entity }})  ),
-    entityTypeViewController[ selectedEntityType ](State)
+    entityTypeViewController[ selectedEntityType ]()
   ], {style: "display: flex;"})
 } 
 
@@ -177,7 +177,7 @@ let multipleCompanyEntitiesView = ( State,  entityType) => {
 
   return d([
     d( eventTypeAttributes.map( attr => d([entityLabelWithPopup( State, attr)])   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} ),
-    d(State.Company.getAll(entityType).map( companyEntity => d( eventTypeAttributes.map( attribute => companyValueView(Company, companyEntity, attribute)   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} ) ) )
+    d(State.Company.getAll(entityType).map( companyEntity => d( eventTypeAttributes.map( attribute => companyValueView( State.Company, companyEntity, attribute)   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} ) ) )
   ],{class: "feedContainer"})
 } 
 
@@ -236,10 +236,10 @@ let companyView = State => d([
       .filter( p =>State.Company.getProcess(p).get("process/accountingYear") === accountingYear )
 
       return d([
-        entityLabelWithPopup( State, accountingYear, e => ClientApp.update(  {S: {selectedEntity: accountingYear, selectedCompanyEntity: undefined}}  ) ),
+        entityLabelWithPopup( State, accountingYear, e => ClientApp.update( State, {S: {selectedEntity: accountingYear, selectedCompanyEntity: undefined}}  ) ),
         d([
           d([
-            entityLabelWithPopup( State, 5692, e => ClientApp.update({S: {selectedEntity: 5692, selectedCompanyEntity: undefined}}   ) ),
+            entityLabelWithPopup( State, 5692, e => ClientApp.update(State,{S: {selectedEntity: 5692, selectedCompanyEntity: undefined}}   ) ),
             accountingYearProcesses.length > 0 
             ? d([
               d( accountingYearProcesses.slice(0, 5)
@@ -249,8 +249,8 @@ let companyView = State => d([
             : d("Ingen prosesser")
           ]),
           d([
-            entityLabelWithPopup( State, 6778, e => ClientApp.update({S: {selectedEntity: 6778, selectedCompanyEntity: undefined}}   ) ),
-            d( [7047, 7079, 7321, 6780, 6820, 6802].map( entityType => entityLabelWithPopup( State,  entityType, e => ClientApp.update({S: {selectedEntity: entityType, selectedCompanyEntity: undefined}} ) )))
+            entityLabelWithPopup( State, 6778, e => ClientApp.update(State,{S: {selectedEntity: 6778, selectedCompanyEntity: undefined}}   ) ),
+            d( [7047, 7079, 7321, 6780, 6820, 6802].map( entityType => entityLabelWithPopup( State,  entityType, e => ClientApp.update( State, {S: {selectedEntity: entityType, selectedCompanyEntity: undefined}} ) )))
           ])
         ], {class: "columns_1_1"}),
         br(),
@@ -263,9 +263,9 @@ let companyView = State => d([
   
   ])
 
-let companyActionsView = ( State) => d([
+let companyActionsView = State => d([
   h3("Handlinger på selskapsnivå"),
-  //d(State.Company.getActions().map(  companyAction => actionButton(companyAction) , {style: "display: flex;"}) )
+  //d(State.Company.getActions().map(  companyAction => actionButton(State, companyAction) , {style: "display: flex;"}) )
 ], {class: "feedContainer"}) 
 
 
@@ -275,12 +275,12 @@ let timelineHeaderView = ( State, accountingYear ) => d([
   d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;margin: 5px;`} ),
 ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
 
-let processView = ( State,  process) => {
+let processView = State => {
 
-  let prevProcess =State.Company.processes[State.Company.processes.findIndex( p => p === process ) - 1  ]
-  let nextProcess =State.Company.processes[State.Company.processes.findIndex( p => p === process ) + 1  ]
+  let prevProcess = State.Company.processes[State.Company.processes.findIndex( p => p ===  State.S.selectedEntity ) - 1  ]
+  let nextProcess = State.Company.processes[State.Company.processes.findIndex( p => p ===  State.S.selectedEntity ) + 1  ]
   return d([
-    entityLabelWithPopup( State, process, e => ClientApp.update( State, {S: {selectedEntity: process}} )),
+    entityLabelWithPopup( State,  State.S.selectedEntity, e => ClientApp.update( State, {S: {selectedEntity:  State.S.selectedEntity}} )),
     br(),
     d([
       d([
@@ -295,19 +295,19 @@ let processView = ( State,  process) => {
     ], {class: "columns_1_1"}),
     br(),
     timelineHeaderView( State,  undefined ),
-    processTimelineView( State,  process ),
-    d(State.Company.getProcess( process ).events.map( event => eventTimelineView( State,  process, event)  ) ),
+    processTimelineView( State,   State.S.selectedEntity ),
+    d(State.Company.getProcess(  State.S.selectedEntity ).events.map( event => eventTimelineView( State,   State.S.selectedEntity, event)  ) ),
     br(),
-    processActionsView( State,   process ),
+    processActionsView( State, State.S.selectedEntity ),
     br(),
     d([
       h3("Output fra prosessen:"),
-      d(Company.getProcess( process ).entities.map( companyEntity => companyEntityView( State, companyEntity ) )),
+      d( State.Company.getProcess(  State.S.selectedEntity ).entities.map( companyEntity => companyEntityView( State, companyEntity ) )),
     ], {class: "feedContainer"} )
   ],{class: "feedContainer"})
 } 
 
-let processesTimelineView = ( State) => d([
+let processesTimelineView = State => d([
   h3("Selskapets prosesser"),
   timelineHeaderView( State, ClientApp.S.selectedEntity ),
   d(State.Company.processes.map( process => processTimelineView( State,  process) ) ), 
@@ -316,7 +316,7 @@ let processesTimelineView = ( State) => d([
 
 let processTimelineView = ( State,  process) => {
 
-  let Process =State.Company.getProcess( process )
+  let Process = State.Company.getProcess( process )
 
   let firstDate = moment( "2020-01-01", "YYYY-MM-DD" )
 
@@ -348,7 +348,7 @@ let processTimelineView = ( State,  process) => {
   return d([
     entityLabelWithPopup( State, process, e => ClientApp.update( State, {S:{selectedEntity: process} } )),
     svg(width, height, [processRect]  ),
-    actionButton( mergerino(Company.getAction(6628, undefined, Process  ), {label: "[ X ]"})  ) 
+    actionButton(State,  mergerino( State.Company.getAction(6628, undefined, Process  ), {label: "[ X ]"})  ) 
   ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
 
 }
@@ -382,13 +382,13 @@ let eventTimelineView = ( State,  process, event) => {
   return d([
     entityLabelWithPopup( State,  Event.get("event/eventTypeEntity"), e => ClientApp.update( State, {S:{selectedEntity: event} } )  ),
     svg(width, height, [eventCirc]  ),
-    actionButton( mergerino(Company.getAction(6635, Event, Process  ), {label: "[ X ]"})  ) 
+    actionButton(State,  mergerino( State.Company.getAction(6635, Event, Process  ), {label: "[ X ]"})  ) 
   ], {style: `display:grid;grid-template-columns: 4fr 12fr 1fr;`})
 }
 
 let processActionsView = ( State,  process) => d([
   h3( "Handlinger på prosessnivå" ),
-  d(State.Company.getProcessActions( process ).map( companyAction => actionButton(companyAction)  ) )
+  d(State.Company.getProcessActions( process ).map( companyAction => actionButton(State, companyAction)  ) )
 ], {class: "feedContainer"})
 
 let companyEntityPageView = State  => d([
@@ -397,11 +397,11 @@ let companyEntityPageView = State  => d([
   companyEntityView( State, State.S.selectedCompanyEntity )
   ])
 
-let eventView =  ( State,  event) => {
+let eventView =  State => {
 
-  let Event =State.Company.getEvent( event )
+  let Event = State.Company.getEvent( State.S.selectedEntity )
 
-  let Process =State.Company.getProcess( Event.process )
+  let Process = State.Company.getProcess( Event.process )
 
   let prevEvent = Process.events[ Process.events.findIndex( e => e === Event.entity ) - 1  ]
   let nextEvent = Process.events[ Process.events.findIndex( e => e === Event.entity ) + 1  ]
@@ -429,25 +429,25 @@ let eventView =  ( State,  event) => {
     ], {class: "feedContainer"}),
     br(),
     d([
-      entityLabelWithPopup( State, event, e => ClientApp.update( State, {S:{selectedEntity: event} } )),
+      entityLabelWithPopup( State, State.S.selectedEntity, e => ClientApp.update( State, {S:{selectedEntity: State.S.selectedEntity} } )),
       br(),
       d(State.DB.get( Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute => entityAttributeView(State, Event.entity, attribute)  )),
       
-      eventActionsView( State, event ),
+      eventActionsView( State ),
       //br(),
       
     ], {class: "feedContainer"} ),
     br(),
     d([
       h3("Output fra hendelsen:"),
-      d(Company.getEvent( event ).entities.map( companyEntity => companyEntityView( State, companyEntity ) )),
+      d( State.Company.getEvent( State.S.selectedEntity ).entities.map( companyEntity => companyEntityView( State, companyEntity ) )),
     ], {class: "feedContainer"} )
   ])
 } 
 
-let eventActionsView = ( State, event) => d([
+let eventActionsView = State => d([
       h3("Handlinger på hendelsesnivå"),
-      d(State.Company.getEventActions( event ).map(  companyAction => actionButton(companyAction)  ) )
+      d(State.Company.getEventActions( State.S.selectedEntity ).map(  companyAction => actionButton(State, companyAction)  ) )
   ], {class: "feedContainer"})  
 
 //----------------------------------------------------------------------
@@ -504,38 +504,38 @@ let balanceSheetView = ( State) => d([
 
 // ADMIN PAGE VIEWS
 
-let adminPage = (DB) => d([
-  d([d('<header><h1>Holdingservice Admin</h1></header>'),d([submitButton("Bytt til klient", e => ClientApp.update({S: {selectedEntity: undefined}}) )], {style: "display:flex;"} )], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
+let adminPage = State => d([
+  d([d('<header><h1>Holdingservice Admin</h1></header>'),d([submitButton("Bytt til klient", e => ClientApp.update( State, {S: {selectedEntity: undefined}}) )], {style: "display:flex;"} )], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
   d([
-    entityLabelWithPopup( State,  47 ),
+    entityLabelWithPopup( State,  47, e => AdminApp.update( State, {S: {selectedEntity: 47}}) ),
     span(" / "  ),
-    isDefined(AdminApp.S.selectedEntity)
-      ? entityLabelWithPopup( State, State.DB.get(AdminApp.S.selectedEntity).entityType   )
+    isDefined(State.S.selectedEntity)
+      ? entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity).entityType, e => AdminApp.update( State, {S: {selectedEntity: State.DB.get(State.S.selectedEntity).entityType}})   )
       : span(" ... "),
     span(" / "  ),
-    isDefined(AdminApp.S.selectedEntity)
-      ? entityLabelWithPopup( State,  AdminApp.S.selectedEntity   )
+    isDefined(State.S.selectedEntity)
+      ? entityLabelWithPopup( State,  State.S.selectedEntity, e => AdminApp.update( State, {S: {selectedEntity: State.S.selectedEntity}})   )
       : span("Ingen entitet valgt.")
   ], {style: "padding: 1em;"}),
 
   d([
     d(""),
-   State.DB.get( AdminApp.S.selectedEntity, "entity/entityType" ) === 47
+   State.DB.get( State.S.selectedEntity, "entity/entityType" ) === 47
       ? d([
-        multipleEntitiesView( State, AdminApp.S.selectedEntity ),
+        multipleEntitiesView( State, State.S.selectedEntity ),
         br(),
-        entityView( State, AdminApp.S.selectedEntity )
+        entityView( State, State.S.selectedEntity )
       ]) 
-      : entityView( State, AdminApp.S.selectedEntity )
+      : entityView( State, State.S.selectedEntity )
   ], {class: "pageContainer"})
 
 ])
 
-let multipleEntitiesView = (DB, entityType) => d([
+let multipleEntitiesView = (State, entityType) => d([
   entityLabelWithPopup( State, entityType),
   d(State.DB.getAll( entityType   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
     h3(category),
-    d(State.DB.getAll(entityType).filter( e =>State.DB.get(e, "entity/category") === category ).map( entity => entityLabelWithPopup( State, entity) ) ),
+    d(State.DB.getAll(entityType).filter( e => State.DB.get(e, "entity/category") === category ).map( entity => entityLabelWithPopup( State, entity, e => AdminApp.update( State, {S: {selectedEntity: entity}})  ) ) ),
   ])  ) )
 ],{class: "feedContainer"})
 
