@@ -120,19 +120,19 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 
 //Basic entity views
 
-let entityLabel = (State, entity, onClick) => d([
+let entityLabel = (State, entity, onClick, isSelected) => d([
   d( 
     `${ State.DB.get( entity ) ? State.DB.get( entity ).label() : "na."}`, 
-    {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray" }`}, 
+    {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${(isSelected || State.S.selectedEntity === entity ) ? "border: 2px solid black;" : ""}`}, 
     "click", 
     isDefined(onClick) ? onClick : e => State.Actions.selectEntity( entity )
     ),
 ], {style:"display: inline-flex;"})
 
 
-let entityLabelWithPopup = ( State, entity, onClick) => d([
+let entityLabelWithPopup = ( State, entity, onClick, isSelected) => d([
 d([
-  entityLabel( State, entity, onClick),
+  entityLabel( State, entity, onClick, isSelected),
   entityPopUp( State, entity ),
 ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )

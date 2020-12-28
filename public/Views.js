@@ -1,14 +1,5 @@
 //Action button
 
-
-let actionButton = (State, companyAction) => d([
-  d([
-    d( `${ companyAction.label}`, {class: "entityLabel", style: `background-color:${companyAction.isActionable ? "yellow" : "gray" }`}, "click", companyAction.isActionable ? async e => ClientApp.update( State, await companyAction.execute(State) ) : e => console.log("Not actionable") ),
-    //entityPopUp( companyAction.entity ),
-  ], {class: "popupContainer", style:"display: inline-flex;"})
-], {style:"display: inline-flex;"} )
-
-
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
@@ -75,20 +66,24 @@ let sessionStatePopup = (State, Patch) => {
 
 // CLIENT PAGE VIEWS
 
-let companyEntityLabel = (State, companyEntity) => d([
-    d( State.Company.get(companyEntity).label(), {class: "entityLabel", style: `background-color:${State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color")};`}, "click", e => State.Actions.selectCompanyEntity(companyEntity) ),
+let companyEntityLabel = (State, companyEntity, onClick, isSelected) => d([
+    d( 
+      State.Company.get(companyEntity).label(), 
+      {class: "entityLabel", style: `background-color:${State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color")}; ${ (isSelected || State.S.selectedCompanyEntity === companyEntity) ? "border: 2px solid blue;" : ""}`}, 
+      "click", 
+      isDefined(onClick) ? onClick : e => State.Actions.selectCompanyEntity(companyEntity) 
+      ),
   ], {style:"display: inline-flex;"})
 
-let companyEntityLabelWithPopup = (State, companyEntity) => d([
+let companyEntityLabelWithPopup = (State, companyEntity, onClick, isSelected) => d([
   d([
-    companyEntityLabel( State, companyEntity),
+    companyEntityLabel( State, companyEntity, onClick, isSelected),
     companyEntityPopUp( State, companyEntity ),
-  ], {class: "popupContainer", style:"display: inline-flex;"})
+  ], {class: "popupContainer", style:`display: inline-flex;`})
 ], {style:"display: inline-flex;"}) 
 
 
 let companyEntityPopUp = (State, companyEntity) => d([
-
   d([
     entityLabel( State,  6 ),
     d(State.Company.get(companyEntity).label()),
@@ -187,8 +182,6 @@ let getEntityNavBar = State => {
   ], {style: "display: flex;"})
 } 
 
-
-
 let companyEntitiesPageView = ( State) => d([
   h3("Alle selskapsdokumenter"),
   d(State.DB.getAll(6778).map( entityType => d([
@@ -208,52 +201,8 @@ let multipleCompanyEntitiesView = State => {
   ],{class: "feedContainer"})
 } 
 
-
 let companyView = State => d([
-  d([
-    h3("Selskapets balanse"),
-    d(`Siste registrerte hendelse: ${ moment(State.Company.getEvent(State.Company.events.slice(-1)[0]).get("event/date"), "x").format("YYYY-MM-DD")  }`),
-    d([
-      d([
-        h3("Eiendeler"),
-        d([
-          entityLabelWithPopup( State, 6785, e => State.Actions.selectEntity( 6785 )  ),
-          d( State.Company.getAll(6785).map( security => d([
-            companyEntityLabelWithPopup( State, security),
-          d( String(State.Company.get(security, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`})
-          ], {class: "columns_1_1"})  ) )
-        ], {style: gridColumnsStyle("1fr 3fr") }),
-        d([
-          entityLabelWithPopup( State, 7310 ),
-          d(State.Company.getAll(7310).map( bankAccount => d([
-            companyEntityLabelWithPopup( State, bankAccount),
-            d( String(State.Company.get(bankAccount, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`})
-          ], {class: "columns_1_1"}) ) )
-        ], {style: gridColumnsStyle("1fr 3fr") }),
-      ], {style: `padding: 1em;`}),
-      d([
-        h3("Egenkapital og gjeld"),
-        d([
-          entityLabelWithPopup( State, 6790 ),
-          d(State.Company.getAll(6790).map( actor => d([
-            companyEntityLabelWithPopup( State, actor),
-            d( String(State.Company.get(actor, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`}),
-            //d("1000", {style: `text-align: right;`})
-          ], {class: "columns_1_1"})  ) )
-        ], {style: gridColumnsStyle("1fr 3fr") }),
-        d([
-          entityLabelWithPopup( State, 6791),
-          d(State.Company.getAll(6791).map( loan => d([
-            companyEntityLabelWithPopup( State, loan),
-            d( String(State.Company.get(loan, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`}),
-            //d("1000", {style: `text-align: right;`})
-          ], {class: "columns_1_1"})  ) )
-        ], {style: gridColumnsStyle("1fr 3fr") }),
-      ], {style: `padding: 1em;`}),
-
-    ], {class: "columns_1_1"})
-    
-  ], {class: "feedContainer"}),
+  balanceSheetView( State ),
   br(),
   d([
     h3("Registrerte regnskapsår"),
@@ -290,10 +239,6 @@ let companyView = State => d([
   
   ])
 
-let companyActionsView = State => d([
-  h3("Handlinger på selskapsnivå"),
-  d(State.Company.getActions().map(  companyAction => actionButton(State, companyAction) , {style: "display: flex;"}) )
-], {class: "feedContainer"}) 
 
 
 
@@ -319,13 +264,17 @@ let processView = State => {
       processTimelineView( State,   process ),
       br(),
       d(Process.events.map( event => eventTimelineView( State, event)  ) ),
+      br(),
+      submitButton("Slett prosess", e => State.Actions.retractEntity(process) ),
     ],{class: "feedContainer"}),
     br(),
-    processActionsView( State, process ),
-    br(),
     d([
-      h3("Output fra prosessen:"),
-      d( State.Company.getProcess(  process ).entities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity ) )),
+      h3("Selskapsdokumenter generert av prosessen:"),
+      d( State.Company.getProcess(  process ).entities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( process, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ) )),
+      br(),
+      isDefined(State.S.selectedCompanyEntity) 
+        ? companyEntityView( State, State.S.selectedCompanyEntity )
+        : d("")
     ], {class: "feedContainer"} )
   ]) 
 } 
@@ -337,20 +286,18 @@ let accountingYearView = State => {
     : 7407
 
   return d([
-    d( State.DB.getAll(7403).map( accYear => accYear === accountingYear ? d([entityLabelWithPopup(State, accYear)], {style: "border: 1px solid black;"}) : entityLabelWithPopup(State, accYear) ), {style: "display: flex;"}),
+    d( State.DB.getAll(7403).map( accYear => entityLabelWithPopup(State, accYear, undefined, (accYear === accountingYear) ) ), {style: "display: flex;"}),
     d([
       timelineHeaderView( "1000px" ),
       d(State.Company.processes
           .filter( process => State.DB.get(process, "process/accountingYear") === accountingYear ) 
           .map( process => processTimelineView( State,  process) ) 
         )
-    ])
+    ]),
+    h3("Opprett ny prosess:"),
+    d( State.DB.getAll(5687).map( processType => entityLabelWithPopup(State, processType, e => State.Actions.createProcess(processType, accountingYear)  )  ) ),
   ], {style: "width: 1200px;padding:1em;margin-left:1em;margin-bottom: 1em;background-color: white;border: solid 1px lightgray;"})
 } 
-
-
-
-
 
 let processTimelineView = ( State,  process) => {
 
@@ -380,9 +327,9 @@ let processTimelineView = ( State,  process) => {
 
   let processWidth = lastEventX - firstEventX + 5
 
-  let processRect = rect({x: leftPadding + isNaN(firstEventX) ? 10 : firstEventX, y: height / 4, width: isNaN(processWidth) ? 10 : processWidth, height: height * 0.75, class: "processRect"}, e => State.Actions.selectEntity(  process ) )
+  let processRect = rect({x: leftPadding + firstEventX, y: height / 4, width: isNaN(processWidth) ? 10 : processWidth, height: height * 0.75, class: "processRect"}, e => State.Actions.selectEntity(  process ) )
 
-  let processNameLabel = svgText({x: leftPadding + isNaN(firstEventX) ? 10 : firstEventX,  y:  height / 2 + 5}, Process.label(), e => State.Actions.selectEntity(  process ) )
+  let processNameLabel = svgText({x: leftPadding + firstEventX,  y:  height / 2 + 5}, Process.label(), e => State.Actions.selectEntity(  process ) )
 
 
   return svg(width, height, [processRect, processNameLabel]  )
@@ -418,20 +365,17 @@ let eventTimelineView = ( State,  event) => {
   return svg(width, height, [eventCirc, dateLabel, eventNameLabel]  )
 }
 
-let processActionsView = ( State,  process) => d([
-  h3( "Handlinger på prosessnivå" ),
-  d(State.Company.getProcessActions( process ).map( companyAction => actionButton(State, companyAction)  ) )
-], {class: "feedContainer"})
 
 let companyEntityPageView = State  => d([
   submitButton(" <- Tilbake ", e => State.Actions.selectEntity(  State.Company.entity )  ),
   br(),
   companyEntityView( State, State.S.selectedCompanyEntity )
-  ])
+])
 
 let eventView =  State => {
 
-  let Event = State.Company.getEvent( State.S.selectedEntity )
+  let event = State.S.selectedEntity
+  let Event = State.Company.getEvent( event )
 
   let Process = State.Company.getProcess( Event.process )
 
@@ -451,23 +395,20 @@ let eventView =  State => {
       h3( Event.label() ),
       br(),
       d(State.DB.get( Event.get("event/eventTypeEntity"), "eventType/eventAttributes").map( attribute => entityAttributeView(State, Event.entity, attribute)  )),
-      
-      //eventActionsView( State ),
-      //br(),
-      
+      br(),
+      submitButton("Slett hendelse", e => State.Actions.retractEntity(Event.entity) ),
     ], {class: "feedContainer"} ),
     br(),
     d([
-      h3("Output fra hendelsen:"),
-      d( State.Company.getEvent( State.S.selectedEntity ).entities.map( companyEntity => companyEntityLabel( State, companyEntity ) ) ),
-    ] )
+      h3("Selskapsdokumenter generert av hendelsen:"),
+      d( Event.entities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( event, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ) )),
+      br(),
+      isDefined(State.S.selectedCompanyEntity) 
+        ? companyEntityView( State, State.S.selectedCompanyEntity )
+        : d("")
+    ], {class: "feedContainer"} )
   ])
-} 
-
-let eventActionsView = State => d([
-      h3("Handlinger på hendelsesnivå"),
-      d(State.Company.getEventActions( State.S.selectedEntity ).map(  companyAction => actionButton(State, companyAction)  ) )
-  ], {class: "feedContainer"})  
+}
 
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
@@ -483,42 +424,51 @@ let CompanyCalculatedFieldView = ( State, calculateField) => d([
 ], {class: "columns_1_1"})
 
 
-let balanceSheetView = ( State) => d([
-  h3("Balanse"),
+let balanceSheetView = State => d([
+  h3("Selskapets balanse"),
+  d(`Siste registrerte hendelse: ${ moment(State.Company.getEvent(State.Company.events.slice(-1)[0]).get("event/date"), "x").format("YYYY-MM-DD")  }`),
   d([
     d([
       h3("Eiendeler"),
-      d("Anleggsmidler"),
-      d(
-        [6238,  6241, 6253, 6254, 6255, 6256, 6260, 6262, 6270, 6240, 6275, 6277, 6279, 6286]
-          .filter( calculateField =>State.Company.calculateCompanyCalculatedField(calculateField) !== 0 )
-          .map( calculateField => CompanyCalculatedFieldView( State, calculateField)  )  
-          ),
-      br(),
-      d("Omløpsmidler"),
-      d(
-        [6248,  6274, 6276, 6276, 6287, 6288]
-          .filter( calculateField =>State.Company.calculateCompanyCalculatedField(calculateField) !== 0 )
-          .map( calculateField => CompanyCalculatedFieldView( State, calculateField)  )  
-        )
-    ], {style: "margin: 5px;border: 1px solid #80808052;"}),
+      d([
+        entityLabelWithPopup( State, 6785, e => State.Actions.selectEntity( 6785 )  ),
+        d( State.Company.getAll(6785).map( security => d([
+          companyEntityLabelWithPopup( State, security),
+        d( String(State.Company.get(security, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"})  ) )
+      ], {style: gridColumnsStyle("1fr 3fr") }),
+      d([
+        entityLabelWithPopup( State, 7310 ),
+        d(State.Company.getAll(7310).map( bankAccount => d([
+          companyEntityLabelWithPopup( State, bankAccount),
+          d( String(State.Company.get(bankAccount, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}) ) )
+      ], {style: gridColumnsStyle("1fr 3fr") }),
+    ], {style: `padding: 1em;`}),
     d([
-      h3("Gjeld og egenkapital"),
-      d("Egenkapital"),
-      d(
-        [6237,  6246, 6278, 6281, 6295]
-          .filter( calculateField =>State.Company.calculateCompanyCalculatedField(calculateField) !== 0 )
-          .map( calculateField => CompanyCalculatedFieldView( State, calculateField)  )  
-      ),
+      h3("Egenkapital"),
+      d([
+        entityLabelWithPopup( State, 6790 ),
+        d(State.Company.getAll(6790).map( actor => d([
+          companyEntityLabelWithPopup( State, actor),
+          d( String(State.Company.get(actor, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`}),
+          //d("1000", {style: `text-align: right;`})
+        ], {class: "columns_1_1"})  ) )
+      ], {style: gridColumnsStyle("1fr 3fr") }),
       br(),
-      d("Gjeld"),
-      d(
-        [6247,  6259, 6280, 6257, 6258, 6264, 6269, 6272, 6273, 6294, 6296]
-          .filter( calculateField =>State.Company.calculateCompanyCalculatedField(calculateField) !== 0 )
-          .map( calculateField => CompanyCalculatedFieldView( State, calculateField)  )  
-      ),
-    ], {style: "margin: 5px;border: 1px solid #80808052;"}),
+      h3("Gjeld"),
+      d([
+        entityLabelWithPopup( State, 6791),
+        d(State.Company.getAll(6791).map( loan => d([
+          companyEntityLabelWithPopup( State, loan),
+          d( String(State.Company.get(loan, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`}),
+          //d("1000", {style: `text-align: right;`})
+        ], {class: "columns_1_1"})  ) )
+      ], {style: gridColumnsStyle("1fr 3fr") }),
+    ], {style: `padding: 1em;`}),
+
   ], {class: "columns_1_1"})
+  
 ], {class: "feedContainer"})
 
 // ADMIN PAGE VIEWS

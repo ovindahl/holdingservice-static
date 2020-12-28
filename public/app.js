@@ -74,10 +74,17 @@ const ClientApp = {
 
 
         let Actions = {
-          selectEntity: entity => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: undefined }}),
+          selectEntity: (entity, companyEntity) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity }}),
           selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
           toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
-          updateCompany: company => ClientApp.update( State, {Company: constructCompany( State,  State.DB, company ), S: {selectedEntity: company }} )
+          updateCompany: company => ClientApp.update( State, {Company: constructCompany( State.DB, company ), S: {selectedEntity: company }} ),
+          createProcess: async (processType, accountingYear) =>  {
+            let updatedDB = await Transactor.createEntity(State.DB, 5692, [ newDatom( 'newEntity' , 'process/company', State.Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ), newDatom( 'newEntity' , 'process/accountingYear', accountingYear ) ] )
+            let updatedCompany = constructCompany( updatedDB, State.Company.entity )
+            ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} )
+          },
+          retractEntity: async entity => ClientApp.update( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: State.Company.entity }} ),
+          executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
         }
 
       State.Actions = Actions
@@ -112,7 +119,7 @@ let init = async () => {
 
     let initialDatabase = constructDatabase( Entities )
     let company = 6829
-    let initialCompany = constructCompany( {}, initialDatabase, company )
+    let initialCompany = constructCompany( initialDatabase, company )
 
 
     ClientApp.update( {}, {
