@@ -290,6 +290,10 @@ let createCompanyQueryObject = (DB, Company) => {
         Process.companyDatoms = Company.companyDatoms.filter( companyDatom => companyDatom.process === process ).filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
         Process.entities = Process.companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
 
+        
+
+        Process.label = () => `[${DB.get( Process.get("process/accountingYear") ).label()}/P-${Company.processes.findIndex( p => p === process ) + 1}] ${DB.get( Process.get("process/processType") ).label()}`
+
         Process.getFirstEvent = () => Company.getEvent( Process.events[0] )
         
         return Process
@@ -302,6 +306,11 @@ let createCompanyQueryObject = (DB, Company) => {
         Event.process = Event.get("event/process")
         Event.companyDatoms = Company.companyDatoms.filter( companyDatom => companyDatom.event === event )
         Event.entities = Event.companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
+
+
+        //Event.label = () => `[${DB.get( DB.get( Event.process ).get("process/accountingYear") ).label()}/H-${Company.events.findIndex( e => e === event ) + 1}] ${DB.get( Event.get("event/eventTypeEntity") ).label()}`
+        Event.label = () => `${DB.get( Event.get("event/eventTypeEntity") ).label()}`
+
         let processEvents = Company.events.filter( event => DB.get(event, "event/process") === Event.process )
         let prevEvent = processEvents[  processEvents.findIndex( e => e  === event ) - 1 ]
         Event.getPrevEvent = () => Company.getEvent( prevEvent )

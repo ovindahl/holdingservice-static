@@ -121,7 +121,12 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 //Basic entity views
 
 let entityLabel = (State, entity, onClick) => d([
-  d( `${ State.DB.get( entity ) ? State.DB.get( entity ).label() : "na."}`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray" }`}, "click", isDefined(onClick) ? onClick : e => ClientApp.update( State, {S: {selectedEntity: entity}} ) ),
+  d( 
+    `${ State.DB.get( entity ) ? State.DB.get( entity ).label() : "na."}`, 
+    {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray" }`}, 
+    "click", 
+    isDefined(onClick) ? onClick : e => State.Actions.selectEntity( entity )
+    ),
 ], {style:"display: inline-flex;"})
 
 

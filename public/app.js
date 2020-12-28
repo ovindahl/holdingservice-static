@@ -68,8 +68,21 @@ const ClientApp = {
           created: Date.now(),
           DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
           Company: Object.keys(patch).includes( "Company" ) ? patch.Company : prevState.Company,
-          S: mergerino(prevState.S, patch.S)
+          S: mergerino(prevState.S, patch.S),
+          
         }
+
+
+        let Actions = {
+          selectEntity: entity => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: undefined }}),
+          selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
+          toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
+          updateCompany: company => ClientApp.update( State, {Company: constructCompany( State,  State.DB, company ), S: {selectedEntity: company }} )
+        }
+
+      State.Actions = Actions
+
+      
 
       ClientApp.States.push(State)
       ClientApp.Patches.push(patch)
@@ -108,7 +121,7 @@ let init = async () => {
       S: {selectedEntity: company }
     } )
     
-  }else{ ClientApp.update( {}, {S: {isError: true, error: "ERROR: Mottok ingen data fra databasen. Last på nytt om 30 sek." }} ) }
+  }else{ ClientApp.update( {}, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }
   
 }
 
