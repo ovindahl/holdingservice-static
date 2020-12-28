@@ -59,6 +59,45 @@ const sideEffects = {
   }
 }
 
+
+var S = {} //Consle access to localState
+var D = {} //Consle access to DB
+var C = {} //Consle access to Company
+var A = {} //Consle access to Actions
+
+
+let getDBActions = State => returnObject({
+  createEntity: async entityType => ClientApp.update( State, {DB: await Transactor.createEntity( State.DB, entityType )  } ),
+  retractEntity: async entity => ClientApp.update( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined, selectedCompanyEntity: undefined }} ),
+  duplicateEntity: async entity => {
+    let entityType = State.DB.get( entity, "entity/entityType")
+    let entityTypeAttributes = State.DB.get( entityType, "entityType/attributes" )
+    let newEntityDatoms = entityTypeAttributes.map( attr => newDatom("newEntity", State.DB.attrName(attr), State.DB.get( entity, attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${State.DB.get( entity, 6)}` ) )
+    if(entityType === 42){ newEntityDatoms.push( newDatom( "newEntity", "attr/name", "attr/" + Date.now() )  ) }
+
+    let updatedDB = await Transactor.createEntity( State.DB, entityType, newEntityDatoms)
+    ClientApp.update( State, {DB: updatedDB, S: {selectedEntity: updatedDB.Entities.slice(-1)[0].entity, selectedCompanyEntity: undefined }} )
+  },
+  executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
+})
+
+let getClientActions = State => returnObject({
+  selectEntity: (entity, companyEntity) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity }}),
+  selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
+  toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
+
+  updateCompany: company => ClientApp.update( State, {Company: constructCompany( State.DB, company ), S: {selectedEntity: company }} ),
+
+  createProcess: async (processType, accountingYear) =>  {
+    let updatedDB = await Transactor.createEntity(State.DB, 5692, [ newDatom( 'newEntity' , 'process/company', State.Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ), newDatom( 'newEntity' , 'process/accountingYear', accountingYear ) ] )
+    let updatedCompany = constructCompany( updatedDB, State.Company.entity )
+    ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} )
+  },
+  executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
+})
+
+
+
 const ClientApp = {
     States: [],
     Patches: [],
@@ -69,41 +108,30 @@ const ClientApp = {
           DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
           Company: Object.keys(patch).includes( "Company" ) ? patch.Company : prevState.Company,
           S: mergerino(prevState.S, patch.S),
-          
         }
 
+        
 
-        let Actions = {
-          selectEntity: (entity, companyEntity) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity }}),
-          selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
-          toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
-          updateCompany: company => ClientApp.update( State, {Company: constructCompany( State.DB, company ), S: {selectedEntity: company }} ),
-          createProcess: async (processType, accountingYear) =>  {
-            let updatedDB = await Transactor.createEntity(State.DB, 5692, [ newDatom( 'newEntity' , 'process/company', State.Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ), newDatom( 'newEntity' , 'process/accountingYear', accountingYear ) ] )
-            let updatedCompany = constructCompany( updatedDB, State.Company.entity )
-            ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} )
-          },
-          retractEntity: async entity => ClientApp.update( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: State.Company.entity }} ),
-          executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
-        }
-
-      State.Actions = Actions
-
+      State.Actions = Object.assign( {}, getDBActions(State), getClientActions(State) )
       
+      S = State.S
+      D = State.DB
+      C = State.Company
+      A = State.Actions
 
       ClientApp.States.push(State)
       ClientApp.Patches.push(patch)
 
       log({prevState, patch, State})
       
+      
+      
+      
       let startTime = Date.now()
-
-
       let elementTree = [
         sessionStatePanel( ClientApp.States, ClientApp.Patches ),
         State.S.isAdmin ? adminPage( State ) : clientPage( State )
       ]
-      
       sideEffects.updateDOM( elementTree )
       console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
   }

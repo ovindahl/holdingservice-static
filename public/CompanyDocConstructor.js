@@ -173,7 +173,17 @@ let createCompanyQueryObject = (DB, Company) => {
 
       CompanyEntity.companyEntityType = CompanyEntity.get(6781)
 
-      CompanyEntity.label = () => `${DB.get( CompanyEntity.companyEntityType, "entity/label")} # ${Company.getAll(CompanyEntity.companyEntityType).findIndex( e => e === CompanyEntity.entity) + 1}`
+      const companyEntityTypeLabelController = {
+        "6785": () => CompanyEntity.get(1101),
+        "6790": () => CompanyEntity.get(1113),
+        "6791": () => `Gjeld til ${Company.get( CompanyEntity.get(6777) ).label()}`,
+        "7310": () => `Konto i ${CompanyEntity.get(1809)}`,
+        "7079": () => `[${moment(CompanyEntity.get(1757), "x").format("DD/MM")}] ${ CompanyEntity.get(7432) } av ${Company.get( CompanyEntity.get(6777) ).label()} (NOK ${ CompanyEntity.get(1098) }) ` ,
+      }
+
+      CompanyEntity.label = () => Object.keys(companyEntityTypeLabelController).includes(String(CompanyEntity.companyEntityType))
+        ? companyEntityTypeLabelController[CompanyEntity.companyEntityType]()
+        : `${DB.get( CompanyEntity.companyEntityType, "entity/label")} # ${Company.getAll(CompanyEntity.companyEntityType).findIndex( e => e === CompanyEntity.entity) + 1}`
 
       return CompanyEntity
     }
@@ -204,9 +214,7 @@ let createCompanyQueryObject = (DB, Company) => {
         Process.companyDatoms = Company.companyDatoms.filter( companyDatom => companyDatom.process === process ).filter( companyDatom => isDefined(t) ? companyDatom.t <= t : true )
         Process.entities = Process.companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
 
-        
-
-        Process.label = () => `[${DB.get( Process.get("process/accountingYear") ).label()}/P-${Company.processes.findIndex( p => p === process ) + 1}] ${DB.get( Process.get("process/processType") ).label()}`
+        Process.label = () => `[${DB.get( Process.get("process/accountingYear") ).label()}/${Company.processes.findIndex( p => p === process ) + 1}] ${DB.get( Process.get("process/processType") ).label()}`
 
         Process.getFirstEvent = () => Company.getEvent( Process.events[0] )
         

@@ -201,6 +201,9 @@ let multipleCompanyEntitiesView = State => {
   ],{class: "feedContainer"})
 } 
 
+
+// Company entity view   -------------------------------------------------------------
+
 let companyView = State => d([
   balanceSheetView( State ),
   br(),
@@ -209,7 +212,7 @@ let companyView = State => d([
     d( [7407, 7406].map( accountingYear => {
 
       let accountingYearProcesses =State.Company.processes
-      .filter( p =>State.Company.getProcess(p).get("process/accountingYear") === accountingYear )
+      .filter( p => State.Company.getProcess(p).get("process/accountingYear") === accountingYear )
 
       return d([
         entityLabelWithPopup( State, accountingYear ),
@@ -241,6 +244,56 @@ let companyView = State => d([
 
 
 
+
+let balanceSheetView = State => d([
+  h3("Selskapets balanse"),
+  d(`Siste registrerte hendelse: ${ moment(State.Company.getEvent(State.Company.events.slice(-1)[0]).get("event/date"), "x").format("YYYY-MM-DD")  }`),
+  d([
+    d([
+      h3("Eiendeler"),
+      d([
+        entityLabelWithPopup( State, 6785, e => State.Actions.selectEntity( 6785 )  ),
+        d( State.Company.getAll(6785).map( security => d([
+          companyEntityLabelWithPopup( State, security),
+        d( String(State.Company.get(security, 7433) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"})  ) )
+      ], {style: gridColumnsStyle("1fr 3fr") }),
+      d([
+        entityLabelWithPopup( State, 7310 ),
+        d(State.Company.getAll(7310).map( bankAccount => d([
+          companyEntityLabelWithPopup( State, bankAccount),
+          d( String(State.Company.get(bankAccount, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}) ) )
+      ], {style: gridColumnsStyle("1fr 3fr") }),
+    ], {style: `padding: 1em;`}),
+    d([
+      h3("Egenkapital"),
+      d([
+        entityLabelWithPopup( State, 6790 ),
+        d(State.Company.getAll(6790).map( actor => d([
+          companyEntityLabelWithPopup( State, actor),
+          d( String(State.Company.get(actor, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`}),
+          //d("1000", {style: `text-align: right;`})
+        ], {class: "columns_1_1"})  ) )
+      ], {style: gridColumnsStyle("1fr 3fr") }),
+      br(),
+      h3("Gjeld"),
+      d([
+        entityLabelWithPopup( State, 6791),
+        d(State.Company.getAll(6791).map( loan => d([
+          companyEntityLabelWithPopup( State, loan),
+          d( String(State.Company.get(loan, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`}),
+          //d("1000", {style: `text-align: right;`})
+        ], {class: "columns_1_1"})  ) )
+      ], {style: gridColumnsStyle("1fr 3fr") }),
+    ], {style: `padding: 1em;`}),
+
+  ], {class: "columns_1_1"})
+  
+], {class: "feedContainer"})
+
+
+// Company entity view END -------------------------------------------------------------
 
 let timelineHeaderView = width => d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `width:${width};display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;`} )
 
@@ -424,52 +477,7 @@ let CompanyCalculatedFieldView = ( State, calculateField) => d([
 ], {class: "columns_1_1"})
 
 
-let balanceSheetView = State => d([
-  h3("Selskapets balanse"),
-  d(`Siste registrerte hendelse: ${ moment(State.Company.getEvent(State.Company.events.slice(-1)[0]).get("event/date"), "x").format("YYYY-MM-DD")  }`),
-  d([
-    d([
-      h3("Eiendeler"),
-      d([
-        entityLabelWithPopup( State, 6785, e => State.Actions.selectEntity( 6785 )  ),
-        d( State.Company.getAll(6785).map( security => d([
-          companyEntityLabelWithPopup( State, security),
-        d( String(State.Company.get(security, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`})
-        ], {class: "columns_1_1"})  ) )
-      ], {style: gridColumnsStyle("1fr 3fr") }),
-      d([
-        entityLabelWithPopup( State, 7310 ),
-        d(State.Company.getAll(7310).map( bankAccount => d([
-          companyEntityLabelWithPopup( State, bankAccount),
-          d( String(State.Company.get(bankAccount, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`})
-        ], {class: "columns_1_1"}) ) )
-      ], {style: gridColumnsStyle("1fr 3fr") }),
-    ], {style: `padding: 1em;`}),
-    d([
-      h3("Egenkapital"),
-      d([
-        entityLabelWithPopup( State, 6790 ),
-        d(State.Company.getAll(6790).map( actor => d([
-          companyEntityLabelWithPopup( State, actor),
-          d( String(State.Company.get(actor, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`}),
-          //d("1000", {style: `text-align: right;`})
-        ], {class: "columns_1_1"})  ) )
-      ], {style: gridColumnsStyle("1fr 3fr") }),
-      br(),
-      h3("Gjeld"),
-      d([
-        entityLabelWithPopup( State, 6791),
-        d(State.Company.getAll(6791).map( loan => d([
-          companyEntityLabelWithPopup( State, loan),
-          d( String(State.Company.get(loan, 6108).reduce( (sum, t) => sum +State.Company.get(t, 1083), 0 ) ) , {style: `text-align: right;`}),
-          //d("1000", {style: `text-align: right;`})
-        ], {class: "columns_1_1"})  ) )
-      ], {style: gridColumnsStyle("1fr 3fr") }),
-    ], {style: `padding: 1em;`}),
 
-  ], {class: "columns_1_1"})
-  
-], {class: "feedContainer"})
 
 // ADMIN PAGE VIEWS
 
@@ -486,7 +494,6 @@ let adminPage = State => d([
       ? entityLabelWithPopup( State,  State.S.selectedEntity )
       : span("Ingen entitet valgt.")
   ], {style: "padding: 1em;"}),
-
   d([
     d(""),
    State.DB.get( State.S.selectedEntity, "entity/entityType" ) === 47
