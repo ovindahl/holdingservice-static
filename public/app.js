@@ -83,7 +83,7 @@ let getDBActions = State => returnObject({
 
 let getClientActions = State => returnObject({
   selectEntity: (entity, companyEntity) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity }}),
-  selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
+  selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity, selectedCompanyEntityVersion: State.Company.t }}),
   selectCompanyEntityVersion: (companyEntity, version) => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity, selectedCompanyEntityVersion: version }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
 

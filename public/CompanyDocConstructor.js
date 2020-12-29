@@ -3,7 +3,7 @@
 let createCompanyEventQueryObject = (DB, CompanyVersion, event ) => {
 
   let Event = DB.get( event )
-  Event.t =  CompanyVersion.events.findIndex( e => e === event ) + 1
+  Event.t =  DB.get(event, 'event/date')
   Event.process = Event.get("event/process")
   Event.companyDatoms = CompanyVersion.companyDatoms.filter( companyDatom => companyDatom.event === event )
   Event.entities = Event.companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
@@ -150,27 +150,29 @@ let createCompanyEntityQueryObject = (DB, CompanyVersion, companyEntity) => {
 
 let constructCompany = (DB, company ) => {
 
+  let companyEvents = DB.getAll(46)
+  .filter( event => DB.get( DB.get(event, "event/process"), "process/company" ) === company  )
+  .sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
+
+  let companyProcesses = DB.getAll(5692).filter( process => DB.get(process , 'process/company' ) === company  ).sort( (processA, processB) => {
+    let processEventsA = companyEvents.filter( e => DB.get(e, "event/process") === processA )
+    let firstEventA = processEventsA[0]
+    let firstEventDateA = isDefined(firstEventA) ? DB.get(firstEventA, 'event/date') : Date.now()
+    let processEventsB = companyEvents.filter( e => DB.get(e, "event/process") === processB )
+    let firstEventB = processEventsB[0]
+    let firstEventDateB = isDefined(firstEventB ) ? DB.get(firstEventB , 'event/date') : Date.now()
+    return firstEventDateA - firstEventDateB;
+  })
+
   let dbCompany = {
       entity: company,
       tx: DB.tx, //Burde være tx fra siste update i selskapets event/prosess/company, da har man en uniform vesionering,
-      t: 0,
+      t: companyEvents[0].t,
       companyDatoms: [],
-      entities: []
+      entities: [],
+      events: companyEvents,
+      processes: companyProcesses
     }
-  
-    dbCompany.events = DB.getAll(46)
-      .filter( event => DB.get( DB.get(event, "event/process"), "process/company" ) === company  )
-      .sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
-  
-    dbCompany.processes = DB.getAll(5692).filter( process => DB.get(process , 'process/company' ) === company  ).sort( (processA, processB) => {
-      let processEventsA = dbCompany.events.filter( e => DB.get(e, "event/process") === processA )
-      let firstEventA = processEventsA[0]
-      let firstEventDateA = isDefined(firstEventA) ? DB.get(firstEventA, 'event/date') : Date.now()
-      let processEventsB = dbCompany.events.filter( e => DB.get(e, "event/process") === processB )
-      let firstEventB = processEventsB[0]
-      let firstEventDateB = isDefined(firstEventB ) ? DB.get(firstEventB , 'event/date') : Date.now()
-      return firstEventDateA - firstEventDateB;
-    })
   
     dbCompany.latestEntityID = 0;
   
@@ -187,11 +189,11 @@ let constructCompany = (DB, company ) => {
     return constructedCompany
 }
 
-let addDatomsToCompany = (prevCompany, newDatoms) => {
+let addDatomsToCompany = (prevCompany, Event, newDatoms) => {
 
   let Company = {
     entity: prevCompany.entity,
-    t: prevCompany.t + 1,
+    t: Event.t,
     events: prevCompany.events,
     processes: prevCompany.processes,
     companyDatoms: prevCompany.companyDatoms.concat( newDatoms ),
@@ -207,8 +209,8 @@ let applyCompanyEvents = ( DB, dbCompany ) => dbCompany.events.reduce( (prevComp
     let Event = createCompanyEventQueryObject( DB, prevCompany, event )
     let Process = createCompanyProcessQueryObject( DB, prevCompany, DB.get(event, "event/process") )
     let entityConstructors = DB.get( Event.get( "event/eventTypeEntity" ) , "eventType/newEntities" )
-    let eventDatoms = entityConstructors.map( (entityConstructor, index) => constructEntityDatoms( DB, prevCompany, Process, Event, entityConstructor, index ) ).flat() 
-    let updatedCompany = addDatomsToCompany( prevCompany, eventDatoms )
+    let eventDatoms = entityConstructors.map( (entityConstructor, index) => constructEntityDatoms( DB, prevCompany, Process, Event, entityConstructor, index ) ).flat()
+    let updatedCompany = addDatomsToCompany( prevCompany, Event, eventDatoms )
     let updatedCompanyQueryObject = createCompanyQueryObject( DB, updatedCompany )
 
     return updatedCompanyQueryObject

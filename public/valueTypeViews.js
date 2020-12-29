@@ -216,7 +216,7 @@ d([
 let companyEntityView = (State, companyEntity, t ) => {
 
   
-  let activeT = isDefined(t) ? t : State.Company.t
+  let activeT = t
 
   let CompanyVersion = State.Company.getVersion( t )
 
@@ -227,15 +227,19 @@ let companyEntityView = (State, companyEntity, t ) => {
   let companyEntityTypeAttributes = State.DB.get( companyEntityType, 6779 )
   let companyEntityTypeCalculatedField = State.DB.get( companyEntityType, 6789 )
 
-  let prevVersion = activeT - 1
-  let nextVersion = activeT + 1
+  let CompanyEventTimes = State.Company.events.map( event => State.Company.getEvent(event).t )
+  
+  
+  let prevVersion = CompanyEventTimes.filter( eventTime => eventTime < activeT ).slice(-1)[0]
+  let nextVersion = CompanyEventTimes.find( eventTime => eventTime > activeT )
+
 
   return d([
     companyEntityLabelWithPopup(State, companyEntity),
     br(),
     d([
-      isDefined(prevVersion) ? submitButton("<--- forrige versjon", e => State.Actions.selectCompanyEntityVersion(  companyEntity, prevVersion ) ) : d(""),
-      d(`[ ${ activeT } / ${State.Company.t} ]`),
+      isDefined( State.Company.getVersion( prevVersion ).get( companyEntity ) ) ? submitButton("<--- forrige versjon", e => State.Actions.selectCompanyEntityVersion(  companyEntity, prevVersion ) ) : d(""),
+      d(`${ moment( activeT ).format("YYYY-MM-DD") }`),
       isDefined(nextVersion) ? submitButton("neste versjon --->", e => State.Actions.selectCompanyEntityVersion(  companyEntity, nextVersion ) ) : d(""),
       ], {class: "columns_1_1_1"}),
     br(),
