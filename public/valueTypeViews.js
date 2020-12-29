@@ -127,7 +127,7 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 
 //Basic entity views
 
-let entityLabel = (State, entity, onClick, isSelected) => isDefined(entity)
+let entityLabel = (State, entity, onClick, isSelected) => State.DB.isEntity(entity)
   ?  d([
       d( 
         `${ State.DB.get( entity, "entity/entityType" ) === 5692 
