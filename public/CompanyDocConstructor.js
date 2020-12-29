@@ -89,6 +89,8 @@ let createCompanyQueryObject = (DB, Company, t) => {
     
   }
 
+  CompanyVersion.getCalculatedFieldversions = (companyEntity, calculatedField) => getCompanyEntityCalculatedFieldVersions(CompanyVersion, companyEntity, calculatedField )
+
 
     CompanyVersion.get = ( entity, attribute ) => isUndefined(attribute)
       ? CompanyVersion.getEntity( entity )
@@ -127,7 +129,6 @@ let createCompanyEntityQueryObject = (DB, CompanyVersion, companyEntity) => {
 
     CompanyEntity.event = CompanyEntity.companyDatoms[0].event
 
-
     CompanyEntity.companyEntityType = CompanyEntity.get(6781)
 
     const companyEntityTypeLabelController = {
@@ -145,6 +146,21 @@ let createCompanyEntityQueryObject = (DB, CompanyVersion, companyEntity) => {
     return CompanyEntity
 
 }
+
+let getCompanyEntityCalculatedFieldVersions = (Company, companyEntity, calculatedField) => Company.events.reduce( ( versions, event ) => {
+
+  let Event = Company.getEvent(event)
+
+  let currentEventValue = Company.get(companyEntity, calculatedField, Event.t)
+
+  let prevEventValue = versions.length > 0
+   ? Company.get( companyEntity, calculatedField, versions.slice(-1)[0] )
+   : undefined
+  
+  return ( JSON.stringify(currentEventValue) === JSON.stringify(prevEventValue) ) ? versions : versions.concat( Event.t )
+
+
+}, [] )
 
 //Updated Company Construction pipeline
 

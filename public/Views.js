@@ -283,10 +283,14 @@ let processView = State => {
     br(),
     d([
       h3("Selskapsdokumenter generert av prosessen:"),
-      d( State.Company.getProcess(  process ).entities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( process, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ) )),
+      d( Process.entities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( process, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ) )),
       br(),
-      isDefined(State.S.selectedCompanyEntity) 
-        ? companyEntityView( State, State.S.selectedCompanyEntity )
+      isDefined( State.S.selectedCompanyEntity ) 
+        ? d([
+            d( State.DB.get( State.Company.get( State.S.selectedCompanyEntity, 6781 ), 6779 ).map( attribute => companyDatomView( State, State.S.selectedCompanyEntity, attribute, isDefined( State.S.selectedCompanyEntityVersion ) ? State.S.selectedCompanyEntityVersion : State.Company.getEvent( Process.events.slice(-1)[0] ).t ) )),
+            br(),
+            submitButton("Åpne selskapsdokument", e => State.Actions.selectCompanyEntity(  State.S.selectedCompanyEntity ) )
+        ]) 
         : d("")
     ], {class: "feedContainer"} )
   ]) 

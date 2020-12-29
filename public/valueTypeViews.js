@@ -167,6 +167,60 @@ br(),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
+
+//NEW VIEWS
+
+let entityView = (State, entity) => isDefined(entity)
+  ? d([
+      d([
+        d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
+        entityLabelWithPopup( State, entity),
+      ], {class: "columns_1_1"}),
+      d( State.DB.get( State.DB.get(entity, "entity/entityType"), "entityType/attributes" ).map( attribute => entityAttributeView(State, entity, attribute) ) ),
+      d([
+        submitButton( "Slett", e => State.Actions.retractEntity(entity) ),
+        submitButton( `Opprett ny ${State.DB.get( State.DB.get(entity, "entity/entityType") ).label() } `, e => State.Actions.createEntity( State.DB.get(entity, "entity/entityType") ) ),
+        submitButton( "Lag kopi", e => State.Actions.duplicateEntity( entity ) ),
+      ])
+    ], {class: "feedContainer"} )
+  : d("Ingen entitet valgt", {class: "feedContainer"})
+
+let entityVersionLabel = (State, entity, attribute) => d([
+  d([
+    d( "v" + State.DB.getEntityAttribute(entity, attribute).Datoms.length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
+    entityVersionPopup( State, entity, attribute )
+  ], {class: "popupContainer"})
+  ], {style:"display: inline-flex;"} )
+
+let entityVersionPopup = (State, entity, attribute) => {
+
+  let EntityDatoms = State.DB.getEntity( entity ).Datoms.filter( Datom => Datom.attribute === State.DB.attrName(attribute) )
+
+  return d([
+    d([
+      d( "Endret"),
+      d("Tidligere verdi")
+    ], {style: gridColumnsStyle("2fr 2fr 1fr")}),
+      d( EntityDatoms.reverse().slice(1, 5).map( Datom => d([
+        d( moment(Datom.tx).format("YYYY-MM-DD") ),
+        d(JSON.stringify(Datom.value)),
+        submitButton( "Gjenopprett", async e => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, Datom.attribute, Datom.value )} )
+        )
+      ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) )
+    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+}
+
+
+let entityAttributeView = (State, entity, attribute) => d([
+  entityLabelWithPopup( State, attribute),
+  State.DB.get(attribute, "attribute/isArray") 
+    ? (State.DB.get(attribute, "attribute/valueType") === 32) ? newMultipleValuesView(State, entity, attribute) : multipleValuesView(State, entity, attribute ) 
+    : singleValueView( State, entity, attribute ),
+  entityVersionLabel( State, entity, attribute )
+], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
+
+
+
 //company Entities
 
 
@@ -235,13 +289,13 @@ let companyEntityView = (State, companyEntity, t ) => {
 
 
   return d([
-    companyEntityLabelWithPopup(State, companyEntity),
-    br(),
     d([
       isDefined( State.Company.getVersion( prevVersion ).get( companyEntity ) ) ? submitButton("<--- forrige versjon", e => State.Actions.selectCompanyEntityVersion(  companyEntity, prevVersion ) ) : d(""),
       d(`${ moment( activeT ).format("YYYY-MM-DD") }`),
       isDefined(nextVersion) ? submitButton("neste versjon --->", e => State.Actions.selectCompanyEntityVersion(  companyEntity, nextVersion ) ) : d(""),
       ], {class: "columns_1_1_1"}),
+    br(),
+    companyEntityLabelWithPopup(State, companyEntity),
     br(),
     isDefined(CompanyEntity)
       ? d([
@@ -256,8 +310,11 @@ let companyEntityView = (State, companyEntity, t ) => {
 
 let companyDatomView = (State, companyEntity, attribute, t ) => d([
   entityLabelWithPopup( State, attribute, e => console.log("Cannot access AdminPage from here")),
-  companyValueView(State, companyEntity, attribute, t)
-], {class: "columns_1_1"}) 
+  companyValueView(State, companyEntity, attribute, t),
+  State.DB.get(attribute, "entity/entityType") === 5817
+    ? companyEntityVersionLabel( State, companyEntity, attribute, t )
+    : d("")
+], {class: "columns_1_1_1"}) 
 
 let companyValueView = (State, companyEntity, attribute, t) => {
 
@@ -283,6 +340,30 @@ let companyValueView = (State, companyEntity, attribute, t) => {
     return d(error)
   }
 
+}
+
+let companyEntityVersionLabel = ( State, companyEntity, attribute, t ) => d([
+  d([
+    d( moment( t ).format("D/M"), {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
+    companyEntityVersionPopup( State, companyEntity, attribute, t )
+  ], {class: "popupContainer"})
+  ], {style:"display: inline-flex;"} )
+
+let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => {
+
+  //let versions = State.Company.getCalculatedFieldversions( companyEntity, calculatedField )
+
+  return d([
+    d([
+      d("Endret"),
+      d("Tidligere verdi")
+    ], {style: gridColumnsStyle("2fr 2fr 1fr")}),
+      d("TBD")
+      /* d( versions.map( version => d([
+        submitButton( moment( version ).format("D/M"), e => State.Actions.selectCompanyEntityVersion(  companyEntity, version ) ),
+        d(JSON.stringify( State.Company.get(companyEntity, calculatedField, version ) ))
+      ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) ) */
+    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 }
 
 
@@ -470,58 +551,6 @@ let companyValueView = (State, companyEntity, attribute, t) => {
   } 
   
   
-
-
-//NEW VIEWS
-
-let entityView = (State, entity) => isDefined(entity)
-  ? d([
-      d([
-        d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
-        entityLabelWithPopup( State, entity),
-      ], {class: "columns_1_1"}),
-      d( State.DB.get( State.DB.get(entity, "entity/entityType"), "entityType/attributes" ).map( attribute => entityAttributeView(State, entity, attribute) ) ),
-      d([
-        submitButton( "Slett", e => State.Actions.retractEntity(entity) ),
-        submitButton( `Opprett ny ${State.DB.get( State.DB.get(entity, "entity/entityType") ).label() } `, e => State.Actions.createEntity( State.DB.get(entity, "entity/entityType") ) ),
-        submitButton( "Lag kopi", e => State.Actions.duplicateEntity( entity ) ),
-      ])
-    ], {class: "feedContainer"} )
-  : d("Ingen entitet valgt", {class: "feedContainer"})
-
-let entityVersionLabel = (State, entity, attribute) => d([
-  d([
-    d( "v" + State.DB.getEntityAttribute(entity, attribute).Datoms.length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
-    entityVersionPopup( State, entity, attribute )
-  ], {class: "popupContainer"})
-  ], {style:"display: inline-flex;"} )
-
-let entityVersionPopup = (State, entity, attribute) => {
-
-  let EntityDatoms = State.DB.getEntity( entity ).Datoms.filter( Datom => Datom.attribute === State.DB.attrName(attribute) )
-
-  return d([
-    d([
-      d( "Endret"),
-      d("Tidligere verdi")
-    ], {style: gridColumnsStyle("2fr 2fr 1fr")}),
-      d( EntityDatoms.reverse().slice(1, 5).map( Datom => d([
-        d( moment(Datom.tx).format("YYYY-MM-DD") ),
-        d(JSON.stringify(Datom.value)),
-        submitButton( "Gjenopprett", async e => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, Datom.attribute, Datom.value )} )
-        )
-      ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) )
-    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-} 
-
-
-let entityAttributeView = (State, entity, attribute) => d([
-  entityLabelWithPopup( State, attribute),
-  State.DB.get(attribute, "attribute/isArray") 
-    ? (State.DB.get(attribute, "attribute/valueType") === 32) ? newMultipleValuesView(State, entity, attribute) : multipleValuesView(State, entity, attribute ) 
-    : singleValueView( State, entity, attribute ),
-  entityVersionLabel( State, entity, attribute )
-], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
 
 
 let basicInputView_editable = ( State, formattedValue, updateFunction ) => input( {
