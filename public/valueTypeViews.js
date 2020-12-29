@@ -18,6 +18,13 @@ let isArray = value => Array.isArray(value)
 let filterUniqueValues = (value, index, self) => self.indexOf(value) === index
 let randBetween = (lowest, highest) => Math.round( lowest + Math.random() * (highest - lowest) )
 
+let tryFunction = Func => {
+  let value;
+  try {value = Func() }
+  catch (error) {value = log(error) }
+  return value;
+}
+
 //Mergerino
 const assign = Object.assign || ((a, b) => (b && Object.keys(b).forEach(k => (a[k] = b[k])), a))
 const run = (isArr, copy, patch) => {
@@ -160,22 +167,107 @@ br(),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
-let companyDatomView = (State, companyEntity, attribute) => d([
+//company Entities
+
+
+let companyEntityLabel = (State, companyEntity, onClick, isSelected) => d([
+  d( 
+    isDefined(State.Company.get(companyEntity)) ? State.Company.get(companyEntity).label() : `[${companyEntity}] na.`, 
+    {
+      class: "entityLabel", 
+      style: `background-color:${isDefined(State.Company.get(companyEntity)) ? State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color") : "gray"}; ${ (isSelected || State.S.selectedCompanyEntity === companyEntity) ? "border: 2px solid blue;" : ""}`}, 
+    "click", 
+    isDefined(onClick) ? onClick : e => State.Actions.selectCompanyEntity(companyEntity) 
+    ),
+], {style:"display: inline-flex;"})
+
+let companyEntityLabelWithPopup = (State, companyEntity, onClick, isSelected) => d([
+d([
+  companyEntityLabel( State, companyEntity, onClick, isSelected),
+  companyEntityPopUp( State, companyEntity ),
+], {class: "popupContainer", style:`display: inline-flex;`})
+], {style:"display: inline-flex;"}) 
+
+
+let companyEntityPopUp = (State, companyEntity) => d([
+d([
+  entityLabel( State,  6 ),
+  d(State.Company.get(companyEntity).label()),
+], {class: "columns_1_1"}),
+d([
+  d([span( `Selskapsentitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
+  d(String(companyEntity)),
+], {class: "columns_1_1"}),
+d([
+  entityLabel( State,  47 ),
+  entityLabel( State,  6778 ),
+], {class: "columns_1_1"}),
+d([
+  entityLabel( State,  6781 ),
+  entityLabel( State,  State.Company.get( companyEntity, 6781 ) ),
+], {class: "columns_1_1"}),
+d([
+  d([span( `Opphavshendelse`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
+  entityLabel( State,  State.Company.get( companyEntity ).event, e =>  State.Actions.selectEntity(State.Company.get( companyEntity ).event) ),
+], {class: "columns_1_1"}),
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+
+let companyEntityView = (State, companyEntity, t ) => {
+
+  
+  let activeT = isDefined(t) ? t : State.Company.t
+
+  let CompanyVersion = State.Company.getVersion( t )
+
+  let CompanyEntity = CompanyVersion.get( companyEntity )
+
+  let companyEntityType = CompanyVersion.get( companyEntity, 6781 )
+
+  let companyEntityTypeAttributes = State.DB.get( companyEntityType, 6779 )
+  let companyEntityTypeCalculatedField = State.DB.get( companyEntityType, 6789 )
+
+  let prevVersion = activeT - 1
+  let nextVersion = activeT + 1
+
+  return d([
+    companyEntityLabelWithPopup(State, companyEntity),
+    br(),
+    d([
+      isDefined(prevVersion) ? submitButton("<--- forrige versjon", e => State.Actions.selectCompanyEntityVersion(  companyEntity, prevVersion ) ) : d(""),
+      d(`[ ${ activeT } / ${State.Company.t} ]`),
+      isDefined(nextVersion) ? submitButton("neste versjon --->", e => State.Actions.selectCompanyEntityVersion(  companyEntity, nextVersion ) ) : d(""),
+      ], {class: "columns_1_1_1"}),
+    br(),
+    isDefined(CompanyEntity)
+      ? d([
+          d( companyEntityTypeAttributes.map( attribute => companyDatomView( State, companyEntity, attribute, activeT ) )),
+          d( companyEntityTypeCalculatedField.map( calculatedField => companyDatomView( State, companyEntity, calculatedField, activeT ) ) )
+      ])
+    : d("Entiteten er ikke definert")
+    
+  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+} 
+
+
+let companyDatomView = (State, companyEntity, attribute, t ) => d([
   entityLabelWithPopup( State, attribute, e => console.log("Cannot access AdminPage from here")),
-  companyValueView(State, companyEntity, attribute)
+  companyValueView(State, companyEntity, attribute, t)
 ], {class: "columns_1_1"}) 
 
-let companyValueView = (State, companyEntity, attribute) => {
+let companyValueView = (State, companyEntity, attribute, t) => {
 
   let valueType = State.DB.get(attribute, "attribute/valueType")
 
-  let Value = State.Company.get(companyEntity, attribute)
+  let CompanyVersion = State.Company.getVersion( t )
+
+  let Value = CompanyVersion.get(companyEntity, attribute, t)
 
   try {
     return isDefined( Value )
     ? valueType === 41
       ? State.DB.get(attribute, "attribute/isArray")
-        ? d( State.Company.get(companyEntity, attribute).map( companyEnt => companyEntityLabelWithPopup(State, companyEnt ) ) )
+        ? d( Value.map( companyEnt => companyEntityLabelWithPopup(State, companyEnt ) ) )
         : companyEntityLabelWithPopup(State, Value )
       : [1653, 6781, 1099].includes(attribute)
         ? entityLabel( State, Value , e => console.log("Cannot access AdminPage from here") )
@@ -190,21 +282,9 @@ let companyValueView = (State, companyEntity, attribute) => {
 }
 
 
-//Entity Views
 
-let companyEntityView = (State, companyEntity ) => d([
-  companyEntityLabelWithPopup(State, companyEntity),
-  br(),
-  d([
-    d("Opprinnelseshendelse"),
-    entityLabelWithPopup(State, State.Company.get(companyEntity).event )
-  ], {class: "columns_1_1"}),
-  br(),
-  d( State.Company.companyDatoms.filter( companyDatom => companyDatom.entity === companyEntity  ).map( companyDatom => companyDatomView( State, companyEntity, companyDatom.attribute ) )),
-  d( State.DB.get( State.Company.get( companyEntity , 6781 ), "companyEntityType/calculatedFields" ).map( companyCalculatedField => companyDatomView( State, companyEntity, companyCalculatedField ) ) )
-], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
     
-    //----------------
+  
 
 
 // VALUE TYPE VIEWS
@@ -237,7 +317,7 @@ let companyEntityView = (State, companyEntity ) => d([
         d( "Verdi" ),
         d("")
       ], {class: "columns_1_8_1"}),
-      State.DB.get(attribute, "attribute/isArray")
+      isArray( Value )
         ?  d( State.DB.get(entity, attribute).map( (Value, index) => d([
               positionInArrayView(State, entity, attribute, index),
               valueTypeViews[ valueType ](State, entity, attribute, index),

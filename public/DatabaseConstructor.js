@@ -144,12 +144,7 @@ let constructDatabase = Entities => {
   
     DB.getAll = entityType => DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity) //Kan bli sirkulær med isAttribute
   
-    DB.getOptions = (attribute, tx ) => {
-      let options = [];
-      try {options = new Function( ["Database"] , DB.get(attribute, "attribute/selectableEntitiesFilterFunction", tx) )( DB )}
-      catch (error) { log(error, {info: "Could not get options for DB attribute", attribute, tx }) }
-      return options
-    }
+    DB.getOptions = (attribute, tx ) => tryFunction( () => new Function( ["Database"] , DB.get(attribute, "attribute/selectableEntitiesFilterFunction", tx) )( DB ) );
   
     DB.get = (entity, attribute, version) => {
       if(DB.isEntity(entity)){

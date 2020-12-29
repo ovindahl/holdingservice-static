@@ -66,46 +66,6 @@ let sessionStatePopup = (State, Patch) => {
 
 // CLIENT PAGE VIEWS
 
-let companyEntityLabel = (State, companyEntity, onClick, isSelected) => d([
-    d( 
-      State.Company.get(companyEntity).label(), 
-      {class: "entityLabel", style: `background-color:${State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color")}; ${ (isSelected || State.S.selectedCompanyEntity === companyEntity) ? "border: 2px solid blue;" : ""}`}, 
-      "click", 
-      isDefined(onClick) ? onClick : e => State.Actions.selectCompanyEntity(companyEntity) 
-      ),
-  ], {style:"display: inline-flex;"})
-
-let companyEntityLabelWithPopup = (State, companyEntity, onClick, isSelected) => d([
-  d([
-    companyEntityLabel( State, companyEntity, onClick, isSelected),
-    companyEntityPopUp( State, companyEntity ),
-  ], {class: "popupContainer", style:`display: inline-flex;`})
-], {style:"display: inline-flex;"}) 
-
-
-let companyEntityPopUp = (State, companyEntity) => d([
-  d([
-    entityLabel( State,  6 ),
-    d(State.Company.get(companyEntity).label()),
-  ], {class: "columns_1_1"}),
-  d([
-    d([span( `Selskapsentitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
-    d(String(companyEntity)),
-  ], {class: "columns_1_1"}),
-  d([
-    entityLabel( State,  47 ),
-    entityLabel( State,  6778 ),
-  ], {class: "columns_1_1"}),
-  d([
-    entityLabel( State,  6781 ),
-    entityLabel( State,  State.Company.get( companyEntity, 6781 ) ),
-  ], {class: "columns_1_1"}),
-  d([
-    d([span( `Opphavshendelse`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
-    entityLabel( State,  State.Company.get( companyEntity ).event, e =>  State.Actions.selectEntity(State.Company.get( companyEntity ).event) ),
-  ], {class: "columns_1_1"}),
-], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-
 
 let clientPage = State => {
 
@@ -422,7 +382,7 @@ let eventTimelineView = ( State,  event) => {
 let companyEntityPageView = State  => d([
   submitButton(" <- Tilbake ", e => State.Actions.selectEntity(  State.Company.entity )  ),
   br(),
-  companyEntityView( State, State.S.selectedCompanyEntity )
+  companyEntityView( State, State.S.selectedCompanyEntity, State.S.selectedCompanyEntityVersion )
 ])
 
 let eventView =  State => {

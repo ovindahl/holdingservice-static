@@ -59,7 +59,7 @@ const sideEffects = {
   }
 }
 
-
+var State = {} //Consle access to State
 var S = {} //Consle access to localState
 var D = {} //Consle access to DB
 var C = {} //Consle access to Company
@@ -84,6 +84,7 @@ let getDBActions = State => returnObject({
 let getClientActions = State => returnObject({
   selectEntity: (entity, companyEntity) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity }}),
   selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
+  selectCompanyEntityVersion: (companyEntity, version) => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity, selectedCompanyEntityVersion: version }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
 
   updateCompany: company => ClientApp.update( State, {Company: constructCompany( State.DB, company ), S: {selectedEntity: company }} ),
@@ -103,7 +104,7 @@ const ClientApp = {
     Patches: [],
     update: (prevState, patch) => {
 
-      let State = {
+      let newState = {
           created: Date.now(),
           DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
           Company: Object.keys(patch).includes( "Company" ) ? patch.Company : prevState.Company,
@@ -112,17 +113,18 @@ const ClientApp = {
 
         
 
-      State.Actions = Object.assign( {}, getDBActions(State), getClientActions(State) )
+      newState.Actions = Object.assign( {}, getDBActions(newState), getClientActions(newState) )
       
-      S = State.S
-      D = State.DB
-      C = State.Company
-      A = State.Actions
+      State = newState
+      S = newState.S
+      D = newState.DB
+      C = newState.Company
+      A = newState.Actions
 
-      ClientApp.States.push(State)
+      ClientApp.States.push(newState)
       ClientApp.Patches.push(patch)
 
-      log({prevState, patch, State})
+      log({prevState, patch, newState})
       
       
       
@@ -130,7 +132,7 @@ const ClientApp = {
       let startTime = Date.now()
       let elementTree = [
         sessionStatePanel( ClientApp.States, ClientApp.Patches ),
-        State.S.isAdmin ? adminPage( State ) : clientPage( State )
+        newState.S.isAdmin ? adminPage( newState ) : clientPage( newState )
       ]
       sideEffects.updateDOM( elementTree )
       console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
