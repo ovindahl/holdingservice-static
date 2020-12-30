@@ -23,6 +23,9 @@ let createCompanyProcessQueryObject = (DB, CompanyVersion, process ) => {
 
   let Process = DB.get( process )
   Process.events = CompanyVersion.events.filter( event => DB.get(event, "event/process") === process )
+  Process.startDate = DB.get(Process.events[0], "event/date")
+  Process.endDate = DB.get(Process.events.slice(-1)[0], "event/date")
+  
   Process.companyDatoms = CompanyVersion.companyDatoms.filter( companyDatom => companyDatom.process === process )
   Process.entities = Process.companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
 
@@ -92,19 +95,48 @@ let createCompanyQueryObject = (DB, Company, t) => {
   CompanyVersion.getCalculatedFieldversions = (companyEntity, calculatedField) => getCompanyEntityCalculatedFieldVersions(CompanyVersion, companyEntity, calculatedField )
 
 
-    CompanyVersion.get = ( entity, attribute ) => isUndefined(attribute)
-      ? CompanyVersion.getEntity( entity )
-      : DB.get(attribute, "entity/entityType") === 42
-        ? CompanyVersion.getDatomValue( entity, attribute )
-        : CompanyVersion.getCalculatedFieldValue( entity, attribute )
+  CompanyVersion.get = ( entity, attribute ) => isUndefined(attribute)
+    ? CompanyVersion.getEntity( entity )
+    : DB.get(attribute, "entity/entityType") === 42
+      ? CompanyVersion.getDatomValue( entity, attribute )
+      : CompanyVersion.getCalculatedFieldValue( entity, attribute )
   
 
-    CompanyVersion.getEvent = event => createCompanyEventQueryObject( DB, CompanyVersion, event )
-    CompanyVersion.getProcess = process => createCompanyProcessQueryObject( DB, CompanyVersion, process )
+  CompanyVersion.getEvent = event => createCompanyEventQueryObject( DB, CompanyVersion, event )
+  CompanyVersion.getProcess = process => createCompanyProcessQueryObject( DB, CompanyVersion, process )
+
+
+
+
+  //Temp methods for accbal in year end
+
+  
+
+  CompanyVersion.sumAccountBalance = accountNumbers => {
+
+    let currentAccountBalance = CompanyVersion.get( 1, 6212 )
+
+    let accountEntities = accountNumbers
+    .map( accountNumber => getAccountEntity(DB, accountNumber)  )
+    .filter( accountEntity => currentAccountBalance.filter( accountBalance => accountBalance.account === accountEntity ).length > 0 )
+
+    
+
+    let selectionSum = accountEntities.reduce( (sum, accountEntity) => sum + currentAccountBalance.find( accountBalance => accountBalance.account === accountEntity ).amount, 0 )
+
+    return selectionSum
+
+  } 
+
+  CompanyVersion.getAccountBalance = accountNumber => CompanyVersion.sumAccountBalance([accountNumber])
+
+  
 
 return CompanyVersion
 
 }
+
+getAccountEntity = (DB, accountNumber) => DB.getAll(5030).find( accountEntity => DB.get(accountEntity, "entity/label").startsWith(accountNumber) )
 
 let createCompanyEntityQueryObject = (DB, CompanyVersion, companyEntity) => {
 
@@ -136,7 +168,7 @@ let createCompanyEntityQueryObject = (DB, CompanyVersion, companyEntity) => {
       "6790": () => CompanyEntity.get(1113),
       "6791": () => `Gjeld til ${CompanyVersion.get( CompanyEntity.get(6777) ).label()}`,
       "7310": () => `Konto i ${CompanyEntity.get(1809)}`,
-      "7079": () => `[${moment(CompanyEntity.get(1757), "x").format("DD/MM")}] ${ CompanyEntity.get(7432) } av ${CompanyVersion.get( CompanyEntity.get(6777) ).label()} (NOK ${ CompanyEntity.get(1098) }) ` ,
+      "7079": () => `[${moment(CompanyEntity.get(1757), "x").format("DD/MM")}] ${ CompanyEntity.get(7450) < 0 ? "" : " + " } ${ CompanyEntity.get(7450) } stk ${CompanyVersion.get( CompanyEntity.get(6777) ).label()} (NOK ${ CompanyEntity.get(1083) }) ` ,
     }
 
     CompanyEntity.label = () => Object.keys(companyEntityTypeLabelController).includes(String(CompanyEntity.companyEntityType))
@@ -238,6 +270,9 @@ let processType = Process.get("process/processType" )
 let processTypeSharedStatements = DB.get( processType, "processType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] )
 
 let eventType = Event.get("event/eventTypeEntity" )
+
+
+
 let eventTypeSharedStatements = DB.get( eventType, "eventType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] )
 
 let sharedStatements = processTypeSharedStatements.concat(eventTypeSharedStatements)

@@ -2,7 +2,7 @@ let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, a
 
 
 const Transactor = {
-    submitDatoms: async datoms => {
+    submitDatoms: async (DB, datoms) => {
     let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) )
     let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
     return updatedDB

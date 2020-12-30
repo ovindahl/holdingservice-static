@@ -267,40 +267,28 @@ d([
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
-let companyEntityView = (State, companyEntity, t ) => {
+let companyEntityView = (State, companyEntity ) => {
 
   
-  let activeT = t
+  let selectedCompanyDate = isDefined( State.S.selectedCompanyDate ) ? State.S.selectedCompanyDate : State.Company.t
 
-  let CompanyVersion = State.Company.getVersion( t )
+  let CompanyVersion = State.Company.getVersion( selectedCompanyDate )
 
   let CompanyEntity = CompanyVersion.get( companyEntity )
 
   let companyEntityType = CompanyVersion.get( companyEntity, 6781 )
 
-  let companyEntityTypeAttributes = State.DB.get( companyEntityType, 6779 )
-  let companyEntityTypeCalculatedField = State.DB.get( companyEntityType, 6789 )
-
-  let CompanyEventTimes = State.Company.events.map( event => State.Company.getEvent(event).t )
-  
-  
-  let prevVersion = CompanyEventTimes.filter( eventTime => eventTime < activeT ).slice(-1)[0]
-  let nextVersion = CompanyEventTimes.find( eventTime => eventTime > activeT )
+  let companyEntityTypeAttributes = State.DB.get( companyEntityType, 6779 ) ? State.DB.get( companyEntityType, 6779 ) : []
+  let companyEntityTypeCalculatedField = State.DB.get( companyEntityType, 6789 )? State.DB.get( companyEntityType, 6789 ) : []
 
 
   return d([
-    d([
-      isDefined( State.Company.getVersion( prevVersion ).get( companyEntity ) ) ? submitButton("<--- forrige versjon", e => State.Actions.selectCompanyEntityVersion(  companyEntity, prevVersion ) ) : d(""),
-      d(`${ moment( activeT ).format("YYYY-MM-DD") }`),
-      isDefined(nextVersion) ? submitButton("neste versjon --->", e => State.Actions.selectCompanyEntityVersion(  companyEntity, nextVersion ) ) : d(""),
-      ], {class: "columns_1_1_1"}),
-    br(),
     companyEntityLabelWithPopup(State, companyEntity),
     br(),
     isDefined(CompanyEntity)
       ? d([
-          d( companyEntityTypeAttributes.map( attribute => companyDatomView( State, companyEntity, attribute, activeT ) )),
-          d( companyEntityTypeCalculatedField.map( calculatedField => companyDatomView( State, companyEntity, calculatedField, activeT ) ) )
+          d( companyEntityTypeAttributes.map( attribute => companyDatomView( State, companyEntity, attribute, selectedCompanyDate ) )),
+          d( companyEntityTypeCalculatedField.map( calculatedField => companyDatomView( State, companyEntity, calculatedField, selectedCompanyDate ) ) )
       ])
     : d("Entiteten er ikke definert")
     

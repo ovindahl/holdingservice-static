@@ -82,15 +82,20 @@ let getDBActions = State => returnObject({
 })
 
 let getClientActions = State => returnObject({
-  selectEntity: (entity, companyEntity, companyEntityVersion) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity, selectedCompanyEntityVersion: companyEntityVersion }}),
-  selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity, selectedCompanyEntityVersion: State.Company.t }}),
-  selectCompanyEntityVersion: (companyEntity, companyEntityVersion) => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity, selectedCompanyEntityVersion: companyEntityVersion }}),
+  selectEntity: (entity, companyEntity, companyEntityVersion) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity}}),
+  selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
+  selectCompanyDate: date => ClientApp.update( State, {S: {selectedCompanyDate: date }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
 
   updateCompany: company => ClientApp.update( State, {Company: constructCompany( State.DB, company ), S: {selectedEntity: company }} ),
 
   createProcess: async (processType, accountingYear) =>  {
     let updatedDB = await Transactor.createEntity(State.DB, 5692, [ newDatom( 'newEntity' , 'process/company', State.Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ), newDatom( 'newEntity' , 'process/accountingYear', accountingYear ) ] )
+    let updatedCompany = constructCompany( updatedDB, State.Company.entity )
+    ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} )
+  },
+  createEvent:  async ( eventType, process, date ) =>  {
+    let updatedDB = await Transactor.createEntity(State.DB, 46, [ newDatom( 'newEntity' , 'event/process', process ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , 'event/date', date ) ] )
     let updatedCompany = constructCompany( updatedDB, State.Company.entity )
     ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} )
   },
