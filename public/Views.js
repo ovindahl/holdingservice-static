@@ -164,7 +164,7 @@ let multipleCompanyEntitiesView = State => {
 } 
 
 
-let companyDateLabel = (State) => {
+let companyDateLabel = State => {
 
   let allCompanyDates = State.Company.events.map( event => State.Company.getEvent(event).t )
   let selectedCompanyDate = isDefined( State.S.selectedCompanyDate ) ? State.S.selectedCompanyDate : State.Company.t
@@ -172,12 +172,12 @@ let companyDateLabel = (State) => {
   let nextEventDate = allCompanyDates.find( eventTime => eventTime > selectedCompanyDate )
 
   return d([
-    isDefined( prevEventDate ) ? d("<<", {class: "entityLabel", style: "display: inline-flex;padding: 1px;"}, "click", e => State.Actions.selectCompanyDate(  allCompanyDates[0] )) : span(""),
-    isDefined( prevEventDate ) ? d("<", {class: "entityLabel", style: "display: inline-flex;padding: 1px;"}, "click", e => State.Actions.selectCompanyDate(  prevEventDate )) : span(""),
-    d( moment( selectedCompanyDate ).format("DD/MM/YYYY"), {style: "display: inline-flex;padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
-    isDefined( nextEventDate ) ? d(">", {class: "entityLabel", style: "display: inline-flex;padding: 1px;"}, "click", e => State.Actions.selectCompanyDate(  nextEventDate )) : span(""),
-    isDefined( nextEventDate ) ? d(">>", {class: "entityLabel", style: "display: inline-flex;padding: 1px;"}, "click", e => State.Actions.selectCompanyDate(  State.Company.t )) : span(""),
-  ])
+    isDefined( prevEventDate ) ? span("<<", "", {class: "entityLabel"}, "click", e => State.Actions.selectCompanyDate(  allCompanyDates[0] )) : span(""),
+    isDefined( prevEventDate ) ? span("<", "", {class: "entityLabel"}, "click", e => State.Actions.selectCompanyDate(  prevEventDate )) : span(""),
+    span( moment( selectedCompanyDate ).format("DD/MM/YYYY"), "", {class: "entityLabel"} ),
+    isDefined( nextEventDate ) ? span(">", "", {class: "entityLabel"}, "click", e => State.Actions.selectCompanyDate(  nextEventDate )) : span(""),
+    isDefined( nextEventDate ) ? span(">>", "", {class: "entityLabel"}, "click", e => State.Actions.selectCompanyDate(  State.Company.t )) : span(""),
+  ], {style:"display: inline-flex;padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"})
 } 
 
 // Company entity view   -------------------------------------------------------------
@@ -204,16 +204,25 @@ let balanceSheetView = State => {
           entityLabelWithPopup( State, 6785, e => State.Actions.selectEntity( 6785 )  ),
           d( CompanyVersion.getAll(6785).map( security => d([
             companyEntityLabelWithPopup( State, security),
-          d( String(CompanyVersion.get(security, 7433) ) , {style: `text-align: right;`})
+          d( formatNumber(CompanyVersion.get(security, 7433) ) , {style: `text-align: right;`})
           ], {class: "columns_1_1"})  ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
+        d([
+          entityLabelWithPopup( State, 6275 ),
+          d( formatNumber(CompanyVersion.get(1, 6275) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}),
+        br(),
         d([
           entityLabelWithPopup( State, 7310 ),
           d(CompanyVersion.getAll(7310).map( bankAccount => d([
             companyEntityLabelWithPopup( State, bankAccount),
-            d( String(CompanyVersion.get(bankAccount, 7447) ) , {style: `text-align: right;`})
+            d( formatNumber(CompanyVersion.get(bankAccount, 7447) ) , {style: `text-align: right;`})
           ], {class: "columns_1_1"}) ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
+        d([
+          entityLabelWithPopup( State, 6274 ),
+          d( formatNumber(CompanyVersion.get(1, 6274) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}),
       ], {style: `padding: 1em;`}),
       d([
         h3("Egenkapital"),
@@ -221,22 +230,37 @@ let balanceSheetView = State => {
           entityLabelWithPopup( State, 6790 ),
           d(CompanyVersion.getAll(6790).map( actor => d([
             companyEntityLabelWithPopup( State, actor),
-            d( String(CompanyVersion.get(actor, 7433) ) , {style: `text-align: right;`}),
+            d( formatNumber(CompanyVersion.get(actor, 7455) ) , {style: `text-align: right;`}),
             //d("1000", {style: `text-align: right;`})
           ], {class: "columns_1_1"})  ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
+        d([
+          entityLabelWithPopup( State, 6295 ),
+          d( formatNumber(CompanyVersion.get(1, 6295) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}),
         br(),
         h3("Gjeld"),
         d([
           entityLabelWithPopup( State, 6791),
           d(CompanyVersion.getAll(6791).map( loan => d([
             companyEntityLabelWithPopup( State, loan),
-            d( String(CompanyVersion.get(loan, 7433) ) , {style: `text-align: right;`}),
+            d( formatNumber(CompanyVersion.get(loan, 7458) ) , {style: `text-align: right;`}),
             //d("1000", {style: `text-align: right;`})
           ], {class: "columns_1_1"})  ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
+        d([
+          entityLabelWithPopup( State, 6294 ),
+          d( formatNumber(CompanyVersion.get(1, 6294) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}),
       ], {style: `padding: 1em;`}),
-  
+      d([
+        entityLabelWithPopup( State, 6288 ),
+        d( formatNumber(CompanyVersion.get(1, 6288) ) , {style: `text-align: right;`})
+      ], {class: "columns_1_1",style: `padding: 1em;`}),
+      d([
+        entityLabelWithPopup( State, 6296 ),
+        d( formatNumber(CompanyVersion.get(1, 6296) ) , {style: `text-align: right;`})
+      ], {class: "columns_1_1",style: `padding: 1em;`}),
     ], {class: "columns_1_1"}),
     br(),
     entityLabelWithPopup( State, 6778 ),
@@ -318,12 +342,42 @@ let processesView = State => {
     br(),
     d([
       entityLabelWithPopup(State, 5692),
-      d( State.Company.processes.map( process => entityLabelWithPopup( State, process ) ) )
+      d( State.Company.processes.map( (process, index) => d([
+        entityLabelWithPopup( State, process ),
+        d( ` ${moment( State.Company.getProcess(process).startDate ).format("D/M") } - ${ moment( State.Company.getProcess(process).endDate ).format("D/M") } ` ),
+        //svg(300, 30, [processRect(State, process, 5 + index * (10 + 10) )])
+      ], {class: "columns_1_1_1"})  ) )
     ]),
+
+
+
     //processesSVGtimeline( State ),
     h3("Opprett ny prosess:"),
     d( State.DB.getAll(5687).map( processType => entityLabelWithPopup(State, processType, e => State.Actions.createProcess(processType, accountingYear)  )  ) ),
   ], {style: "width: 1200px;padding:1em;margin-left:1em;margin-bottom: 1em;background-color: white;border: solid 1px lightgray;"})
+} 
+
+let processRect = (State, process, y) => {
+
+  let firstDayIndex = moment( createCompanyProcessQueryObject(State.DB, State.Company, process ).startDate, "x" ).diff(moment( "2020-01-01", "YYYY-MM-DD" ), 'days')
+
+  let lastDayIndex = moment( createCompanyProcessQueryObject(State.DB, State.Company, process ).endDate, "x" ).diff(moment( "2020-01-01", "YYYY-MM-DD" ), 'days')
+
+  let diff = lastDayIndex - firstDayIndex
+
+  let dayWidth = 200 / 365
+
+  let firstDayX = dayWidth * firstDayIndex
+
+
+  return rect({
+      x: firstDayX, 
+      y: y, 
+      width: Math.max(diff, 10), 
+      height: 10, 
+      class: "processRect"
+    }, 
+    e => State.Actions.selectEntity(  process ) )
 } 
 
 let processesSVGtimeline = State => {
@@ -346,26 +400,7 @@ let processesSVGtimeline = State => {
 
 
 
-  let processRect = (State, process, y) => {
-
-    let firstDayIndex = moment( createCompanyProcessQueryObject(State.DB, State.Company, process ).startDate, "x" ).diff(moment( "2020-01-01", "YYYY-MM-DD" ), 'days')
-
-    let lastDayIndex = moment( createCompanyProcessQueryObject(State.DB, State.Company, process ).endDate, "x" ).diff(moment( "2020-01-01", "YYYY-MM-DD" ), 'days')
-
-    let diff = lastDayIndex - firstDayIndex
-
-    let firstDayX = sidePadding + dayWidth * firstDayIndex
-
-
-    return rect({
-        x: firstDayX, 
-        y: y, 
-        width: Math.max(diff, 10), 
-        height: 10, 
-        class: "processRect"
-      }, 
-      e => State.Actions.selectEntity(  process ) )
-  } 
+  
 
   return svg(width+sidePadding*2, State.Company.processes.length * (processHeigth + rowPadding) , processes.map(  (process, index) => processRect(State, process, topPadding + index * (processHeigth + rowPadding) ) )  )
 
@@ -377,7 +412,7 @@ let processTimelineView = ( State,  process) => {
 
   let firstDate = moment( "2020-01-01", "YYYY-MM-DD" )
 
-  let width = 1200;
+  let width = 400;
 
 
   let height = 20;

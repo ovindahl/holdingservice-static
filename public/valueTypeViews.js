@@ -18,6 +18,8 @@ let isArray = value => Array.isArray(value)
 let filterUniqueValues = (value, index, self) => self.indexOf(value) === index
 let randBetween = (lowest, highest) => Math.round( lowest + Math.random() * (highest - lowest) )
 
+let formatNumber = (num, decimals) => isNumber(num) ? num.toFixed( isNumber(decimals) ? decimals : 0 ).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1 ') : "NaN"
+
 let tryFunction = Func => {
   let value;
   try {value = Func() }
@@ -322,7 +324,13 @@ let companyValueView = (State, companyEntity, attribute, t) => {
         ? entityLabel( State, Value , e => console.log("Cannot access AdminPage from here") )
         : valueType === 32
           ? entityLabelWithPopup(State, Value )
-          : d( JSON.stringify( Value )  )
+          : valueType === 6553
+            ? d( Value.map( accountBalance => d([
+                entityLabelWithPopup( State, accountBalance.account),
+                d( String(accountBalance.amount) ),
+              ], {class: "columns_1_1"})
+             )  )
+            : d( JSON.stringify( Value )  )
     : d("na.")
   } catch (error) {
     return d(error)
@@ -369,7 +377,6 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
     let valueTypeViews = {
       "6783": companyEntityConstructorRowView,
       "41": (entity, attribute, index) => d(JSON.stringify(State.DB.get(entity, attribute)[index])), //Company entity
-      "6553": accountBalanceRowView,
       "6613": argumentRowView,
       "6614": statementRowView,
     }
@@ -441,18 +448,7 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
   let input_singleCompanyEntity = ( State, entity, attribute, isEditable) => isEditable
     ? dropdown( State.DB.get( entity,  attribute ), Entity.getOptions( attribute ), async e => ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, Number(submitInputValue(e))  )} ) )
     : companyEntityLabelWithPopup(ClientApp.Company, State.DB.get( entity,  attribute ) )
-  
-  let accountBalanceRowView = (entity, attribute, index) => {
-
-    let Account = State.DB.get( entity, attribute)[index]
-  
-    return d([
-      entityLabelWithPopup( State, Account.account),
-      d( String(Account.amount) ),
-    ], {class: "columns_1_1"})
-  
-  
-  }
+ 
 
 
 
