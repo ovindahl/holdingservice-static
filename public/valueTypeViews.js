@@ -150,6 +150,20 @@ d([
 ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
+let collapsedEntityLabelWithPopup = ( State, entity ) => d([
+  d([
+    span(String(entity), "", {class: "entityLabel", style: `background-color: ${State.DB.get( State.DB.get( entity, "entity/entityType") , "entityType/color")};`}, "click", e => State.Actions.selectEntity(entity) ),
+    entityPopUp( State, entity ),
+  ], {class: "popupContainer", style:"display: inline-flex;"})
+  ], {style:"display: inline-flex;"} )
+
+
+
+
+
+
+
+
 let entityPopUp = (State, entity) => d([
 d([
   entityLabel( State,  6 ),
@@ -301,10 +315,8 @@ let companyEntityView = (State, companyEntity ) => {
 let companyDatomView = (State, companyEntity, attribute, t ) => d([
   entityLabelWithPopup( State, attribute, e => console.log("Cannot access AdminPage from here")),
   companyValueView(State, companyEntity, attribute, t),
-  State.DB.get(attribute, "entity/entityType") === 5817
-    ? companyEntityVersionLabel( State, companyEntity, attribute, t )
-    : d("")
-], {class: "columns_1_1_1"}) 
+  //State.DB.get(attribute, "entity/entityType") === 5817 ? companyEntityVersionLabel( State, companyEntity, attribute, t ) : d("")
+], {class: "columns_1_1"}) 
 
 let companyValueView = (State, companyEntity, attribute, t) => {
 
@@ -330,7 +342,9 @@ let companyValueView = (State, companyEntity, attribute, t) => {
                 d( String(accountBalance.amount) ),
               ], {class: "columns_1_1"})
              )  )
-            : d( JSON.stringify( Value )  )
+            : isNumber(Value) 
+              ? d( formatNumber(Value, Math.abs(Value) >= 100 ? 0 : 2 ), {style: `text-align: right;`}  )
+              : d( JSON.stringify( Value )  )
     : d("na.")
   } catch (error) {
     return d(error)
@@ -535,15 +549,11 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
   } 
   
   
+let textInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isDefined( formattedValue ) ? "" : "background-color: red;" }, "change", updateFunction  )
+let dateInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isDefined( formattedValue ) ? "" : "background-color: red;" }, "change", updateFunction  )
+let numberInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isNumber( Number(formattedValue) ) ? "text-align: right;" : "background-color: red;" }, "change", updateFunction  )
 
 
-let basicInputView_editable = ( State, formattedValue, updateFunction ) => input( {
-  value: formattedValue, style: isDefined( formattedValue )
-    ? isNumber(formattedValue) 
-      ? `text-align: right;` 
-      : "" 
-    : "background-color: red;" 
-  }, "change", updateFunction  )
 let textAreaView = ( State, formattedValue, updateFunction ) => textArea( formattedValue, {class:"textArea_code"}, updateFunction )
 let boolView = ( State, formattedValue, updateFunction ) => input( {value: formattedValue}, "click", updateFunction )
 
@@ -610,16 +620,15 @@ let functionView = ( State, formattedValue, updateFunction ) => {
 }
 
 
-let selectCompanyEntityView = ( State, formattedValue, updateFunction ) => {
+let selectCompanyEntityView = ( State, formattedValue, updateFunction, options ) => {
 
   let isValidCompanyEntity =State.Company.events.includes(formattedValue)
 
   return d([
     isValidCompanyEntity ? companyEntityLabelWithPopup( State, State.Company.getEvent(formattedValue).entities[0] ) : d("tom"),
-
     dropdown(
       isValidCompanyEntity ? formattedValue : "Velg", 
-      State.Company.getAll().map( companyEntity => returnObject({value: State.Company.get(companyEntity).event, label: State.Company.get(companyEntity).label() }) ),
+      options,
       updateFunction 
       )
 
@@ -629,13 +638,13 @@ let selectCompanyEntityView = ( State, formattedValue, updateFunction ) => {
 let placeholderView = ( State, formattedValue, updateFunction ) => d( JSON.stringify( formattedValue )  )
 
 const valueTypeViews_single = {
-  "30": basicInputView_editable, //Tekst
-  "31": basicInputView_editable, //Tall
+  "30": textInput, //Tekst
+  "31": numberInput, //Tall
   "34": textAreaView, //Funksjonstekst
   "36": boolView, //Boolean
   "40": optionsViews, //Velg alternativ
   "32": entityRefView,
-  "5721": basicInputView_editable, //Dato
+  "5721": dateInput, //Dato
   "5824": fileuploadView, //File
   "41": selectCompanyEntityView, //Company entity, ie. from user selection
 
@@ -691,7 +700,11 @@ let singleValueView = ( State, entity, attribute  ) => {
   : async e => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
 
 
-  let options = [32, 40].includes(valueType) ? State.DB.getOptions( attribute ) : []
+  let options = [32, 40].includes(valueType)
+     ? State.DB.getOptions( attribute ) 
+     : valueType === 41
+      ? tryFunction( () => new Function( ["Database", "Company"] , State.DB.get(attribute, "attribute/selectableEntitiesFilterFunction") )( State.DB, State.Company.getVersion( State.Company.getEvent(entity).t ) )  ) 
+      : []
 
 
   let valueView = viewFunction( State, formattedValue, updateFunction, options )

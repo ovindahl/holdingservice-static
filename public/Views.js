@@ -116,7 +116,7 @@ let getEntityNavBar = State => {
     "47": () => d([
           entityLabelWithPopup( State, State.S.selectedEntity ),
         ]),
-    "5722": () => companyDateLabel( State,  State.S.selectedCompanyDate ),
+    "5722": () => d(""),
     "7403": () => entityLabelWithPopup( State, State.S.selectedEntity ),
     "5692": () => d([
       entityLabelWithPopup( State, State.DB.get( State.S.selectedEntity, "process/accountingYear"), e => State.Actions.selectEntity( State.DB.get( State.S.selectedEntity, "process/accountingYear")) ),
@@ -185,6 +185,8 @@ let companyDateLabel = State => {
 let companyView = State => d([
   balanceSheetView( State ),
   br(),
+  PnLView( State ),
+  br(),
   processesView( State ),
   ])
 
@@ -195,8 +197,14 @@ let balanceSheetView = State => {
 
   let CompanyVersion = State.Company.getVersion( State.S.selectedCompanyDate )
 
+  let LatestEvent = State.Company.getEvent( State.Company.events.find( event => State.Company.getEvent(event).t === State.S.selectedCompanyDate ) ) 
+
   return d([
-    h3(`Selskapets balanse per ${ moment( CompanyVersion.t ).format("DD/MM/YYYY") }`),
+    h3(`Selskapets balanse`),
+    d([
+      d("Balansedato:"),
+      d([companyDateLabel( State,  State.S.selectedCompanyDate )])
+    ], {class: "columns_1_1"}),
     d([
       d([
         h3("Eiendeler"),
@@ -216,7 +224,7 @@ let balanceSheetView = State => {
           entityLabelWithPopup( State, 7310 ),
           d(CompanyVersion.getAll(7310).map( bankAccount => d([
             companyEntityLabelWithPopup( State, bankAccount),
-            d( formatNumber(CompanyVersion.get(bankAccount, 7447) ) , {style: `text-align: right;`})
+            d( formatNumber(CompanyVersion.get(bankAccount, 7466) ) , {style: `text-align: right;`})
           ], {class: "columns_1_1"}) ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
         d([
@@ -225,20 +233,6 @@ let balanceSheetView = State => {
         ], {class: "columns_1_1"}),
       ], {style: `padding: 1em;`}),
       d([
-        h3("Egenkapital"),
-        d([
-          entityLabelWithPopup( State, 6790 ),
-          d(CompanyVersion.getAll(6790).map( actor => d([
-            companyEntityLabelWithPopup( State, actor),
-            d( formatNumber(CompanyVersion.get(actor, 7455) ) , {style: `text-align: right;`}),
-            //d("1000", {style: `text-align: right;`})
-          ], {class: "columns_1_1"})  ) )
-        ], {style: gridColumnsStyle("1fr 3fr") }),
-        d([
-          entityLabelWithPopup( State, 6295 ),
-          d( formatNumber(CompanyVersion.get(1, 6295) ) , {style: `text-align: right;`})
-        ], {class: "columns_1_1"}),
-        br(),
         h3("Gjeld"),
         d([
           entityLabelWithPopup( State, 6791),
@@ -252,6 +246,28 @@ let balanceSheetView = State => {
           entityLabelWithPopup( State, 6294 ),
           d( formatNumber(CompanyVersion.get(1, 6294) ) , {style: `text-align: right;`})
         ], {class: "columns_1_1"}),
+        br(),
+        h3("Egenkapital"),
+        d([
+          entityLabelWithPopup( State, 6790 ),
+          d(CompanyVersion.getAll(6790).map( actor => d([
+            companyEntityLabelWithPopup( State, actor),
+            d( formatNumber(CompanyVersion.get(actor, 7455) ) , {style: `text-align: right;`}),
+            //d("1000", {style: `text-align: right;`})
+          ], {class: "columns_1_1"})  ) )
+        ], {style: gridColumnsStyle("1fr 3fr") }),
+        d([
+          entityLabelWithPopup( State, 6278 ),
+          d( formatNumber(CompanyVersion.get(1, 6278) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}),
+        d([
+          entityLabelWithPopup( State, 6281 ),
+          d( formatNumber(CompanyVersion.get(1, 6281) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}),
+        d([
+          entityLabelWithPopup( State, 6295 ),
+          d( formatNumber(CompanyVersion.get(1, 6295) ) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}),
       ], {style: `padding: 1em;`}),
       d([
         entityLabelWithPopup( State, 6288 ),
@@ -263,7 +279,48 @@ let balanceSheetView = State => {
       ], {class: "columns_1_1",style: `padding: 1em;`}),
     ], {class: "columns_1_1"}),
     br(),
+    d([
+      d("Siste hendelse:"),
+      d([ 
+        entityLabelWithPopup( State, State.DB.get( LatestEvent.entity, "event/process" )  ),
+        entityLabelWithPopup( State, State.DB.get( LatestEvent.entity, "event/eventTypeEntity" ), e => State.Actions.selectedEntity(latestEvent)  ),
+        d( LatestEvent.entities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity ) ) )
+      ]),
+    ]),
+    br(),
     entityLabelWithPopup( State, 6778 ),
+  ], {class: "feedContainer"})
+} 
+
+let PnLView = State => {
+
+  let CompanyVersion = State.Company.getVersion( State.S.selectedCompanyDate )
+
+  let LatestEvent = State.Company.getEvent( State.Company.events.find( event => State.Company.getEvent(event).t === State.S.selectedCompanyDate ) ) 
+
+  return d([
+    h3(`Resultatregnskap`),
+
+    d("Driftsresultat"),
+    d( [6233, 6234, 6236].map( calculatedField => d([
+      entityLabelWithPopup( State, calculatedField ),
+      d( formatNumber( CompanyVersion.get(1, calculatedField) ) , {style: `text-align: right;`})
+    ], {class: "columns_1_1"}) ) ),
+    br(),
+    d("Finansposter"),
+    d( [6251, 6244, 6245].map( calculatedField => d([
+      entityLabelWithPopup( State, calculatedField ),
+      d( formatNumber( CompanyVersion.get(1, calculatedField) ) , {style: `text-align: right;`})
+    ], {class: "columns_1_1"}) ) ),
+    br(),
+    d("Årsresultat"),
+    d( [6283, 6267, 6285].map( calculatedField => d([
+      entityLabelWithPopup( State, calculatedField ),
+      d( formatNumber( CompanyVersion.get(1, calculatedField) ) , {style: `text-align: right;`})
+    ], {class: "columns_1_1"}) ) ),
+    br(),
+    br(),
+
   ], {class: "feedContainer"})
 } 
 
@@ -341,17 +398,22 @@ let processesView = State => {
     //d( State.DB.getAll(7403).map( accYear => entityLabelWithPopup(State, accYear, undefined, (accYear === accountingYear) ) ), {style: "display: flex;"}),
     br(),
     d([
-      entityLabelWithPopup(State, 5692),
+      d([
+        entityLabelWithPopup(State, 5692),
+        d("Varighet"),
+        entityLabelWithPopup(State, 46),
+      ], {style: gridColumnsStyle("3fr 1fr 4fr")}),
       d( State.Company.processes.map( (process, index) => d([
         entityLabelWithPopup( State, process ),
         d( ` ${moment( State.Company.getProcess(process).startDate ).format("D/M") } - ${ moment( State.Company.getProcess(process).endDate ).format("D/M") } ` ),
-        //svg(300, 30, [processRect(State, process, 5 + index * (10 + 10) )])
-      ], {class: "columns_1_1_1"})  ) )
+        d( State.Company.getProcess(process).events.slice(0,5)
+          .map( event => collapsedEntityLabelWithPopup( State, event ) )
+          .concat( span(State.Company.getProcess(process).events.length > 5 ? ` + ${State.Company.getProcess(process).events.length} hendelser` : "") ), 
+          {style: "display: flex;"} 
+          )
+      ], {style: gridColumnsStyle("3fr 1fr 4fr")})  ) )
     ]),
 
-
-
-    //processesSVGtimeline( State ),
     h3("Opprett ny prosess:"),
     d( State.DB.getAll(5687).map( processType => entityLabelWithPopup(State, processType, e => State.Actions.createProcess(processType, accountingYear)  )  ) ),
   ], {style: "width: 1200px;padding:1em;margin-left:1em;margin-bottom: 1em;background-color: white;border: solid 1px lightgray;"})

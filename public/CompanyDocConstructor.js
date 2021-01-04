@@ -166,8 +166,9 @@ let createCompanyEntityQueryObject = (DB, CompanyVersion, companyEntity) => {
     const companyEntityTypeLabelController = {
       "6785": () => CompanyEntity.get(1101),
       "6790": () => CompanyEntity.get(1113),
-      "6791": () => `Gjeld til ${CompanyVersion.get( CompanyEntity.get(6777) ).label()}`,
+      "6791": () => `Gjeld til ${CompanyVersion.get(CompanyEntity.get(5675)).label()}`,
       "7310": () => `Konto i ${CompanyEntity.get(1809)}`,
+      "7047": () => `[${moment(CompanyEntity.get(1757), "x").format("DD/MM")}] ${ CompanyEntity.get(1083) < 0 ? "" : " + " } NOK ${ formatNumber(CompanyEntity.get(1083))  }` ,
       "7079": () => `[${moment(CompanyEntity.get(1757), "x").format("DD/MM")}] ${ CompanyEntity.get(7450) < 0 ? "" : " + " } ${ CompanyEntity.get(7450) } stk ${CompanyVersion.get( CompanyEntity.get(6777) ).label()} (NOK ${ CompanyEntity.get(1083) }) ` ,
     }
 
@@ -255,7 +256,7 @@ let addDatomsToCompany = (prevCompany, Event, newDatoms) => {
 let applyCompanyEvents = ( DB, dbCompany ) => dbCompany.events.reduce( (prevCompany, event) => {
 
     let Event = createCompanyEventQueryObject( DB, prevCompany, event )
-    let Process = createCompanyProcessQueryObject( DB, prevCompany, DB.get(event, "event/process") )
+    let Process = undefined // createCompanyProcessQueryObject( DB, prevCompany, DB.get(event, "event/process") )
     let entityConstructors = DB.get( Event.get( "event/eventTypeEntity" ) , "eventType/newEntities" )
     let eventDatoms = entityConstructors.map( (entityConstructor, index) => constructEntityDatoms( DB, prevCompany, Process, Event, entityConstructor, index ) ).flat()
     let updatedCompany = addDatomsToCompany( prevCompany, Event, eventDatoms )
@@ -266,8 +267,8 @@ let applyCompanyEvents = ( DB, dbCompany ) => dbCompany.events.reduce( (prevComp
   
 let constructEntityDatoms = ( DB, Company, Process, Event, entityConstructor, index) => {
 
-let processType = Process.get("process/processType" )
-let processTypeSharedStatements = DB.get( processType, "processType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] )
+//let processType = DB.get( Event.get("event/process"), "process/processType" )
+//let processTypeSharedStatements = DB.get( processType, "processType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] )
 
 let eventType = Event.get("event/eventTypeEntity" )
 
@@ -275,7 +276,7 @@ let eventType = Event.get("event/eventTypeEntity" )
 
 let eventTypeSharedStatements = DB.get( eventType, "eventType/sharedStatements" ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] )
 
-let sharedStatements = processTypeSharedStatements.concat(eventTypeSharedStatements)
+let sharedStatements = eventTypeSharedStatements //processTypeSharedStatements.concat(eventTypeSharedStatements)
 let sharedStatementsString = sharedStatements.join(";") + ";"
 
 let companyEntityType = entityConstructor.companyEntityType
@@ -288,9 +289,12 @@ let generatedDatoms =  DB.get( companyEntityType , "companyEntityType/attributes
   .map(  attribute => generateDatom( DB, Company, Process, Event, entity, sharedStatementsString, attributeAssertions, attribute ) )
 
 let companyEntityTypeDatom = {
-  entity, company: Company.entity, process: Process.entity , event: Event.entity, t: Event.t,
+  entity, 
   attribute: 6781,
-  value: companyEntityType
+  value: companyEntityType,
+  t: Event.t,
+  event: Event.entity, 
+  company: Company.entity, 
 }
 
 let entityDatoms = [companyEntityTypeDatom].concat(generatedDatoms)
@@ -300,12 +304,11 @@ return entityDatoms
 
 let generateDatom = (DB, Company, Process, Event, entity, sharedStatementsString, attributeAssertions, attribute) => returnObject({
   entity, 
-  company: Company.entity, 
-  process: Process.entity, 
-  event: Event.entity, 
-  t: Event.t,
   attribute,
-  value: tryFunction( () => new Function( [`Database`, `Company`, `Process`, `Event`], sharedStatementsString + attributeAssertions[ attribute ].valueFunction )( DB, Company, Process, Event ) )
+  value: tryFunction( () => new Function( [`Database`, `Company`, `Process`, `Event`], sharedStatementsString + attributeAssertions[ attribute ].valueFunction )( DB, Company, Process, Event ) ),
+  t: Event.t,
+  event: Event.entity, 
+  company: Company.entity, 
 })
 
 //Updated Company Construction pipeline -- END
