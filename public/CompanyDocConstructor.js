@@ -8,8 +8,6 @@ let createCompanyEventQueryObject = (DB, CompanyVersion, event ) => {
   Event.companyDatoms = CompanyVersion.companyDatoms.filter( companyDatom => companyDatom.event === event )
   Event.entities = Event.companyDatoms.map( companyDatom => companyDatom.entity ).filter( filterUniqueValues )
 
-
-  //Event.label = () => `[${DB.get( DB.get( Event.process ).get("process/accountingYear") ).label()}/H-${Company.events.findIndex( e => e === event ) + 1}] ${DB.get( Event.get("event/eventTypeEntity") ).label()}`
   Event.label = () => `${DB.get( Event.get("event/eventTypeEntity") ).label()}`
 
   let processEvents = CompanyVersion.events.filter( event => DB.get(event, "event/process") === Event.process )

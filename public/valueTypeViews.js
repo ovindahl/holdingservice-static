@@ -134,7 +134,9 @@ let entityLabel = (State, entity, onClick, isSelected) => State.DB.isEntity(enti
       d( 
         `${ State.DB.get( entity, "entity/entityType" ) === 5692 
             ? State.Company.getProcess(entity).label()
-            : State.DB.get( entity ).label()}`, 
+            : State.DB.get( entity, "entity/entityType" ) === 46 
+              ? State.Company.getEvent(entity).label()
+              : State.DB.get( entity ).label()}`, 
         {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${(isSelected || State.S.selectedEntity === entity ) ? "border: 2px solid black;" : ""}`}, 
         "click", 
         isDefined(onClick) ? onClick : e => State.Actions.selectEntity( entity )
@@ -241,22 +243,25 @@ let entityAttributeView = (State, entity, attribute) => d([
 
 
 let companyEntityLabel = (State, companyEntity, onClick, isSelected) => d([
-  d( 
-    isDefined(State.Company.get(companyEntity)) ? State.Company.get(companyEntity).label() : `[${companyEntity}] na.`, 
-    {
-      class: "entityLabel", 
-      style: `background-color:${isDefined(State.Company.get(companyEntity)) ? State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color") : "gray"}; ${ (isSelected || State.S.selectedCompanyEntity === companyEntity) ? "border: 2px solid blue;" : ""}`}, 
-    "click", 
-    isDefined(onClick) ? onClick : e => State.Actions.selectCompanyEntity(companyEntity) 
-    ),
-], {style:"display: inline-flex;"})
+      d( 
+        isDefined(State.Company.get(companyEntity)) ? State.Company.get(companyEntity).label() : `[${companyEntity}] na.`, 
+        {
+          class: "entityLabel", 
+          style: `background-color:${isDefined(State.Company.get(companyEntity)) ? State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color") : "gray"}; ${ (isSelected || State.S.selectedCompanyEntity === companyEntity) ? "border: 2px solid blue;" : ""}`}, 
+        "click", 
+        isDefined(onClick) ? onClick : e => State.Actions.selectCompanyEntity(companyEntity) 
+        ),
+  ], {style:"display: inline-flex;"})
+  
 
-let companyEntityLabelWithPopup = (State, companyEntity, onClick, isSelected) => d([
-d([
-  companyEntityLabel( State, companyEntity, onClick, isSelected),
-  companyEntityPopUp( State, companyEntity ),
-], {class: "popupContainer", style:`display: inline-flex;`})
-], {style:"display: inline-flex;"}) 
+let companyEntityLabelWithPopup = (State, companyEntity, onClick, isSelected) => isDefined(companyEntity)
+? d([
+    d([
+      companyEntityLabel( State, companyEntity, onClick, isSelected),
+      companyEntityPopUp( State, companyEntity ),
+    ], {class: "popupContainer", style:`display: inline-flex;`})
+  ], {style:"display: inline-flex;"}) 
+: d("na.")
 
 
 let companyEntityPopUp = (State, companyEntity) => d([
@@ -300,6 +305,11 @@ let companyEntityView = (State, companyEntity ) => {
 
   return d([
     companyEntityLabelWithPopup(State, companyEntity),
+    br(),
+    d([
+      entityLabelWithPopup( State,  46 ),
+      entityLabelWithPopup( State, State.DB.get( CompanyEntity.event, "event/eventTypeEntity" ), () => State.Actions.selectEntity(CompanyEntity.event) ),
+    ], {class: "columns_1_1"}),
     br(),
     isDefined(CompanyEntity)
       ? d([

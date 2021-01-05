@@ -160,7 +160,7 @@ let init = async () => {
     ClientApp.update( {}, {
       DB: initialDatabase,
       Company: initialCompany,
-      S: {selectedEntity: company, selectedCompanyDate: initialCompany.getEvent( initialCompany.events.slice(-1)[0] ).t }
+      S: {selectedEntity: 7492, selectedCompanyDate: initialCompany.getEvent( initialCompany.events.slice(-1)[0] ).t }
     } )
     
   }else{ ClientApp.update( {}, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }
