@@ -176,8 +176,10 @@ let dateSelectionView = State => {
 
   return d([
     h3("Datovelger:"),
-    d( companyDates.map( (date, index) => d([
-      span(moment( date ).format("D/M"), moment( date ).format("DD/MM/YYYY"), {style: `${moment( date ).format("DD/MM/YYYY") === moment( State.S.selectedCompanyDate ).format("DD/MM/YYYY") ? "background-color: #46b3fb;color: white;" : "" }`}, "click", () => State.Actions.selectCompanyDate( companyDates.find( companyDate => companyDate === date ) )   )
+    d( companyDates.map( date => d([
+      span(moment( date ).format("D/M"), moment( date ).format("DD/MM/YYYY"), {style: `${moment( date ).format("DD/MM/YYYY") === moment( State.S.selectedCompanyDate ).format("DD/MM/YYYY") ? "background-color: #46b3fb;color: white;" : "" }`}, "click", 
+      () =>  State.Actions.selectCompanyDate( State.Company.getEvent( State.Company.events.filter( event => moment( State.Company.getEvent(event).t ).format("DD/MM/YYYY") === moment( date ).format("DD/MM/YYYY") ).slice(-1)[0] ).t )
+      )
     ]) ), {style: gridColumnsStyle(`repeat(${companyDates.length}, 1fr)`) } ),
     companyDateLabel( State,  State.S.selectedCompanyDate ),
     br(),
