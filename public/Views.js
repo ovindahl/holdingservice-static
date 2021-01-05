@@ -172,7 +172,6 @@ let dateSelectionView = State => {
     .filter( filterUniqueValues )
     .map( date => Number( moment( date, "DD/MM/YYYY" ).format("x") ) )
 
-  let LatestEvent = State.Company.getEvent( State.Company.events.find( event => State.Company.getEvent(event).t === State.S.selectedCompanyDate ) ) 
 
   return d([
     h3("Datovelger:"),
@@ -183,19 +182,6 @@ let dateSelectionView = State => {
     ]) ), {style: gridColumnsStyle(`repeat(${companyDates.length}, 1fr)`) } ),
     companyDateLabel( State,  State.S.selectedCompanyDate ),
     br(),
-    d([
-      d("Siste hendelse:"),
-      d([ 
-        d("Prosess"),
-        d("Hendelse"),
-        d("Hendelsens output"),
-      ], {class: "columns_1_1_1"}),
-      d([ 
-        entityLabelWithPopup( State, State.DB.get( LatestEvent.entity, "event/process" )  ),
-        entityLabelWithPopup( State, State.DB.get( LatestEvent.entity, "event/eventTypeEntity" ), e => State.Actions.selectedEntity(latestEvent)  ),
-        d( LatestEvent.entities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity ) ) )
-      ], {class: "columns_1_1_1"}),
-    ]),
   ], {class: "feedContainer"})
 } 
 
@@ -231,6 +217,7 @@ let companyView = State => {
     "7491": trialBalanceView,
     "7492": processesView,
     "7493": eventsView,
+    "7494": singleDateView
   }
 
 
@@ -241,6 +228,45 @@ let companyView = State => {
     ], {class: "feedContainer"}),
     ])
 } 
+
+let singleDateView = State => {
+
+  let CompanyVersion = State.Company.getVersion( State.S.selectedCompanyDate )
+
+  let ledgerEntries = CompanyVersion.get(1, 7486).filter( ledgerEntry => moment( State.Company.getEvent( State.Company.get(ledgerEntry.parent).event  ).t ).format("DD/MM/YYYY") ===  moment( State.S.selectedCompanyDate ).format("DD/MM/YYYY")  )
+
+  return d([
+    h3(`Hovedbok`),
+    d([
+      d("Hendelser på valgt dato:"),
+      d([ 
+        d("Prosess"),
+        d("Hendelse"),
+        d("Hendelsens output"),
+      ], {class: "columns_1_1_1"}),
+      d( State.Company.events
+          .filter( event => moment( State.Company.getEvent(event).t ).format("DD/MM/YYYY") === moment( State.S.selectedCompanyDate ).format("DD/MM/YYYY") )
+          .map( event => d([ 
+            entityLabelWithPopup( State, State.DB.get( event, "event/process" )  ),
+            entityLabelWithPopup( State, State.DB.get( event, "event/eventTypeEntity" ), e => State.Actions.selectedEntity(event)  ),
+            d( State.Company.getEvent( event ) .entities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity ) ) )
+          ], {class: "columns_1_1_1"}) ) )
+    ]),
+    h3(`Hovedbokstransaksjoner`),
+    d([
+      d( "Dato" ),
+      d( "Transaksjon" ),
+      d( "Konto" ),
+      d( "Beløp" ),
+    ], {style: gridColumnsStyle("1fr 2fr 2fr 1fr")}),
+    d( ledgerEntries.map( ledgerEntry => d([
+      d( moment( CompanyVersion.get(ledgerEntry.parent, 1757) ).format("DD/MM/YYYY") ),
+      companyEntityLabelWithPopup(State, ledgerEntry.parent),
+      entityLabelWithPopup(State, ledgerEntry.account),
+      d( formatNumber(ledgerEntry.amount) )
+    ], {style: gridColumnsStyle("1fr 2fr 2fr 1fr")}) ) )
+  ])
+}
 
 
 
@@ -385,7 +411,7 @@ let generalLedgerView = State => {
       d( formatNumber(ledgerEntry.amount) )
     ], {style: gridColumnsStyle("1fr 2fr 2fr 1fr")}) ) )
   ])
-} 
+}
 
 let trialBalanceView = State => {
 
