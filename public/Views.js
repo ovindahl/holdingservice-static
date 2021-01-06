@@ -180,7 +180,7 @@ let dateSelectionView = State => {
       () =>  State.Actions.selectCompanyDate( State.Company.getEvent( State.Company.events.filter( event => moment( State.Company.getEvent(event).t ).format("DD/MM/YYYY") === moment( date ).format("DD/MM/YYYY") ).slice(-1)[0] ).t )
       )
     ]) ), {style: gridColumnsStyle(`repeat(${companyDates.length}, 1fr)`) } ),
-    companyDateLabel( State,  State.S.selectedCompanyDate ),
+    //companyDateLabel( State,  State.S.selectedCompanyDate ),
     br(),
   ], {class: "feedContainer"})
 } 
@@ -217,7 +217,9 @@ let companyView = State => {
     "7491": trialBalanceView,
     "7492": processesView,
     "7493": eventsView,
-    "7494": singleDateView
+    "7494": singleDateView,
+    "7508": securityTransactionsView,
+    "7509": companyTimelineView
   }
 
 
@@ -268,17 +270,46 @@ let singleDateView = State => {
   ])
 }
 
+let companyTimelineView = State => {
 
+
+
+  let companyDates = State.Company.events
+    .map( event => State.Company.getEvent(event).t )
+    .map( date => moment( date ).format("DD/MM/YYYY") )
+    .filter( filterUniqueValues )
+    .map( date => Number( moment( date, "DD/MM/YYYY" ).format("x") ) )
+
+
+  return d([
+    h3("Tidslinje:"),
+    d( [d([6802, 7047, 7079, 7321, 7434, 7475, 7484]
+      .map( transactionType => d([entityLabelWithPopup( State, transactionType )])  ))]
+        .concat( companyDates.map( date => d([
+          span( moment( date ).format("D/M"), moment( date ).format("DD/MM/YYYY") ),
+          d( State.Company.events
+            .filter( event => moment( State.Company.getEvent(event).t ).format("DD/MM/YYYY") === moment( date ).format("DD/MM/YYYY") )
+            .map( event => d( String(State.Company.getEvent(event).entities[0]) )  )
+          )
+    ]) )), {style: gridColumnsStyle(`repeat(${companyDates.length + 1}, 1fr)`) } ),
+    //companyDateLabel( State,  State.S.selectedCompanyDate ),
+    br(),
+  ])
+}
 
 
 
 let balanceSheetView = State => {
 
+  let startTime = Date.now()
+
+
+
   let CompanyVersion = State.Company.getVersion( State.S.selectedCompanyDate )
 
-  
+  log({"gate1": Date.now()-startTime})
 
-  return d([
+  let view = d([
     h3(`Selskapets balanse`),
     d([
       d([
@@ -294,7 +325,7 @@ let balanceSheetView = State => {
           entityLabelWithPopup( State, 6275 ),
           d( formatNumber(CompanyVersion.get(1, 6275) ) , {style: `text-align: right;`})
         ], {class: "columns_1_1"}),
-        br(),
+        br(log({"gate2": Date.now()-startTime})),
         d([
           entityLabelWithPopup( State, 7310 ),
           d(CompanyVersion.getAll(7310).map( bankAccount => d([
@@ -321,7 +352,7 @@ let balanceSheetView = State => {
           entityLabelWithPopup( State, 6294 ),
           d( formatNumber(CompanyVersion.get(1, 6294) ) , {style: `text-align: right;`})
         ], {class: "columns_1_1"}),
-        br(),
+        br(log({"gate3": Date.now()-startTime})),
         h3("Egenkapital"),
         d([
           entityLabelWithPopup( State, 6790 ),
@@ -353,9 +384,13 @@ let balanceSheetView = State => {
         d( formatNumber(CompanyVersion.get(1, 6296) ) , {style: `text-align: right;`})
       ], {class: "columns_1_1",style: `padding: 1em;`}),
     ], {class: "columns_1_1"}),
-    br(),
+    br(log({"gate4": Date.now()-startTime})),
     entityLabelWithPopup( State, 6778 ),
   ])
+
+  console.log(`balanceSheetView finished in ${Date.now() - startTime} ms`)
+
+  return view
 } 
 
 let PnLView = State => {
@@ -374,6 +409,15 @@ let PnLView = State => {
     ], {class: "columns_1_1"}) ) ),
     br(),
     d("Finansposter"),
+    d([
+
+      d( CompanyVersion.getAll(7079).filter( securityTransaction => isNumber( CompanyVersion.get(securityTransaction, 7432) )).map( securityTransaction => d([
+        companyEntityLabelWithPopup( State, securityTransaction),
+        d( formatNumber( CompanyVersion.get(securityTransaction, 7432) ) , {style: `text-align: right;`})
+      ], {class: "columns_1_1"}) ) ),
+
+    ], {style: `padding: 1em`}),
+    
     d( [6251, 6244, 6245].map( calculatedField => d([
       entityLabelWithPopup( State, calculatedField ),
       d( formatNumber( CompanyVersion.get(1, calculatedField) ) , {style: `text-align: right;`})
@@ -413,18 +457,69 @@ let generalLedgerView = State => {
   ])
 }
 
+let securityTransactionsView = State => {
+
+  let CompanyVersion = State.Company.getVersion( State.S.selectedCompanyDate )
+
+  let securityTransactions = CompanyVersion.getAll(7079)
+
+  return d([
+    h3(`Alle verdipapirtransaksjoner`),
+    d([
+      d( "Dato" ),
+      d( "Verdipapir" ),
+      d( "Antall" ),
+      d( "Enhetspris" ),
+      d( "Beløp" ),
+      d( "Hvorav gevinst/tap" ),
+      d( "Ny balanse" ),
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr")}),
+    d( securityTransactions.map( securityTransaction => d([
+      d( moment( CompanyVersion.get(securityTransaction, 1757) ).format("DD/MM/YYYY"), {style: `text-align: right;`} ),
+      companyEntityLabelWithPopup(State, CompanyVersion.get(securityTransaction, 6777)),
+      d( formatNumber(CompanyVersion.get(securityTransaction, 7450)), {style: `text-align: right;`} ),
+      d( formatNumber(CompanyVersion.get(securityTransaction, 1829)), {style: `text-align: right;`} ),
+      d( formatNumber(CompanyVersion.get(securityTransaction, 1083)), {style: `text-align: right;`} ),
+      d( CompanyVersion.get(securityTransaction, 7432) ? formatNumber(CompanyVersion.get(securityTransaction, 7432)) : " - ", {style: `text-align: right;`} ),
+      d( formatNumber( State.Company.getVersion( CompanyVersion.get(securityTransaction, 1757) ).get( CompanyVersion.get(securityTransaction, 6777), 7433 ) ), {style: `text-align: right;`} ),
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) ) )
+  ])
+}
+
+
+
+
+
+
+
+
 let trialBalanceView = State => {
 
   let CompanyVersion = State.Company.getVersion( State.S.selectedCompanyDate )
 
   let trialBalances = CompanyVersion.get(1, 6212)
 
+  let categories = trialBalances.map( trialBalance => State.DB.get(trialBalance.account, "entity/category")  ).filter( filterUniqueValues )
+
   return d([
     h3(`Saldobalanse`),
-    d( trialBalances.map( trialBalance => d([
-      entityLabelWithPopup(State, trialBalance.account),
-      d( formatNumber(trialBalance.amount) )
-    ], {style: gridColumnsStyle("1fr 2fr 2fr 1fr")}) ) )
+    d( categories.map( category => d([
+      d(category),
+      d( trialBalances
+          .filter( trialBalance => State.DB.get(trialBalance.account, "entity/category") === category )
+          .map( trialBalance => d([
+            entityLabelWithPopup(State, trialBalance.account),
+            d( formatNumber(trialBalance.amount) )
+      ], {style: gridColumnsStyle("1fr 2fr 2fr 1fr")}) ) ),
+      d([
+        d( "Sum" ),
+        d( formatNumber(  log(trialBalances)
+          .filter( trialBalance => State.DB.get(trialBalance.account, "entity/category") === category )
+          .reduce( (sum, trialBalance) => sum + trialBalance.amount, 0 ) )  )
+      ], {style: gridColumnsStyle("1fr 2fr 2fr 1fr")}),
+      
+    ])  ) )
+    
   ])
 }
 
@@ -554,120 +649,6 @@ let processView = State => {
 } 
 
  
-
-let processRect = (State, process, y) => {
-
-  let firstDayIndex = moment( createCompanyProcessQueryObject(State.DB, State.Company, process ).startDate, "x" ).diff(moment( "2020-01-01", "YYYY-MM-DD" ), 'days')
-
-  let lastDayIndex = moment( createCompanyProcessQueryObject(State.DB, State.Company, process ).endDate, "x" ).diff(moment( "2020-01-01", "YYYY-MM-DD" ), 'days')
-
-  let diff = lastDayIndex - firstDayIndex
-
-  let dayWidth = 200 / 365
-
-  let firstDayX = dayWidth * firstDayIndex
-
-
-  return rect({
-      x: firstDayX, 
-      y: y, 
-      width: Math.max(diff, 10), 
-      height: 10, 
-      class: "processRect"
-    }, 
-    e => State.Actions.selectEntity(  process ) )
-} 
-
-let processesSVGtimeline = State => {
-
-  let processes = State.Company.processes
-
-  let firstDate = moment( "2020-01-01", "YYYY-MM-DD" )
-
-  let processHeigth = 10
-
-  let rowPadding = 10
-
-  let width = 1000;
-
-  let sidePadding = 100
-
-  let dayWidth = width / 365
-
-  let topPadding = 5;
-
-
-
-  
-
-  return svg(width+sidePadding*2, State.Company.processes.length * (processHeigth + rowPadding) , processes.map(  (process, index) => processRect(State, process, topPadding + index * (processHeigth + rowPadding) ) )  )
-
-}
-
-let processTimelineView = ( State,  process) => {
-
-  let Process = State.Company.getProcess( process )
-
-  let firstDate = moment( "2020-01-01", "YYYY-MM-DD" )
-
-  let width = 400;
-
-
-  let height = 20;
-
-  let daysInYear = 365
-  let leftPadding = 10;
-  let rightPadding = 200;
-
-  let dayWidth = ( width - leftPadding - rightPadding)  / daysInYear;
-
-  let firstEventX = dayWidth * moment(State.DB.get(Process.events[0], "event/date"), "x" ).diff(firstDate, 'days')
-
-  let lastProcessEvent = Process.events.slice(-1)[0]
-
-  let lastEventX = dayWidth * moment(State.DB.get(lastProcessEvent, "event/date"), "x" ).diff(firstDate, 'days')
-
-  let processWidth = lastEventX - firstEventX + 5
-
-  let processRect = rect({x: leftPadding + firstEventX, y: height / 4, width: isNaN(processWidth) ? 10 : processWidth, height: height * 0.75, class: "processRect"}, e => State.Actions.selectEntity(  process ) )
-
-  let processNameLabel = svgText({x: leftPadding + firstEventX,  y:  height / 2 + 5}, Process.label(), e => State.Actions.selectEntity(  process ) )
-
-
-  return svg(width, height, [processRect, processNameLabel]  )
-
-}
-
-let eventTimelineView = ( State,  event) => {
-
-  let Event = State.Company.getEvent( event )
-
-  let firstDate = moment( "2020-01-01", "YYYY-MM-DD" )
-
-  let width = 1200;
-  let height = 20;
-
-  let daysInYear = 365
-  let leftPadding = 10;
-  let rightPadding = 200;
-
-  let dayWidth = ( width - leftPadding - rightPadding)  / daysInYear;
-
-  let eventX = dayWidth * moment(State.DB.get(event, "event/date"), "x" ).diff(firstDate, 'days')
-
-  let circleRadius = 5
-
-  let eventCirc = circle({cx: leftPadding + eventX, cy: height * 0.75, r: circleRadius, class: "eventCircle"}, e => State.Actions.selectEntity(  event ) )
-
-  let dateLabel = svgText({x: Math.max(eventX - 20, 0) ,  y:  15 , fill: "gray" }, moment(State.DB.get(event, "event/date"), "x").format( "D/M" ) )
-
-  let eventNameLabel = svgText({x: leftPadding + eventX + 7,  y:  height * 0.75 + 3}, Event.label(), e => State.Actions.selectEntity(  event ) )
-
-
-  return svg(width, height, [eventCirc, dateLabel, eventNameLabel]  )
-}
-
-
 let companyEntityPageView = State  => d([
   submitButton(" <- Tilbake ", e => State.Actions.selectEntity(  State.Company.entity )  ),
   br(),
