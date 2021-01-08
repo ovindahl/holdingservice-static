@@ -132,11 +132,7 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 let entityLabel = (State, entity, onClick, isSelected) => State.DB.isEntity(entity)
   ?  d([
       d( 
-        `${ State.DB.get( entity, "entity/entityType" ) === 5692 
-            ? State.Company.getProcess(entity).label()
-            : State.DB.get( entity, "entity/entityType" ) === 46 
-              ? State.Company.getEvent(entity).label()
-              : State.DB.get( entity ).label()}`, 
+        `${ State.DB.get( entity ).label()}`, 
         {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${(isSelected || State.S.selectedEntity === entity ) ? "border: 2px solid black;" : ""}`}, 
         "click", 
         isDefined(onClick) ? onClick : e => State.Actions.selectEntity( entity )
@@ -244,7 +240,7 @@ let entityAttributeView = (State, entity, attribute) => d([
 
 let companyEntityLabel = (State, companyEntity, onClick, isSelected) => d([
       d( 
-        isDefined(State.Company.get(companyEntity)) ? State.Company.get(companyEntity).label() : `[${companyEntity}] na.`, 
+        getFromCompany( State.companyDatoms, companyEntity, 7529 ), 
         {
           class: "entityLabel", 
           style: `background-color:${isDefined(State.Company.get(companyEntity)) ? State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color") : "gray"}; ${ (isSelected || State.S.selectedCompanyEntity === companyEntity) ? "border: 2px solid blue;" : ""}`}, 
@@ -267,7 +263,7 @@ let companyEntityLabelWithPopup = (State, companyEntity, onClick, isSelected) =>
 let companyEntityPopUp = (State, companyEntity) => d([
 d([
   entityLabel( State,  6 ),
-  d(State.Company.get(companyEntity).label()),
+  d(`[${companyEntity}] Selskapsentitet.`, ),
 ], {class: "columns_1_1"}),
 d([
   d([span( `Selskapsentitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
@@ -293,11 +289,10 @@ let companyEntityView = (State, companyEntity ) => {
   
   let selectedCompanyDate = isDefined( State.S.selectedCompanyDate ) ? State.S.selectedCompanyDate : State.Company.t
 
-  let CompanyVersion = State.Company.getVersion( selectedCompanyDate )
 
-  let CompanyEntity = CompanyVersion.get( companyEntity )
+  let CompanyEntity = State.Company.get( companyEntity )
 
-  let companyEntityType = CompanyVersion.get( companyEntity, 6781 )
+  let companyEntityType = State.Company.get( companyEntity, 6781 )
 
   let companyEntityTypeAttributes = State.DB.get( companyEntityType, 6779 ) ? State.DB.get( companyEntityType, 6779 ) : []
   let companyEntityTypeCalculatedField = State.DB.get( companyEntityType, 6789 )? State.DB.get( companyEntityType, 6789 ) : []
@@ -305,11 +300,11 @@ let companyEntityView = (State, companyEntity ) => {
 
   return d([
     companyEntityLabelWithPopup(State, companyEntity),
-    br(),
+    /* br(),
     d([
       entityLabelWithPopup( State,  46 ),
       entityLabelWithPopup( State, State.DB.get( CompanyEntity.event, "event/eventTypeEntity" ), () => State.Actions.selectEntity(CompanyEntity.event) ),
-    ], {class: "columns_1_1"}),
+    ], {class: "columns_1_1"}), */
     br(),
     isDefined(CompanyEntity)
       ? d([
@@ -332,9 +327,7 @@ let companyValueView = (State, companyEntity, attribute, t) => {
 
   let valueType = State.DB.get(attribute, "attribute/valueType")
 
-  let CompanyVersion = State.Company.getVersion( t )
-
-  let Value = CompanyVersion.get(companyEntity, attribute, t)
+  let Value = State.Company.get( companyEntity, attribute )
 
   try {
     return isDefined( Value )
@@ -406,7 +399,7 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
     }
   
     let startValuesByType = {
-      "6783": {companyEntityType: 6780, attributeAssertions: {} },
+      "6783": {companyEntityType: 7079, attributeAssertions: {} },
       "41": 0, //Company entity
       "6613": {"argument/name": "argumentNavn", "argument/valueType": 30},
       "6614": {"statement/statement": "console.log({Company, Process, Event})", "statement/isEnabled": true},
@@ -632,10 +625,10 @@ let functionView = ( State, formattedValue, updateFunction ) => {
 
 let selectCompanyEntityView = ( State, formattedValue, updateFunction, options ) => {
 
-  let isValidCompanyEntity =State.Company.events.includes(formattedValue)
+  let isValidCompanyEntity = getCompanyEvents( State.DB, State.Company.entity ).includes(formattedValue)
 
   return d([
-    isValidCompanyEntity ? companyEntityLabelWithPopup( State, State.Company.getEvent(formattedValue).entities[0] ) : d("tom"),
+    isValidCompanyEntity ? companyEntityLabelWithPopup( State, State.Company.getCompanyEntityFromEvent( formattedValue ) ) : d("tom"),
     dropdown(
       isValidCompanyEntity ? formattedValue : "Velg", 
       options,
@@ -713,7 +706,7 @@ let singleValueView = ( State, entity, attribute  ) => {
   let options = [32, 40].includes(valueType)
      ? State.DB.getOptions( attribute ) 
      : valueType === 41
-      ? tryFunction( () => new Function( ["Database", "Company"] , State.DB.get(attribute, "attribute/selectableEntitiesFilterFunction") )( State.DB, State.Company.getVersion( State.Company.getEvent(entity).t ) )  ) 
+      ? tryFunction( () => new Function( ["Database", "Company"] , State.DB.get(log(attribute), "attribute/selectableEntitiesFilterFunction") )( State.DB, State.Company )  ) 
       : []
 
 
@@ -754,7 +747,7 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
 
   let startValuesByType = {
     "32": 6,
-    "6783": {companyEntityType: 6780, attributeAssertions: {} },
+    "6783": {companyEntityType: 7079, attributeAssertions: {} },
     "6613": {"argument/name": "argumentNavn", "argument/valueType": 30},
     "6614": {"statement/statement": "console.log({Company, Process, Event})", "statement/isEnabled": true},
   }

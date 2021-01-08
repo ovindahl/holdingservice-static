@@ -84,7 +84,7 @@ let getDBActions = State => returnObject({
 let getClientActions = State => returnObject({
   selectEntity: (entity, companyEntity, companyEntityVersion) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity}}),
   selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
-  selectCompanyDate: date => ClientApp.update( State, {S: {selectedCompanyDate: date }}),
+  selectCompanyDate: companyDate => ClientApp.update( State, {S: {selectedCompanyDate: companyDate }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
 
   updateCompany: company => ClientApp.update( State, {Company: constructCompany( State.DB, company ), S: {selectedEntity: company }} ),
@@ -95,7 +95,7 @@ let getClientActions = State => returnObject({
     ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} )
   },
   createEvent:  async ( eventType, process, date ) =>  {
-    let updatedDB = await Transactor.createEntity(State.DB, 46, [ newDatom( 'newEntity' , 'event/process', process ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , 'event/date', date ) ] )
+    let updatedDB = await Transactor.createEntity(State.DB, 46, [ newDatom( 'newEntity' , 'event/company', State.Company.entity ), newDatom( 'newEntity' , 'event/process', process ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , 'event/date', date ) ] )
     let updatedCompany = constructCompany( updatedDB, State.Company.entity )
     ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} )
   },
@@ -112,11 +112,25 @@ const ClientApp = {
       let newState = {
           created: Date.now(),
           DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
-          Company: Object.keys(patch).includes( "Company" ) ? patch.Company : prevState.Company,
+          companyDatoms: Object.keys(patch).includes( "companyDatoms" ) ? patch.companyDatoms : prevState.companyDatoms,
           S: mergerino(prevState.S, patch.S),
         }
 
-        
+      
+
+
+      
+      newState.Company = {
+        entity: 6829,
+        companyDatoms: newState.companyDatoms,
+        get: (entity, attribute, eventTime) => getFromCompany(newState.companyDatoms, entity, attribute, eventTime),
+        getAll: companyEntityType => getAllCompanyEntitiesByType(newState.companyDatoms, companyEntityType),
+        getCompanyEntityFromEvent: event => newState.companyDatoms.find( companyDatom => companyDatom.event === event ).entity
+      } 
+
+
+
+      //if(isDefined(newState.Company)){ newState.CompanyVersion = newState.Company.getVersion( newState.Company.get(newState.S.selectedCompanyDate).t ) }  
 
       newState.Actions = Object.assign( {}, getDBActions(newState), getClientActions(newState) )
       
@@ -154,13 +168,12 @@ let init = async () => {
 
     let initialDatabase = constructDatabase( Entities )
     let company = 6829
-    let initialCompany = constructCompany( initialDatabase, company )
-
+    let companyDatoms = constructCompanyDatoms( initialDatabase, company )
 
     ClientApp.update( {}, {
       DB: initialDatabase,
-      Company: initialCompany,
-      S: {selectedEntity: 7492, selectedCompanyDate: initialCompany.getEvent( initialCompany.events.slice(-1)[0] ).t }
+      companyDatoms,
+      S: {selectedEntity: 7488, selectedCompanyDate: 1609369800000 }
     } )
     
   }else{ ClientApp.update( {}, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }
