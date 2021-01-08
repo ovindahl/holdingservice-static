@@ -116,10 +116,6 @@ const ClientApp = {
           S: mergerino(prevState.S, patch.S),
         }
 
-      
-
-
-      
       newState.Company = {
         entity: 6829,
         companyDatoms: newState.companyDatoms,

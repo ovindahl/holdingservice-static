@@ -199,7 +199,7 @@ let companyView = State => {
     "7490": generalLedgerView,
     "7492": processesView,
     "7493": eventsView,
-    "7494": singleDateView,
+    //"7494": singleDateView,
   }
 
 

@@ -286,10 +286,6 @@ d([
 
 let companyEntityView = (State, companyEntity ) => {
 
-  
-  let selectedCompanyDate = isDefined( State.S.selectedCompanyDate ) ? State.S.selectedCompanyDate : State.Company.t
-
-
   let CompanyEntity = State.Company.get( companyEntity )
 
   let companyEntityType = State.Company.get( companyEntity, 6781 )
@@ -308,8 +304,8 @@ let companyEntityView = (State, companyEntity ) => {
     br(),
     isDefined(CompanyEntity)
       ? d([
-          d( companyEntityTypeAttributes.map( attribute => companyDatomView( State, companyEntity, attribute, selectedCompanyDate ) )),
-          d( companyEntityTypeCalculatedField.map( calculatedField => companyDatomView( State, companyEntity, calculatedField, selectedCompanyDate ) ) )
+          d( companyEntityTypeAttributes.map( attribute => companyDatomView( State, companyEntity, attribute ) )),
+          d( companyEntityTypeCalculatedField.map( calculatedField => companyDatomView( State, companyEntity, calculatedField ) ) )
       ])
     : d("Entiteten er ikke definert")
     
@@ -319,15 +315,15 @@ let companyEntityView = (State, companyEntity ) => {
 
 let companyDatomView = (State, companyEntity, attribute, t ) => d([
   entityLabelWithPopup( State, attribute, e => console.log("Cannot access AdminPage from here")),
-  companyValueView(State, companyEntity, attribute, t),
+  companyValueView(State, companyEntity, attribute),
   //State.DB.get(attribute, "entity/entityType") === 5817 ? companyEntityVersionLabel( State, companyEntity, attribute, t ) : d("")
 ], {class: "columns_1_1"}) 
 
-let companyValueView = (State, companyEntity, attribute, t) => {
+let companyValueView = (State, companyEntity, attribute) => {
 
   let valueType = State.DB.get(attribute, "attribute/valueType")
 
-  let Value = State.Company.get( companyEntity, attribute )
+  let Value = State.Company.get( companyEntity, attribute, State.S.selectedCompanyDate )
 
   try {
     return isDefined( Value )
