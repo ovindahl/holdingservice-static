@@ -96,8 +96,18 @@ let getClientActions = State => returnObject({
   },
   createEvent:  async ( eventType, process, date ) =>  {
     let updatedDB = await Transactor.createEntity(State.DB, 46, [ newDatom( 'newEntity' , 'event/company', State.Company.entity ), newDatom( 'newEntity' , 'event/process', process ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , 'event/date', date ) ] )
-    let updatedCompany = constructCompany( updatedDB, State.Company.entity )
-    ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} )
+    
+    let companyDatoms = constructCompanyDatoms( updatedDB, State.Company.entity )
+
+    ClientApp.update( {}, {
+      DB: updatedDB,
+      companyDatoms,
+    } )
+    
+    
+    
+    /* let updatedCompany = constructCompany( updatedDB, State.Company.entity )
+    ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} ) */
   },
   executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
 })
@@ -116,15 +126,17 @@ const ClientApp = {
           S: mergerino(prevState.S, patch.S),
         }
 
+      
+
       newState.Company = {
         entity: 6829,
         companyDatoms: newState.companyDatoms,
         get: (entity, attribute, eventTime) => getFromCompany(newState.companyDatoms, entity, attribute, eventTime),
-        getAll: companyEntityType => getAllCompanyEntitiesByType(newState.companyDatoms, companyEntityType),
-        getCompanyEntityFromEvent: event => newState.companyDatoms.find( companyDatom => companyDatom.event === event ).entity
-      } 
-
-
+        getAll: (companyEntityType, eventTime) => getAllCompanyEntitiesByType(newState.companyDatoms, companyEntityType, eventTime),
+        getCompanyEntityFromEvent: event => getCompanyEntityFromEvent( newState.companyDatoms, event ),
+        getEntityTransactions: companyEntity => getAllEntityTransactions( State.DB, newState.companyDatoms, companyEntity )
+      }
+      
 
       //if(isDefined(newState.Company)){ newState.CompanyVersion = newState.Company.getVersion( newState.Company.get(newState.S.selectedCompanyDate).t ) }  
 

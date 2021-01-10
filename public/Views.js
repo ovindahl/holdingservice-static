@@ -83,7 +83,9 @@ let clientPage = State => {
     "5692": processView,
     "46": eventView,
     "6778": isDefined( State.S.selectedCompanyEntity ) ? State => companyEntityView( State, State.S.selectedCompanyEntity ) : multipleCompanyEntitiesView,
-    "7487": companyView
+    "7531": isDefined( State.S.selectedCompanyEntity ) ? State => companyEntityView( State, State.S.selectedCompanyEntity ) : multipleCompanyEntitiesView,
+    "7535": isDefined( State.S.selectedCompanyEntity ) ? State => companyEntityView( State, State.S.selectedCompanyEntity ) : multipleCompanyEntitiesView,
+    "7487": companyView,
   }
 
   
@@ -105,45 +107,11 @@ let clientPage = State => {
   ])
 }
 
-let getEntityNavBar = State => {
-
-  let selectedEntityType = isDefined( State.DB.get( State.S.selectedEntity, "entity/entityType" ) ) 
-    ? State.DB.get( State.S.selectedEntity, "entity/entityType" )
-    : 5722
-
-  let entityTypeViewController = {
-    "47": () => d([
-          entityLabelWithPopup( State, State.S.selectedEntity ),
-        ]),
-    "5722": () => d(""),
-    "5692": () => d([
-      entityLabelWithPopup( State, State.DB.get( State.S.selectedEntity, "process/accountingYear"), e => State.Actions.selectEntity( State.DB.get( State.S.selectedEntity, "process/accountingYear")) ),
-      entityLabelWithPopup( State, State.S.selectedEntity ),
-    ]),
-    "46": () => d([
-      entityLabelWithPopup( State, State.DB.get( State.DB.get(State.S.selectedEntity, "event/process"), "process/accountingYear"), e => State.Actions.selectEntity( State.DB.get( State.DB.get(State.S.selectedEntity, "event/process"), "process/accountingYear")) ),
-      entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity, "event/process"), e => State.Actions.selectEntity( State.DB.get(State.S.selectedEntity, "event/process")) ),
-      entityLabelWithPopup( State, State.S.selectedEntity ),
-    ]),
-    "6778": () =>  d([
-      entityLabelWithPopup( State, 6778, e => State.Actions.selectEntity( 6778 ) ),
-      entityLabelWithPopup( State, State.S.selectedEntity ),
-      isDefined(State.S.selectedCompanyEntity) ? companyEntityLabelWithPopup(State, State.S.selectedCompanyEntity) : d("")
-    ]),
-    "7487": () => d([
-      entityLabelWithPopup( State, 7487 ),
-      entityLabelWithPopup( State, State.S.selectedEntity ),
-    ])
-  }
-
-  
-
-
-  return d([
-    entityLabelWithPopup( State, State.Company.entity, e => State.Actions.selectEntity( State.Company.entity )  ),
-    entityTypeViewController[ selectedEntityType ]()
-  ], {style: "display: flex;"})
-} 
+let getEntityNavBar = State => d([
+  entityLabelWithPopup( State, State.Company.entity, e => State.Actions.selectEntity( State.Company.entity )  ),
+  entityLabelWithPopup( State, State.S.selectedEntity ),
+  isDefined(State.S.selectedCompanyEntity) ? companyEntityLabelWithPopup(State, State.S.selectedCompanyEntity) : d("")
+], {style: "display: flex;"})
 
 let companyEntitiesPageView = ( State) => d([
   h3("Alle selskapsdokumenter"),
@@ -256,9 +224,6 @@ let balanceSheetView = State => {
 
 
 
-  let CompanyVersion = State.Company
-
-
   let view = d([
     h3(`Selskapets balanse`),
     d([
@@ -266,80 +231,80 @@ let balanceSheetView = State => {
         h3("Eiendeler"),
         d([
           entityLabelWithPopup( State, 6785, e => State.Actions.selectEntity( 6785 )  ),
-          d( CompanyVersion.getAll(6785).map( security => d([
+          d( State.Company.getAll( 6785, State.S.selectedCompanyDate ).map( security => d([
             companyEntityLabelWithPopup( State, security),
-          d( formatNumber(CompanyVersion.get(security, 7433) ) , {style: `text-align: right;`})
+          d( formatNumber(State.Company.get(security, 7433, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
           ], {class: "columns_1_1"})  ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
         d([
           entityLabelWithPopup( State, 6275 ),
-          d( formatNumber(CompanyVersion.get(1, 6275) ) , {style: `text-align: right;`})
+          d( formatNumber(State.Company.get(null, 6275, State.S.selectedCompanyDate )) , {style: `text-align: right;`})
         ], {class: "columns_1_1"}),
         br(),
         d([
           entityLabelWithPopup( State, 7310 ),
-          d(CompanyVersion.getAll(7310).map( bankAccount => d([
+          d(State.Company.getAll(7310).map( bankAccount => d([
             companyEntityLabelWithPopup( State, bankAccount),
-            d( formatNumber(CompanyVersion.get(bankAccount, 7466) ) , {style: `text-align: right;`})
+            d( formatNumber(State.Company.get(bankAccount, 7433, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
           ], {class: "columns_1_1"}) ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
         d([
           entityLabelWithPopup( State, 6274 ),
-          d( formatNumber(CompanyVersion.get(1, 6274) ) , {style: `text-align: right;`})
+          d( formatNumber(State.Company.get(null, 6274, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
         ], {class: "columns_1_1"}),
       ], {style: `padding: 1em;`}),
       d([
         h3("Gjeld"),
         d([
           entityLabelWithPopup( State, 6791),
-          d(CompanyVersion.getAll(6791).map( loan => d([
+          d(State.Company.getAll(6791, State.S.selectedCompanyDate).map( loan => d([
             companyEntityLabelWithPopup( State, loan),
-            d( formatNumber(CompanyVersion.get(loan, 7458) ) , {style: `text-align: right;`}),
+            d( formatNumber(State.Company.get(loan, 7433, State.S.selectedCompanyDate) ) , {style: `text-align: right;`}),
             //d("1000", {style: `text-align: right;`})
           ], {class: "columns_1_1"})  ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
         d([
           entityLabelWithPopup( State, 6294 ),
-          d( formatNumber(CompanyVersion.get(1, 6294) ) , {style: `text-align: right;`})
+          d( formatNumber(State.Company.get(null, 6294, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
         ], {class: "columns_1_1"}),
         br(),
         h3("Egenkapital"),
         d([
           entityLabelWithPopup( State, 6790 ),
-          d(CompanyVersion.getAll(6790).map( actor => d([
+          d(State.Company.getAll(6790, State.S.selectedCompanyDate).map( actor => d([
             companyEntityLabelWithPopup( State, actor),
-            d( formatNumber(CompanyVersion.get(actor, 7455) ) , {style: `text-align: right;`}),
+            d( formatNumber(State.Company.get(actor, 7433, State.S.selectedCompanyDate) ) , {style: `text-align: right;`}),
             //d("1000", {style: `text-align: right;`})
           ], {class: "columns_1_1"})  ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
         d([
           entityLabelWithPopup( State, 6278 ),
-          d( formatNumber(CompanyVersion.get(1, 6278) ) , {style: `text-align: right;`})
+          d( formatNumber(State.Company.get(null, 6278, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
         ], {class: "columns_1_1"}),
         d([
           entityLabelWithPopup( State, 7507 ),
-          d(CompanyVersion.getAll(7507).map( companyAccountingYear => d([
+          d(State.Company.getAll(7507, State.S.selectedCompanyDate).map( companyAccountingYear => d([
             companyEntityLabelWithPopup( State, companyAccountingYear ),
-            d( formatNumber( CompanyVersion.get(companyAccountingYear, 6285) ) , {style: `text-align: right;`}),
+            d( formatNumber( State.Company.get(companyAccountingYear, 7433, State.S.selectedCompanyDate) ) , {style: `text-align: right;`}),
             //d("1000", {style: `text-align: right;`})
           ], {class: "columns_1_1"})  ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
         d([
           entityLabelWithPopup( State, 6281 ),
-          d( formatNumber(CompanyVersion.get(1, 6281) ) , {style: `text-align: right;`})
+          d( formatNumber(State.Company.get(null, 6281, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
         ], {class: "columns_1_1"}),
         d([
           entityLabelWithPopup( State, 6295 ),
-          d( formatNumber(CompanyVersion.get(1, 6295) ) , {style: `text-align: right;`})
+          d( formatNumber(State.Company.get(null, 6295, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
         ], {class: "columns_1_1"}),
       ], {style: `padding: 1em;`}),
       d([
         entityLabelWithPopup( State, 6288 ),
-        d( formatNumber(CompanyVersion.get(1, 6288) ) , {style: `text-align: right;`})
+        d( formatNumber(State.Company.get(null, 6288, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
       ], {class: "columns_1_1",style: `padding: 1em;`}),
       d([
         entityLabelWithPopup( State, 6296 ),
-        d( formatNumber(CompanyVersion.get(1, 6296) ) , {style: `text-align: right;`})
+        d( formatNumber(State.Company.get(null, 6296, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
       ], {class: "columns_1_1",style: `padding: 1em;`}),
     ], {class: "columns_1_1"}),
     br(),
@@ -441,7 +406,7 @@ let eventsView = State => {
               d( String(index+1) ),
               d( ` ${moment( State.DB.get(event, 1757) ).format("DD/MM/YYYY") }` ),
               entityLabelWithPopup( State, eventType, () => State.Actions.selectEntity( event ) ),
-              companyEntityLabelWithPopup( State, State.companyDatoms.find( companyDatom => companyDatom.event === event ).entity ),
+              companyEntityLabelWithPopup( State, getCompanyEntityFromEvent( State.companyDatoms, event )  ),
             ], {style: gridColumnsStyle("1fr 1fr 4fr 4fr")})
 
       }   ) )
@@ -467,6 +432,8 @@ let processView = State => {
 
 
   let processEvents = getProcessEvents( State.DB, process )
+
+  let processEntities = getProcessEntities(State.DB, State.companyDatoms, process)
 
 
   return d([
@@ -495,14 +462,10 @@ let processView = State => {
     br(),
     d([
       h3("Selskapsdokumenter generert av prosessen:"),
-      d( getProcessEntities(State.DB, State.companyDatoms, process).map( companyEntity => companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( process, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ) )),
+      d( processEntities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( process, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ) )),
       br(),
       isDefined( State.S.selectedCompanyEntity ) 
-        ? d([
-            d( State.DB.get( State.Company.get( State.S.selectedCompanyEntity, 6781 ), 6779 ).map( attribute => companyDatomView( State, State.S.selectedCompanyEntity, attribute, State.DB.get( Process.events.slice(-1)[0] ).t ) )),
-            br(),
-            submitButton("Åpne selskapsdokument", e => State.Actions.selectCompanyEntity(  State.S.selectedCompanyEntity ) )
-        ]) 
+        ? companyEntityView( State, State.S.selectedCompanyEntity ) 
         : d("")
     ], {class: "feedContainer"} ),
     
@@ -518,6 +481,8 @@ let eventView =  State => {
   let eventType = State.DB.get( event, "event/eventTypeEntity")
   let eventTypeAttributes = State.DB.get( eventType, "eventType/eventAttributes")
   let Event = State.DB.get( event )
+
+  let companyEntity = getCompanyEntityFromEvent( State.companyDatoms, event )
 
   let process = State.DB.get( event, "event/process" )
 
@@ -547,8 +512,9 @@ let eventView =  State => {
     br(),
     d([
       h3("Selskapsdokumenter generert av hendelsen:"),
-      d( getEventEntities(State.companyDatoms, event)
-        .map( companyEntity => companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( event, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ) )),
+
+      companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( event, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ),
+
       br(),
       isDefined(State.S.selectedCompanyEntity) 
         ? companyEntityView( State, State.S.selectedCompanyEntity )

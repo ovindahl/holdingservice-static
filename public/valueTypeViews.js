@@ -294,6 +294,7 @@ let companyEntityView = (State, companyEntity ) => {
   let companyEntityTypeCalculatedField = State.DB.get( companyEntityType, 6789 )? State.DB.get( companyEntityType, 6789 ) : []
 
 
+
   return d([
     companyEntityLabelWithPopup(State, companyEntity),
     /* br(),
@@ -304,7 +305,10 @@ let companyEntityView = (State, companyEntity ) => {
     br(),
     isDefined(CompanyEntity)
       ? d([
+          d( [6781, 7543].map( attribute => companyDatomView( State, companyEntity, attribute ) ) ),
+          br(),
           d( companyEntityTypeAttributes.map( attribute => companyDatomView( State, companyEntity, attribute ) )),
+          br(),
           d( companyEntityTypeCalculatedField.map( calculatedField => companyDatomView( State, companyEntity, calculatedField ) ) )
       ])
     : d("Entiteten er ikke definert")
@@ -332,7 +336,7 @@ let companyValueView = (State, companyEntity, attribute) => {
         ? d( Value.map( companyEnt => companyEntityLabelWithPopup(State, companyEnt ) ) )
         : companyEntityLabelWithPopup(State, Value )
       : [1653, 6781, 1099].includes(attribute)
-        ? entityLabel( State, Value , e => console.log("Cannot access AdminPage from here") )
+        ? entityLabelWithPopup( State, Value , e => console.log("Cannot access AdminPage from here") )
         : valueType === 32
           ? entityLabelWithPopup(State, Value )
           : valueType === 6553
@@ -504,11 +508,17 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
   
     let entityConstructor = State.DB.get( entity, attribute)[index]
     let companyEntityType = entityConstructor.companyEntityType
+
+    let balanceObjects = State.DB.getAll(7531)
+    let companyTransactions = State.DB.getAll(6778)
+    let companyDocuments = State.DB.getAll(7535)
+
+    let companyEntityTypeSelection = balanceObjects.concat( companyTransactions ).concat( companyDocuments )
   
     return d([
       dropdown(
         companyEntityType, 
-        State.DB.getAll(6778).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ),
+        companyEntityTypeSelection.map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ),
         async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {companyEntityType: Number( submitInputValue(e) ), attributeAssertions: {}  } ))} )
         ),
         br(),
@@ -623,11 +633,14 @@ let selectCompanyEntityView = ( State, formattedValue, updateFunction, options )
 
   let isValidCompanyEntity = getCompanyEvents( State.DB, State.Company.entity ).includes(formattedValue)
 
+
+  let optionObjects = [{value: 0, label: 'Velg alternativ'}].concat( options.map( companyEntity => returnObject({value: getFromCompany( State.companyDatoms, companyEntity, 7543 ), label: getFromCompany( State.companyDatoms, companyEntity, 7529 )})  )  ) 
+
   return d([
     isValidCompanyEntity ? companyEntityLabelWithPopup( State, State.Company.getCompanyEntityFromEvent( formattedValue ) ) : d("tom"),
     dropdown(
       isValidCompanyEntity ? formattedValue : "Velg", 
-      options,
+      optionObjects,
       updateFunction 
       )
 
@@ -702,7 +715,7 @@ let singleValueView = ( State, entity, attribute  ) => {
   let options = [32, 40].includes(valueType)
      ? State.DB.getOptions( attribute ) 
      : valueType === 41
-      ? tryFunction( () => new Function( ["Database", "Company"] , State.DB.get(log(attribute), "attribute/selectableEntitiesFilterFunction") )( State.DB, State.Company )  ) 
+      ? tryFunction( () => new Function( ["Database", "Company"] , State.DB.get(attribute, "attribute/selectableEntitiesFilterFunction") )( State.DB, State.Company )  )
       : []
 
 
