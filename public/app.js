@@ -91,8 +91,12 @@ let getClientActions = State => returnObject({
 
   createProcess: async (processType, accountingYear) =>  {
     let updatedDB = await Transactor.createEntity(State.DB, 5692, [ newDatom( 'newEntity' , 'process/company', State.Company.entity  ), newDatom( 'newEntity' , 'process/processType', processType ), newDatom( 'newEntity' , 'process/accountingYear', accountingYear ) ] )
-    let updatedCompany = constructCompany( updatedDB, State.Company.entity )
-    ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} )
+    let companyDatoms = constructCompanyDatoms( updatedDB, State.Company.entity )
+
+    ClientApp.update( {}, {
+      DB: updatedDB,
+      companyDatoms,
+    } )
   },
   createEvent:  async ( eventType, process, date ) =>  {
     let updatedDB = await Transactor.createEntity(State.DB, 46, [ newDatom( 'newEntity' , 'event/company', State.Company.entity ), newDatom( 'newEntity' , 'event/process', process ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , 'event/date', date ) ] )

@@ -135,21 +135,13 @@ let multipleCompanyEntitiesView = State => {
 let dateSelectionView = State => {
   let companyEvents = getCompanyEvents(State.DB, State.Company.entity)
 
-  let uniqueCompanyDates = companyEvents.map( event => moment( State.DB.get(event, 1757) ).format("DD/MM/YYYY") ).filter(filterUniqueValues)
+  
   
   
 
   return d([
     h3("Datovelger:"),
-    d( uniqueCompanyDates.map( date => span(date , "", {style: date === moment( State.S.selectedCompanyDate ).format("DD/MM/YYYY")  ? "color:blue;" : "" }, "click", () => {
-      let dateEvents = companyEvents.filter( event => moment( State.DB.get(event, 1757) ).format("DD/MM/YYYY") === date )
-
-      let selectedDate = State.DB.get( dateEvents.slice(-1)[0] ,  1757)
-
-      State.Actions.selectCompanyDate( selectedDate )
-
-    }, {style: gridColumnsStyle(`repeat(${uniqueCompanyDates.length}, 1fr)`) } ) )),
-    br(),
+    d( companyEvents.map( event => d( moment( State.DB.get(event, 1757) ).format("DD/MM/YYYY : HH:mm") , {style: State.DB.get(event, 1757) === State.S.selectedCompanyDate  ? "color:blue;" : "" }, "click", () => State.Actions.selectCompanyDate( State.DB.get( event ,  1757) ), {style: gridColumnsStyle(`repeat(${companyEvents.length}, 1fr)`) } ) )),
   ], {class: "feedContainer"})
 } 
 
@@ -236,6 +228,21 @@ let balanceSheetView = State => {
           d( formatNumber(State.Company.get(security, 7433, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
           ], {class: "columns_1_1"})  ) )
         ], {style: gridColumnsStyle("1fr 3fr") }),
+        d([
+          entityLabelWithPopup( State, 6253 ),
+          d( formatNumber(State.Company.get(null, 6253, State.S.selectedCompanyDate )) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}),
+        d([
+          entityLabelWithPopup( State, 7554, e => State.Actions.selectEntity( 7554 )  ),
+          d( State.Company.getAll( 7554, State.S.selectedCompanyDate ).map( receivable => d([
+            companyEntityLabelWithPopup( State, receivable),
+          d( formatNumber(State.Company.get(receivable, 7433, State.S.selectedCompanyDate) ) , {style: `text-align: right;`})
+          ], {class: "columns_1_1"})  ) )
+        ], {style: gridColumnsStyle("1fr 3fr") }),
+        d([
+          entityLabelWithPopup( State, 6276 ),
+          d( formatNumber(State.Company.get(null, 6276, State.S.selectedCompanyDate )) , {style: `text-align: right;`})
+        ], {class: "columns_1_1"}),
         d([
           entityLabelWithPopup( State, 6275 ),
           d( formatNumber(State.Company.get(null, 6275, State.S.selectedCompanyDate )) , {style: `text-align: right;`})

@@ -148,7 +148,7 @@ let companyEventReducer = (DB, companyDatoms, event) => {
 
   let companyDatomsWithEventCalculatedDatoms = sortedEntities.reduce( (companyDatoms, companyEntity) => companyEntityReducer(DB, companyDatoms, companyEntity, eventTime) , companyDatomsWithEventTypeDatoms  )
 
-  let companyDatomsWithCompanyCalculatedDatoms = [6275, 6274, 6288, 6294, 6278, 6281, 6295, 6296].reduce( (companyDatoms, companyCalculatedField) => companyCalculatedFieldReducer(DB, companyDatoms, companyCalculatedField, eventTime), companyDatomsWithEventCalculatedDatoms )
+  let companyDatomsWithCompanyCalculatedDatoms = DB.getAll(7526).filter( e => DB.get(e, "entity/category") === "Balanseoppstilling" ).reduce( (companyDatoms, companyCalculatedField) => companyCalculatedFieldReducer(DB, companyDatoms, companyCalculatedField, eventTime), companyDatomsWithEventCalculatedDatoms )
 
 
   return companyDatomsWithCompanyCalculatedDatoms

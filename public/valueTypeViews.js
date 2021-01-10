@@ -345,9 +345,7 @@ let companyValueView = (State, companyEntity, attribute) => {
                 d( String(accountBalance.amount) ),
               ], {class: "columns_1_1"})
              )  )
-            : isNumber(Value) 
-              ? d( formatNumber(Value, Math.abs(Value) >= 100 ? 0 : 2 ), {style: `text-align: right;`}  )
-              : d( JSON.stringify( Value )  )
+            : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( Value  ), {style: isNumber(Value) ? `text-align: right;` : ""}  )
     : d("na.")
   } catch (error) {
     return d(error)
