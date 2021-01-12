@@ -164,7 +164,9 @@ let companyView = State => {
     "7493": eventsView,
     "7489": formsView,
     "7778": assetsView,
-    //"7494": singleDateView,
+    "7780": paidInCapitalView,
+    "7781": accumulatedProfitView,
+    "7782": debtsView,
   }
 
 
@@ -281,6 +283,62 @@ let assetsView = State => d([
       ], {class: "columns_1_1_1"})
     ]) 
   ))
+])
+
+let paidInCapitalView = State => d([
+  d([
+    d("Aksjonær"),
+    entityLabel( State, 7433 ),
+    entityLabel( State, 7449 ),
+  ], {class: "columns_1_1_1"}),
+  d([
+    d( State.Company.getAll(7783, State.S.selectedCompanyDate).map( capitalIssuance => d([
+      companyEntityLabelWithPopup(State, capitalIssuance),
+      d( formatNumber(State.Company.get(capitalIssuance, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+    ], {class: "columns_1_1_1"})  ) ),
+    d([
+      entityLabel( State, 6237 ),
+      d( formatNumber(State.Company.get( null, 6237, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+    ], {class: "columns_1_1_1"}),
+    d([
+      entityLabel( State, 6278 ),
+      d( formatNumber(State.Company.get( null, 6278, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+    ], {class: "columns_1_1_1"})
+  ]) 
+])
+
+let accumulatedProfitView = State => d([
+  d([
+    d("Regnskapsår"),
+    entityLabel( State, 7433 ),
+  ], {class: "columns_1_1_1"}),
+  d([
+    d( State.Company.getAll(7507, State.S.selectedCompanyDate).map( accountingYear => d([
+      companyEntityLabelWithPopup(State, accountingYear),
+      d( formatNumber(State.Company.get(accountingYear, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+    ], {class: "columns_1_1_1"})  ) ),
+    d([
+      entityLabel( State, 6281 ),
+      d( formatNumber(State.Company.get( null, 6281, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+    ], {class: "columns_1_1_1"}),
+  ]) 
+])
+
+let debtsView = State => d([
+  d([
+    d("Gjeld"),
+    entityLabel( State, 7433 ),
+  ], {class: "columns_1_1_1"}),
+  d([
+    d( State.Company.getAll(6791, State.S.selectedCompanyDate).map( debt => d([
+      companyEntityLabelWithPopup(State, debt),
+      d( formatNumber(State.Company.get(debt, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+    ], {class: "columns_1_1_1"})  ) ),
+    d([
+      entityLabel( State, 6294 ),
+      d( formatNumber(State.Company.get( null, 6294, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+    ], {class: "columns_1_1_1"}),
+  ]) 
 ])
 
 let formsView = State => d([

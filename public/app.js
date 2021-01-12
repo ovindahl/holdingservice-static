@@ -63,6 +63,7 @@ var State = {} //Consle access to State
 var S = {} //Consle access to localState
 var D = {} //Consle access to DB
 var C = {} //Consle access to Company
+var Company = {} //Consle access to Company
 var A = {} //Consle access to Actions
 
 
@@ -150,6 +151,7 @@ const ClientApp = {
       S = newState.S
       D = newState.DB
       C = newState.Company
+      Company = newState.Company
       A = newState.Actions
 
       ClientApp.States.push(newState)
