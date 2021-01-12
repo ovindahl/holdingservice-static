@@ -44,13 +44,13 @@ let getCompanyDatomValue = (companyDatoms, entity, attribute, eventTime) => {
   return datomValue
 }  
 
-let getAllEntityTransactions = (DB, companyDatoms, companyEntity) => {
+let getAllEntityTransactions = (DB, companyDatoms, companyEntity, eventTime) => {
 
   let companyEntityType = getFromCompany(companyDatoms, companyEntity, 6781)
 
   let entityTypeTransactionType = DB.get( companyEntityType, 7532 )
 
-  let allTransactionsOfType = getAllCompanyEntitiesByType( companyDatoms, entityTypeTransactionType )
+  let allTransactionsOfType = getAllCompanyEntitiesByType( companyDatoms, entityTypeTransactionType, eventTime )
 
   let allEntityTransactions = allTransactionsOfType.filter( transactionEntity => getFromCompany(companyDatoms, transactionEntity, 7533) === companyEntity )
 
@@ -101,8 +101,8 @@ let companyEventReducer = (DB, companyDatoms, event) => {
 
   let CompanyQueryObject = { 
     companyDatoms,
-    getAll: companyEntityType => getAllCompanyEntitiesByType(companyDatoms, companyEntityType),
-    get: (entity, attr) => getFromCompany( companyDatoms, entity, attr, eventTime ),
+    getAll: (companyEntityType, eventTime) => getAllCompanyEntitiesByType(companyDatoms, companyEntityType, eventTime),
+    get: (entity, attr, eventTime) => getFromCompany( companyDatoms, entity, attr, eventTime ),
     getCompanyEntityFromEvent: event => getCompanyEntityFromEvent( companyDatoms, event )
   }
 
@@ -148,7 +148,10 @@ let companyEventReducer = (DB, companyDatoms, event) => {
 
   let companyDatomsWithEventCalculatedDatoms = sortedEntities.reduce( (companyDatoms, companyEntity) => companyEntityReducer(DB, companyDatoms, companyEntity, eventTime) , companyDatomsWithEventTypeDatoms  )
 
-  let companyDatomsWithCompanyCalculatedDatoms = DB.getAll(7526).filter( e => DB.get(e, "entity/category") === "Balanseoppstilling" ).reduce( (companyDatoms, companyCalculatedField) => companyCalculatedFieldReducer(DB, companyDatoms, companyCalculatedField, eventTime), companyDatomsWithEventCalculatedDatoms )
+  let companyDatomsWithCompanyCalculatedDatoms = DB.get(7537, 7751).concat( 
+    DB.get(7539, 7751), 
+    DB.get(7538, 7751)
+    ).reduce( (companyDatoms, companyCalculatedField) => companyCalculatedFieldReducer(DB, companyDatoms, companyCalculatedField, eventTime), companyDatomsWithEventCalculatedDatoms )
 
 
   return companyDatomsWithCompanyCalculatedDatoms
@@ -167,7 +170,7 @@ let companyEntityReducer = (DB, companyDatoms, companyEntity, eventTime) => {
 let companyEntityCalculatedFieldReducer = ( DB, companyDatoms, companyEntity, companyEntityTypeCalculatedField, eventTime ) => {
 
   let CompanyQueryObject = { 
-    getAll: companyEntityType => getAllCompanyEntitiesByType( companyDatoms, companyEntityType ),
+    getAll: (companyEntityType, eventTime) => getAllCompanyEntitiesByType( companyDatoms, companyEntityType, eventTime ),
     get: (entity, attr) => getFromCompany( companyDatoms, entity, attr, eventTime ),
     getEntityTransactions: companyEntity => getAllEntityTransactions( DB, companyDatoms, companyEntity )
   }
@@ -199,7 +202,7 @@ let companyEntityCalculatedFieldReducer = ( DB, companyDatoms, companyEntity, co
 let companyCalculatedFieldReducer = ( DB, companyDatoms, companyCalculatedField, eventTime ) => {
 
   let CompanyQueryObject = { 
-    getAll: companyEntityType => getAllCompanyEntitiesByType( companyDatoms, companyEntityType ),
+    getAll: (companyEntityType, eventTime) => getAllCompanyEntitiesByType( companyDatoms, companyEntityType, eventTime ),
     get: (entity, attr) => getFromCompany( companyDatoms, entity, attr, eventTime ),
   }
 
