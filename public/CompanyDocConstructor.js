@@ -133,7 +133,7 @@ let companyEventReducer = (DB, companyDatoms, event) => {
           attribute,
           value: tryFunction( () => new Function( [`Database`, `Company`, `Event`], sharedStatementsString + entityConstructor.attributeAssertions[ attribute ].valueFunction )( DB, CompanyQueryObject, DB.get(event) ) ),
           t: eventTime
-        }) , genericNewEntityDatoms  )
+        } ) , genericNewEntityDatoms  )
 
   let companyDatomsWithEventTypeDatoms = companyDatoms.concat( generatedDatoms )
 
@@ -198,7 +198,11 @@ let companyEntityCalculatedFieldReducer = ( DB, companyDatoms, companyEntity, co
     t: eventTime,
   }
 
-  return companyDatoms.concat( calculatedDatom )
+  let prevValue = getFromCompany( companyDatoms, companyEntity, companyEntityTypeCalculatedField, eventTime )
+
+  return calculatedDatom.value === prevValue
+    ? companyDatoms
+    : companyDatoms.concat( calculatedDatom )
   
 }
 
@@ -222,7 +226,11 @@ let companyCalculatedFieldReducer = ( DB, companyDatoms, companyCalculatedField,
     t: eventTime,
   }
 
-  return companyDatoms.concat( calculatedDatom )
+  let prevValue = getFromCompany( companyDatoms, null, companyCalculatedField, eventTime )
+
+  return calculatedDatom.value === prevValue
+    ? companyDatoms
+    : companyDatoms.concat( calculatedDatom )
   
 }
 

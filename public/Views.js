@@ -274,10 +274,6 @@ let balanceSheetView = State => d([
     d([
       h3("Eiendeler"),
       assetsView( State ),
-      d([
-        entityLabelWithPopup( State, 6288 ),
-        d( formatNumber(State.Company.get( null, 6288, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
     ], {style: `padding: 1em;`}), 
     d([
       h3("Egenkapital"),
@@ -289,13 +285,19 @@ let balanceSheetView = State => d([
       ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
       br(),
       h3("Gjeld"),
-      debtsView( State ),
-      d([
-        entityLabelWithPopup( State, 6296 ),
-        d( formatNumber(State.Company.get( null, 6296, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
+      debtsView( State )
     ], {style: `padding: 1em;`}),
   ], {class: "columns_1_1"}),
+  d([
+    d([
+      entityLabelWithPopup( State, 6288 ),
+      d( formatNumber(State.Company.get( null, 6288, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+    ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding: 1em;`}),
+    d([
+      entityLabelWithPopup( State, 6296 ),
+      d( formatNumber(State.Company.get( null, 6296, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+    ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding: 1em;`})
+  ], {class: "columns_1_1", style: `background-color: ${ formatNumber(State.Company.get( null, 6288, State.S.selectedCompanyDate ) + State.Company.get( null, 6296, State.S.selectedCompanyDate )) === "0" ? "" : "#e82b0026" } `}),
   br(),
   entityLabelWithPopup( State, 7535 ),
 ])
@@ -431,21 +433,28 @@ let processesView = State => {
 }
 
 let bankView = State => d([
-  d([
+  /* d([
     d(""),
     entityLabelWithPopup( State, 7310 ),
     entityLabelWithPopup( State, 1757 ),
     entityLabelWithPopup( State, 1083 ),
-  ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+  ], {style: gridColumnsStyle("repeat(4, 1fr)")}), */
   d( State.Company.getAll( 7310 )
       .map( bankAccount => State.Company.get( bankAccount, 7448 ) )
       .flat()
       .map( bankTransaction => d([
         companyValueView( State, bankTransaction, 1757 ),
         companyEntityLabelWithPopup( State, bankTransaction ),
-        companyValueView( State, bankTransaction, 7533 ),
         companyValueView( State, bankTransaction, 1083 ),
-      ], {style: gridColumnsStyle("repeat(4, 1fr)")}) ) 
+        entityLabelWithPopup( State, State.DB.get( State.DB.get( State.Company.get(bankTransaction, 7543), "event/process"  ), "process/processType"), () => State.Actions.selectEntity( State.Company.get(bankTransaction, 7543) )  ),
+        State.DB.get( State.DB.get( State.Company.get(bankTransaction, 7543), "event/process"  ), "process/processType") === 5713
+          ? dropdown(0, [
+              {value: 0, label: "Opprett prosess"},
+              {value: 1, label: "Ny investering"},
+              {value: 2, label: "Driftskostnad"},
+          ])
+          : d("")
+      ], {style: gridColumnsStyle("repeat(5, 1fr)")}) ) 
     )
 ])
 

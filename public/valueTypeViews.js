@@ -297,17 +297,15 @@ let companyEntityView = (State, companyEntity ) => {
 
   return d([
     companyEntityLabelWithPopup(State, companyEntity),
-    /* br(),
-    d([
-      entityLabelWithPopup( State,  46 ),
-      entityLabelWithPopup( State, State.DB.get( CompanyEntity.event, "event/eventTypeEntity" ), () => State.Actions.selectEntity(CompanyEntity.event) ),
-    ], {class: "columns_1_1"}), */
     br(),
     isDefined(CompanyEntity)
       ? d([
           d( [6781, 7543].map( attribute => companyDatomView( State, companyEntity, attribute ) ) ),
           br(),
-          d( companyEntityTypeAttributes.map( attribute => companyDatomView( State, companyEntity, attribute ) )),
+          d( companyEntityTypeAttributes
+              .filter( attribute => isDefined( State.Company.get( companyEntity, attribute) ) )
+              .map( attribute => companyDatomView( State, companyEntity, attribute ) )
+              ),
           br(),
           d( companyEntityTypeCalculatedField.map( calculatedField => companyDatomView( State, companyEntity, calculatedField ) ) )
       ])
