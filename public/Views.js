@@ -433,18 +433,17 @@ let processesView = State => {
 }
 
 let bankView = State => d([
-  /* d([
-    d(""),
-    entityLabelWithPopup( State, 7310 ),
-    entityLabelWithPopup( State, 1757 ),
-    entityLabelWithPopup( State, 1083 ),
-  ], {style: gridColumnsStyle("repeat(4, 1fr)")}), */
-  d( State.Company.getAll( 7310 )
-      .map( bankAccount => State.Company.get( bankAccount, 7448 ) )
+  d([
+    d("Dato"),
+    d("Beløp"),
+    d("Prosess"),
+    d("Transaksjon"),
+  ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+  d( State.Company.getAll( 7310, State.S.selectedCompanyDate )
+      .map( bankAccount => State.Company.get( bankAccount, 7448, State.S.selectedCompanyDate ) )
       .flat()
       .map( bankTransaction => d([
-        companyValueView( State, bankTransaction, 1757 ),
-        companyEntityLabelWithPopup( State, bankTransaction ),
+        d( moment( State.Company.get( bankTransaction, 1757 ) ).format("DD.MM.YYYY")  , {style: `text-align: right;`}),
         companyValueView( State, bankTransaction, 1083 ),
         entityLabelWithPopup( State, State.DB.get( State.DB.get( State.Company.get(bankTransaction, 7543), "event/process"  ), "process/processType"), () => State.Actions.selectEntity( State.Company.get(bankTransaction, 7543) )  ),
         State.DB.get( State.DB.get( State.Company.get(bankTransaction, 7543), "event/process"  ), "process/processType") === 5713
@@ -453,8 +452,8 @@ let bankView = State => d([
               {value: 1, label: "Ny investering"},
               {value: 2, label: "Driftskostnad"},
           ])
-          : d("")
-      ], {style: gridColumnsStyle("repeat(5, 1fr)")}) ) 
+          : companyEntityLabelWithPopup( State, bankTransaction )
+      ], {style: gridColumnsStyle("repeat(4, 1fr)")}) ) 
     )
 ])
 

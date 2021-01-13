@@ -110,15 +110,9 @@ let getClientActions = State => returnObject({
       companyDatoms,
     } )
     
-    
-    
-    /* let updatedCompany = constructCompany( updatedDB, State.Company.entity )
-    ClientApp.update( State, {DB: updatedDB, Company: updatedCompany} ) */
   },
   executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
 })
-
-
 
 const ClientApp = {
     States: [],
@@ -183,7 +177,10 @@ let init = async () => {
 
     let initialDatabase = constructDatabase( Entities )
     let company = 6829
-    let companyDatoms = constructCompanyDatoms( initialDatabase, company )
+
+    let startTime = Date.now()
+    let companyDatoms = constructCompanyDatoms( initialDatabase, company ) 
+    console.log(`constructCompanyDatoms finished in ${Date.now() - startTime} ms`)
 
     ClientApp.update( {}, {
       DB: initialDatabase,
