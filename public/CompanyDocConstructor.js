@@ -120,7 +120,10 @@ let companyEventReducer = (DB, companyDatoms, event) => {
       value: event,
       t: eventTime
     }
-  ]
+  ] 
+
+  
+  //log({event, eventType})
 
   let generatedDatoms =  DB.get( entityConstructor.companyEntityType , "companyEntityType/attributes" ) 
     .filter( attribute => isDefined( entityConstructor.attributeAssertions[ attribute ] ) )
@@ -149,8 +152,8 @@ let companyEventReducer = (DB, companyDatoms, event) => {
   let companyDatomsWithEventCalculatedDatoms = sortedEntities.reduce( (companyDatoms, companyEntity) => companyEntityReducer(DB, companyDatoms, companyEntity, eventTime) , companyDatomsWithEventTypeDatoms  )
 
   let companyDatomsWithCompanyCalculatedDatoms = DB.get(7537, 7751).concat( 
-    DB.get(7539, 7751), 
-    DB.get(7538, 7751)
+    DB.get(7538, 7751),
+    DB.get(7539, 7751)
     ).reduce( (companyDatoms, companyCalculatedField) => companyCalculatedFieldReducer(DB, companyDatoms, companyCalculatedField, eventTime), companyDatomsWithEventCalculatedDatoms )
 
 

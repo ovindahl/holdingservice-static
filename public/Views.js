@@ -163,10 +163,11 @@ let companyView = State => {
     "7492": processesView,
     "7493": eventsView,
     "7489": formsView,
-    "7778": assetsView,
+    "7778": actorsView,
     "7780": paidInCapitalView,
     "7781": accumulatedProfitView,
     "7782": debtsView,
+    "7508": transactionsView,
   }
 
 
@@ -217,128 +218,124 @@ let singleDateView = State => {
   ])
 }
 
-let balanceSheetView = State => {
-
-  let startTime = Date.now()
-
-
-
-  let view = d([
-    h3(`Selskapets balanse`),
+let balanceSheetView = State => d([
+  h3(`Selskapets balanse`),
+  d([
     d([
+      h3("Eiendeler"),
+      assetsView( State ),
       d([
-        h3("Eiendeler"),
-        d( 
-          State.DB.get(7537, 7751).map( calculatedField => d([
-            entityLabelWithPopup( State, calculatedField ),
-            d( formatNumber(State.Company.get(null, calculatedField, State.S.selectedCompanyDate )) , {style: `text-align: right;`})
-          ], {class: "columns_1_1"})  )
-        ),
-      ], {style: `padding: 1em;`}), 
+        entityLabelWithPopup( State, 6288 ),
+        d( formatNumber(State.Company.get( null, 6288, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
+    ], {style: `padding: 1em;`}), 
+    d([
+      h3("Egenkapital"),
+      paidInCapitalView( State ),
+      accumulatedProfitView( State ),
       d([
-        h3("Egenkapital"),
-        d( 
-          State.DB.get(7538, 7751).map( calculatedField => d([
-            entityLabelWithPopup( State, calculatedField ),
-            d( formatNumber(State.Company.get(null, calculatedField, State.S.selectedCompanyDate )) , {style: `text-align: right;`})
-          ], {class: "columns_1_1"})  )
-        ),
-        br(),
-        h3("Gjeld"),
-        d( 
-          State.DB.get(7539, 7751).map( calculatedField => d([
-            entityLabelWithPopup( State, calculatedField ),
-            d( formatNumber(State.Company.get(null, calculatedField, State.S.selectedCompanyDate )) , {style: `text-align: right;`})
-          ], {class: "columns_1_1"})  )
-        ),
-      ], {style: `padding: 1em;`}),
-    ], {class: "columns_1_1"}),
-    br(),
-    entityLabelWithPopup( State, 7531 ),
-    entityLabelWithPopup( State, 6778 ),
-    entityLabelWithPopup( State, 7535 ),
-  ])
+        entityLabelWithPopup( State, 6295 ),
+        d( formatNumber(State.Company.get( null, 6295, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+      ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
+      br(),
+      h3("Gjeld"),
+      debtsView( State ),
+      d([
+        entityLabelWithPopup( State, 6296 ),
+        d( formatNumber(State.Company.get( null, 6296, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
+    ], {style: `padding: 1em;`}),
+  ], {class: "columns_1_1"}),
+  br(),
+  entityLabelWithPopup( State, 7535 ),
+])
 
-  console.log(`balanceSheetView finished in ${Date.now() - startTime} ms`)
-
-  return view
-} 
+let transactionsView = State => d([
+  d([
+    entityLabelWithPopup( State, 7533 ),
+    entityLabelWithPopup( State, 1757 ),
+    entityLabelWithPopup( State, 1083 ),
+    entityLabelWithPopup( State, 1653 ),
+    entityLabelWithPopup( State, 1139 ),
+  ], {style: gridColumnsStyle("repeat(5, 1fr)")}),
+  d([
+    d( State.Company.getAll(7817, State.S.selectedCompanyDate).map( companyTransaction => d([
+      companyEntityLabelWithPopup(State, State.Company.get(companyTransaction, 7533) ),
+      companyValueView(State, companyTransaction, 1757),
+      companyValueView(State, companyTransaction, 1083),
+      companyValueView(State, companyTransaction, 1653),
+      companyValueView(State, companyTransaction, 1139),
+    ], {style: gridColumnsStyle("repeat(5, 1fr)")})  ) ),
+  ]) 
+])
 
 let assetsView = State => d([
-  d([
-    d("Eiendel"),
-    entityLabel( State, 7433 ),
-    entityLabel( State, 7449 ),
-  ], {class: "columns_1_1_1"}),
   d(
-    [6785, 7310, 7554, 7749, 7750].map( assetType => d([
+    [6785, 7310, 7554].map( assetType => d([
       d( State.Company.getAll(assetType, State.S.selectedCompanyDate).map( assetEntity => d([
         companyEntityLabelWithPopup(State, assetEntity),
         d( formatNumber(State.Company.get(assetEntity, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-        d( State.Company.get(assetEntity, 6781) === 6785 ? formatNumber(State.Company.get(assetEntity, 7449, State.S.selectedCompanyDate )) : " - " , {style: `text-align: right;`})
-      ], {class: "columns_1_1_1"})  ) ),
+      ], {style: gridColumnsStyle("repeat(2, 1fr)")})  ) ),
       d([
-        entityLabel( State, State.DB.get(assetType, 7748) ),
+        entityLabelWithPopup( State, State.DB.get(assetType, 7748) ),
         d( formatNumber(State.Company.get( null, State.DB.get(assetType, 7748), State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-      ], {class: "columns_1_1_1"})
+      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
     ]) 
   ))
 ])
 
 let paidInCapitalView = State => d([
   d([
-    d("Aksjonær"),
-    entityLabel( State, 7433 ),
-    entityLabel( State, 7449 ),
-  ], {class: "columns_1_1_1"}),
-  d([
     d( State.Company.getAll(7783, State.S.selectedCompanyDate).map( capitalIssuance => d([
       companyEntityLabelWithPopup(State, capitalIssuance),
       d( formatNumber(State.Company.get(capitalIssuance, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {class: "columns_1_1_1"})  ) ),
+    ], {style: gridColumnsStyle("repeat(2, 1fr)")})  ) ),
     d([
-      entityLabel( State, 6237 ),
+      entityLabelWithPopup( State, 6237 ),
       d( formatNumber(State.Company.get( null, 6237, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {class: "columns_1_1_1"}),
+    ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
     d([
-      entityLabel( State, 6278 ),
+      entityLabelWithPopup( State, 6278 ),
       d( formatNumber(State.Company.get( null, 6278, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {class: "columns_1_1_1"})
+    ], {style: gridColumnsStyle("repeat(2, 1fr)")})
   ]) 
 ])
 
 let accumulatedProfitView = State => d([
   d([
-    d("Regnskapsår"),
-    entityLabel( State, 7433 ),
-  ], {class: "columns_1_1_1"}),
-  d([
     d( State.Company.getAll(7507, State.S.selectedCompanyDate).map( accountingYear => d([
       companyEntityLabelWithPopup(State, accountingYear),
       d( formatNumber(State.Company.get(accountingYear, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {class: "columns_1_1_1"})  ) ),
+    ], {style: gridColumnsStyle("repeat(2, 1fr)")})  ) ),
     d([
-      entityLabel( State, 6281 ),
+      entityLabelWithPopup( State, 6281 ),
       d( formatNumber(State.Company.get( null, 6281, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {class: "columns_1_1_1"}),
+    ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
   ]) 
 ])
 
 let debtsView = State => d([
   d([
-    d("Gjeld"),
-    entityLabel( State, 7433 ),
-  ], {class: "columns_1_1_1"}),
-  d([
     d( State.Company.getAll(6791, State.S.selectedCompanyDate).map( debt => d([
       companyEntityLabelWithPopup(State, debt),
       d( formatNumber(State.Company.get(debt, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {class: "columns_1_1_1"})  ) ),
+    ], {style: gridColumnsStyle("repeat(2, 1fr)")})  ) ),
     d([
-      entityLabel( State, 6294 ),
+      entityLabelWithPopup( State, 6294 ),
       d( formatNumber(State.Company.get( null, 6294, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {class: "columns_1_1_1"}),
+    ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
   ]) 
+])
+
+let actorsView = State => d([
+  d([
+    entityLabelWithPopup( State, 6790 ),
+    entityLabelWithPopup( State, 1113 )
+  ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
+  d( State.Company.getAll( 6790, State.S.selectedCompanyDate ).map( actor => d([
+      companyEntityLabelWithPopup( State, actor ),
+      companyValueView( State, actor, 1113)
+  ], {style: gridColumnsStyle("repeat(2, 1fr)")}) ) )
 ])
 
 let formsView = State => d([
