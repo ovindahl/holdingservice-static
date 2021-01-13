@@ -134,18 +134,50 @@ let multipleCompanyEntitiesView = State => {
 
 let dateSelectionView = State => {
   let companyEvents = getCompanyEvents(State.DB, State.Company.entity)
-  let allCompanyDateTimes = companyEvents.map( event => State.DB.get(event, 1757) )
-  let uniqueDates = allCompanyDateTimes.map( date => moment( date ).format( "DD/MM/YYYY" ) ).filter( filterUniqueValues )
-
-  let eachDatelastDateTimes = uniqueDates.map( stringDate => allCompanyDateTimes.filter( date => moment( date ).format( "DD/MM/YYYY" ) === stringDate ).slice( -1 )[0] )
 
   
-  
+
+  let selectedTimeStamp = State.DB.get(State.S.selectedCompanyEvent, 1757)
+
+  let selectedEventDate = moment( selectedTimeStamp ).format( "DD/MM/YYYY" )
+
+  let dateEvents = companyEvents.filter( event => moment( State.DB.get(event, 1757) ).format( "DD/MM/YYYY" ) === selectedEventDate )
+
+  let dateIndex = dateEvents.findIndex( event => event === State.S.selectedCompanyEvent )
+
+  let prevEvent = dateEvents[ dateIndex - 1 ] 
+  let nextEvent = dateEvents[ dateIndex + 1 ] 
+
   
 
+  let selectedDate_firstEventIndex = companyEvents.findIndex( event => dateEvents.includes( event )  )
+
+  let prevDateEvent = companyEvents[ selectedDate_firstEventIndex - 1 ] 
+  let nextDateEvent = companyEvents.find( event => !dateEvents.includes( event ) && State.DB.get(event, 1757) > selectedTimeStamp )
+  
   return d([
     h3("Datovelger:"),
-    d( eachDatelastDateTimes.map( dateTime => d( moment( dateTime ).format("DD/MM/YYYY") , {style: dateTime === State.S.selectedCompanyDate  ? "color:blue;" : "" }, "click", () => State.Actions.selectCompanyDate( dateTime ), {style: gridColumnsStyle(`repeat(${companyEvents.length}, 1fr)`) } ) )),
+    d([
+      entityLabelWithPopup( State, 1757 ),
+      d( selectedEventDate ),
+      d([
+        submitButton("[<<]", () => State.Actions.selectCompanyEvent( companyEvents[0] ) ),
+        isDefined(prevDateEvent) ? submitButton("<", () => State.Actions.selectCompanyEvent( prevDateEvent ) ) : d(""),
+        isDefined(nextDateEvent) ? submitButton(">", () => State.Actions.selectCompanyEvent( nextDateEvent ) ) : d(""),
+        submitButton("[>>]", () => State.Actions.selectCompanyEvent( companyEvents.slice(-1)[0] ) )
+      ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+    ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
+    d([
+      entityLabelWithPopup( State, 46 ),
+      d( `${dateIndex+1} / ${dateEvents.length}` ),
+      d([
+        submitButton("[<<]", () => State.Actions.selectCompanyEvent( dateEvents[0] ) ),
+        isDefined(prevEvent) ? submitButton("<", () => State.Actions.selectCompanyEvent( prevEvent ) ) : d(""),
+        isDefined(nextEvent) ? submitButton(">", () => State.Actions.selectCompanyEvent( nextEvent ) ) : d(""),
+        submitButton("[>>]", () => State.Actions.selectCompanyEvent( dateEvents.slice(-1)[0] ) )
+      ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+    ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
+    //d( eachDatelastDateTimes.map( dateTime => d( moment( dateTime ).format("DD/MM/YYYY") , {style: dateTime === State.S.selectedCompanyDate  ? "color:blue;" : "" }, "click", () => State.Actions.selectCompanyDate( dateTime ), {style: gridColumnsStyle(`repeat(${companyEvents.length}, 1fr)`) } ) )),
   ], {class: "feedContainer"})
 } 
 
@@ -161,13 +193,10 @@ let companyView = State => {
   let reportController = {
     "7488": balanceSheetView,
     "7492": processesView,
-    "7493": eventsView,
-    "7489": formsView,
     "7778": actorsView,
-    "7780": paidInCapitalView,
-    "7781": accumulatedProfitView,
-    "7782": debtsView,
     "7508": transactionsView,
+    "7494": singleDateView,
+    "7820": bankView
   }
 
 
@@ -181,42 +210,63 @@ let companyView = State => {
 
 let singleDateView = State => {
 
-  let CompanyVersion = State.Company
+  let companyEvents = getCompanyEvents( State.DB, State.Company.entity )
 
-  let ledgerEntries = CompanyVersion.get(1, 7486).filter( ledgerEntry => moment( State.DB.get( State.Company.get(ledgerEntry.parent).event  ).t ).format("DD/MM/YYYY") ===  moment( State.S.selectedCompanyDate ).format("DD/MM/YYYY")  )
+  let selectedDateEvents = companyEvents.filter( event => moment( State.DB.get(event, 1757) ).format("DD/MM/YYYY") === moment( State.S.selectedCompanyDate ).format("DD/MM/YYYY")  )
+
+
+
+
+  let companyTransactions = State.Company.getAll(7817, State.S.selectedCompanyDate)
+
+  let selectedDateTransactions = companyTransactions.filter( transaction => moment( State.Company.get(transaction, 1757) ).format("DD/MM/YYYY") === moment( State.S.selectedCompanyDate ).format("DD/MM/YYYY")  )
+
+  let changedBalanceObjects = selectedDateTransactions.map( transaction => State.Company.get(transaction, 7533) ).filter( filterUniqueValues )
+
+  let firstEvent = companyEvents[ companyEvents.findIndex( event => selectedDateEvents.includes( event ) ) - 1 ] 
+  let firstEventTimeStamp = State.DB.get(firstEvent, 1757)
+
+  let lastEventTimeStamp = State.S.selectedCompanyDate
+
 
   return d([
-    h3(`Hovedbok`),
+    h3("Balanseendringer"),
     d([
-      d("Hendelser på valgt dato:"),
-      d([ 
-        d("Prosess"),
-        d("Hendelse"),
-        d("Hendelsens output"),
-      ], {class: "columns_1_1_1"}),
-      d( getCompanyEvents( State.DB, State.Company.entity )
-          .filter( event => moment( State.DB.get(event, 1757) ).format("DD/MM/YYYY") === moment( State.S.selectedCompanyDate ).format("DD/MM/YYYY") )
-          .map( event => d([ 
-            entityLabelWithPopup( State, State.DB.get( event, "event/process" )  ),
-            entityLabelWithPopup( State, State.DB.get( event, "event/eventTypeEntity" ), e => State.Actions.selectedEntity(event)  ),
-            d( State.DB.get( event ) .entities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity ) ) )
-          ], {class: "columns_1_1_1"}) ) )
-    ]),
-    h3(`Hovedbokstransaksjoner`),
+      d("Objekt"),
+      d("Bokført verdi, før"),
+      d("Bokført verdi, endring"),
+      d("Bokført verdi, etter"),
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+    d( changedBalanceObjects.map( balanceObject => {
+
+      let value_before = State.Company.get( balanceObject, 7433, firstEventTimeStamp )
+      let value_after = State.Company.get( balanceObject, 7433, lastEventTimeStamp )
+      let value_change = value_after - value_before
+
+      return d([
+        companyEntityLabelWithPopup(State, balanceObject ),
+        d( formatNumber( value_before ) , {style: `text-align: right;`}),
+        d( formatNumber( value_change ) , {style: `text-align: right;`}),
+        d( formatNumber( value_after ) , {style: `text-align: right;`}),
+      ], {style: gridColumnsStyle("repeat(4, 1fr)")})
+    }  ) ),
+    h3("Transaksjoner"),
     d([
-      d( "Dato" ),
-      d( "Transaksjon" ),
-      d( "Konto" ),
-      d( "Beløp" ),
-    ], {style: gridColumnsStyle("1fr 2fr 2fr 1fr")}),
-    d( ledgerEntries.map( ledgerEntry => d([
-      d( moment( CompanyVersion.get(ledgerEntry.parent, 1757) ).format("DD/MM/YYYY") ),
-      companyEntityLabelWithPopup(State, ledgerEntry.parent),
-      entityLabelWithPopup(State, ledgerEntry.account),
-      d( formatNumber(ledgerEntry.amount) )
-    ], {style: gridColumnsStyle("1fr 2fr 2fr 1fr")}) ) )
+      entityLabelWithPopup( State, 7533 ),
+      entityLabelWithPopup( State, 1757 ),
+      entityLabelWithPopup( State, 1083 ),
+      entityLabelWithPopup( State, 1653 ),
+      entityLabelWithPopup( State, 1139 ),
+    ], {style: gridColumnsStyle("repeat(5, 1fr)")}),
+    d( selectedDateTransactions.map( companyTransaction => d([
+      companyEntityLabelWithPopup(State, State.Company.get(companyTransaction, 7533) ),
+      companyValueView(State, companyTransaction, 1757),
+      companyValueView(State, companyTransaction, 1083),
+      companyValueView(State, companyTransaction, 1653),
+      companyValueView(State, companyTransaction, 1139),
+    ], {style: gridColumnsStyle("repeat(5, 1fr)")})  ) ),
   ])
-}
+} 
 
 let balanceSheetView = State => d([
   h3(`Selskapets balanse`),
@@ -338,14 +388,6 @@ let actorsView = State => d([
   ], {style: gridColumnsStyle("repeat(2, 1fr)")}) ) )
 ])
 
-let formsView = State => d([
-  d( State.Company.getAll(6820).concat( State.Company.getAll(7437) ).map( form => companyEntityLabelWithPopup(State, form) ) ),
-  br(),
-  isDefined(State.S.selectedCompanyEntity) 
-    ? companyEntityView( State, State.S.selectedCompanyEntity )
-    : d("")
-])
-
 let processesView = State => {
 
 
@@ -388,36 +430,25 @@ let processesView = State => {
   ])
 }
 
-let eventsView = State => {
+let bankView = State => d([
+  d([
+    d(""),
+    entityLabelWithPopup( State, 7310 ),
+    entityLabelWithPopup( State, 1757 ),
+    entityLabelWithPopup( State, 1083 ),
+  ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+  d( State.Company.getAll( 7310 )
+      .map( bankAccount => State.Company.get( bankAccount, 7448 ) )
+      .flat()
+      .map( bankTransaction => d([
+        companyValueView( State, bankTransaction, 1757 ),
+        companyEntityLabelWithPopup( State, bankTransaction ),
+        companyValueView( State, bankTransaction, 7533 ),
+        companyValueView( State, bankTransaction, 1083 ),
+      ], {style: gridColumnsStyle("repeat(4, 1fr)")}) ) 
+    )
+])
 
-  
-  let companyEvents = getCompanyEvents( State.DB, State.Company.entity )
-
-  return d([
-    br(),
-    d([
-      d([
-        d("#"),
-        d("Dato"),
-        entityLabelWithPopup(State, 46),
-        d("Hendelsens output")
-      ], {style: gridColumnsStyle("3fr 1fr 4fr")}),
-      d( companyEvents
-          .map( (event, index) => {
-
-            let eventType = State.DB.get(event, "event/eventTypeEntity")
-
-            return d([
-              d( String(index+1) ),
-              d( ` ${moment( State.DB.get(event, 1757) ).format("DD/MM/YYYY") }` ),
-              entityLabelWithPopup( State, eventType, () => State.Actions.selectEntity( event ) ),
-              companyEntityLabelWithPopup( State, getCompanyEntityFromEvent( State.companyDatoms, event )  ),
-            ], {style: gridColumnsStyle("1fr 1fr 4fr 4fr")})
-
-      }   ) )
-    ]),
-  ])
-}
 
 // Company entity view END -------------------------------------------------------------
 

@@ -86,6 +86,7 @@ let getClientActions = State => returnObject({
   selectEntity: (entity, companyEntity, companyEntityVersion) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity}}),
   selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
   selectCompanyDate: companyDate => ClientApp.update( State, {S: {selectedCompanyDate: companyDate }}),
+  selectCompanyEvent: event => ClientApp.update( State, {S: {selectedCompanyEvent: event, selectedCompanyDate: State.DB.get(event, 1757) }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
 
   updateCompany: company => ClientApp.update( State, {Company: constructCompany( State.DB, company ), S: {selectedEntity: company }} ),
@@ -187,7 +188,7 @@ let init = async () => {
     ClientApp.update( {}, {
       DB: initialDatabase,
       companyDatoms,
-      S: {selectedEntity: 7488, selectedCompanyDate: initialDatabase.get( getCompanyEvents( initialDatabase, company ).slice( -1 )[0], 1757) }
+      S: {selectedEntity: 7488, selectedCompanyDate: initialDatabase.get( getCompanyEvents( initialDatabase, company ).slice( -1 )[0], 1757), selectedCompanyEvent: getCompanyEvents( initialDatabase, company ).slice( -1 )[0] }
     } )
     
   }else{ ClientApp.update( {}, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }
