@@ -48,7 +48,7 @@ let getAllEntityTransactions = (DB, companyDatoms, companyEntity, eventTime) => 
 
   let companyEntityType = getFromCompany(companyDatoms, companyEntity, 6781)
 
-  let entityTypeTransactionType = DB.get( companyEntityType, 7532 )
+  let entityTypeTransactionType = 7817 // DB.get( companyEntityType, 7532 )
 
   let allTransactionsOfType = getAllCompanyEntitiesByType( companyDatoms, entityTypeTransactionType, eventTime )
 

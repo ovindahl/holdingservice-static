@@ -277,12 +277,7 @@ let balanceSheetView = State => d([
     ], {style: `padding: 1em;`}), 
     d([
       h3("Egenkapital"),
-      paidInCapitalView( State ),
-      accumulatedProfitView( State ),
-      d([
-        entityLabelWithPopup( State, 6295 ),
-        d( formatNumber(State.Company.get( null, 6295, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
+      equityView( State ),
       br(),
       h3("Gjeld"),
       debtsView( State )
@@ -321,63 +316,86 @@ let transactionsView = State => d([
   ]) 
 ])
 
-let assetsView = State => d([
-  d(
-    [6785, 7310, 7554].map( assetType => d([
-      d( State.Company.getAll(assetType, State.S.selectedCompanyDate).map( assetEntity => d([
-        companyEntityLabelWithPopup(State, assetEntity),
-        d( formatNumber(State.Company.get(assetEntity, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(2, 1fr)")})  ) ),
+let assetsView = State => d( 
+  State.DB.getAll(7526)
+    .filter( sectionSumField => State.DB.get(sectionSumField, 7540) === 7537 )
+    .filter( sectionSumField => State.Company.get( null, sectionSumField, State.S.selectedCompanyDate ) !== 0 )
+    .map( sectionSumField => d([
+      d(
+        State.DB.getAll(7531)
+          .filter( balanceObjectType => State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).length > 0 )
+          .filter( e => D.get(e, 7748) === sectionSumField ).map( balanceObjectType => d([
+              d( State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).map( balanceEntity => d([
+                companyEntityLabelWithPopup(State, balanceEntity),
+                d( formatNumber(State.Company.get(balanceEntity, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})  ) ),
+              d([
+                entityLabelWithPopup( State, balanceObjectType ),
+                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433), 0) ) , {style: `text-align: right;`}),
+              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})
+        ]) 
+      )),
       d([
-        entityLabelWithPopup( State, State.DB.get(assetType, 7748) ),
-        d( formatNumber(State.Company.get( null, State.DB.get(assetType, 7748), State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+        entityLabelWithPopup( State, sectionSumField ),
+        d( formatNumber(State.Company.get( null, sectionSumField, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
       ], {style: gridColumnsStyle("repeat(2, 1fr)")})
-    ]) 
-  ))
-])
-
-let paidInCapitalView = State => d([
-  d([
-    d( State.Company.getAll(7783, State.S.selectedCompanyDate).map( capitalIssuance => d([
-      companyEntityLabelWithPopup(State, capitalIssuance),
-      d( formatNumber(State.Company.get(capitalIssuance, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {style: gridColumnsStyle("repeat(2, 1fr)")})  ) ),
-    d([
-      entityLabelWithPopup( State, 6237 ),
-      d( formatNumber(State.Company.get( null, 6237, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
-    d([
-      entityLabelWithPopup( State, 6278 ),
-      d( formatNumber(State.Company.get( null, 6278, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {style: gridColumnsStyle("repeat(2, 1fr)")})
   ]) 
-])
+))
 
-let accumulatedProfitView = State => d([
-  d([
-    d( State.Company.getAll(7507, State.S.selectedCompanyDate).map( accountingYear => d([
-      companyEntityLabelWithPopup(State, accountingYear),
-      d( formatNumber(State.Company.get(accountingYear, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {style: gridColumnsStyle("repeat(2, 1fr)")})  ) ),
-    d([
-      entityLabelWithPopup( State, 6281 ),
-      d( formatNumber(State.Company.get( null, 6281, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
-  ]) 
-])
 
-let debtsView = State => d([
-  d([
-    d( State.Company.getAll(6791, State.S.selectedCompanyDate).map( debt => d([
-      companyEntityLabelWithPopup(State, debt),
-      d( formatNumber(State.Company.get(debt, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {style: gridColumnsStyle("repeat(2, 1fr)")})  ) ),
-    d([
-      entityLabelWithPopup( State, 6294 ),
-      d( formatNumber(State.Company.get( null, 6294, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
-    ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
+
+
+let debtsView = State => d( 
+  State.DB.getAll(7526)
+    .filter( sectionSumField => State.DB.get(sectionSumField, 7540) === 7539 )
+    .filter( sectionSumField => State.Company.get( null, sectionSumField, State.S.selectedCompanyDate ) !== 0 )
+    .map( sectionSumField => d([
+      d(
+        State.DB.getAll(7531)
+          .filter( balanceObjectType => State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).length > 0 )
+          .filter( e => D.get(e, 7748) === sectionSumField ).map( balanceObjectType => d([
+              d( State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).map( balanceEntity => d([
+                companyEntityLabelWithPopup(State, balanceEntity),
+                d( formatNumber(State.Company.get(balanceEntity, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})  ) ),
+              d([
+                entityLabelWithPopup( State, balanceObjectType ),
+                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433), 0) ) , {style: `text-align: right;`}),
+              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})
+        ]) 
+      )),
+      d([
+        entityLabelWithPopup( State, sectionSumField ),
+        d( formatNumber(State.Company.get( null, sectionSumField, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
   ]) 
-])
+))
+
+let equityView = State => d( 
+  State.DB.getAll(7526)
+    .filter( sectionSumField => State.DB.get(sectionSumField, 7540) === 7538 )
+    .filter( sectionSumField => State.Company.get( null, sectionSumField, State.S.selectedCompanyDate ) !== 0 )
+    .map( sectionSumField => d([
+      d(
+        State.DB.getAll(7531)
+          .filter( balanceObjectType => State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).length > 0 )
+          .filter( e => D.get(e, 7748) === sectionSumField ).map( balanceObjectType => d([
+              d( State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).map( balanceEntity => d([
+                companyEntityLabelWithPopup(State, balanceEntity),
+                d( formatNumber(State.Company.get(balanceEntity, 7433, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})  ) ),
+              d([
+                entityLabelWithPopup( State, balanceObjectType ),
+                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433), 0) ) , {style: `text-align: right;`}),
+              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})
+        ]) 
+      )),
+      d([
+        entityLabelWithPopup( State, sectionSumField ),
+        d( formatNumber(State.Company.get( null, sectionSumField, State.S.selectedCompanyDate )) , {style: `text-align: right;`}),
+      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
+  ]) 
+))
 
 let actorsView = State => d([
   d([
