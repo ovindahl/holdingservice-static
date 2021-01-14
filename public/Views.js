@@ -331,7 +331,7 @@ let assetsView = State => d(
               ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})  ) ),
               d([
                 entityLabelWithPopup( State, balanceObjectType ),
-                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433), 0) ) , {style: `text-align: right;`}),
+                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433, State.S.selectedCompanyDate), 0) ) , {style: `text-align: right;`}),
               ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})
         ]) 
       )),
@@ -360,7 +360,7 @@ let debtsView = State => d(
               ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})  ) ),
               d([
                 entityLabelWithPopup( State, balanceObjectType ),
-                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433), 0) ) , {style: `text-align: right;`}),
+                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433, State.S.selectedCompanyDate), 0) ) , {style: `text-align: right;`}),
               ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})
         ]) 
       )),
@@ -375,6 +375,7 @@ let equityView = State => d(
   State.DB.getAll(7526)
     .filter( sectionSumField => State.DB.get(sectionSumField, 7540) === 7538 )
     .filter( sectionSumField => State.Company.get( null, sectionSumField, State.S.selectedCompanyDate ) !== 0 )
+    .filter( sectionSumField => sectionSumField !== 6296) //Sum egenkapital og gjeld
     .map( sectionSumField => d([
       d(
         State.DB.getAll(7531)
@@ -386,7 +387,7 @@ let equityView = State => d(
               ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})  ) ),
               d([
                 entityLabelWithPopup( State, balanceObjectType ),
-                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433), 0) ) , {style: `text-align: right;`}),
+                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyDate).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433, State.S.selectedCompanyDate), 0) ) , {style: `text-align: right;`}),
               ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})
         ]) 
       )),

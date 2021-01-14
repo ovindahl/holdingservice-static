@@ -58,7 +58,10 @@ let getAllEntityTransactions = (DB, companyDatoms, companyEntity, eventTime) => 
 
 }
 
-let getCompanyEntityFromEvent = (companyDatoms, event) => companyDatoms.find( companyDatom => companyDatom.attribute === 7543 && companyDatom.value === event ).entity
+let getCompanyEntityFromEvent = (companyDatoms, event) => {
+  let matchingDatom = companyDatoms.find( companyDatom => companyDatom.attribute === 7543 && companyDatom.value === event )
+  return isDefined(matchingDatom) ? matchingDatom.entity : undefined
+} 
 
 let getFromCompany = (companyDatoms, entity, attribute, eventTime) => isDefined(attribute) ? getCompanyDatomValue(companyDatoms, entity, attribute, eventTime) : getCompanyEntityQueryObject(companyDatoms, entity, eventTime)
 
@@ -94,6 +97,7 @@ let companyEventReducer = (DB, companyDatoms, event) => {
   let eventType = DB.get(event, "event/eventTypeEntity" )
   let eventTypeConstructors = DB.get( eventType , "eventType/newEntities" )
   let entityConstructor = eventTypeConstructors[0] //NB NB NB
+  if( isUndefined(entityConstructor) ){ return companyDatoms }
   let sharedStatementsString = DB.get( eventType, "eventType/sharedStatements" )
       .filter( statement => statement["statement/isEnabled"] )
       .map( statement => statement["statement/statement"] )

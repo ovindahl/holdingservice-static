@@ -519,7 +519,7 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
         ),
         br(),
         d([
-          d( State.DB.get( companyEntityType , "companyEntityType/attributes").map(  attr => {
+          d( isDefined(State.DB.get( companyEntityType , "companyEntityType/attributes")) ? State.DB.get( companyEntityType , "companyEntityType/attributes").map(  attr => {
             let attributeAssertions = entityConstructor.attributeAssertions
   
             let attributeAssertion = attributeAssertions[ attr ]
@@ -547,7 +547,7 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
               entityLabelWithPopup( State, attr),
               textArea(valueFunction, {class:"textArea_code"}, valueFunctionUpdateFunction )
             ], {style: gridColumnsStyle("1fr 3fr 6fr") })
-          }  ) )
+          }  ) : "ERROR" )
         ])
       
     ])
@@ -752,9 +752,9 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
 
   let startValuesByType = {
     "32": 6,
-    "6783": {companyEntityType: 7079, attributeAssertions: {} },
+    "6783": {companyEntityType: 7495, attributeAssertions: {} },
     "6613": {"argument/name": "argumentNavn", "argument/valueType": 30},
-    "6614": {"statement/statement": "console.log({Company, Process, Event})", "statement/isEnabled": true},
+    "6614": {"statement/statement": "console.log({Company, Event})", "statement/isEnabled": true},
   }
 
 
