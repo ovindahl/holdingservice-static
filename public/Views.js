@@ -457,7 +457,7 @@ let bankView = State => d([
     d("Prosess"),
     d("Transaksjon"),
   ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
-  d( State.Company.getAll( 7310, State.S.selectedCompanyDate )
+  d( State.Company.getAll( 6248, State.S.selectedCompanyDate )
       .map( bankAccount => State.Company.get( bankAccount, 7448, State.S.selectedCompanyDate ) )
       .flat()
       .map( bankTransaction => d([
