@@ -130,15 +130,16 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 //Basic entity views
 
 let entityLabel = (State, entity, onClick, isSelected) => State.DB.isEntity(entity)
-  ?  d([
-      d( 
-        `${ State.DB.get( entity ).label()}`, 
-        {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${(isSelected || State.S.selectedEntity === entity ) ? "border: 2px solid black;" : ""}`}, 
+  ?  d([d( 
+        getEntityLabel(State.DB, entity), 
+        {
+          class: "entityLabel", 
+          style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${(isSelected || State.S.selectedEntity === entity ) ? "border: 2px solid black;" : ""}`
+        }, 
         "click", 
         isDefined(onClick) ? onClick : e => State.Actions.selectEntity( entity )
-        ),
-    ], {style:"display: inline-flex;"})
-  : d("na.", {class: "entityLabel", style: `background-color:gray;`})
+      )], {style:"display: inline-flex;"})
+  : d(`[${ entity}] na.`, {class: "entityLabel", style: `background-color:gray;`})
 
 
 let entityLabelWithPopup = ( State, entity, onClick, isSelected) => d([
@@ -148,25 +149,32 @@ d([
 ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
-let collapsedEntityLabelWithPopup = ( State, entity ) => d([
-  d([
-    span(String(entity), "", {class: "entityLabel", style: `background-color: ${State.DB.get( State.DB.get( entity, "entity/entityType") , "entityType/color")};`}, "click", e => State.Actions.selectEntity(entity) ),
-    entityPopUp( State, entity ),
-  ], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-
-
-
-
-
 
 
 
 let entityPopUp = (State, entity) => d([
+  entityLabel( State, entity ),
+  br(),
+  d( getEntityLabel( State.DB, State.DB.get(entity, "entity/entityType") )  ),
+  br(),
+  d( getEntityDescription( State.DB, entity ) ),
+  br(),
+  span(`Entitet: ${ entity}`),
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+//AdminEntityLabel
+
+
+
+let adminEntityLabelWithPopup = ( State, entity, onClick, isSelected) => d([
 d([
-  entityLabel( State,  6 ),
-  d( State.DB.get( entity ) ? State.DB.get( entity ).label() : "na." ),
-], {class: "columns_1_1"}),
+  entityLabel( State, entity, onClick, isSelected),
+  adminEntityPopUp( State, entity ),
+], {class: "popupContainer", style:"display: inline-flex;"})
+], {style:"display: inline-flex;"} )
+
+let adminEntityPopUp = (State, entity) => d([
+h3( `${ State.DB.get( entity, "entity/label") ? State.DB.get( entity, "entity/label") : "Mangler visningsnavn."}` ),
 d([
   d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
   d(String(entity)),
@@ -182,6 +190,7 @@ br(),
 
 
 
+
 //NEW VIEWS
 
 let entityView = (State, entity) => isDefined(entity)
@@ -193,7 +202,7 @@ let entityView = (State, entity) => isDefined(entity)
       d( State.DB.get( State.DB.get(entity, "entity/entityType"), "entityType/attributes" ).map( attribute => entityAttributeView(State, entity, attribute) ) ),
       d([
         submitButton( "Slett", e => State.Actions.retractEntity(entity) ),
-        submitButton( `Opprett ny ${State.DB.get( State.DB.get(entity, "entity/entityType") ).label() } `, e => State.Actions.createEntity( State.DB.get(entity, "entity/entityType") ) ),
+        submitButton( `Opprett ny ${h3( `${ State.DB.get( State.DB.get(entity, "entity/entityType"), "entity/label") ? State.DB.get( State.DB.get(entity, "entity/entityType"), "entity/label") : "Mangler visningsnavn."}` ) } `, e => State.Actions.createEntity( State.DB.get(entity, "entity/entityType") ) ),
         submitButton( "Lag kopi", e => State.Actions.duplicateEntity( entity ) ),
       ])
     ], {class: "feedContainer"} )
@@ -240,7 +249,7 @@ let entityAttributeView = (State, entity, attribute) => d([
 
 let companyEntityLabel = (State, companyEntity, onClick, isSelected) => d([
       d( 
-        getFromCompany( State.companyDatoms, companyEntity, 7529 ), 
+        getCompanyEntityLabel( State.DB, State.companyDatoms, companyEntity),
         {
           class: "entityLabel", 
           style: `background-color:${isDefined(State.Company.get(companyEntity)) ? State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color") : "gray"}; ${ (isSelected || State.S.selectedCompanyEntity === companyEntity) ? "border: 2px solid blue;" : ""}`}, 
@@ -251,36 +260,25 @@ let companyEntityLabel = (State, companyEntity, onClick, isSelected) => d([
   
 
 let companyEntityLabelWithPopup = (State, companyEntity, onClick, isSelected) => isDefined(companyEntity)
-? d([
-    d([
-      companyEntityLabel( State, companyEntity, onClick, isSelected),
-      companyEntityPopUp( State, companyEntity ),
-    ], {class: "popupContainer", style:`display: inline-flex;`})
-  ], {style:"display: inline-flex;"}) 
-: d("na.")
+  ? d([
+      d([
+        companyEntityLabel( State, companyEntity, onClick, isSelected),
+        companyEntityPopUp( State, companyEntity ),
+      ], {class: "popupContainer", style:`display: inline-flex;`})
+    ], {style:"display: inline-flex;"}) 
+  : d(`[${companyEntity}] na.`, {class: "entityLabel", style: `background-color:gray;`})
 
 
 let companyEntityPopUp = (State, companyEntity) => d([
-d([
-  entityLabel( State,  6 ),
-  d(`[${companyEntity}] Selskapsentitet.`, ),
-], {class: "columns_1_1"}),
-d([
-  d([span( `Selskapsentitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
-  d(String(companyEntity)),
-], {class: "columns_1_1"}),
-d([
-  entityLabel( State,  47 ),
-  entityLabel( State,  6778 ),
-], {class: "columns_1_1"}),
-d([
-  entityLabel( State,  6781 ),
-  entityLabel( State,  State.Company.get( companyEntity, 6781 ) ),
-], {class: "columns_1_1"}),
-d([
-  d([span( `Opphavshendelse`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
-  entityLabel( State,  State.Company.get( companyEntity ).event, e =>  State.Actions.selectEntity(State.Company.get( companyEntity ).event) ),
-], {class: "columns_1_1"}),
+
+  companyEntityLabel( State, companyEntity ),
+  br(),
+  d( getEntityLabel( State.DB, State.Company.get(companyEntity, 7861) )  ),
+  br(),
+  d( getEntityDescription( State.DB, State.Company.get(companyEntity, 6781) ) ),
+  br(),
+  span(`Selskapsentitet: ${ companyEntity}`),
+
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
@@ -300,7 +298,7 @@ let companyEntityView = (State, companyEntity ) => {
     br(),
     isDefined(CompanyEntity)
       ? d([
-          d( [6781, 7543].map( attribute => companyDatomView( State, companyEntity, attribute ) ) ),
+          d( [7861, 6781, 7543].map( attribute => companyDatomView( State, companyEntity, attribute ) ) ),
           br(),
           d( companyEntityTypeAttributes
               .filter( attribute => isDefined( State.Company.get( companyEntity, attribute) ) )
@@ -627,10 +625,10 @@ let functionView = ( State, formattedValue, updateFunction ) => {
 
 let selectCompanyEntityView = ( State, formattedValue, updateFunction, options ) => {
 
-  let isValidCompanyEntity = getCompanyEvents( State.DB, State.Company.entity ).includes(formattedValue)
+  let isValidCompanyEntity = getCompanyEvents( State.DB, State.S.selectedCompany ).includes(formattedValue)
 
 
-  let optionObjects = [{value: 0, label: 'Velg alternativ'}].concat( options.map( companyEntity => returnObject({value: getFromCompany( State.companyDatoms, companyEntity, 7543 ), label: getFromCompany( State.companyDatoms, companyEntity, 7529 )})  )  ) 
+  let optionObjects = [{value: 0, label: 'Velg alternativ'}].concat( options.map( companyEntity => returnObject({value: getFromCompany( State.companyDatoms, companyEntity, 7543 ), label: getCompanyEntityLabel(State.DB, State.companyDatoms, companyEntity) })  )  ) 
 
   return d([
     isValidCompanyEntity ? companyEntityLabelWithPopup( State, State.Company.getCompanyEntityFromEvent( formattedValue ) ) : d("tom"),

@@ -173,3 +173,11 @@ let constructDatabase = Entities => {
   
     return DB
 }
+
+
+
+
+getEntityLabel = (DB, entity) => `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
+getEntityDescription = (DB, entity) => `${ DB.get( entity, "entity/doc") ? DB.get( entity, "entity/doc") : ""}`
+
+

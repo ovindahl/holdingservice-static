@@ -8,12 +8,40 @@ let getLatestEntityID = companyDatoms => isArray(companyDatoms)
     : 0
   : undefined
 
-let getAllCompanyEntitiesByType = (companyDatoms, companyEntityType, eventTime) => companyDatoms
-  .filter( companyDatom => isDefined(eventTime) ? companyDatom.t <= eventTime : true )
-  .filter( companyDatom => companyDatom.attribute === 6781 )
-  .filter( companyDatom => companyDatom.value === companyEntityType )
-  .map(  companyDatom => companyDatom.entity )
-  .filter( filterUniqueValues )
+let getAllCompanyEntitiesByType = (companyDatoms, companyEntityType, eventTime) => {
+
+  
+
+  if( companyEntityType === 7863 ){ return companyDatoms
+    .filter( companyDatom => isDefined(eventTime) ? companyDatom.t <= eventTime : true )
+    .filter( companyDatom => companyDatom.attribute === 7861 )
+    .filter( companyDatom => companyDatom.value === 7863 )
+    .map(  companyDatom => companyDatom.entity )
+    .filter( filterUniqueValues ) } else if( companyEntityType === 7865 ){ 
+      return companyDatoms
+      .filter( companyDatom => isDefined(eventTime) ? companyDatom.t <= eventTime : true )
+      .filter( companyDatom => companyDatom.attribute === 7861 )
+      .filter( companyDatom => companyDatom.value === 7865 )
+      .map(  companyDatom => companyDatom.entity )
+      .filter( filterUniqueValues ) 
+    }else{
+      return companyDatoms
+        .filter( companyDatom => isDefined(eventTime) ? companyDatom.t <= eventTime : true )
+        .filter( companyDatom => companyDatom.attribute === 6781 )
+        .filter( companyDatom => companyDatom.value === companyEntityType )
+        .map(  companyDatom => companyDatom.entity )
+        .filter( filterUniqueValues )
+    }
+
+
+
+
+
+    
+
+
+  
+} 
 
 
 let getProcessEntities = (DB, companyDatoms, process) => getProcessEvents(DB, process).map( event => getCompanyEntityFromEvent(companyDatoms, event) ).flat()
@@ -44,19 +72,31 @@ let getCompanyDatomValue = (companyDatoms, entity, attribute, eventTime) => {
   return datomValue
 }  
 
-let getAllEntityTransactions = (DB, companyDatoms, companyEntity, eventTime) => {
+let getCompanyEntityLabel = (DB, companyDatoms, companyEntity) => {
 
+  let entityTypeController = {
+    "6253": () => `Aksjepost i ${getFromCompany( companyDatoms, companyEntity, 1101 )}`,
+    "6248": () => `Bankkonto i ${getFromCompany( companyDatoms, companyEntity, 1809 )}`,
+    "7828": () => `Fordring på ${getFromCompany( companyDatoms, getFromCompany(companyDatoms, companyEntity, 5675) , 1113 )}`,
+    "6237": () => `Aksjekapitalinnskudd ${ moment( getFromCompany( companyDatoms, companyEntity , 1757 ) ).format( "MM/YY" ) }`,
+    "6243": () => `Opptjent egenkapital ${getFromCompany( companyDatoms, companyEntity, 6 )}`,
+    "6264": () => `Gjeld til ${getFromCompany( companyDatoms, getFromCompany(companyDatoms, companyEntity, 5675) , 1113 )}`,
+  }
+  
+  
+  
   let companyEntityType = getFromCompany(companyDatoms, companyEntity, 6781)
 
-  let entityTypeTransactionType = 7817 // DB.get( companyEntityType, 7532 )
+  
 
-  let allTransactionsOfType = getAllCompanyEntitiesByType( companyDatoms, entityTypeTransactionType, eventTime )
+  return isDefined( entityTypeController[ companyEntityType ]) 
+    ? entityTypeController[ companyEntityType ]( ) 
+    : `[${companyEntity}] ${ DB.get( companyEntityType, "entity/label") ? DB.get( companyEntityType, "entity/label") : "Mangler visningsnavn."}`
+}  
 
-  let allEntityTransactions = allTransactionsOfType.filter( transactionEntity => getFromCompany(companyDatoms, transactionEntity, 7533) === companyEntity )
 
-  return allEntityTransactions
-
-}
+let getAllEntityTransactions = (DB, companyDatoms, companyEntity, eventTime) => getAllCompanyEntitiesByType( companyDatoms, 7817, eventTime )
+.filter( transactionEntity => getFromCompany(companyDatoms, transactionEntity, 7533) === companyEntity )
 
 let getCompanyEntityFromEvent = (companyDatoms, event) => {
   let matchingDatom = companyDatoms.find( companyDatom => companyDatom.attribute === 7543 && companyDatom.value === event )
@@ -65,9 +105,7 @@ let getCompanyEntityFromEvent = (companyDatoms, event) => {
 
 let getFromCompany = (companyDatoms, entity, attribute, eventTime) => isDefined(attribute) ? getCompanyDatomValue(companyDatoms, entity, attribute, eventTime) : getCompanyEntityQueryObject(companyDatoms, entity, eventTime)
 
-let getCompanyEvents = (DB, company) => DB.getAll(46)
-.filter( event => DB.get( event, "event/company")  === company  )
-.sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
+let getCompanyEvents = (DB, company) => DB.getAll(46).filter( event => DB.get( event, "event/company")  === company  ).sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
 
 
 
@@ -112,7 +150,21 @@ let companyEventReducer = (DB, companyDatoms, event) => {
 
   let newEntityID = getLatestEntityID(companyDatoms) + 1
 
+  let newCompanyEntityTypeCategory = DB.get( entityConstructor.companyEntityType, "entity/entityType" )
+
+  let newCompanyEntityType = newCompanyEntityTypeCategory === 7531
+    ? 7863
+    : newCompanyEntityTypeCategory === 6778
+      ? 7864
+      : 7865
+
   let genericNewEntityDatoms = [
+    {
+      entity: newEntityID, 
+      attribute: 7861,
+      value: newCompanyEntityType,
+      t: eventTime
+    } , 
     {
       entity: newEntityID, 
       attribute: 6781,
@@ -186,6 +238,8 @@ let companyEntityCalculatedFieldReducer = ( DB, companyDatoms, companyEntity, co
     entity: companyEntity, 
     get: attr => getFromCompany( companyDatoms, companyEntity, attr, eventTime ),
     getTransactions: () => getAllEntityTransactions( DB, companyDatoms, companyEntity ),
+    getOutgoingTransactions: () => getAllCompanyEntitiesByType( companyDatoms, 7868, eventTime ).filter( transactionEntity => getFromCompany(companyDatoms, transactionEntity, 7867) === companyEntity ),
+    getIncomingTransactions: () => getAllCompanyEntitiesByType( companyDatoms, 7868, eventTime ).filter( transactionEntity => getFromCompany(companyDatoms, transactionEntity, 7866) === companyEntity ),
     getTransaction: transactionEntity => getFromCompany( companyDatoms, transactionEntity ), //NB: Bør valideres?
    }
 
