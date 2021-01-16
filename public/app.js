@@ -70,6 +70,7 @@ var A = {} //Consle access to Actions
 let getDBActions = State => returnObject({
   createEntity: async entityType => ClientApp.update( State, {DB: await Transactor.createEntity( State.DB, entityType )  } ),
   retractEntity: async entity => ClientApp.update( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined, selectedCompanyEntity: undefined }} ),
+  retractEntities: async entities => ClientApp.update( State, {DB: await Transactor.retractEntities(State.DB, entities), S: {selectedEntity: undefined, selectedCompanyEntity: undefined }} ),
   duplicateEntity: async entity => {
     let entityType = State.DB.get( entity, "entity/entityType")
     let entityTypeAttributes = State.DB.get( entityType, "entityType/attributes" )

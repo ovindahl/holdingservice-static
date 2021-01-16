@@ -81,6 +81,8 @@ let getCompanyEntityLabel = (DB, companyDatoms, companyEntity) => {
     "6237": () => `Aksjekapitalinnskudd ${ moment( getFromCompany( companyDatoms, companyEntity , 1757 ) ).format( "MM/YY" ) }`,
     "6243": () => `Opptjent egenkapital ${getFromCompany( companyDatoms, companyEntity, 6 )}`,
     "6264": () => `Gjeld til ${getFromCompany( companyDatoms, getFromCompany(companyDatoms, companyEntity, 5675) , 1113 )}`,
+    "7858": () => `Foreløpig årsresultat ${moment( getFromCompany( companyDatoms, companyEntity, 1757 ) ).format("YYYY") }`,
+    "7857": () => `Tilleggsutbytte ${moment( getFromCompany( companyDatoms, companyEntity, 1757 ) ).format("DD/MM") }`,
   }
   
   
@@ -134,6 +136,7 @@ let companyEventReducer = (DB, companyDatoms, event) => {
   let eventTime = DB.get(event, 1757)    
   let eventType = DB.get(event, "event/eventTypeEntity" )
   let eventTypeConstructors = DB.get( eventType , "eventType/newEntities" )
+  if( isUndefined(eventTypeConstructors) ){ return companyDatoms }
   let entityConstructor = eventTypeConstructors[0] //NB NB NB
   if( isUndefined(entityConstructor) ){ return companyDatoms }
   let sharedStatementsString = DB.get( eventType, "eventType/sharedStatements" )
