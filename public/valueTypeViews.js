@@ -315,15 +315,15 @@ let companyEntityView = (State, companyEntity ) => {
 
 let companyDatomView = (State, companyEntity, attribute, t ) => d([
   entityLabelWithPopup( State, attribute, e => console.log("Cannot access AdminPage from here")),
-  companyValueView(State, companyEntity, attribute, State.S.selectedCompanyDate),
+  companyValueView(State, companyEntity, attribute, State.S.selectedCompanyEventIndex),
   //State.DB.get(attribute, "entity/entityType") === 5817 ? companyEntityVersionLabel( State, companyEntity, attribute, t ) : d("")
 ], {class: "columns_1_1"}) 
 
-let companyValueView = (State, companyEntity, attribute, selectedCompanyDate) => {
+let companyValueView = (State, companyEntity, attribute, selectedCompanyEventIndex) => {
 
   let valueType = State.DB.get(attribute, "attribute/valueType")
 
-  let Value = State.Company.get( companyEntity, attribute, selectedCompanyDate )
+  let Value = State.Company.get( companyEntity, attribute, selectedCompanyEventIndex )
 
   try {
     return isDefined( Value )

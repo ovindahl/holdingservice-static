@@ -86,8 +86,7 @@ let getDBActions = State => returnObject({
 let getClientActions = State => returnObject({
   selectEntity: (entity, companyEntity, companyEntityVersion) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity}}),
   selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
-  selectCompanyDate: companyDate => ClientApp.update( State, {S: {selectedCompanyDate: companyDate }}),
-  selectCompanyEvent: event => ClientApp.update( State, {S: {selectedCompanyEvent: event, selectedCompanyDate: State.DB.get(event, 1757) }}),
+  selectCompanyEventIndex: companyDate => ClientApp.update( State, {S: {selectedCompanyEventIndex: companyDate }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
 
   updateCompany: company => ClientApp.update( State, {companyDatoms: constructCompanyDatoms( State.DB, company ), S: {selectedCompany: company, selectedEntity: company }} ),
@@ -138,7 +137,7 @@ const ClientApp = {
         getEntityTransactions: companyEntity => getAllEntityTransactions( State.DB, newState.companyDatoms, companyEntity )
       }
       
-      //if(isDefined(newState.Company)){ newState.CompanyVersion = newState.Company.getVersion( newState.Company.get(newState.S.selectedCompanyDate).t ) }  
+      //if(isDefined(newState.Company)){ newState.CompanyVersion = newState.Company.getVersion( newState.Company.get(newState.S.selectedCompanyEventIndex).t ) }  
 
       newState.Actions = Object.assign( {}, getDBActions(newState), getClientActions(newState) )
       
@@ -187,7 +186,7 @@ let init = async () => {
     ClientApp.update( firstState, {
       DB: initialDatabase,
       companyDatoms,
-      S: {selectedCompany: company, selectedEntity: 7488, selectedCompanyDate: initialDatabase.get( getCompanyEvents( initialDatabase, company ).slice( -1 )[0], 1757), selectedCompanyEvent: getCompanyEvents( initialDatabase, company ).slice( -1 )[0] }
+      S: {selectedCompany: company, selectedEntity: 7488, selectedCompanyEventIndex: 0 }
     } )
     
   }else{ ClientApp.update( firstState, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }
