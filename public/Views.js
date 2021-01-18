@@ -166,13 +166,18 @@ let companyView = State => {
 
   let reportController = {
     "7488": balanceSheetView,
-    "7492": processesView,
-    "7778": actorsView,
-    "7494": transactionView,
-    "7820": bankView,
     "7860": balanceObjectsView,
     "7882": transactionsView,
-    "7918": companyCalculatedFieldsView
+
+    "7778": actorsView,
+    "7918": companyCalculatedFieldsView,
+    "7919": reportsView,
+
+
+
+    "7492": processesView,
+    //"7494": transactionView,
+    //"7820": bankView,
   }
 
 
@@ -397,6 +402,13 @@ let actorsView = State => d([
   d( State.Company.getAll( 6790, State.S.selectedCompanyEventIndex ).map( actor => d([
       companyEntityLabelWithPopup( State, actor ),
       companyValueView( State, actor, 1113, State.S.selectedCompanyEventIndex)
+  ], {style: gridColumnsStyle("repeat(2, 1fr)")}) ) )
+])
+
+let reportsView = State => d([
+  d( State.Company.getAll( 7914, State.S.selectedCompanyEventIndex ).map( report => d([
+      companyEntityLabelWithPopup( State, report ),
+      companyValueView( State, report, 6, State.S.selectedCompanyEventIndex)
   ], {style: gridColumnsStyle("repeat(2, 1fr)")}) ) )
 ])
 

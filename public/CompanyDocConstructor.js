@@ -31,6 +31,13 @@ let getAllCompanyEntitiesByType = (companyDatoms, companyEntityType, eventTime) 
       .filter( companyDatom => companyDatom.value === 7864 )
       .map(  companyDatom => companyDatom.entity )
       .filter( filterUniqueValues ) 
+    }else if( companyEntityType === 7914 ){ 
+      return companyDatoms
+      .filter( companyDatom => isDefined(eventTime) ? companyDatom.t <= eventTime : true )
+      .filter( companyDatom => companyDatom.attribute === 7861 )
+      .filter( companyDatom => companyDatom.value === 7914 )
+      .map(  companyDatom => companyDatom.entity )
+      .filter( filterUniqueValues ) 
     }else{
       return companyDatoms
         .filter( companyDatom => isDefined(eventTime) ? companyDatom.t <= eventTime : true )
@@ -270,7 +277,9 @@ let balanceObjectReducer = (DB, companyDatoms, event) => {
 let companyTransactionReducer = (DB, companyDatoms, event, index) => {
 
   let eventType = DB.get(event, "event/eventTypeEntity" )
-  let eventIndex = index+1
+  let eventIndex = DB.get(eventType, 7913 ) === 7864
+    ? index + 1
+    : companyDatoms.slice(-1)[0].t
   let newCompanyEntityType = DB.get(eventType, 7913 )
   let eventTypeConstructors = DB.get( eventType , "eventType/newEntities" )
   if( isUndefined(eventTypeConstructors) ){ return companyDatoms }
