@@ -298,7 +298,7 @@ let companyEntityView = (State, companyEntity ) => {
     br(),
     isDefined(CompanyEntity)
       ? d([
-          d( [7861, 6781, 7543].map( attribute => companyDatomView( State, companyEntity, attribute ) ) ),
+          d( [7861, 6781, 7543, 7916].map( attribute => companyDatomView( State, companyEntity, attribute ) ) ),
           br(),
           d( companyEntityTypeAttributes
               .filter( attribute => isDefined( State.Company.get( companyEntity, attribute) ) )

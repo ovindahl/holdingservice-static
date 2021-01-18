@@ -90,6 +90,7 @@ let getCompanyEntityLabel = (DB, companyDatoms, companyEntity) => {
     "6264": () => `Gjeld til ${getFromCompany( companyDatoms, getFromCompany(companyDatoms, companyEntity, 5675) , 1113 )}`,
     "7858": () => `Foreløpig årsresultat ${moment( getFromCompany( companyDatoms, companyEntity, 1757 ) ).format("YYYY") }`,
     "7857": () => `Tilleggsutbytte ${moment( getFromCompany( companyDatoms, companyEntity, 1757 ) ).format("DD/MM") }`,
+    "7868": () => `Transaksjon # ${ formatNumber( getFromCompany( companyDatoms, companyEntity, 7916 ), 0 )  }`,
   }
   
   
@@ -103,6 +104,8 @@ let getCompanyEntityLabel = (DB, companyDatoms, companyEntity) => {
     : `[${companyEntity}] ${ DB.get( companyEntityType, "entity/label") ? DB.get( companyEntityType, "entity/label") : "Mangler visningsnavn."}`
 }  
 
+
+let getCompanyTransactionByIndex = (companyDatoms, transactionIndex) => companyDatoms.filter( companyDatom => companyDatom.attribute === 7916 ).filter( companyDatom => companyDatom.value === transactionIndex )[0].entity
 
 let getAllEntityTransactions = (DB, companyDatoms, companyEntity, eventTime) => getAllCompanyEntitiesByType( companyDatoms, 7817, eventTime )
 .filter( transactionEntity => getFromCompany(companyDatoms, transactionEntity, 7533) === companyEntity )
@@ -141,20 +144,25 @@ let constructCompanyDatoms = (DB, company ) => {
 
   let sourceDocumentEvents = allEvents.filter( event => DB.get( DB.get(event, "event/eventTypeEntity" ) , 7913 ) === 7865  )
   let balanceObjectCreationEvents = allEvents.filter( event => DB.get( DB.get(event, "event/eventTypeEntity" ) , 7913 ) === 7863  )
+
+
+  let sourceDocumentCompanyDatoms = sourceDocumentEvents.reduce( (companyDatoms, event) => companyDocumentReducer(DB, companyDatoms, event), [] )
+  let timeZeroCompanyDatoms = balanceObjectCreationEvents.reduce( (companyDatoms, event) => balanceObjectReducer(DB, companyDatoms, event), sourceDocumentCompanyDatoms )
+
+  
+
   let transactionEvents = allEvents.filter( event => DB.get( DB.get(event, "event/eventTypeEntity" ) , 7913 ) === 7864  ).sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
   let reportEvents = allEvents.filter( event => DB.get( DB.get(event, "event/eventTypeEntity" ) , 7913 ) === 7914  )
   
   
 
   let sortedEvents = [
-    sourceDocumentEvents,
-    balanceObjectCreationEvents,
     transactionEvents,
     reportEvents
   ].flat()
 
 
-  return sortedEvents.reduce( (companyDatoms, event) => companyEventReducer(DB, companyDatoms, event), [] )
+  return sortedEvents.reduce( ( companyDatoms, event, index ) => companyTransactionReducer(DB, companyDatoms, event, index), timeZeroCompanyDatoms )
 
 } 
 
@@ -166,11 +174,103 @@ let newCompanyDatom = (companyEntity, attribute, value, event, t) => returnObjec
   t
 })
 
-
-let companyEventReducer = (DB, companyDatoms, event) => {
+let companyDocumentReducer = (DB, companyDatoms, event) => {
 
   let eventType = DB.get(event, "event/eventTypeEntity" )
-  let eventIndex = getEventIndex( DB, event )
+  let eventIndex = 0
+  let newCompanyEntityType = 7865
+
+  let eventTypeConstructors = DB.get( eventType , "eventType/newEntities" )
+  let entityConstructor = eventTypeConstructors[0] //NB NB NB
+  let companyEntityType = entityConstructor.companyEntityType
+  let documentAttributes = DB.get( companyEntityType , 6779 )
+
+  let newEntityID = getLatestEntityID(companyDatoms) + 1
+
+  let genericNewEntityDatoms = [
+    newCompanyDatom( newEntityID, 7861, newCompanyEntityType, event, eventIndex ),
+    newCompanyDatom( newEntityID, 6781, companyEntityType,event, eventIndex ),
+    newCompanyDatom( newEntityID, 7543, event, event, eventIndex ),
+    newCompanyDatom( newEntityID, 7916, 0, event, eventIndex )
+  ] 
+
+
+  let generatedDatoms =  documentAttributes.reduce(  (generatedDatoms, attribute) => generatedDatoms.concat( newCompanyDatom(
+      newEntityID, 
+      attribute, 
+      DB.get(event, attribute), 
+      event, 
+      eventIndex
+    ) ) , genericNewEntityDatoms  )
+
+  let companyDatomsWithEventTypeDatoms = companyDatoms.concat( generatedDatoms )
+
+  // Sortering av rekkefølge for oppdattering av kalkulerte felter for selskapsentiteter
+
+  //Videre sorterting TBD
+
+  
+  return companyDatomsWithEventTypeDatoms
+}
+
+let balanceObjectReducer = (DB, companyDatoms, event) => {
+
+  let eventType = DB.get(event, "event/eventTypeEntity" )
+  let eventIndex = 0
+  let newCompanyEntityType = 7863
+  let eventTypeConstructors = DB.get( eventType , "eventType/newEntities" )
+  if( isUndefined(eventTypeConstructors) ){ return companyDatoms }
+  let entityConstructor = eventTypeConstructors[0] //NB NB NB
+  if( isUndefined(entityConstructor) ){ return companyDatoms }
+  let sharedStatementsString = DB.get( eventType, "eventType/sharedStatements" )
+      .filter( statement => statement["statement/isEnabled"] )
+      .map( statement => statement["statement/statement"] )
+      .join(";") + ";"
+
+  let CompanyQueryObject = { 
+        companyDatoms,
+        getAll: (companyEntityType, eventIndex) => getAllCompanyEntitiesByType(companyDatoms, companyEntityType, eventIndex),
+        get: (entity, attr, eventIndex) => getFromCompany( companyDatoms, entity, attr, eventIndex ),
+        getCompanyEntityFromEvent: event => getCompanyEntityFromEvent( companyDatoms, event )
+    }
+
+  let newEntityID = getLatestEntityID(companyDatoms) + 1
+
+  let genericNewEntityDatoms = [
+    newCompanyDatom( newEntityID, 7861, newCompanyEntityType, event, eventIndex ),
+    newCompanyDatom( newEntityID, 6781, entityConstructor.companyEntityType,event, eventIndex ),
+    newCompanyDatom( newEntityID, 7543, event, event, eventIndex ),
+    newCompanyDatom( newEntityID, 7916, 0, event, eventIndex )
+  ] 
+
+  
+  //log({event, eventType})
+
+  let generatedDatoms =  DB.get( entityConstructor.companyEntityType , "companyEntityType/attributes" ) 
+    .filter( attribute => isDefined( entityConstructor.attributeAssertions[ attribute ] ) )
+    .filter( attribute => entityConstructor.attributeAssertions[ attribute ].isEnabled )
+    .reduce(  (generatedDatoms, attribute) => generatedDatoms.concat( newCompanyDatom(
+      newEntityID, 
+      attribute, 
+      tryFunction( () => new Function( [`Database`, `Company`, `Event`], sharedStatementsString + entityConstructor.attributeAssertions[ attribute ].valueFunction )( DB, CompanyQueryObject, DB.get(event) ) ), 
+      event, 
+      eventIndex
+    ) ) , genericNewEntityDatoms  )
+
+  let companyDatomsWithEventTypeDatoms = companyDatoms.concat( generatedDatoms )
+
+  // Sortering av rekkefølge for oppdattering av kalkulerte felter for selskapsentiteter
+
+  //Videre sorterting TBD
+
+  
+  return companyDatomsWithEventTypeDatoms
+}
+
+let companyTransactionReducer = (DB, companyDatoms, event, index) => {
+
+  let eventType = DB.get(event, "event/eventTypeEntity" )
+  let eventIndex = index+1
   let newCompanyEntityType = DB.get(eventType, 7913 )
   let eventTypeConstructors = DB.get( eventType , "eventType/newEntities" )
   if( isUndefined(eventTypeConstructors) ){ return companyDatoms }
@@ -196,18 +296,12 @@ let companyEventReducer = (DB, companyDatoms, event) => {
   let genericNewEntityDatoms = [
     newCompanyDatom( newEntityID, 7861, newCompanyEntityType, event, eventIndex ),
     newCompanyDatom( newEntityID, 6781, entityConstructor.companyEntityType,event, eventIndex ),
-    newCompanyDatom( newEntityID, 7543, event, event, eventIndex )
+    newCompanyDatom( newEntityID, 7543, event, event, eventIndex ),
+    newCompanyDatom( newEntityID, 7916, eventIndex, event , eventIndex )
   ] 
 
   
   //log({event, eventType})
-
-  /* {
-    entity: newEntityID, 
-    attribute,
-    value: tryFunction( () => new Function( [`Database`, `Company`, `Event`], sharedStatementsString + entityConstructor.attributeAssertions[ attribute ].valueFunction )( DB, CompanyQueryObject, DB.get(event) ) ),
-    t: eventIndex
-  } */
 
   let generatedDatoms =  DB.get( entityConstructor.companyEntityType , "companyEntityType/attributes" ) 
     .filter( attribute => isDefined( entityConstructor.attributeAssertions[ attribute ] ) )

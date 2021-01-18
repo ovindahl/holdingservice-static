@@ -135,32 +135,21 @@ let multipleCompanyEntitiesView = State => {
 let dateSelectionView = State => {
 
   let companyEvents = getCompanyEvents(State.DB, State.S.selectedCompany )
-
   let companyTransactions = State.Company.getAll( 7864 )
-
-  
-
   let selectedCompanyEvent = companyEvents[ State.S.selectedCompanyEventIndex ]
 
-  let transactionEvents = companyTransactions.map( transaction => State.Company.get(transaction, 7543) ) 
-
-  let currentIndex = transactionEvents.findIndex( event => event === selectedCompanyEvent )
-  let prevTransactionEvent = transactionEvents[ currentIndex - 1 ]
-  let nextTransactionEvent = transactionEvents[ currentIndex + 1 ]
-  let prevTransactionIndex = companyEvents.findIndex( event => event === prevTransactionEvent )
-  let nextTransactionIndex = companyEvents.findIndex( event => event === nextTransactionEvent )
   
   return d([
     h3("Datovelger:"),
-    d( ` ${State.S.selectedCompanyEventIndex} / ${companyEvents.length - 1} ` ),
+    d( ` ${State.S.selectedCompanyEventIndex} / ${companyTransactions.length - 1} ` ),
     d([
       entityLabelWithPopup( State, 1757 ),
       d( moment( State.DB.get( selectedCompanyEvent, 1757 ) ).format("DD.MM.YYYY") ),
       d([
-        submitButton("[<<]", () => State.Actions.selectCompanyEventIndex( companyEvents.findIndex( event => event === transactionEvents[0] ) ) ),
-        State.S.selectedCompanyEventIndex >= 1 ? submitButton("<", () => State.Actions.selectCompanyEventIndex( prevTransactionIndex ) ) : d(""),
-        State.S.selectedCompanyEventIndex < companyEvents.length - 1 ? submitButton(">", () => State.Actions.selectCompanyEventIndex( nextTransactionIndex ) ) : d(""),
-        submitButton("[>>]", () => State.Actions.selectCompanyEventIndex( companyEvents.findIndex( event => event === transactionEvents.slice(-1)[0] ) ) )
+        submitButton("[<<]", () => State.Actions.selectCompanyEventIndex( 0 ) ),
+        State.S.selectedCompanyEventIndex >= 1 ? submitButton("<", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex - 1 ) ) : d(""),
+        State.S.selectedCompanyEventIndex < companyEvents.length - 1 ? submitButton(">", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex + 1 ) ) : d(""),
+        submitButton("[>>]", () => State.Actions.selectCompanyEventIndex( State.Company.get( companyTransactions.slice( - 1 )[0], 7916  )  ) )
       ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
     ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
   ], {class: "feedContainer"})
@@ -182,7 +171,8 @@ let companyView = State => {
     "7494": transactionView,
     "7820": bankView,
     "7860": balanceObjectsView,
-    "7882": transactionsView
+    "7882": transactionsView,
+    "7918": companyCalculatedFieldsView
   }
 
 
@@ -196,27 +186,11 @@ let companyView = State => {
 
 let transactionView = State => {
 
-  let companyEvents = getCompanyEvents(State.DB, State.S.selectedCompany )
-
-
   let companyTransactions = State.Company.getAll( 7864 )
 
-  let selectedTransaction = getCompanyEntityFromEvent( State.companyDatoms, companyEvents[ State.S.selectedCompanyEventIndex ] )
-
-  let prevTransaction = companyTransactions
-    .filter( companyTransaction => State.Company.get(companyTransaction, 1757) < State.Company.get(selectedTransaction, 1757) )
-    .slice( -1 )[0]
-
-  let nextTransaction = companyTransactions.find( companyTransaction => State.Company.get(companyTransaction, 1757) > State.Company.get(selectedTransaction, 1757) )
+  let selectedTransaction = getCompanyTransactionByIndex( State.companyDatoms, State.S.selectedCompanyEventIndex )
 
   return d([
-    br(),
-    d([
-      companyEntityLabelWithPopup( State, selectedTransaction ),
-      entityLabelWithPopup( State, State.Company.get(selectedTransaction, 7861) ),
-      entityLabelWithPopup( State, State.Company.get(selectedTransaction, 6781) ),
-      entityLabelWithPopup( State, State.Company.get(selectedTransaction, 7543) ),
-    ]),
     br(),
     d([
       d([
@@ -224,9 +198,9 @@ let transactionView = State => {
         d([
           entityLabelWithPopup( State, 7433 ),
             d([
-              span(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7867), 7433, State.S.selectedCompanyEventIndex - 1 ) ), "", {class: "redlineText"}),
-              span(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7867), 7433, State.S.selectedCompanyEventIndex ) )),
-            ], {style:"display: inline-flex;justify-content: flex-end;"} ) ,
+              d(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7867), 7433, State.S.selectedCompanyEventIndex - 1 ) ), {class: "redlineText", style: `text-align: right;`}),
+              d(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7867), 7433, State.S.selectedCompanyEventIndex ) ), {style: `text-align: right;`}),
+            ] ) ,
         ], {style: gridColumnsStyle("repeat(2, 1fr)")})
       ]),
       d([
@@ -243,9 +217,9 @@ let transactionView = State => {
         d([
           entityLabelWithPopup( State, 7433 ),
           d([
-            span(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7866), 7433, State.S.selectedCompanyEventIndex - 1 ) ), "", {class: "redlineText"}),
-            span(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7866), 7433, State.S.selectedCompanyEventIndex ) )),
-          ], {style:"display: inline-flex;justify-content: flex-end;"} ) ,
+            d(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7866), 7433, State.S.selectedCompanyEventIndex - 1 ) ), {class: "redlineText", style: `text-align: right;`}),
+            d(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7866), 7433, State.S.selectedCompanyEventIndex ) ), {style: `text-align: right;`}),
+          ] ) ,
         ], {style: gridColumnsStyle("repeat(2, 1fr)")})
       ]),
     ], {style: gridColumnsStyle("repeat(3, 1fr)")})
@@ -283,6 +257,7 @@ let balanceSheetView = State => d([
 
 let transactionsView = State => d([
   d([
+    entityLabelWithPopup( State, 7916 ),
     entityLabelWithPopup( State, 7864 ),
     entityLabelWithPopup( State, 1757 ),
     entityLabelWithPopup( State, 7867 ),
@@ -293,6 +268,7 @@ let transactionsView = State => d([
   ], {style: gridColumnsStyle("repeat(7, 1fr)")}),
   d([
     d( State.Company.getAll(7868, State.S.selectedCompanyEventIndex).map( companyTransaction => d([
+      companyValueView(State, companyTransaction, 7916, State.S.selectedCompanyEventIndex),
       companyEntityLabelWithPopup(State, companyTransaction ),
       companyValueView(State, companyTransaction, 1757, State.S.selectedCompanyEventIndex),
       companyValueView(State, companyTransaction, 7867, State.S.selectedCompanyEventIndex),
@@ -491,6 +467,10 @@ let bankView = State => d([
     )
 ])
 
+let companyCalculatedFieldsView = State => d( State.DB.getAll( 7526 ).map( calculateField => d([
+    entityLabelWithPopup( State, calculateField ),
+    d( formatNumber( State.Company.get( null, calculateField, State.S.selectedCompanyEventIndex ) ) )
+  ], {style: gridColumnsStyle("repeat(2, 1fr)")}) ) ) 
 
 // Company entity view END -------------------------------------------------------------
 
