@@ -254,7 +254,7 @@ let companyEntityLabel = (State, companyEntity, onClick, isSelected) => d([
           class: "entityLabel", 
           style: `background-color:${isDefined(State.Company.get(companyEntity)) ? State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color") : "gray"}; ${ (isSelected || State.S.selectedCompanyEntity === companyEntity) ? "border: 2px solid blue;" : ""}`}, 
         "click", 
-        isDefined(onClick) ? onClick : e => State.Actions.selectCompanyEntity(companyEntity) 
+        isDefined(onClick) ? onClick : e => State.Actions.selectEntity( State.Company.get( companyEntity, 7543 ) )
         ),
   ], {style:"display: inline-flex;"})
   
@@ -289,7 +289,7 @@ let companyEntityView = (State, companyEntity ) => {
   let companyEntityType = State.Company.get( companyEntity, 6781 )
 
   let companyEntityTypeAttributes = State.DB.get( companyEntityType, 6779 ) ? State.DB.get( companyEntityType, 6779 ) : []
-  let companyEntityTypeCalculatedField = State.DB.get( companyEntityType, 6789 )? State.DB.get( companyEntityType, 6789 ) : []
+  let companyEntityTypeCalculatedField = State.DB.get( companyEntityType, 6789 ) ? State.DB.get( companyEntityType, 6789 ) : []
 
 
 

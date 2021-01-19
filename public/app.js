@@ -62,6 +62,7 @@ const sideEffects = {
 var State = {} //Consle access to State
 var S = {} //Consle access to localState
 var D = {} //Consle access to DB
+var DB = {} //Consle access to DB
 var C = {} //Consle access to Company
 var Company = {} //Consle access to Company
 var A = {} //Consle access to Actions
@@ -84,13 +85,12 @@ let getDBActions = State => returnObject({
 })
 
 let getClientActions = State => returnObject({
-  selectEntity: (entity, companyEntity, companyEntityVersion) => ClientApp.update( State, {S: {selectedEntity: entity, selectedCompanyEntity: companyEntity}}),
+  selectPage: pageEntity => ClientApp.update( State, {S: {selectedPage: pageEntity, selectedEntity: undefined, selectedCompanyEntity: undefined}}),
+  selectEntity: entity => ClientApp.update( State, {S: {selectedEntity: entity}}),
   selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
   selectCompanyEventIndex: companyDate => ClientApp.update( State, {S: {selectedCompanyEventIndex: companyDate }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
-
   updateCompany: company => ClientApp.update( State, {companyDatoms: constructCompanyDatoms( State.DB, company ), S: {selectedCompany: company, selectedEntity: company }} ),
-
   createProcess: async processType =>  {
     let updatedDB = await Transactor.createEntity(State.DB, 5692, [ newDatom( 'newEntity' , 'process/company', State.S.selectedCompany  ), newDatom( 'newEntity' , 'process/processType', processType ) ] )
     let companyDatoms = constructCompanyDatoms( updatedDB, State.S.selectedCompany )
@@ -144,6 +144,7 @@ const ClientApp = {
       State = newState
       S = newState.S
       D = newState.DB
+      DB = newState.DB
       C = newState.Company
       Company = newState.Company
       A = newState.Actions
@@ -186,7 +187,7 @@ let init = async () => {
     ClientApp.update( firstState, {
       DB: initialDatabase,
       companyDatoms,
-      S: {selectedCompany: company, selectedEntity: 7488, selectedCompanyEventIndex: 0 }
+      S: { selectedCompany: company, selectedPage: 7882, selectedCompanyEventIndex: 21 }
     } )
     
   }else{ ClientApp.update( firstState, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }
