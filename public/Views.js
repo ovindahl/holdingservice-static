@@ -213,36 +213,35 @@ let singleBalanceObjectView = State => {
 
   let balanceObject = State.S.selectedEntity
   let balanceObjectType = State.DB.get( balanceObject, "balanceObject/balanceObjectType" )
-  let balanceSection = State.DB.get( balanceObjectType, 7540 )
-
-  let balanceObjectTypeAttributes = State.DB.get( balanceObjectType, "companyEntityType/attributes" )
-  let balanceObjectTypeCalculatedFields = State.DB.get( balanceObjectType, "companyEntityType/calculatedFields" )
 
 
-  return d([
-    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
-    br(),
-    d([
-      entityLabelWithPopup( State, 7860 ),
-      span( " / " ),
-      entityLabelWithPopup( State, balanceSection ),
-      span( " / " ),
-      entityLabelWithPopup( State, balanceObjectType ),
-      span( " / " ),
-      entityLabelWithPopup( State, balanceObject ),
-    ]),
-    br(),
-    d( balanceObjectTypeAttributes.map( attribute => entityAttributeView(State, balanceObject, attribute) ) ),
-    br(),
-    d( balanceObjectTypeCalculatedFields.map( calculatedField => companyDatomView( State, balanceObject, calculatedField ) ) )
-      
+  return isDefined(balanceObjectType)
+    ? d([
+      submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
+      br(),
+      d([
+        entityLabelWithPopup( State, 7860 ),
+        span( " / " ),
+        entityLabelWithPopup( State, State.DB.get( balanceObjectType, 7540 ) ),
+        span( " / " ),
+        entityLabelWithPopup( State, balanceObjectType ),
+        span( " / " ),
+        entityLabelWithPopup( State, balanceObject ),
+      ]),
+      br(),
+      d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView(State, balanceObject, attribute) ) ),
+      br(),
+      d( State.DB.get( balanceObjectType, "companyEntityType/calculatedFields" ).map( calculatedField => companyDatomView( State, balanceObject, calculatedField ) ) ),
+      submitButton("Slett", e => State.Actions.retractEntity(balanceObject) ),  
+    ])
+  : d([
+    entityAttributeView(State, balanceObject, 7934),
+    submitButton("Slett", e => State.Actions.retractEntity(balanceObject) ),  
   ])
 } 
 
 
 let allBalanceObjectsView = State => {
-  
-  let allBalanceObjects = getAllBalanceObjects( State.DB, State.S.selectedCompany )
 
   return d([
     d([
@@ -251,7 +250,7 @@ let allBalanceObjectsView = State => {
       entityLabelWithPopup( State, 6781 ),
       entityLabelWithPopup( State, 7433 ),
     ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
-    d( allBalanceObjects.map( balanceObject => {
+    d( State.Company.getBalanceObjects().map( balanceObject => {
 
       let balanceObjectType = State.DB.get( balanceObject, "balanceObject/balanceObjectType" )
       let balanceSection = State.DB.get( balanceObjectType, 7540 )
@@ -265,7 +264,7 @@ let allBalanceObjectsView = State => {
      }
       )),
   br(),
-  submitButton("Legg til")
+  submitButton("Legg til", () => State.Actions.createBalanceObject() )
   ]) 
 } 
 
@@ -289,21 +288,28 @@ let singleTransactionView = State => {
 
 
 
-  let companyTransactions = State.Company.getAll( 7864 )
+  let companyTransactions = getAllTransactions(State.DB, State.S.selectedCompany )
+
+  let prevTransaction = companyTransactions[ companyTransactions.findIndex( t => t === transactionEntity ) - 1 ]
+  let nextTransaction = companyTransactions[ companyTransactions.findIndex( t => t === transactionEntity ) + 1 ]
 
 
   return d([
     submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
     br(),
     d([
-      entityLabelWithPopup( State, 7882 ),
-      span( " / " ),
-      entityLabelWithPopup( State, eventType ),
-      span( " / " ),
-      companyEntityLabelWithPopup( State, transactionEntity ),
-      State.S.selectedCompanyEventIndex >= 1 ? submitButton("<", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex - 1 ) ) : d(""),
-      State.S.selectedCompanyEventIndex < State.Company.getAll( 7864 ).length ? submitButton(">", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex + 1 ) ) : d(""),
-    ], {style: "display: inline-flex;"}),
+      d([
+        entityLabelWithPopup( State, 7882 ),
+        span( " / " ),
+        entityLabelWithPopup( State, eventType ),
+        span( " / " ),
+        entityLabelWithPopup( State, transactionEntity ),
+      ], {style: "display: inline-flex;"}),
+      d([
+        isDefined( prevTransaction ) >= 1 ? submitButton("<", () => State.Actions.selectEntity( prevTransaction ) ) : d(""),
+        isDefined( nextTransaction ) < companyTransactions.length ? submitButton(">", () => State.Actions.selectEntity( nextTransaction ) ) : d(""),
+      ], {style: gridColumnsStyle("3fr 1fr")})
+    ], {style: gridColumnsStyle("3fr 1fr")}),
     br(),
     br(),
     transactionFlowView( State, transactionEntity ),
@@ -324,8 +330,8 @@ let singleTransactionView = State => {
 
 let transactionFlowView = (State, transactionEntity) => d([
   d([
-    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.S.selectedCompanyEventIndex - 1 ) ), {class: "redlineText"}),
-    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.S.selectedCompanyEventIndex ) ) ),
+    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) - 1 ) ), {class: "redlineText"}),
+    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) ) ) ),
     entityLabelWithPopup(State, State.Company.get(transactionEntity, 7867 ) ),
   ] ),
   d([
@@ -333,13 +339,14 @@ let transactionFlowView = (State, transactionEntity) => d([
     d([
       d( moment( State.Company.get( transactionEntity, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
       entityLabelWithPopup(State, transactionEntity ),
+      d(formatNumber( State.Company.get(transactionEntity, 1083, State.S.selectedCompanyEventIndex ) )),
       d(" --------------> "),
     ]),
     d(""),
   ], {style: gridColumnsStyle("3fr 2fr 3fr")}),
   d([
-    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7866), 7433, State.S.selectedCompanyEventIndex - 1 ) ), {class: "redlineText"}),
-    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7866), 7433, State.S.selectedCompanyEventIndex ) )),
+    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7866), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) - 1 ) ), {class: "redlineText"}),
+    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7866), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) ) )),
     entityLabelWithPopup(State, State.Company.get(transactionEntity, 7866 ) ),
   ] )
 ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr 1fr")})

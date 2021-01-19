@@ -334,7 +334,9 @@ let companyValueView = (State, companyEntity, attribute, selectedCompanyEventInd
       : [1653, 6781, 1099].includes(attribute)
         ? entityLabelWithPopup( State, Value , e => console.log("Cannot access AdminPage from here") )
         : valueType === 32
-          ? entityLabelWithPopup(State, Value )
+          ? State.DB.get(attribute, "attribute/isArray")
+            ? d( Value.map( ent => entityLabelWithPopup(State, ent ) ) )
+            : entityLabelWithPopup(State, Value )
           : valueType === 6553
             ? d( Value.map( accountBalance => d([
                 entityLabelWithPopup( State, accountBalance.account),

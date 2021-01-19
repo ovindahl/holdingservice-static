@@ -191,7 +191,7 @@ getBalanceObjectLabel = (DB, balanceObject) => {
 
   let balanceObjectType = DB.get( balanceObject, "balanceObject/balanceObjectType" )
 
-  return entityTypeLabelController[ balanceObjectType ]()
+  return Object.keys(entityTypeLabelController).includes( String(balanceObject) ) ? entityTypeLabelController[ balanceObjectType ]() : `[${balanceObject}] Mangler visningsnavn`
 
 }
 

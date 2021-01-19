@@ -111,6 +111,7 @@ let getClientActions = State => returnObject({
     } )
     
   },
+  createBalanceObject:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7932, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
   executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
 })
 
@@ -133,8 +134,7 @@ const ClientApp = {
         get: (entity, attribute, eventTime) => getFromCompany(newState.companyDatoms, entity, attribute, eventTime),
         getAll: (companyEntityType, eventTime) => getAllCompanyEntitiesByType(newState.companyDatoms, companyEntityType, eventTime),
         getAllEntities: () => getCompanyEntities( newState.companyDatoms ),
-        getCompanyEntityFromEvent: event => getCompanyEntityFromEvent( newState.companyDatoms, event ),
-        getEntityTransactions: companyEntity => getAllEntityTransactions( State.DB, newState.companyDatoms, companyEntity )
+        getBalanceObjects: () => getAllBalanceObjects( State.DB, State.S.selectedCompany )
       }
       
       //if(isDefined(newState.Company)){ newState.CompanyVersion = newState.Company.getVersion( newState.Company.get(newState.S.selectedCompanyEventIndex).t ) }  

@@ -287,6 +287,7 @@ let companyTransactionReducer = (DB, companyDatoms, transaction, index) => {
 let companyEntityReducer = (DB, companyDatoms, balanceObject, transaction, transactionIndex) => {
 
   let balanceObjectType = DB.get( balanceObject, "balanceObject/balanceObjectType" )
+  if( !isDefined(balanceObjectType) ){ return companyDatoms }
   let balanceObjectTypeCalculatedFields = DB.get( balanceObjectType, "companyEntityType/calculatedFields" )
   let companyDatomsWithCompanyEntityCalculatedDatoms = balanceObjectTypeCalculatedFields.reduce( (companyDatoms, calculatedField) => companyEntityCalculatedFieldReducer( DB, companyDatoms, balanceObject, calculatedField, transaction, transactionIndex ), companyDatoms )
   return companyDatomsWithCompanyEntityCalculatedDatoms
