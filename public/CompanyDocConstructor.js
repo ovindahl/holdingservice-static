@@ -24,11 +24,11 @@ let getAllCompanyEntitiesByType = (companyDatoms, companyEntityType, eventTime) 
       .filter( companyDatom => companyDatom.value === 7865 )
       .map(  companyDatom => companyDatom.entity )
       .filter( filterUniqueValues ) 
-    }else if( companyEntityType === 7864 ){ 
+    }else if( companyEntityType === 7948 ){ 
       return companyDatoms
       .filter( companyDatom => isDefined(eventTime) ? companyDatom.t <= eventTime : true )
       .filter( companyDatom => companyDatom.attribute === 7861 )
-      .filter( companyDatom => companyDatom.value === 7864 )
+      .filter( companyDatom => companyDatom.value === 7948 )
       .map(  companyDatom => companyDatom.entity )
       .filter( filterUniqueValues ) 
     }else if( companyEntityType === 7914 ){ 
@@ -124,33 +124,13 @@ let getCompanyEntityFromEvent = (companyDatoms, event) => {
 
 let getFromCompany = (companyDatoms, entity, attribute, eventTime) => isDefined(attribute) ? getCompanyDatomValue(companyDatoms, entity, attribute, eventTime) : getCompanyEntityQueryObject(companyDatoms, entity, eventTime)
 
-let getCompanyEvents = (DB, company) => DB.getAll(46).filter( event => DB.get( event, "event/company")  === company  ).sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
-
-let getEventIndex = (DB, event) => getCompanyEvents( DB, DB.get( event, "event/company") ).findIndex( e => e === event  )
-
-let getCompanyProcesses = (DB, company) => {
-
-  let companyEvents = getCompanyEvents( DB, State.Company.entity )
-
-  return DB.getAll(5692).filter( process => DB.get(process , 'process/company' ) === company  ).sort( (processA, processB) => {
-    let firstEventA = companyEvents.find( e => DB.get(e, "event/process") === processA )
-    let firstEventDateA = isDefined(firstEventA) ? DB.get(firstEventA, 'event/date') : Date.now()
-    let firstEventB = companyEvents.find( e => DB.get(e, "event/process") === processB )
-    let firstEventDateB = isDefined(firstEventB ) ? DB.get(firstEventB , 'event/date') : Date.now()
-  return firstEventDateA - firstEventDateB;
-  })
-} 
-
-let getProcessEvents = (DB, process) => getCompanyEvents( DB, DB.get( process, "process/company" ) ).filter( event => DB.get( event, "event/process" ) === process )
-
 
 
 let getAllBalanceObjects = (DB, company) => DB.getAll( 7932 ).filter( balanceObject => DB.get( balanceObject, "event/company")  === company  )
-let getAllTransactions = (DB, company) => DB.getAll( 46 )
+
+let getAllTransactions = (DB, company) => DB.getAll( 7948 )
   .filter( balanceObject => DB.get( balanceObject, "event/company")  === company  )
-  .filter( transaction => isDefined(DB.get(transaction, "transaction/transactionType" ))  )
   .sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
-let getAllReports = (DB, company) => DB.getAll(46).filter( event => DB.get( event, "event/company")  === company  ).filter( event => DB.get( DB.get(event, "event/eventTypeEntity" ) , 7913 ) === 7914  ) //TBD
 
 let constructCompanyDatoms = (DB, company ) => getAllTransactions( DB, company ).reduce( ( companyDatoms, transaction, index ) => companyTransactionReducer(DB, companyDatoms, transaction, index), [] )
 
@@ -219,8 +199,6 @@ let balanceObjectReducer = (DB, companyDatoms, balanceObject) => {
     newCompanyDatom( newEntityID, 7916, 0, balanceObject, eventIndex )
   ] 
   
-  //log({event, eventType})
-
   let generatedDatoms =  balanceObjectTypeAttributes
     .reduce(  (generatedDatoms, attribute) => generatedDatoms.concat( newCompanyDatom(
       newEntityID, 
@@ -243,27 +221,34 @@ let balanceObjectReducer = (DB, companyDatoms, balanceObject) => {
 let companyTransactionReducer = (DB, companyDatoms, transaction, index) => {
 
   let transactionType = DB.get(transaction, "transaction/transactionType" )
+
+  if( isUndefined(transactionType) ){ return companyDatoms }
+
   let transactionIndex = index + 1
 
-  let sharedStatementsString = DB.get( transactionType, "eventType/sharedStatements" )
+  let sharedStatements = DB.get( transactionType, "transactionType/sharedStatements" )
+
+  let sharedStatementsString = isDefined( sharedStatements ) 
+    ? sharedStatements
       .filter( statement => statement["statement/isEnabled"] )
       .map( statement => statement["statement/statement"] )
       .join(";") + ";"
+    : ""
 
   let genericNewEntityDatoms = [
     newCompanyDatom( transaction, 7916, transactionIndex, transaction , transactionIndex ),
-    newCompanyDatom( transaction, 7861, 46, transaction , transactionIndex ),
+    newCompanyDatom( transaction, 7861, 7948, transaction , transactionIndex ),
   ] 
+  let transactionTypeInputAttributes = DB.get( transactionType, "transactionType/inputAttributes" )
+  let datomConstructors = DB.get( transactionType , "transactionType/outputAttributes" ).filter( datomConstructor => datomConstructor.isEnabled )
 
-  let entityConstructor = DB.get( transactionType , 6782 )[0]
-
-  let generatedDatoms =  DB.get( 7868 , "companyEntityType/attributes" ) 
-    .filter( attribute => isDefined( entityConstructor.attributeAssertions[ attribute ] ) )
-    .filter( attribute => entityConstructor.attributeAssertions[ attribute ].isEnabled )
-    .reduce(  (generatedDatoms, attribute) => generatedDatoms.concat( newCompanyDatom(
+  let generatedDatoms =  datomConstructors
+    .reduce(  (generatedDatoms, datomConstructor) => generatedDatoms.concat( newCompanyDatom(
       transaction, 
-      attribute, 
-      tryFunction( () => new Function( [`Database`, `Company`, `Event`], sharedStatementsString + entityConstructor.attributeAssertions[ attribute ].valueFunction )( DB, { get: (entity, attr, transactionIndex) => getFromCompany( companyDatoms, entity, attr, transactionIndex ) }, DB.get(transaction) ) ), 
+      datomConstructor.attribute, 
+      transactionTypeInputAttributes.includes( datomConstructor.attribute )
+        ? DB.get(transaction, datomConstructor.attribute)
+        : tryFunction( () => new Function( [`Database`, `Company`, `Event`], sharedStatementsString + datomConstructor.valueFunction )( DB, { get: (entity, attr, transactionIndex) => getFromCompany( companyDatoms, entity, attr, transactionIndex ) }, DB.get(transaction) ) ), 
       transaction, 
       transactionIndex
     ) ) , genericNewEntityDatoms  )

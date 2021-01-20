@@ -91,27 +91,8 @@ let getClientActions = State => returnObject({
   selectCompanyEventIndex: companyDate => ClientApp.update( State, {S: {selectedCompanyEventIndex: companyDate }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
   updateCompany: company => ClientApp.update( State, {companyDatoms: constructCompanyDatoms( State.DB, company ), S: {selectedCompany: company, selectedEntity: company }} ),
-  createProcess: async processType =>  {
-    let updatedDB = await Transactor.createEntity(State.DB, 5692, [ newDatom( 'newEntity' , 'process/company', State.S.selectedCompany  ), newDatom( 'newEntity' , 'process/processType', processType ) ] )
-    let companyDatoms = constructCompanyDatoms( updatedDB, State.S.selectedCompany )
-
-    ClientApp.update( State, {
-      DB: updatedDB,
-      companyDatoms,
-    } )
-  },
-  createEvent:  async ( eventType, process, date ) =>  {
-    let updatedDB = await Transactor.createEntity(State.DB, 46, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), newDatom( 'newEntity' , 'event/process', process ), newDatom( 'newEntity' , 'event/eventTypeEntity', eventType ), newDatom( 'newEntity' , 'event/date', date ) ] )
-    
-    let companyDatoms = constructCompanyDatoms( updatedDB, State.S.selectedCompany )
-
-    ClientApp.update( State, {
-      DB: updatedDB,
-      companyDatoms,
-    } )
-    
-  },
   createBalanceObject:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7932, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
+  createTransaction:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
   executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
 })
 

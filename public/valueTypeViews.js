@@ -237,7 +237,7 @@ let entityVersionPopup = (State, entity, attribute) => {
 let entityAttributeView = (State, entity, attribute) => d([
   entityLabelWithPopup( State, attribute),
   State.DB.get(attribute, "attribute/isArray") 
-    ? (State.DB.get(attribute, "attribute/valueType") === 32) ? newMultipleValuesView(State, entity, attribute) : multipleValuesView(State, entity, attribute ) 
+    ? [32].includes( State.DB.get(attribute, "attribute/valueType") ) ? newMultipleValuesView(State, entity, attribute) : multipleValuesView(State, entity, attribute ) 
     : singleValueView( State, entity, attribute ),
   entityVersionLabel( State, entity, attribute )
 ], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
@@ -389,6 +389,7 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
   
     let valueTypeViews = {
       "6783": companyEntityConstructorRowView,
+      "7944": datomConstructorRowView,
       "41": (entity, attribute, index) => d(JSON.stringify(State.DB.get(entity, attribute)[index])), //Company entity
       "6613": argumentRowView,
       "6614": statementRowView,
@@ -399,6 +400,7 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
       "41": 0, //Company entity
       "6613": {"argument/name": "argumentNavn", "argument/valueType": 30},
       "6614": {"statement/statement": "console.log({Company, Process, Event})", "statement/isEnabled": true},
+      "7944": {"isEnabled": true, "attribute": 6, "valueFunction": "return 'test'"}
     }
     let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : ``
 
@@ -499,6 +501,45 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
     ], {class: "columns_1_9"}) 
   
   }
+
+
+
+  let datomConstructorRowView = (  State, entity, attribute, index ) => {
+
+
+    let datomConstructor = State.DB.get( entity, attribute)[index]
+
+    let options = State.DB.getOptions( attribute )
+
+    let datalistID = getNewElementID()
+
+    let transactionTypeInputAttributes = State.DB.get( entity, 7942 )
+  
+  
+    return transactionTypeInputAttributes.includes(datomConstructor.attribute)
+      ? d([
+        checkBox( datomConstructor["isEnabled"] , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {"isEnabled": datomConstructor["isEnabled"] ? false : true  }))} )),
+        entityLabelWithPopup( State,  datomConstructor.attribute ),
+        d( `return Event.get(${datomConstructor.attribute})` )
+        ], {style: gridColumnsStyle("1fr 2fr 3fr")})
+      : d([
+        checkBox( datomConstructor["isEnabled"] , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {"isEnabled": datomConstructor["isEnabled"] ? false : true  }))} )),
+        d([
+          htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
+        input({value: datomConstructor.attribute, list: datalistID, style: `text-align: right;`}, 
+          "change", 
+          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {attribute: Number( submitInputValue( e ) )  } ))} )
+        ),
+        entityLabelWithPopup( State,  datomConstructor.attribute ), 
+        ]),
+        textArea(
+          datomConstructor.valueFunction,
+          {class:"textArea_code"}, 
+          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {valueFunction: submitInputValue( e ).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  } ))} )
+          )
+      ], {style: gridColumnsStyle("1fr 2fr 3fr")})
+  }
+
   
   let companyEntityConstructorRowView = ( State, entity, attribute, index) => {
   
@@ -731,7 +772,6 @@ let multipleEntityRefsRowView = ( State, formattedValue, updateFunction, options
     ])
 } 
 
-
 let newMultipleValuesView = ( State, entity, attribute ) => {
   
 
@@ -773,6 +813,7 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
   }
 
   let options = [ 32 ].includes(valueType) ? State.DB.getOptions( attribute ) : []
+
 
   return d([
     isArray( storedValues )
