@@ -7,63 +7,6 @@
 //----------------------------------------------------------------------
 
 
-// SVG
-let svg = (width, height, innerhtml) => htmlElementObject("svg", {width, height}, innerhtml)
-let rect = (attributesObject, onclick) => htmlElementObject( "rect", attributesObject, "", "click", onclick )
-let circle = (attributesObject, onclick) => htmlElementObject( "circle", attributesObject, "", "click", onclick )
-let line = (x1, x2, y1, y2, stroke, strokeWidth, onclick) => htmlElementObject( "line", {x1, x2, y1, y2, stroke, "stroke-width": strokeWidth}, "", "click", onclick )
-let svgText = (attributesObject, innerHTML, onclick) => htmlElementObject( "text", attributesObject, innerHTML, "click", onclick )
-
-// SESSION PANEL
-
-let sessionStatePanel = (States, Patches) => d( States.map( (State, index) => sessionStateLabel(
-  State, 
-  Patches[index],
-  index, 
-  States[index-1] 
-    ? States[index-1].DB 
-      ? (State.DB.tx > States[index-1].DB.tx )
-      : true
-    : false,
-  )   ), {style: "display: flex;"} )
-
-let sessionStateLabel = (State, Patch, index, dbUpdated ) => {
-
-  let companyIsUpToDate = isDefined(State.DB) && isDefined(State.Company)
-    ? (State.DB.tx === State.Company.tx)
-    : true
-
-  return d([
-    d(` ${dbUpdated ? " ~ " : ""} ${index} ${ companyIsUpToDate ? "" : "*"} `  , {style: `padding: 3px;margin: 5px; ${State.S.isAdmin ? "background-color:black;color: #57ff57;" : "background-color:#2979ff;color: white;"}`} ),
-    sessionStatePopup( State, Patch )
-  ], {class: "popupContainer"})
-} 
-
-let sessionStatePopup = (State, Patch) => {
-
-  return d([
-    d([
-      d("DB-versjon:"),
-      d( State.DB ? String(State.DB.tx) : " - " )
-    ], {class: "columns_1_1"}),
-    br(),
-    d([
-      d("Company-versjon:"),
-      d( State.Company ? String(State.Company.tx) : " - " )
-    ], {class: "columns_1_1"}),
-    br(),
-    d([
-      d("Klient-state:"),
-      d( JSON.stringify(State.S) )
-    ], {class: "columns_1_1"}),
-    br(),
-    d([
-      d("Siste endring:"),
-      d(JSON.stringify(Patch.S))
-    ], {class: "columns_1_1"})
-    
-    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-} 
 
 // CLIENT PAGE VIEWS
 
@@ -73,62 +16,32 @@ let clientPage = State => {
   if(State.S.isError){return d(State.S.error) }
   if(isUndefined(State.DB)){return d("Laster..") }
 
-  let selectedEntityType = isDefined( State.DB.get( State.S.selectedEntity, "entity/entityType" ) ) 
-    ? State.DB.get( State.S.selectedEntity, "entity/entityType" )
-    : 5722
 
-  let entityTypeViewController = {
-    "47": [7531, 6778, 7535].includes( State.S.selectedEntity ) ? companyEntitiesPageView : companyView,
-    "5722": companyView,
-    "6778": isDefined( State.S.selectedCompanyEntity ) ? State => companyEntityView( State, State.S.selectedCompanyEntity ) : multipleCompanyEntitiesView,
-    "7531": isDefined( State.S.selectedCompanyEntity ) ? State => companyEntityView( State, State.S.selectedCompanyEntity ) : multipleCompanyEntitiesView,
-    "7535": isDefined( State.S.selectedCompanyEntity ) ? State => companyEntityView( State, State.S.selectedCompanyEntity ) : multipleCompanyEntitiesView,
-    "7487": companyView,
+  let pageRouter = {
+    "7509": progressView,
+    "7860": balanceObjectsView,
+    "7882": transactionsView,
   }
-
-  
   
   return d([
     d([d('<header><h1>Holdingservice Beta</h1></header>'),d([
       d([dropdown(State.S.selectedCompany, State.DB.getAll( 5722 ).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.updateCompany( Number( submitInputValue(e) ) ))]),
       submitButton("Bytt til admin", e => State.Actions.toggleAdmin() )
     ], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
-    //getEntityNavBar( State ),
     d([
       d(""),
       d([
         stateView( State ),
-        companyView( State )
+        d([
+          d( [7509, 7860, 7882].map( pageEntity => entityLabelWithPopup( State, Number(pageEntity), () => State.Actions.selectPage(pageEntity) ) ), {class: "feedContainer"} ),
+          br(),
+          d([pageRouter[ State.S.selectedPage ]( State ) ], {class: "feedContainer"} )
+        ])
       ])
     ], {class: "pageContainer"})
     
   ])
 }
-
-let getEntityNavBar = State => d([
-  entityLabelWithPopup( State, State.S.selectedCompany, e => State.Actions.selectEntity( State.S.selectedCompany )  ),
-  entityLabelWithPopup( State, State.S.selectedEntity ),
-  isDefined(State.S.selectedCompanyEntity) ? companyEntityLabelWithPopup(State, State.S.selectedCompanyEntity) : d("")
-], {style: "display: flex;"})
-
-let companyEntitiesPageView = ( State) => d([
-  h3("Alle selskapsdokumenter"),
-  d(State.DB.getAll( State.S.selectedEntity ).map( entityType => d([
-    entityLabelWithPopup( State,  entityType ),
-    d(State.Company.getAll(entityType).map( companyEntity => companyEntityLabelWithPopup( State, companyEntity) ) ),
-    br()
-  ])))
-], {class: "feedContainer"})
-
-let multipleCompanyEntitiesView = State => {
-
-  let eventTypeAttributes = State.DB.get( State.S.selectedEntity,  "companyEntityType/attributes")
-
-  return d([
-    d( eventTypeAttributes.map( attr => d([entityLabelWithPopup( State, attr, e => console.log("Cannot access AdminPage from here"))])   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} ),
-    d(State.Company.getAll(State.S.selectedEntity).map( companyEntity => d( eventTypeAttributes.map( attribute => companyValueView( State, companyEntity, attribute, State.S.selectedCompanyEventIndex)   ), {style: `display:grid;grid-template-columns: repeat(${eventTypeAttributes.length}, 1fr);`} ) ) )
-  ],{class: "feedContainer"})
-} 
 
 let stateView = State => {
 
@@ -164,44 +77,41 @@ let stateView = State => {
   ], {class: "feedContainer"})
 } 
 
-
-// Company entity view   -------------------------------------------------------------
-
-let companyView = State => {
+//Page views
 
 
-  let pageController = {
-    "7509": progressView,
-    //"7488": balanceSheetView,
-    "7860": balanceObjectsView,
-    "7882": transactionsView,
-    "7919": reportsView,
+let progressView = State => d([
+  d([
+    d("Steg 1:"),
+    d("Ferdig"),
+  ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
+  br(),
+  d([
+    d("Steg 2:"),
+    d("WIP"),
+  ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
+  br(),
+  d([
+    d("Steg 3: Kontroller balansen"),
+    d( 
+      [
+        State.DB.get(7537, 7751),
+        State.DB.get(7538, 7751),
+        State.DB.get(7539, 7751)
+      ].flat().map( calculatedField => d([
+        entityLabelWithPopup( State, calculatedField),
+        d( formatNumber( State.Company.get(null, calculatedField, State.S.selectedCompanyEventIndex ) ) )
+      ], {style: gridColumnsStyle("repeat(2, 1fr)")}) )
+     )
+  ]),
+  br(),
+  d([
+    d("Steg 10: Eksporter rapporter"),
+    d( State.DB.getAll( 7914 ) .map( report => entityLabelWithPopup( State, report ) ))
+  ])
+])
 
-    //"7778": actorsView,
-    //"7918": companyCalculatedFieldsView,
-    
-
-
-
-    //"7492": processesView,
-    //"7494": transactionView,
-    //"7820": bankView,
-  }
-
-
-  return d([
-    d([
-      d( [7509, 7860, 7882, 7919].map( pageEntity => entityLabelWithPopup( State, Number(pageEntity), () => State.Actions.selectPage(pageEntity) ) ), {class: "feedContainer"} ),
-      br(),
-      d([
-        isDefined( pageController[ State.S.selectedPage ]) ? pageController[ State.S.selectedPage ]( State ) : d(""),
-      ], {class: "feedContainer"} )
-    ]),
-    ])
-} 
-
-
-
+//---
 
 let balanceObjectsView = State => isDefined( State.S.selectedEntity ) ? singleBalanceObjectView( State ) : allBalanceObjectsView( State )
 
@@ -260,9 +170,12 @@ let allBalanceObjectsView = State => {
      }
       )),
   br(),
-  submitButton("Legg til", () => State.Actions.createBalanceObject() )
+  submitButton("Legg til", () => State.Actions.createBalanceObject() ),
+  br(),
   ]) 
 } 
+
+//---
 
 let transactionsView = State => isDefined( State.S.selectedEntity ) ? singleTransactionView( State ) : allTransactionsView( State )
 
@@ -459,454 +372,8 @@ let constructTransactionRowDatoms = ( State, transactionRow) => {
 
 
 
-let reportsView = State => isDefined( State.S.selectedEntity ) ? singleReportView( State ) : allReportsView( State )
-
-let singleReportView = State => {
-
-  let balanceObject = State.S.selectedEntity
-  let balanceObjectType = State.DB.get( balanceObject, "balanceObject/balanceObjectType" )
-
-
-  return isDefined(balanceObjectType)
-    ? d([
-      submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
-      br(),
-      d([
-        entityLabelWithPopup( State, 7860 ),
-        span( " / " ),
-        entityLabelWithPopup( State, State.DB.get( balanceObjectType, 7540 ) ),
-        span( " / " ),
-        entityLabelWithPopup( State, balanceObjectType ),
-        span( " / " ),
-        entityLabelWithPopup( State, balanceObject ),
-      ]),
-      br(),
-      d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView(State, balanceObject, attribute) ) ),
-      br(),
-      d( State.DB.get( balanceObjectType, "companyEntityType/calculatedFields" ).map( calculatedField => companyDatomView( State, balanceObject, calculatedField ) ) ),
-      submitButton("Slett", e => State.Actions.retractEntity(balanceObject) ),  
-    ])
-  : d([
-    entityAttributeView(State, balanceObject, 7934),
-    submitButton("Slett", e => State.Actions.retractEntity(balanceObject) ),  
-  ])
-} 
-
-
-let allReportsView = State => d( State.DB.getAll( 7914 ) .map( report => entityLabelWithPopup( State, report ) ))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let progressView = State => d([
-  d([
-    d("Steg 1:"),
-    d("Ferdig"),
-  ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
-  d([
-    d("Steg 2:"),
-    d("WIP"),
-  ], {style: gridColumnsStyle("repeat(2, 1fr)")})
-])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Company entity view END -------------------------------------------------------------
-
-
-let transactionView = State => {
-
-
-  let selectedTransaction = getCompanyTransactionByIndex( State.companyDatoms, State.S.selectedCompanyEventIndex )
-
-  return d([
-    br(),
-    d([
-      d([
-        companyEntityLabelWithPopup(State, State.Company.get(selectedTransaction, 7867, ) ),
-        d([
-          entityLabelWithPopup( State, 7433 ),
-            d([
-              d(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7867), 7433, State.S.selectedCompanyEventIndex - 1 ) ), {class: "redlineText", style: `text-align: right;`}),
-              d(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7867), 7433, State.S.selectedCompanyEventIndex ) ), {style: `text-align: right;`}),
-            ] ) ,
-        ], {style: gridColumnsStyle("repeat(2, 1fr)")})
-      ]),
-      d([
-        d(""),
-        d([
-          companyEntityLabelWithPopup(State, selectedTransaction ),
-          d(" --------------> "),
-          companyValueView( State, selectedTransaction, 1083, State.S.selectedCompanyEventIndex ),
-        ]),
-        d(""),
-      ], {style: gridColumnsStyle("3fr 2fr 3fr")}),
-      d([
-        companyEntityLabelWithPopup(State, State.Company.get(selectedTransaction, 7866) ),
-        d([
-          entityLabelWithPopup( State, 7433 ),
-          d([
-            d(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7866), 7433, State.S.selectedCompanyEventIndex - 1 ) ), {class: "redlineText", style: `text-align: right;`}),
-            d(formatNumber( State.Company.get(State.Company.get(selectedTransaction, 7866), 7433, State.S.selectedCompanyEventIndex ) ), {style: `text-align: right;`}),
-          ] ) ,
-        ], {style: gridColumnsStyle("repeat(2, 1fr)")})
-      ]),
-    ], {style: gridColumnsStyle("repeat(3, 1fr)")})
-  ])
-} 
-
-let balanceSheetView = State => d([
-  h3(`Selskapets balanse`),
-  d([
-    d([
-      h3("Eiendeler"),
-      assetsView( State ),
-    ], {style: `padding: 1em;`}), 
-    d([
-      h3("Egenkapital"),
-      equityView( State ),
-      br(),
-      h3("Gjeld"),
-      debtsView( State )
-    ], {style: `padding: 1em;`}),
-  ], {class: "columns_1_1"}),
-  d([
-    d([
-      entityLabelWithPopup( State, 6288 ),
-      d( formatNumber(State.Company.get( null, 6288, State.S.selectedCompanyEventIndex )) , {style: `text-align: right;`}),
-    ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding: 1em;`}),
-    d([
-      entityLabelWithPopup( State, 6296 ),
-      d( formatNumber(State.Company.get( null, 6296, State.S.selectedCompanyEventIndex )) , {style: `text-align: right;`}),
-    ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding: 1em;`})
-  ], {class: "columns_1_1", style: `background-color: ${ formatNumber(State.Company.get( null, 6288, State.S.selectedCompanyEventIndex ) + State.Company.get( null, 6296, State.S.selectedCompanyEventIndex )) === "0" ? "" : "#e82b0026" } `}),
-  br(),
-  entityLabelWithPopup( State, 7535 ),
-])
-
-
-let assetsView = State => d( 
-  State.DB.getAll(7526)
-    .filter( sectionSumField => State.DB.get(sectionSumField, 7540) === 7537 )
-    .filter( sectionSumField => State.Company.get( null, sectionSumField, State.S.selectedCompanyEventIndex ) !== 0 )
-    .map( sectionSumField => d([
-      d(
-        State.DB.getAll(7531)
-          .filter( balanceObjectType => State.Company.getAll(balanceObjectType, State.S.selectedCompanyEventIndex).length > 0 )
-          .filter( e => D.get(e, 7748) === sectionSumField )
-          .map( balanceObjectType => d([
-              d( State.Company.getAll(balanceObjectType, State.S.selectedCompanyEventIndex).map( balanceEntity => d([
-                companyEntityLabelWithPopup(State, balanceEntity),
-                d( formatNumber(State.Company.get(balanceEntity, 7433, State.S.selectedCompanyEventIndex )) , {style: `text-align: right;`}),
-              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})  ) ),
-              d([
-                entityLabelWithPopup( State, balanceObjectType ),
-                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyEventIndex).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433, State.S.selectedCompanyEventIndex), 0) ) , {style: `text-align: right;`}),
-              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})
-        ]) 
-      )),
-      d([
-        entityLabelWithPopup( State, sectionSumField ),
-        d( formatNumber(State.Company.get( null, sectionSumField, State.S.selectedCompanyEventIndex )) , {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
-  ]) 
-))
-
-
-
-
-let debtsView = State => d( 
-  State.DB.getAll(7526)
-    .filter( sectionSumField => State.DB.get(sectionSumField, 7540) === 7539 )
-    .filter( sectionSumField => State.Company.get( null, sectionSumField, State.S.selectedCompanyEventIndex ) !== 0 )
-    .map( sectionSumField => d([
-      d(
-        State.DB.getAll(7531)
-          .filter( balanceObjectType => State.Company.getAll(balanceObjectType, State.S.selectedCompanyEventIndex).length > 0 )
-          .filter( e => D.get(e, 7748) === sectionSumField ).map( balanceObjectType => d([
-              d( State.Company.getAll(balanceObjectType, State.S.selectedCompanyEventIndex).map( balanceEntity => d([
-                companyEntityLabelWithPopup(State, balanceEntity),
-                d( formatNumber(State.Company.get(balanceEntity, 7433, State.S.selectedCompanyEventIndex )) , {style: `text-align: right;`}),
-              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})  ) ),
-              d([
-                entityLabelWithPopup( State, balanceObjectType ),
-                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyEventIndex).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433, State.S.selectedCompanyEventIndex), 0) ) , {style: `text-align: right;`}),
-              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})
-        ]) 
-      )),
-      d([
-        entityLabelWithPopup( State, sectionSumField ),
-        d( formatNumber(State.Company.get( null, sectionSumField, State.S.selectedCompanyEventIndex )) , {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
-  ]) 
-))
-
-let equityView = State => d( 
-  State.DB.getAll(7526)
-    .filter( sectionSumField => State.DB.get(sectionSumField, 7540) === 7538 )
-    .filter( sectionSumField => State.Company.get( null, sectionSumField, State.S.selectedCompanyEventIndex ) !== 0 )
-    .filter( sectionSumField => sectionSumField !== 6296) //Sum egenkapital og gjeld
-    .map( sectionSumField => d([
-      d(
-        State.DB.getAll(7531)
-          .filter( balanceObjectType => State.Company.getAll(balanceObjectType, State.S.selectedCompanyEventIndex).length > 0 )
-          .filter( e => D.get(e, 7748) === sectionSumField ).map( balanceObjectType => d([
-              d( State.Company.getAll(balanceObjectType, State.S.selectedCompanyEventIndex).map( balanceEntity => d([
-                companyEntityLabelWithPopup(State, balanceEntity),
-                d( formatNumber(State.Company.get(balanceEntity, 7433, State.S.selectedCompanyEventIndex )) , {style: `text-align: right;`}),
-              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})  ) ),
-              d([
-                entityLabelWithPopup( State, balanceObjectType ),
-                d( formatNumber(State.Company.getAll(balanceObjectType, State.S.selectedCompanyEventIndex).reduce( (sum, balanceEntity) => sum + Company.get(balanceEntity, 7433, State.S.selectedCompanyEventIndex), 0) ) , {style: `text-align: right;`}),
-              ], {style: gridColumnsStyle("repeat(2, 1fr)")+`padding-left: 1em;`})
-        ]) 
-      )),
-      d([
-        entityLabelWithPopup( State, sectionSumField ),
-        d( formatNumber(State.Company.get( null, sectionSumField, State.S.selectedCompanyEventIndex )) , {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(2, 1fr)")})
-  ]) 
-))
-
-let actorsView = State => d([
-  d([
-    entityLabelWithPopup( State, 6790 ),
-    entityLabelWithPopup( State, 1113 )
-  ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
-  d( State.Company.getAll( 6790, State.S.selectedCompanyEventIndex ).map( actor => d([
-      companyEntityLabelWithPopup( State, actor ),
-      companyValueView( State, actor, 1113, State.S.selectedCompanyEventIndex)
-  ], {style: gridColumnsStyle("repeat(2, 1fr)")}) ) )
-])
-
-
-let processesView = State => {
-
-
-  let companyProcesses = getCompanyProcesses(State.DB, State.S.selectedCompany )
-
-
-  return d([
-    br(),
-    d([
-      d([
-        d("#"),
-        entityLabelWithPopup(State, 5692, () => State.Actions.selectedEntity(7492) ),
-        d("Varighet"),
-        entityLabelWithPopup(State, 7948),
-      ], {style: gridColumnsStyle("1fr 3fr 1fr 4fr")}),
-      d( companyProcesses
-        .map( (process, index) => {
-
-          let processType = State.DB.get(process, "process/processType")
-
-          let processEvents = getProcessEvents( State.DB, process )
-
-          let eventPreviewCount = 5
-
-          return d([
-            d( String(index+1) ),
-            entityLabelWithPopup( State, processType, () => State.Actions.selectEntity( process ) ),
-            d( ` ${moment( State.DB.get(processEvents[0], 1757) ).format("D/M") } - ${ moment( State.DB.get(processEvents.slice(-1)[0], 1757) ).format("D/M") } ` ),
-            d( processEvents.slice(0,eventPreviewCount)
-                .map( event => span(String(event), "", {class: "entityLabel", style: `background-color: ${State.DB.get( State.DB.get( event, "entity/entityType") , "entityType/color")};`}, "click", e => State.Actions.selectEntity(event) ) )
-                .concat( span(processEvents.length > eventPreviewCount ? ` + ${processEvents.length - eventPreviewCount} hendelser` : "") ), 
-              {style: "display: flex;"} 
-              )
-        ], {style: gridColumnsStyle("1fr 3fr 1fr 4fr")})
-        }   ) )
-    ]),
-
-    h3("Opprett ny prosess:"),
-    d( State.DB.getAll(5687).map( processType => entityLabelWithPopup(State, processType, e => State.Actions.createProcess(processType, 7407)  )  ) ),
-  ])
-}
-
-let bankView = State => d([
-  d([
-    input({type: "file", style: `text-align: right;`}, "change", e => console.log("A") ),
-    submitButton("Importer transaksjoner"),
-  ]),
-  br(),
-  d([
-    d("Transaksjon"),
-    d("Dato"),
-    d("Beskrivelse"),
-    d("Beløp"),
-  ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")}),
-  d( State.Company.getAll( 7868, State.S.selectedCompanyEventIndex, State.S.selectedCompanyEventIndex )
-      .map( bankTransaction => d([
-        companyEntityLabelWithPopup( State, bankTransaction ),
-        d( moment( State.Company.get( bankTransaction, 1757 ) ).format("DD.MM.YYYY")  , {style: `text-align: right;`}),
-        companyValueView( State, bankTransaction, 1139, State.S.selectedCompanyEventIndex ),
-        companyValueView( State, bankTransaction, 1083, State.S.selectedCompanyEventIndex ),
-        dropdown(0, [
-          {value: 0, label: "Opprett prosess"},
-          {value: 1, label: "Ny investering"},
-          {value: 2, label: "Driftskostnad"},
-      ])
-      ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")}) ) 
-    )
-])
-
-let companyCalculatedFieldsView = State => d( State.DB.getAll( 7526 ).map( calculateField => d([
-    entityLabelWithPopup( State, calculateField ),
-    d( formatNumber( State.Company.get( null, calculateField, State.S.selectedCompanyEventIndex ) ) )
-  ], {style: gridColumnsStyle("repeat(2, 1fr)")}) ) ) 
-
-let timelineHeaderView = width => d( ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"].map( month => d(month)  ), {style: `width:${width};display:grid;grid-template-columns: repeat(${12}, 1fr);background-color: #8080802b;`} )
-
-let processView = State => {
-
-
-  let companyProcesses = getCompanyProcesses(State.DB, State.S.selectedCompany)
-
-  let process = State.S.selectedEntity
-  let processType = State.DB.get(process, "process/processType")
-
-  let prevProcess = companyProcesses[companyProcesses.findIndex( p => p ===  process ) - 1  ]
-  let nextProcess = companyProcesses[companyProcesses.findIndex( p => p ===  process ) + 1  ]
-
-
-
-  let processEvents = getProcessEvents( State.DB, process )
-
-  let processEntities = getProcessEntities(State.DB, State.companyDatoms, process)
-
-
-  return d([
-    d([
-      isDefined(prevProcess) ? submitButton("<--- forrige prosess", e => State.Actions.selectEntity(  prevProcess ) ) : d(""),
-      d(`[ ${companyProcesses.findIndex( p => p ===  process ) + 1} / ${companyProcesses.length} ]`),
-      isDefined(nextProcess) ? submitButton("neste prosess --->", e => State.Actions.selectEntity(  nextProcess ) ) : d(""),
-      ], {class: "columns_1_1_1"}),
-    br(),
-    d([
-      h3( State.DB.get( process, "entity/label" ) ),
-      d([
-        d( processEvents.map( event => d([
-          d( moment( State.DB.get(event, "event/date") ).format("DD/MM/YYYY")  ),
-          entityLabelWithPopup( State, State.DB.get(event, "transaction/transactionType"), e => State.Actions.selectEntity(  event )  )
-        ], {class: "columns_1_1_1"})  ) ),
-        br(),
-        d([
-          h3("Ny hendelse:"),
-          d( State.DB.get( processType, 5926) .map( eventType => entityLabelWithPopup(State, eventType, e => State.Actions.createEvent( eventType, process, Date.now() ) )  ) ),
-        ], {class: "feedContainer"})
-      ]),
-      br(),
-      submitButton("Slett prosess", e => State.Actions.retractEntities( [process].concat( getProcessEvents(State.DB, process) ) ) ),
-    ],{class: "feedContainer"}),
-    br(),
-    d([
-      h3("Selskapsdokumenter generert av prosessen:"),
-      d( processEntities.map( companyEntity => companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( process, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ) )),
-      br(),
-      isDefined( State.S.selectedCompanyEntity ) 
-        ? companyEntityView( State, State.S.selectedCompanyEntity ) 
-        : d("")
-    ], {class: "feedContainer"} ),
-    
-  ]) 
-} 
-
- 
-
-
-let eventView =  State => {
-
-  let event = State.S.selectedEntity
-  let eventType = State.DB.get( event, "transaction/transactionType")
-  let eventTypeAttributes = State.DB.get( eventType, "eventType/eventAttributes") ? State.DB.get( eventType, "eventType/eventAttributes") : []
-
-  let companyEntity = getCompanyEntityFromEvent( State.companyDatoms, event )
-
-  let process = State.DB.get( event, "event/process" )
-
-  
-
-  let processEvents = getProcessEvents( State.DB, process )
-
-  let prevEvent = processEvents[ processEvents.findIndex( e => e === event ) - 1  ]
-  let nextEvent = processEvents[ processEvents.findIndex( e => e === event ) + 1  ]
-
-  return d([
-    entityLabelWithPopup( State, eventType ),
-    br(),
-    d([
-      isDefined(prevEvent) ? submitButton("<--- forrige hendelse", e => State.Actions.selectEntity(  prevEvent ) ) : d(""),
-      d(`[ ${processEvents.findIndex( e => e === event ) + 1} / ${processEvents.length} ]`),
-      isDefined(nextEvent) ? submitButton("neste hendelse --->", e => State.Actions.selectEntity(  nextEvent ) ) : d(""),
-      ], {class: "columns_1_1_1"}),
-    br(),
-    d([
-      h3( getEntityLabel(State.DB, event) ),
-      br(),
-      d( eventTypeAttributes.map( attribute => entityAttributeView(State, event, attribute)  )),
-      br(),
-      submitButton("Slett hendelse", e => State.Actions.retractEntity(event) ),
-    ], {class: "feedContainer"} ),
-    br(),
-    d([
-      h3("Selskapsdokumenter generert av hendelsen:"),
-
-      companyEntityLabelWithPopup( State, companyEntity, e => State.Actions.selectEntity( event, companyEntity ), (companyEntity === State.S.selectedCompanyEntity) ),
-
-      br(),
-      isDefined(State.S.selectedCompanyEntity) 
-        ? companyEntityView( State, State.S.selectedCompanyEntity )
-        : d("")
-    ], {class: "feedContainer"} )
-  ])
-}
-
-//----------------------------------------------------------------------
-//----------------------------------------------------------------------
-//----------------------------------------------------------------------
-//----------------------------------------------------------------------
-//----------------------------------------------------------------------
-
-
-
-let CompanyCalculatedFieldView = ( State, calculateField) => d([
-  entityLabelWithPopup( State, calculateField, e => console.log("Cannot access AdminPage from here")),
-  d( String( Math.round(State.Company.calculateCompanyCalculatedField(calculateField) )  ), {style: `text-align: right;` } )
-], {class: "columns_1_1"})
-
-
 
 
 // ADMIN PAGE VIEWS
@@ -952,18 +419,3 @@ let multipleEntitiesView = (State, entityType) => d([
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
-
-
-//ARCHIVE
-
-/* 
-let entityRedlinedValue = (value, prevValue) => d( [
-  span( `${JSON.stringify(prevValue)}`, "", {class: "redlineText"}),
-  span( `${JSON.stringify(value)}`),
-], {style:"display: inline-flex;justify-content: flex-end;"} ) 
-
-
-
-
-
- */

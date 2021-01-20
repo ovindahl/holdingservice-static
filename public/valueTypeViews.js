@@ -247,76 +247,10 @@ let entityAttributeView = (State, entity, attribute) => d([
 //company Entities
 
 
-let companyEntityLabel = (State, companyEntity, onClick, isSelected) => d([
-      d( 
-        getCompanyEntityLabel( State.DB, State.companyDatoms, companyEntity),
-        {
-          class: "entityLabel", 
-          style: `background-color:${isDefined(State.Company.get(companyEntity)) ? State.DB.get( State.Company.get(companyEntity, 6781), "entityType/color") : "gray"}; ${ (isSelected || State.S.selectedCompanyEntity === companyEntity) ? "border: 2px solid blue;" : ""}`}, 
-        "click", 
-        isDefined(onClick) ? onClick : e => State.Actions.selectEntity( State.Company.get( companyEntity, 7543 ) )
-        ),
-  ], {style:"display: inline-flex;"})
-  
-
-let companyEntityLabelWithPopup = (State, companyEntity, onClick, isSelected) => isDefined(companyEntity)
-  ? d([
-      d([
-        companyEntityLabel( State, companyEntity, onClick, isSelected),
-        companyEntityPopUp( State, companyEntity ),
-      ], {class: "popupContainer", style:`display: inline-flex;`})
-    ], {style:"display: inline-flex;"}) 
-  : d(`[${companyEntity}] na.`, {class: "entityLabel", style: `background-color:gray;`})
-
-
-let companyEntityPopUp = (State, companyEntity) => d([
-
-  companyEntityLabel( State, companyEntity ),
-  br(),
-  d( getEntityLabel( State.DB, State.Company.get(companyEntity, 7861) )  ),
-  br(),
-  d( getEntityDescription( State.DB, State.Company.get(companyEntity, 6781) ) ),
-  br(),
-  span(`Selskapsentitet: ${ companyEntity}`),
-
-], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-
-
-let companyEntityView = (State, companyEntity ) => {
-
-  let CompanyEntity = State.Company.get( companyEntity )
-
-  let companyEntityType = State.Company.get( companyEntity, 6781 )
-
-  let companyEntityTypeAttributes = State.DB.get( companyEntityType, 6779 ) ? State.DB.get( companyEntityType, 6779 ) : []
-  let companyEntityTypeCalculatedField = State.DB.get( companyEntityType, 6789 ) ? State.DB.get( companyEntityType, 6789 ) : []
-
-
-
-  return d([
-    companyEntityLabelWithPopup(State, companyEntity),
-    br(),
-    isDefined(CompanyEntity)
-      ? d([
-          d( [7861, 6781, 7543, 7916].map( attribute => companyDatomView( State, companyEntity, attribute ) ) ),
-          br(),
-          d( companyEntityTypeAttributes
-              .filter( attribute => isDefined( State.Company.get( companyEntity, attribute) ) )
-              .map( attribute => companyDatomView( State, companyEntity, attribute ) )
-              ),
-          br(),
-          d( companyEntityTypeCalculatedField.map( calculatedField => companyDatomView( State, companyEntity, calculatedField ) ) )
-      ])
-    : d("Entiteten er ikke definert")
-    
-  ], {style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-} 
-
 
 let companyDatomView = (State, companyEntity, attribute, t ) => d([
   entityLabelWithPopup( State, attribute, e => console.log("Cannot access AdminPage from here")),
   companyValueView(State, companyEntity, attribute, State.S.selectedCompanyEventIndex),
-  //State.DB.get(attribute, "entity/entityType") === 5817 ? companyEntityVersionLabel( State, companyEntity, attribute, t ) : d("")
 ], {class: "columns_1_1"}) 
 
 let companyValueView = (State, companyEntity, attribute, selectedCompanyEventIndex) => {
@@ -350,34 +284,6 @@ let companyValueView = (State, companyEntity, attribute, selectedCompanyEventInd
   }
 
 }
-
-let companyEntityVersionLabel = ( State, companyEntity, attribute, t ) => d([
-  d([
-    d( moment( t ).format("D/M"), {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
-    companyEntityVersionPopup( State, companyEntity, attribute, t )
-  ], {class: "popupContainer"})
-  ], {style:"display: inline-flex;"} )
-
-let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => {
-
-  //let versions = State.Company.getCalculatedFieldversions( companyEntity, calculatedField )
-
-  return d([
-    d([
-      d("Endret"),
-      d("Tidligere verdi")
-    ], {style: gridColumnsStyle("2fr 2fr 1fr")}),
-      d("TBD")
-      /* d( versions.map( version => d([
-        submitButton( moment( version ).format("D/M"), e => State.Actions.selectCompanyEntityVersion(  companyEntity, version ) ),
-        d(JSON.stringify( State.Company.get(companyEntity, calculatedField, version ) ))
-      ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) ) */
-    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-}
-
-
-
-    
   
 
 
@@ -388,7 +294,7 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
     let valueType = State.DB.get(attribute, "attribute/valueType")
   
     let valueTypeViews = {
-      "6783": companyEntityConstructorRowView,
+      //"6783": companyEntityConstructorRowView,
       "7944": datomConstructorRowView,
       "41": (entity, attribute, index) => d(JSON.stringify(State.DB.get(entity, attribute)[index])), //Company entity
       "6613": argumentRowView,
@@ -458,15 +364,6 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
   }   ) : d("")
   
   
-  //Company entities
-  
-  let input_singleCompanyEntity = ( State, entity, attribute, isEditable) => isEditable
-    ? dropdown( State.DB.get( entity,  attribute ), Entity.getOptions( attribute ), async e => ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, Number(submitInputValue(e))  )} ) )
-    : companyEntityLabelWithPopup(ClientApp.Company, State.DB.get( entity,  attribute ) )
- 
-
-
-
     
   //Multiple valueType views
   
@@ -501,8 +398,6 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
     ], {class: "columns_1_9"}) 
   
   }
-
-
 
   let datomConstructorRowView = (  State, entity, attribute, index ) => {
 
@@ -539,68 +434,13 @@ let companyEntityVersionPopup = ( State, companyEntity, calculatedField, t ) => 
           )
       ], {style: gridColumnsStyle("1fr 2fr 3fr")})
   }
-
-  
-  let companyEntityConstructorRowView = ( State, entity, attribute, index) => {
-  
-    let entityConstructor = State.DB.get( entity, attribute)[index]
-    let companyEntityType = entityConstructor.companyEntityType
-
-    let balanceObjects = State.DB.getAll(7531)
-    let companyTransactions = State.DB.getAll(6778)
-    let companyDocuments = State.DB.getAll(7535)
-
-    let companyEntityTypeSelection = balanceObjects.concat( companyTransactions ).concat( companyDocuments )
-  
-    return d([
-      dropdown(
-        companyEntityType, 
-        companyEntityTypeSelection.map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ),
-        async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {companyEntityType: Number( submitInputValue(e) ), attributeAssertions: {}  } ))} )
-        ),
-        br(),
-        d([
-          d( isDefined(State.DB.get( companyEntityType , "companyEntityType/attributes")) ? State.DB.get( companyEntityType , "companyEntityType/attributes").map(  attr => {
-            let attributeAssertions = entityConstructor.attributeAssertions
-  
-            let attributeAssertion = attributeAssertions[ attr ]
-  
-            let isEnabled = isDefined(attributeAssertion) ? attributeAssertion.isEnabled : false
-            let valueFunction = isDefined(attributeAssertion) ? attributeAssertion.valueFunction : ""
-  
-            let isEnabledUpdateFunction = async e =>  {
-              let updatedAssertion = mergerino(attributeAssertion, {isEnabled: isEnabled ? false : true })
-
-              ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion})  } ))} )
-
-            } 
-            let valueFunctionUpdateFunction = async e => {
-  
-              let updatedAssertion = mergerino(attributeAssertion, {valueFunction: submitInputValue(e), isEnabled: true })
-  
-              ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion}) } ))} )
-            } 
-    
-    
-    
-            return d([
-              checkBox( isEnabled , isEnabledUpdateFunction ),
-              entityLabelWithPopup( State, attr),
-              textArea(valueFunction, {class:"textArea_code"}, valueFunctionUpdateFunction )
-            ], {style: gridColumnsStyle("1fr 3fr 6fr") })
-          }  ) : "ERROR" )
-        ])
-      
-    ])
-  } 
-  
-  
+ 
 let textInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isDefined( formattedValue ) ? "" : "background-color: red;" }, "change", updateFunction  )
 let dateInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isDefined( formattedValue ) ? "" : "background-color: red;" }, "change", updateFunction  )
 let numberInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isNumber( Number(formattedValue) ) ? "text-align: right;" : "background-color: red;" }, "change", updateFunction  )
 
 
-let textAreaView = ( State, formattedValue, updateFunction ) => textArea( formattedValue, {class:"textArea_code"}, updateFunction )
+let textAreaView = ( State, formattedValue, updateFunction ) => textArea( isString(formattedValue) ? formattedValue : JSON.stringify(formattedValue) , {class:"textArea_code"}, updateFunction )
 let boolView = ( State, formattedValue, updateFunction ) => input( {value: formattedValue}, "click", updateFunction )
 
 let optionsViews = ( State, formattedValue, updateFunction, options )  => dropdown( formattedValue, options , updateFunction )
@@ -614,76 +454,6 @@ let entityRefView = ( State, formattedValue, updateFunction, options ) => {
 }
 let fileuploadView = ( State, formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", updateFunction)
 
-let functionView = ( State, formattedValue, updateFunction ) => {
-
-  //TBD
-  
-  let Value = formattedValue
-
-  
-
-
-  return d([
-        d("TBD")
-      /* d([
-        d("Navn"),
-        input( {value: Value.name}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {name: submitInputValue(e)})   ) )   ),
-      ], {class: "columns_1_1"}),
-      br(),
-      d([
-        d("Argumenter"),
-        d( Value.arguments.map( (argument, index) => d([
-          d([
-            checkBox(true),
-            d(String(index)),
-            submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.filter( (argument, i) => i !== index ) }    ) )))
-          ], {class: "columns_1_1_1"}),
-          input( {value: argument}, "change", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.slice(0, index ).concat(submitInputValue(e)).concat(Value.arguments.slice(index + 1, Value.arguments.length))  })   ) ) ),
-          //Argument type TBD
-          dropdown("string", [
-            {value: "string", label: "String"},
-            {value: "number", label: "Number"},
-            {value: "object", label: "Object"},
-          ]),
-        ], {class: "columns_1_9"}))),
-        submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {arguments: Value.arguments.concat("argument") }    ) ))),
-      ]),
-      br(),
-      d([
-        d("Statements"),
-        d( Value.statements.map( (statement, index) => d([
-          
-          d([
-            checkBox(true),
-            d(String(index)),
-            submitButton(" X ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.filter( (argument, i) => i !== index ) }    ) ))),
-          ], {class: "columns_1_1_1"}),
-          textArea( statement, {style: "margin: 1em;font: -webkit-control;"} , async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.slice(0, index ).concat(  submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  ).concat(Value.statements.slice(index + 1, Value.statements.length))  })   ) ) ),
-        ], {class: "columns_1_9"}))),
-        submitButton(" + ", async e => update( await Entity.replaceValue( attribute, mergerino(Value, {statements: Value.statements.concat("console.log('!');") }    ) )))
-      ]),*/
-  ]) 
-}
-
-
-let selectCompanyEntityView = ( State, formattedValue, updateFunction, options ) => {
-
-  let isValidCompanyEntity = getCompanyEvents( State.DB, State.S.selectedCompany ).includes(formattedValue)
-
-
-  let optionObjects = [{value: 0, label: 'Velg alternativ'}].concat( options.map( companyEntity => returnObject({value: getFromCompany( State.companyDatoms, companyEntity, 7543 ), label: getCompanyEntityLabel(State.DB, State.companyDatoms, companyEntity) })  )  ) 
-
-  return d([
-    isValidCompanyEntity ? companyEntityLabelWithPopup( State, State.Company.getCompanyEntityFromEvent( formattedValue ) ) : d("tom"),
-    dropdown(
-      isValidCompanyEntity ? formattedValue : "Velg", 
-      optionObjects,
-      updateFunction 
-      )
-
-    ])
-}
-
 let placeholderView = ( State, formattedValue, updateFunction ) => d( JSON.stringify( formattedValue )  )
 
 const valueTypeViews_single = {
@@ -695,21 +465,6 @@ const valueTypeViews_single = {
   "32": entityRefView,
   "5721": dateInput, //Dato
   "5824": fileuploadView, //File
-  "41": selectCompanyEntityView, //Company entity, ie. from user selection
-
-  
-  "6534": placeholderView, //ExpandedFunction - TBD
-
-
-  "6553": placeholderView, //Accbal -- only non-editable
-  
-
-
-  "6613": placeholderView, //function statements - only multiple
-  "6614": placeholderView, //function arguments - only multiple
-  "38": placeholderView, //datomconstructor - only multiple
-  "5849": placeholderView, //Konstruksjon av ny hendelse - only multiple
-
 }
 
 
@@ -779,7 +534,7 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
 
   let valueType = State.DB.get(attribute, "attribute/valueType")
 
-  if( valueType === 6783 ){ return companyEntityConstructorRowView( State, entity, attribute, index )  }
+  //if( valueType === 6783 ){ return companyEntityConstructorRowView( State, entity, attribute, index )  }
   if( valueType === 6613 ){ return argumentRowView( State, entity, attribute, index )  }
   if( valueType === 6614 ){ return statementRowView( State, entity, attribute, index )  }
 
@@ -832,3 +587,75 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
 }
 
 //--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* 
+let companyEntityConstructorRowView = ( State, entity, attribute, index) => {
+  
+  let entityConstructor = State.DB.get( entity, attribute)[index]
+  let companyEntityType = entityConstructor.companyEntityType
+
+  let balanceObjects = State.DB.getAll(7531)
+  let companyTransactions = State.DB.getAll(6778)
+  let companyDocuments = State.DB.getAll(7535)
+
+  let companyEntityTypeSelection = balanceObjects.concat( companyTransactions ).concat( companyDocuments )
+
+  return d([
+    dropdown(
+      companyEntityType, 
+      companyEntityTypeSelection.map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ),
+      async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {companyEntityType: Number( submitInputValue(e) ), attributeAssertions: {}  } ))} )
+      ),
+      br(),
+      d([
+        d( isDefined(State.DB.get( companyEntityType , "companyEntityType/attributes")) ? State.DB.get( companyEntityType , "companyEntityType/attributes").map(  attr => {
+          let attributeAssertions = entityConstructor.attributeAssertions
+
+          let attributeAssertion = attributeAssertions[ attr ]
+
+          let isEnabled = isDefined(attributeAssertion) ? attributeAssertion.isEnabled : false
+          let valueFunction = isDefined(attributeAssertion) ? attributeAssertion.valueFunction : ""
+
+          let isEnabledUpdateFunction = async e =>  {
+            let updatedAssertion = mergerino(attributeAssertion, {isEnabled: isEnabled ? false : true })
+
+            ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion})  } ))} )
+
+          } 
+          let valueFunctionUpdateFunction = async e => {
+
+            let updatedAssertion = mergerino(attributeAssertion, {valueFunction: submitInputValue(e), isEnabled: true })
+
+            ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion}) } ))} )
+          } 
+  
+  
+  
+          return d([
+            checkBox( isEnabled , isEnabledUpdateFunction ),
+            entityLabelWithPopup( State, attr),
+            textArea(valueFunction, {class:"textArea_code"}, valueFunctionUpdateFunction )
+          ], {style: gridColumnsStyle("1fr 3fr 6fr") })
+        }  ) : "ERROR" )
+      ])
+    
+  ])
+}  */

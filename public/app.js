@@ -139,10 +139,7 @@ const ClientApp = {
       
       
       let startTime = Date.now()
-      let elementTree = [
-        sessionStatePanel( ClientApp.States, ClientApp.Patches ),
-        newState.S.isAdmin ? adminPage( newState ) : clientPage( newState )
-      ]
+      let elementTree = [newState.S.isAdmin ? adminPage( newState ) : clientPage( newState )]
       sideEffects.updateDOM( elementTree )
       console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
   }
