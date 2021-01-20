@@ -46,11 +46,15 @@ let newCompanyDatom = (companyEntity, attribute, value, t) => returnObject({
   t
 })
 
-let getAllTransactions = (DB, company) => DB.getAll( 7948 ).filter( balanceObject => DB.get( balanceObject, "event/company")  === company  ).sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
+let getAllTransactions = (DB, company) => DB.getAll( 7948 )
+  .filter( transaction => DB.get( transaction, "event/company")  === company  )
+  .sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
 
 let getAllBalanceObjects = (DB, company) => DB.getAll( 7932 ).filter( balanceObject => DB.get( balanceObject, "event/company")  === company  )
 
-let constructCompanyDatoms = (DB, company ) => getAllTransactions( DB, company ).reduce( ( companyDatoms, transaction, index ) => companyTransactionReducer(DB, companyDatoms, transaction, index), [] )
+let constructCompanyDatoms = (DB, company ) => getAllTransactions( DB, company )
+  .filter( transaction => isDefined( DB.get( transaction, "transaction/transactionType" ) )  )
+  .reduce( ( companyDatoms, transaction, index ) => companyTransactionReducer(DB, companyDatoms, transaction, index), [] )
 
 let companyTransactionReducer = (DB, companyDatoms, transaction, index) => {
 
@@ -83,13 +87,15 @@ let companyTransactionReducer = (DB, companyDatoms, transaction, index) => {
     
   let companyDatomsWithEventTypeDatoms = companyDatoms.concat( generatedDatoms )
 
-  let balanceObjectsToUpdate = generatedDatoms
+  /* let balanceObjectsToUpdate = generatedDatoms
     .filter( generatedDatom => generatedDatom.attribute === 7867 || generatedDatom.attribute === 7866 )
     .map( generatedDatom => generatedDatom.value )
     .filter( value => isNumber(value) )
-    .filter( filterUniqueValues )
+    .filter( filterUniqueValues ) */
 
-  let companyDatomsWithEventCalculatedDatoms = balanceObjectsToUpdate.reduce( (companyDatoms, balanceObject) => balanceObjectReducer(DB, companyDatoms, balanceObject, transaction, transactionIndex) , companyDatomsWithEventTypeDatoms  )
+  let allBalanceObjects = getAllBalanceObjects( DB, DB.get( transaction, "event/company") )
+
+  let companyDatomsWithEventCalculatedDatoms = allBalanceObjects.reduce( (companyDatoms, balanceObject) => balanceObjectReducer(DB, companyDatoms, balanceObject, transaction, transactionIndex) , companyDatomsWithEventTypeDatoms  )
   
   let companyDatomsWithCompanyCalculatedDatoms = [
     DB.get(7537, 7751),

@@ -178,14 +178,14 @@ getBalanceObjectLabel = (DB, balanceObject) => {
 
 
   let entityTypeLabelController = {
-    "6253": () => `Aksjepost i ${DB.get( balanceObject, 1101)} `,
+    "6253": () => `Aksjepost i ${DB.get( DB.get( balanceObject, 5675), 1113)}`,
     "6248": () => `Bankkonto i ${DB.get( balanceObject, 1809)}`,
-    "7828": () => `Fordring på TBD`,
-    "6237": () => `Aksjekapitalinnskudd TBD`,
-    "6243": () => `Opptjent egenkapital TBD`,
-    "6264": () => `Gjeld til TBD`,
-    "7858": () => `Foreløpig årsresultat TBD`,
-    "7857": () => `Tilleggsutbytte TBD`,
+    "7828": () => `Fordring på ${DB.get( DB.get( balanceObject, 5675), 1113)}`,
+    "6237": () => `Aksjekapitalinnskudd`,
+    "6243": () => `Opptjent egenkapital`,
+    "6264": () => `Gjeld til ${DB.get( DB.get( balanceObject, 5675), 1113)}`,
+    "7858": () => `Foreløpig årsresultat`,
+    "7857": () => `Tilleggsutbytte`,
   }
 
 
@@ -200,8 +200,10 @@ getEntityLabel = (DB, entity) => DB.get(entity, "entity/entityType") === 7932
   ? getBalanceObjectLabel( DB, entity )
   : DB.get(entity, "entity/entityType") === 7948
   ? `Transaksjon ${ entity }`
+  : DB.get(entity, "entity/entityType") === 7979
+  ? DB.get(entity, 1113)
   : `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
-
+  
 getEntityDescription = (DB, entity) => `${ DB.get( entity, "entity/doc") ? DB.get( entity, "entity/doc") : ""}`
 
 
