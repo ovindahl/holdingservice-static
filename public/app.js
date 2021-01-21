@@ -97,14 +97,17 @@ let getClientActions = State => returnObject({
      newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
     ] )} ),
   createTransaction:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), newDatom( 'newEntity' , "transaction/transactionType", 8019 ), newDatom( 'newEntity' , "eventAttribute/1083", 0 ), newDatom( 'newEntity' , "event/date", Date.now() ), newDatom( 'newEntity' , "eventAttribute/1139", "" )] )} ),
-  splitTransaction:  async transaction =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
-    newDatom( transaction , "eventAttribute/1083", State.DB.get(transaction, "eventAttribute/1083") / 2 )
-  ].concat( getAllTransactionAttributes(State.DB, transaction)
-    .map( attribute =>  newDatom( 'newEntity' , attribute, attribute === 1083 ?  State.DB.get(transaction, "eventAttribute/1083") / 2 : State.DB.get(transaction, attribute) )  ) 
-    ))} ),
+  splitTransaction:  async transaction =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, getAllTransactionAttributes(State.DB, transaction).map( attribute =>  newDatom( 'newEntity' , attribute, attribute === 1083 ?  State.DB.get(transaction, "eventAttribute/1083") : State.DB.get(transaction, attribute) )  ) 
+    )} ),
     createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
-    createCompanyReport: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', 5669 ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
-  importBankDatoms:  async newDatoms =>  ClientApp.update( State, {DB: await Transactor.submitDatoms(State.DB, newDatoms )} ),
+    createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
+  importBankDatoms:  async newDatoms => {
+
+    let updatedDB = await Transactor.submitDatoms(State.DB, newDatoms )
+    let updatedCompanyDatoms = constructCompanyDatoms( updatedDB, State.S.selectedCompany )
+
+    ClientApp.update( State, {DB:updatedDB, companyDatoms: updatedCompanyDatoms } )
+  } ,
 })
 
 const ClientApp = {
@@ -126,7 +129,13 @@ const ClientApp = {
         get: (entity, attribute, eventTime) => getFromCompany(newState.companyDatoms, entity, attribute, eventTime),
         getAll: (companyEntityType, eventTime) => getAllCompanyEntitiesByType(newState.companyDatoms, companyEntityType, eventTime),
         getAllEntities: () => getCompanyEntities( newState.companyDatoms ),
-        getBalanceObjects: () => getAllBalanceObjects( State.DB, State.S.selectedCompany )
+        //getBalanceObjects: () => getAllBalanceObjects( State.DB, State.S.selectedCompany ),
+        getBalanceObjects: balanceObjectType => isDefined(balanceObjectType)
+          ? getAllBalanceObjects(DB, State.S.selectedCompany ).filter( balanceObject => isArray(balanceObjectType) 
+              ? balanceObjectType.includes( DB.get(balanceObject, 7934) ) 
+              : DB.get(balanceObject, 7934) === balanceObjectType 
+            )
+          : getAllBalanceObjects(DB, State.S.selectedCompany ),
       }
       
       //if(isDefined(newState.Company)){ newState.CompanyVersion = newState.Company.getVersion( newState.Company.get(newState.S.selectedCompanyEventIndex).t ) }  
@@ -168,10 +177,8 @@ let init = async () => {
 
     let initialDatabase = constructDatabase( Entities )
     let company = 6829
-
-    let startTime = Date.now()
     let companyDatoms = constructCompanyDatoms( initialDatabase, company ) 
-    console.log(`constructCompanyDatoms finished in ${Date.now() - startTime} ms`)
+    
 
     ClientApp.update( firstState, {
       DB: initialDatabase,
