@@ -202,13 +202,9 @@ getBalanceObjectLabel = (DB, balanceObject) => {
 }
 
 
-getEntityLabel = (DB, entity) => DB.get(entity, "entity/entityType") === 7932
-  ? getBalanceObjectLabel( DB, entity )
-  : DB.get(entity, "entity/entityType") === 7948
+getEntityLabel = (DB, entity) => DB.get(entity, "entity/entityType") === 7948
   ? `Transaksjon ${ entity }`
-  : DB.get(entity, "entity/entityType") === 7979
-  ? DB.get(entity, 1113)
-  : `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
+  :  `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
   
 getEntityDescription = (DB, entity) => `${ DB.get( entity, "entity/doc") ? DB.get( entity, "entity/doc") : ""}`
 

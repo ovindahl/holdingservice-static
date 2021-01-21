@@ -21,7 +21,8 @@ let clientPage = State => {
     "7509": progressView,
     "7860": balanceObjectsView,
     "7882": transactionsView,
-    "7977": actorsView
+    "7977": actorsView,
+    "7919": reportsView,
   }
   
   return d([
@@ -34,7 +35,7 @@ let clientPage = State => {
       d([
         stateView( State ),
         d([
-          d( [7509, 7860, 7882, 7977].map( pageEntity => entityLabelWithPopup( State, Number(pageEntity), () => State.Actions.selectPage(pageEntity) ) ), {class: "feedContainer"} ),
+          d( [7509, 7860, 7882, 7977, 7919].map( pageEntity => entityLabelWithPopup( State, Number(pageEntity), () => State.Actions.selectPage(pageEntity) ) ), {class: "feedContainer"} ),
           br(),
           d([pageRouter[ State.S.selectedPage ]( State ) ], {class: "feedContainer"} )
         ])
@@ -73,7 +74,8 @@ let stateView = State => {
         entityLabelWithPopup( State, 7928),
         isDefined( State.S.selectedEntity ) ? entityLabelWithPopup( State, State.S.selectedEntity ) : d(" - "),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-      
+      br(),
+      submitButton("Oppdatter kalkulerte verdier", () => State.Actions.updateCompany( State.S.selectedCompany ) )
     ])
   ], {class: "feedContainer"})
 } 
@@ -83,18 +85,41 @@ let stateView = State => {
 
 let progressView = State => d([
   d([
-    d("Steg 1:"),
-    d("Ferdig"),
-  ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
+    h3("Steg 1: Registrer selskapet"),
+    d( [1001, 1005].map( attr => entityAttributeView( State, State.S.selectedCompany, attr ) ) )
+  ]),
   br(),
   d([
-    d("Steg 2:"),
-    d("WIP"),
-  ], {style: gridColumnsStyle("repeat(2, 1fr)")}),
+    h3("Steg 2: Legg inn åpningsbalansen"),
+    d([
+      d("Fullsteding registrert:"),
+      checkBox(true)
+    ], {style: gridColumnsStyle("1fr 1fr")})
+  ]),
+  br(),
+  d([
+    h3("Steg 3: Legg inn årets transaksjoner"),
+    d([
+      d("All transaksjoner er registrert:"),
+      checkBox(true)
+    ], {style: gridColumnsStyle("1fr 1fr")})
+  ]),
+  d([
+    h3("Steg 4: Beregning av skatt og resultatdisponering"),
+    entityLabelWithPopup( State, 7903 ),
+    d( [6233, 6234, 6236].map( annualResultCalculatedField => d([
+      entityLabelWithPopup( State, annualResultCalculatedField ),
+      d(formatNumber( State.Company.get(7903, annualResultCalculatedField, State.S.selectedCompanyEventIndex ) ) ),
+    ], {style: gridColumnsStyle("1fr 1fr")})  )),
+    d([
+      d("Overfør til egenkapital"),
+      checkBox(true)
+    ], {style: gridColumnsStyle("1fr 1fr")})
+  ]),
   br(),
   d([
     d("Steg 3: Kontroller balansen"),
-    d( 
+    /* d( 
       [
         State.DB.get(7537, 7751),
         State.DB.get(7538, 7751),
@@ -103,7 +128,7 @@ let progressView = State => d([
         entityLabelWithPopup( State, calculatedField),
         d( formatNumber( State.Company.get(null, calculatedField, State.S.selectedCompanyEventIndex ) ) )
       ], {style: gridColumnsStyle("repeat(2, 1fr)")}) )
-     )
+     ) */
   ]),
   br(),
   d([
@@ -122,8 +147,13 @@ let singleBalanceObjectView = State => {
   let balanceObjectType = State.DB.get( balanceObject, "balanceObject/balanceObjectType" )
 
 
-  return isDefined(balanceObjectType)
-    ? d([
+  let balanceObjectCalculatedFields = State.DB.get( balanceObjectType, "companyEntityType/calculatedFields" )
+
+  let isLocked = isUndefined( State.Company.get(balanceObject, 7885) )
+    ? false
+    : State.Company.get(balanceObject, 7885).length > 0 || State.Company.get(balanceObject, 7884).length > 0
+
+  return d([
       submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
       br(),
       d([
@@ -136,15 +166,15 @@ let singleBalanceObjectView = State => {
         entityLabelWithPopup( State, balanceObject ),
       ]),
       br(),
-      d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView(State, balanceObject, attribute) ) ),
+      entityAttributeView(State, balanceObject, 7934),
+      entityAttributeView(State, balanceObject, 6),
       br(),
-      d( State.DB.get( balanceObjectType, "companyEntityType/calculatedFields" ).map( calculatedField => companyDatomView( State, balanceObject, calculatedField ) ) ),
-      submitButton("Slett", e => State.Actions.retractEntity(balanceObject) ),  
+      d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView( State, balanceObject, attribute ) ) ),
+      br(),
+      d( balanceObjectCalculatedFields.map( calculatedField => companyDatomView( State, balanceObject, calculatedField ) ) ),
+      br(),
+      isLocked ? d("") : submitButton("Slett", e => State.Actions.retractEntity(balanceObject) )
     ])
-  : d([
-    entityAttributeView(State, balanceObject, 7934),
-    submitButton("Slett", e => State.Actions.retractEntity(balanceObject) ),  
-  ])
 } 
 
 
@@ -154,11 +184,13 @@ let allBalanceObjectsView = State => {
 
   return d([
     d([7537, 7539, 7538].map( balanceSection =>  d([
-      entityLabelWithPopup( State, balanceSection ),
+      d([
+        entityLabelWithPopup( State, balanceSection ),
+        submitButton("+", () => State.Actions.createBalanceObject( D.getAll(7531).find( e => D.get(e, 7540) ===  balanceSection ) ) ),
+      ], {style: "display: flex;"}),
       d( allBalanceObjects.filter( balanceObject => State.DB.get( State.DB.get( balanceObject, "balanceObject/balanceObjectType" ), 7540 ) === balanceSection ).map( balanceObject => d([
         entityLabelWithPopup( State, balanceObject ),
-        d( formatNumber( State.Company.get( balanceObject, 7433, State.S.selectedCompanyEventIndex  ) ), {style: `text-align: right;`} ),
-        submitButton("X", e => State.Actions.retractEntity(balanceObject) )
+        d( formatNumber( State.Company.get( balanceObject, 7433, State.S.selectedCompanyEventIndex  ) ), {style: `text-align: right;`} )
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}))),
       d([
         entityLabelWithPopup( State, State.DB.get( balanceSection, 7748 ) ),
@@ -385,7 +417,7 @@ let allActorsView = State => {
       submitButton("X", e => State.Actions.retractEntity(actor) )
     ], {style: gridColumnsStyle("3fr 1fr")}) )),
   br(),
-  submitButton("Legg til", () => State.Actions.createCompanyDocument() ),
+  submitButton("Legg til", () => State.Actions.createCompanyActor() ),
   br(),
   ]) 
 } 
@@ -416,6 +448,54 @@ let singleActorView = State => {
   ])
 } 
 
+let reportsView = State => isDefined( State.S.selectedEntity ) ? singleReportView( State ) : allReportsView( State )
+
+let allReportsView = State => {
+
+  let allReports = State.DB.getAll(7865) //.filter( e => State.DB.get(e, 7535) === 6790 )
+
+  return d([
+    d([
+      entityLabelWithPopup( State, 7865 ),
+    ], {style: gridColumnsStyle("3fr 1fr")}),
+    d( allReports.map( report => d([
+      entityLabelWithPopup( State, report ),
+      submitButton("X", e => State.Actions.retractEntity(report) )
+    ], {style: gridColumnsStyle("3fr 1fr")}) )),
+  br(),
+  submitButton("Legg til", () => State.Actions.createCompanyReport() ),
+  br(),
+  ]) 
+} 
+
+let singleReportView = State => {
+
+  let report = State.S.selectedEntity
+
+  let reportType = State.DB.get( report, 8102 )
+
+  let documentTypeAttributes =  DB.get( reportType, 8106 ).filter( datomConstructor => datomConstructor.isEnabled ).map( datomConstructor => datomConstructor.attribute )
+  
+  
+
+  return d([
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
+    br(),
+    d([
+      entityLabelWithPopup( State, 7865 ),
+      span( " / " ),
+      entityLabelWithPopup( State, 7976 ),
+      span( " / " ),
+      entityLabelWithPopup( State, report ),
+    ]),
+    br(),
+    entityAttributeView(State, report, 8102 ),
+    entityAttributeView(State, report, 6 ),
+    br(),
+    d( documentTypeAttributes.map( attribute => companyDatomView( State, report, attribute ) ) ),
+  ])
+
+}
 
 // Company entity view END -------------------------------------------------------------
 

@@ -408,16 +408,8 @@ let companyValueView = (State, companyEntity, attribute, selectedCompanyEventInd
 
     let datalistID = getNewElementID()
 
-    let transactionTypeInputAttributes = State.DB.get( entity, 7942 )
   
-  
-    return transactionTypeInputAttributes.includes(datomConstructor.attribute)
-      ? d([
-        checkBox( datomConstructor["isEnabled"] , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {"isEnabled": datomConstructor["isEnabled"] ? false : true  }))} )),
-        entityLabelWithPopup( State,  datomConstructor.attribute ),
-        d( `return Event.get(${datomConstructor.attribute})` )
-        ], {style: gridColumnsStyle("1fr 2fr 3fr")})
-      : d([
+    return d([
         checkBox( datomConstructor["isEnabled"] , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {"isEnabled": datomConstructor["isEnabled"] ? false : true  }))} )),
         d([
           htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
