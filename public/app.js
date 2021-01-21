@@ -92,10 +92,14 @@ let getClientActions = State => returnObject({
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
   updateCompany: company => ClientApp.update( State, {companyDatoms: constructCompanyDatoms( State.DB, company ), S: {selectedCompany: company, selectedEntity: company }} ),
   createBalanceObject:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7932, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), newDatom( 'newEntity' , 'balanceObject/balanceObjectType', 6253 )] )} ),
-  createTransaction:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
+  createTransaction:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), newDatom( 'newEntity' , "transaction/transactionType", 8019 ), newDatom( 'newEntity' , "eventAttribute/1083", 0 ), newDatom( 'newEntity' , "event/date", Date.now() ), newDatom( 'newEntity' , "eventAttribute/1139", "" )] )} ),
+  splitTransaction:  async transaction =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
+    newDatom( transaction , "eventAttribute/1083", State.DB.get(transaction, "eventAttribute/1083") / 2 )
+  ].concat( getAllTransactionAttributes(State.DB, transaction)
+    .map( attribute =>  newDatom( 'newEntity' , attribute, attribute === 1083 ?  State.DB.get(transaction, "eventAttribute/1083") / 2 : State.DB.get(transaction, attribute) )  ) 
+    ))} ),
   createCompanyDocument: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
   importBankDatoms:  async newDatoms =>  ClientApp.update( State, {DB: await Transactor.submitDatoms(State.DB, newDatoms )} ),
-  //executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
 })
 
 const ClientApp = {

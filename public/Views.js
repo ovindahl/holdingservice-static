@@ -164,7 +164,12 @@ let allBalanceObjectsView = State => {
         entityLabelWithPopup( State, State.DB.get( balanceSection, 7748 ) ),
         d( formatNumber( State.Company.get( null, State.DB.get( balanceSection, 7748 ), State.S.selectedCompanyEventIndex  ) ), {style: `text-align: right;`} )        
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-      br(),
+      balanceSection === 7538
+        ? d([
+            entityLabelWithPopup( State, 6296 ),
+            d( formatNumber( State.Company.get( null, 6296, State.S.selectedCompanyEventIndex  ) ), {style: `text-align: right;`} )        
+          ], {style: gridColumnsStyle("repeat(3, 1fr)")})
+        : br(),
     ]),  ) ),
     
     
@@ -187,27 +192,32 @@ let singleTransactionView = State => isDefined( State.DB.get( State.S.selectedEn
  
 
 
+
+
 let definedTransactionView = State => {
 
   let transactionEntity = State.S.selectedEntity
   let transactionType = State.DB.get( transactionEntity, "transaction/transactionType" )
-
-
   let companyTransactions = getAllTransactions(State.DB, State.S.selectedCompany )
 
   let prevTransaction = companyTransactions[ companyTransactions.findIndex( t => t === transactionEntity ) - 1 ]
   let nextTransaction = companyTransactions[ companyTransactions.findIndex( t => t === transactionEntity ) + 1 ]
 
-  //Attrs
+  let originNode = State.DB.get( transactionEntity, "transaction/originNode" )
+  let destinationNode = State.DB.get( transactionEntity, "transaction/destinationNode" )
 
-  let inputAttributes = State.DB.get( transactionType, "transactionType/inputAttributes" )
-  let outputAttributes = State.DB.get( transactionType, "transactionType/outputAttributes" ).filter( datomConstructor => datomConstructor.isEnabled ).map( datomConstructor => datomConstructor.attribute )
+  let requiredAttributes = [7935, 1757, 1139]
 
-  let inputOnlyAttributes = inputAttributes.filter( attr =>  !outputAttributes.includes(attr) )
+  let requiredMeasures = [
+    State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
+    State.DB.get( State.DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
+  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
 
-  let outputOnlyAttributes = outputAttributes.filter( attr =>  !inputAttributes.includes(attr) )
 
-  let passThroughAttributes = outputAttributes.filter( attr =>  inputAttributes.includes(attr) )
+  let requiredMetadata = [
+    State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
+    State.DB.get( State.DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
+  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
 
   return d([
     submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
@@ -229,12 +239,13 @@ let definedTransactionView = State => {
     br(),
     transactionFlowView( State, transactionEntity ),
     br(),
-    d( inputOnlyAttributes.map( attribute => entityAttributeView( State, transactionEntity, attribute ) ) ),
+    d( requiredAttributes.map( attribute => entityAttributeView( State, transactionEntity, attribute ) ) ),
     br(),
-    d( passThroughAttributes.map( attribute => entityAttributeView( State, transactionEntity, attribute ) ) ),
+    d( requiredMeasures.map( attribute => entityAttributeView( State, transactionEntity, attribute ) ) ),
     br(),
-    d( outputOnlyAttributes.map( attribute => companyDatomView(State, transactionEntity, attribute, State.S.selectedCompanyEventIndex)  ) ),
+    d( requiredMetadata.map( attribute => entityAttributeView( State, transactionEntity, attribute ) ) ),
     br(),
+    submitButton("Splitt i to transaksjoner", e => State.Actions.splitTransaction(transactionEntity) ),  
     submitButton("Slett", e => State.Actions.retractEntity(transactionEntity) ),  
   ])
 } 
@@ -247,10 +258,13 @@ let undefinedTransactionView = State => d([
 
 let transactionFlowView = (State, transactionEntity) => d([
   d([
-    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) - 1 ) ), {class: "redlineText"}),
-    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) ) ) ),
-    entityLabelWithPopup(State, State.Company.get(transactionEntity, 7867 ) ),
-  ] ),
+    entityLabelWithPopup( State, 7867 ),
+    singleValueView( State, transactionEntity, 7867 ),
+    /* d([
+        d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) - 1 ) ), {class: "redlineText"}),
+        d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) ) ) ),
+      ]) */
+  ]),
   d([
     d(""),
     d([
@@ -262,11 +276,14 @@ let transactionFlowView = (State, transactionEntity) => d([
     d(""),
   ], {style: gridColumnsStyle("3fr 2fr 3fr")}),
   d([
-    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7866), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) - 1 ) ), {class: "redlineText"}),
-    d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7866), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) ) )),
-    entityLabelWithPopup(State, State.Company.get(transactionEntity, 7866 ) ),
-  ] )
-], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr 1fr")})
+    entityLabelWithPopup( State, 7866 ),
+    singleValueView( State, transactionEntity, 7866 ),
+    /* d([
+        d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) - 1 ) ), {class: "redlineText"}),
+        d(formatNumber( State.Company.get(State.Company.get(transactionEntity, 7867), 7433, State.Company.get( transactionEntity, 7916, State.S.selectedCompanyEventIndex ) ) ) ),
+      ]) */
+  ])
+], {class: "feedContainer", style: gridColumnsStyle("2fr 3fr 2fr")})
 
 
 
@@ -277,14 +294,12 @@ let allTransactionsView = State => {
   return d([
     d([
       entityLabelWithPopup( State, 7948 ),
-      entityLabelWithPopup( State, 7935 ),
       entityLabelWithPopup( State, 1757 ),
       entityLabelWithPopup( State, 1083 ),
-    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 3fr 1fr")}),
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr 1fr")}),
     d([
       d( alltransactions.map( companyTransaction => d([
         entityLabelWithPopup(State, companyTransaction ),
-        entityLabelWithPopup(State, State.DB.get( companyTransaction, 7935 ) ),
         d( moment( State.DB.get( companyTransaction, 1757 ) ).format("DD.MM.YYYY") , {style: `text-align: right;`}),
         d( formatNumber( State.Company.get( companyTransaction, 1083 ) ) , {style: `text-align: right;`}),
         d([
@@ -293,7 +308,7 @@ let allTransactionsView = State => {
           entityLabelWithPopup(State, State.Company.get(companyTransaction, 7866, State.S.selectedCompanyEventIndex) ),
         ], {style: gridColumnsStyle("3fr 1fr 3fr") + "padding-left: 3em;"} ),
         submitButton("X", e => State.Actions.retractEntity(companyTransaction) )
-      ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 3fr 1fr")})  ) ),
+      ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr 1fr")})  ) ),
     ]),
     br(),
     submitButton("Legg til", () => State.Actions.createTransaction() ),
@@ -302,10 +317,11 @@ let allTransactionsView = State => {
       d("Importer fra:"),
       entityLabelWithPopup( State, 7313),
       input({type: "file", style: `text-align: right;`}, "change", e => Papa.parse(e.srcElement.files[0], {header: false, complete: async results => {
+
         let transactionRows = results.data.filter( row => row.length > 1 ).slice(5, results.data.length-1)
 
         let datoms = transactionRows.map( transactionRow => constructTransactionRowDatoms(State, transactionRow)  ).flat()            
-        log({datoms})
+        log({results, transactionRows, datoms})
 
         State.Actions.importBankDatoms(datoms)
 
@@ -336,12 +352,13 @@ let constructTransactionRowDatoms = ( State, transactionRow) => {
 
   let referenceNumber = transactionRow[7]
 
+
   let transactionDatoms = [
     newDatom( referenceNumber, "entity/entityType", 7948  ),
     newDatom( referenceNumber, "event/company", State.S.selectedCompany  ),
-    newDatom( referenceNumber, "transaction/transactionType", isPayment ? 7961 : 7962 ),
+    newDatom( referenceNumber, "transaction/transactionType", 8019 ),
     newDatom( referenceNumber, "event/date", date  ),
-    newDatom( referenceNumber, "attr/1609744480269", 7313),
+    newDatom( referenceNumber, isPayment ? "transaction/originNode" : "transaction/destinationNode", 7313),
     newDatom( referenceNumber, "eventAttribute/1083", amount  ),
     newDatom( referenceNumber, "eventAttribute/1139", description  ),
     newDatom( referenceNumber, "bankTransaction/referenceNumber", referenceNumber  ),

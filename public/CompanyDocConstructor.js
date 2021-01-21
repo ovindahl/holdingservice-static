@@ -50,9 +50,31 @@ let getAllTransactions = (DB, company) => DB.getAll( 7948 )
   .filter( transaction => DB.get( transaction, "event/company")  === company  )
   .sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
 
+let getAllTransactionAttributes = (DB, transactionEntity) => {
+
+  let originNode = DB.get( transactionEntity, "transaction/originNode" )
+  let destinationNode =DB.get( transactionEntity, "transaction/destinationNode" )
+
+  let requiredAttributes = [7530, 7935, 7867, 7866, 1757, 1139]
+
+  let requiredMeasures = [
+    DB.get( DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
+    DB.get( DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
+  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
+
+
+  let requiredMetadata = [
+    DB.get( DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
+    DB.get( DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
+  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
+
+
+  return requiredAttributes.concat(requiredMeasures).concat(requiredMetadata)
+}
+
 let getAllBalanceObjects = (DB, company) => DB.getAll( 7932 ).filter( balanceObject => DB.get( balanceObject, "event/company")  === company  )
 
-let constructCompanyDatoms = (DB, company ) => getAllTransactions( DB, company )
+let constructCompanyDatoms = (DB, company ) =>  getAllTransactions( DB, company )
   .filter( transaction => isDefined( DB.get( transaction, "transaction/transactionType" ) )  )
   .reduce( ( companyDatoms, transaction, index ) => companyTransactionReducer(DB, companyDatoms, transaction, index), [] )
 
@@ -60,10 +82,15 @@ let companyTransactionReducer = (DB, companyDatoms, transaction, index) => {
 
   let transactionType = DB.get(transaction, "transaction/transactionType" )
   let transactionIndex = index + 1
-  let sharedStatements = DB.get( transactionType, "transactionType/sharedStatements" )
+  
+
+
+  let transactionAttributes = getAllTransactionAttributes( DB, transaction )
 
   
 
+  /* 
+  let sharedStatements = DB.get( transactionType, "transactionType/sharedStatements" )
   let transactionTypeInputAttributes = DB.get( transactionType, "transactionType/inputAttributes" )
   let datomConstructors = DB.get( transactionType , "transactionType/outputAttributes" ).filter( datomConstructor => datomConstructor.isEnabled )
 
@@ -72,15 +99,16 @@ let companyTransactionReducer = (DB, companyDatoms, transaction, index) => {
       .filter( statement => statement["statement/isEnabled"] )
       .map( statement => statement["statement/statement"] )
       .join(";") + ";"
-    : ""
+    : "" */
 
-  let generatedDatoms =  datomConstructors
-    .reduce(  (generatedDatoms, datomConstructor) => generatedDatoms.concat( newCompanyDatom(
+  let generatedDatoms =  transactionAttributes
+    .reduce(  (generatedDatoms, attribute) => generatedDatoms.concat( newCompanyDatom(
       transaction, 
-      datomConstructor.attribute, 
-      transactionTypeInputAttributes.includes( datomConstructor.attribute )
+      attribute, 
+      DB.get(transaction, attribute),
+      /* transactionTypeInputAttributes.includes( datomConstructor.attribute )
         ? DB.get(transaction, datomConstructor.attribute)
-        : tryFunction( () => new Function( [`Database`, `Company`, `Event`], sharedStatementsString + datomConstructor.valueFunction )( DB, { get: (entity, attr, transactionIndex) => getFromCompany( companyDatoms, entity, attr, transactionIndex ) }, DB.get(transaction) ) ), 
+        : tryFunction( () => new Function( [`Database`, `Company`, `Event`], sharedStatementsString + datomConstructor.valueFunction )( DB, { get: (entity, attr, transactionIndex) => getFromCompany( companyDatoms, entity, attr, transactionIndex ) }, DB.get(transaction) ) ),  */
       transactionIndex
     ) ) , [newCompanyDatom( transaction, 7916, transactionIndex , transactionIndex )]   )
 

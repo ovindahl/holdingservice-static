@@ -447,9 +447,9 @@ let optionsViews = ( State, formattedValue, updateFunction, options )  => dropdo
 let entityRefView = ( State, formattedValue, updateFunction, options ) => {
   let datalistID = getNewElementID()
   return d([
-    entityLabelWithPopup( State,  formattedValue ), 
     htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
-    input({value: formattedValue, list: datalistID, style: `text-align: right;`}, "change", updateFunction),
+    entityLabelWithPopup( State,  formattedValue ), 
+    input({value: formattedValue, list: datalistID, style: `text-align: right;max-width: 50px;`}, "change", updateFunction),
     ])
 }
 let fileuploadView = ( State, formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", updateFunction)

@@ -2,8 +2,9 @@ let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, a
 
 
 const Transactor = {
-    submitDatoms: async (DB, datoms) => {
-    let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datoms ) )
+    submitDatoms: async (DB, Datoms) => {
+    let datomsWithStringAttributes = Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value ) : Datom )
+    let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datomsWithStringAttributes ) )
     let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
     return updatedDB
     },
@@ -50,7 +51,12 @@ const Transactor = {
     createEntity: async (DB, entityType, newEntityDatoms) => {
   
       let D = [newDatom("newEntity", "entity/entityType", entityType )]
-      if(Array.isArray(newEntityDatoms)){D = D.concat(newEntityDatoms)}
+      if(Array.isArray(newEntityDatoms)){
+
+        let datomsWithStringAttributes = newEntityDatoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value ) : Datom )
+
+        D = D.concat( datomsWithStringAttributes )
+      }
   
       let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( D ) )
       let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
