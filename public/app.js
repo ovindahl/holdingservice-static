@@ -96,7 +96,14 @@ let getClientActions = State => returnObject({
      newDatom( 'newEntity' , 'balanceObject/balanceObjectType', balanceObjectType ),
      newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
     ] )} ),
-  createTransaction:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), newDatom( 'newEntity' , "transaction/transactionType", 8019 ), newDatom( 'newEntity' , "eventAttribute/1083", 0 ), newDatom( 'newEntity' , "event/date", Date.now() ), newDatom( 'newEntity' , "eventAttribute/1139", "" )] )} ),
+  createTransaction:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
+    newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), 
+    newDatom( 'newEntity' , 'transaction/accountingYear', getAllAccountingYears( State.DB, State.S.selectedCompany ).slice(-1)[0] ), 
+    newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
+    newDatom( 'newEntity' , "eventAttribute/1083", 0 ), 
+    newDatom( 'newEntity' , "event/date", Date.now() ), 
+    newDatom( 'newEntity' , "eventAttribute/1139", "" )
+  ] )} ),
   splitTransaction:  async transaction =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, getAllTransactionAttributes(State.DB, transaction).map( attribute =>  newDatom( 'newEntity' , attribute, attribute === 1083 ?  State.DB.get(transaction, "eventAttribute/1083") : State.DB.get(transaction, attribute) )  ) 
     )} ),
     createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
