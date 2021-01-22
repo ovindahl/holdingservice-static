@@ -179,7 +179,7 @@ let allBalanceObjectsView = State => {
   let allBalanceObjects = State.Company.getBalanceObjects()
 
   return d([
-    d([7537, 7539, 7538].map( balanceSection =>  d([
+    d( State.DB.getAll(7536).map( balanceSection =>  d([
       d([
         entityLabelWithPopup( State, balanceSection ),
         submitButton("+", () => State.Actions.createBalanceObject( D.getAll(7531).find( e => D.get(e, 7540) ===  balanceSection ) ) ),

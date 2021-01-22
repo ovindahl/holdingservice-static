@@ -141,6 +141,7 @@ let companyTransactionReducer = (DB, companyDatoms, transaction, index) => {
   let companyDatomsWithEventCalculatedDatoms = balanceObjectsToUpdate.reduce( (companyDatoms, balanceObject) => balanceObjectReducer(DB, companyDatoms, balanceObject, transaction, transactionIndex, allTransactions) , companyDatomsWithEventTypeDatoms  )
   
   let companyDatomsWithCompanyCalculatedDatoms = [
+    DB.get(8220, 7751),
     DB.get(7537, 7751),
     DB.get(7538, 7751),
     DB.get(7539, 7751)
