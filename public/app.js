@@ -86,7 +86,7 @@ let getDBActions = State => returnObject({
 
 let getClientActions = State => returnObject({
   selectPage: pageEntity => ClientApp.update( State, {S: {selectedPage: pageEntity, selectedEntity: undefined, selectedCompanyEntity: undefined}}),
-  selectEntity: entity => ClientApp.update( State, {S: {selectedEntity: entity}}),
+  selectEntity: entity => ClientApp.update( State, {S: {selectedEntity: entity, selectedPage: isDefined(entity) ? State.DB.get( State.DB.get(entity, 19), 7930 ) : State.S.selectedPage }}),
   selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
   selectCompanyEventIndex: companyDate => ClientApp.update( State, {S: {selectedCompanyEventIndex: companyDate }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
@@ -111,9 +111,8 @@ let getClientActions = State => returnObject({
   importBankDatoms:  async newDatoms => {
 
     let updatedDB = await Transactor.submitDatoms(State.DB, newDatoms )
-    let updatedCompanyDatoms = constructCompanyDatoms( updatedDB, State.S.selectedCompany )
 
-    ClientApp.update( State, {DB:updatedDB, companyDatoms: updatedCompanyDatoms } )
+    ClientApp.update( State, {DB:updatedDB } )
   } ,
 })
 
@@ -190,7 +189,7 @@ let init = async () => {
     ClientApp.update( firstState, {
       DB: initialDatabase,
       companyDatoms,
-      S: { selectedCompany: company, selectedPage: 7882, selectedCompanyEventIndex: 21 }
+      S: { selectedCompany: company, selectedPage: 7882, selectedCompanyEventIndex: getAllTransactions(initialDatabase, company).length }
     } )
     
   }else{ ClientApp.update( firstState, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }

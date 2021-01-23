@@ -286,7 +286,7 @@ let definedTransactionView = State => {
   let originNode = State.DB.get( companyTransaction, "transaction/originNode" )
   let destinationNode = State.DB.get( companyTransaction, "transaction/destinationNode" )
 
-  let requiredAttributes = [7935, 1757, 1139]
+  let requiredAttributes = [1757, 1139]
 
   let requiredMeasures = [
     State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
@@ -378,7 +378,7 @@ let allTransactionsView = State => {
     h3("Alle transaksjoner"),
     d([
       d( alltransactions.map( companyTransaction => d([
-        entityLabelWithPopup(State, State.DB.get(companyTransaction, "transaction/accountingYear"), () => State.Actions.selectEntity(companyTransaction) ),
+        entityLabelWithPopup(State, State.DB.get(companyTransaction, "transaction/accountingYear") ),
         d(`Transaksjon ${ State.Company.get(companyTransaction, 7916) }`, {class: "entityLabel", style: "background-color:#00bcd466;"}, "click", () => State.Actions.selectEntity(companyTransaction) ),
         d( moment( State.DB.get( companyTransaction, 1757 ) ).format("DD.MM.YYYY") , {style: `text-align: right;`}),
         d( formatNumber( State.DB.get( companyTransaction, 1083 ) ) , {style: `text-align: right;`}),
@@ -434,10 +434,12 @@ let constructTransactionRowDatoms = ( State, transactionRow, index) => {
 
   let referenceNumber = transactionRow[7]
 
+  let accountingYear = getAllAccountingYears( State.DB, State.S.selectedCompany ).slice(-1)[0]
 
   let transactionDatoms = [
     newDatom( "newDatom_"+ index, "entity/entityType", 7948  ),
     newDatom( "newDatom_"+ index, "event/company", State.S.selectedCompany  ),
+    newDatom( "newDatom_"+ index, 'transaction/accountingYear', accountingYear ), 
     newDatom( "newDatom_"+ index, "transaction/transactionType", 8019 ),
     newDatom( "newDatom_"+ index, "event/date", date  ),
     newDatom( "newDatom_"+ index, isPayment ? "transaction/originNode" : "transaction/destinationNode", 7313),
@@ -506,14 +508,16 @@ let allReportsView = State => {
 
   return d([
     d([
+      entityLabelWithPopup( State, 7408 ),
       entityLabelWithPopup( State, 7865 ),
-    ], {style: gridColumnsStyle("3fr 1fr")}),
+    ], {style: gridColumnsStyle("1fr 1fr 1fr")}),
     d( allReports.map( report => d([
+      entityLabelWithPopup(State, State.DB.get(report, 7408) ),
       entityLabelWithPopup( State, report ),
-      submitButton("X", e => State.Actions.retractEntity(report) )
-    ], {style: gridColumnsStyle("3fr 1fr")}) )),
+      //submitButton("X", e => State.Actions.retractEntity(report) )
+    ], {style: gridColumnsStyle("1fr 1fr 1fr")}) )),
   br(),
-  submitButton("Legg til", () => State.Actions.createCompanyReport( 5669 ) ),
+  //submitButton("Legg til", () => State.Actions.createCompanyReport( 5669 ) ),
   br(),
   ]) 
 } 
@@ -523,8 +527,8 @@ let singleReportView = State => {
   let report = State.S.selectedEntity
 
   let reportType = State.DB.get( report, 8102 )
-
-  let documentTypeAttributes =  DB.get( reportType, 8106 ).filter( datomConstructor => datomConstructor.isEnabled ).map( datomConstructor => datomConstructor.attribute )
+  let inputAttributes =  State.DB.get( reportType, 8 )
+  let generatedAttributes =  State.DB.get( reportType, 8106 ).filter( datomConstructor => datomConstructor.isEnabled ).map( datomConstructor => datomConstructor.attribute )
   
   
 
@@ -539,10 +543,9 @@ let singleReportView = State => {
       entityLabelWithPopup( State, report ),
     ]),
     br(),
-    entityAttributeView(State, report, 8102 ),
-    entityAttributeView(State, report, 6 ),
+    d( inputAttributes.map( attribute => entityAttributeView(State, report, attribute ), ) ),
     br(),
-    d( documentTypeAttributes.map( attribute => companyDatomView( State, report, attribute ) ) ),
+    d( generatedAttributes.map( attribute => companyDatomView( State, report, attribute ) ) ),
   ])
 
 }
