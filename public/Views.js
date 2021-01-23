@@ -93,6 +93,21 @@ let singleAccountingYearView = State => {
   let accountingYearType = State.DB.get( accountingYear, "accountingYear/accountingYearType" )
   let inputAttributes = State.DB.get( accountingYearType, 7942 )
 
+  let accountingYearTransactions = getAllTransactions(State.DB, State.S.selectedCompany ).filter( transaction => State.DB.get(transaction, "transaction/accountingYear") === accountingYear )
+
+  let openingBalanceEventIndex = State.Company.get( accountingYearTransactions[0], 7916 ) - 1
+
+  let lastEventIndex = State.Company.get( accountingYearTransactions.slice(-1)[0], 7916 ) 
+
+
+  let PnLCalculatedFields = DB.get(8220, 7751)
+
+  let balanceCalculatedFields = [
+    DB.get(7537, 7751),
+    DB.get(7538, 7751),
+    DB.get(7539, 7751)
+  ].flat()
+
 
   return d([
     submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
@@ -109,16 +124,37 @@ let singleAccountingYearView = State => {
     br(),
     d( inputAttributes.map( attribute => entityAttributeView( State, accountingYear, attribute ) ) ),
     br(),
-    State.DB.get( accountingYear, 8265  ) 
-      ? taxView( State )
-      : d(""),
+    br(),
+    h3("Resultatregnskap"),
+    d( PnLCalculatedFields
+      //.filter( calculatedField => State.Company.get(null, calculatedField, openingBalanceEventIndex ) !== 0 || State.Company.get(null, calculatedField, lastEventIndex ) !== 0 )
+      .map( calculatedField => d([
+        entityLabelWithPopup( State, calculatedField ),
+        d(formatNumber( State.Company.get(null, calculatedField, lastEventIndex ) - State.Company.get(null, calculatedField, openingBalanceEventIndex ) ), {style: `text-align: right;`}),
+      ], {style: gridColumnsStyle("1fr 1fr ")}) ) ),
+    br(),
+    h3("Balanseregnskap"),
+    d([
+      d("Post i balansen"),
+      d("31/12 i år", {style: `text-align: right;`}),
+      d("31/12 i fjor", {style: `text-align: right;`}),
+    ], {style: gridColumnsStyle("1fr 1fr 1fr")}),
+    d( balanceCalculatedFields
+        //.filter( calculatedField => State.Company.get(null, calculatedField, openingBalanceEventIndex ) !== 0 || State.Company.get(null, calculatedField, lastEventIndex ) !== 0)
+        .map( calculatedField => d([
+          entityLabelWithPopup( State, calculatedField ),
+          d(formatNumber( State.Company.get(null, calculatedField, lastEventIndex ) ), {style: `text-align: right;`}),
+          d(formatNumber( State.Company.get(null, calculatedField, openingBalanceEventIndex ) ), {style: `text-align: right;`}),
+        ], {style: gridColumnsStyle("1fr 1fr 1fr")}) ) ),
+    br(),
+    //taxView( State )
     //submitButton("Slett", e => State.Actions.retractEntity(accountingYear) ),  
   ])
 } 
 
 let taxView = State => {
 
-  let calculatedFields = State.DB.getAll( 7526 ).filter( e => DB.get(e, "entity/category") === "Resultatregnskapet")
+  let calculatedFields = State.DB.get( 8220, 7751 )
 
   return d([
     h3("Beregnet resultat [NB: Akkummulert]"),
