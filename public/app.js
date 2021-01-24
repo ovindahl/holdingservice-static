@@ -106,8 +106,8 @@ let getClientActions = State => returnObject({
   ] )} ),
   splitTransaction:  async transaction =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, getAllTransactionAttributes(State.DB, transaction).map( attribute =>  newDatom( 'newEntity' , attribute, attribute === 1083 ?  State.DB.get(transaction, "eventAttribute/1083") : State.DB.get(transaction, attribute) )  ) 
     )} ),
-    createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
-    createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
+  createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
+  createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
   importBankDatoms:  async newDatoms => {
 
     let updatedDB = await Transactor.submitDatoms(State.DB, newDatoms )
@@ -128,22 +128,9 @@ const ClientApp = {
           S: mergerino(prevState.S, patch.S),
         }
 
-      
-
       newState.Company = {
         companyDatoms: newState.companyDatoms,
-        get: (entity, attribute, eventTime) => isDefined( newState.DB.get(entity, attribute) )
-        ? newState.DB.get(entity, attribute)
-        : getFromCompany( newState.companyDatoms, entity, attribute, eventTime ),
-        
-        
-        //getFromCompany(newState.companyDatoms, entity, attribute, eventTime),
-
-
-
-        getAll: (companyEntityType, eventTime) => getAllCompanyEntitiesByType(newState.companyDatoms, companyEntityType, eventTime),
-        getAllEntities: () => getCompanyEntities( newState.companyDatoms ),
-        //getBalanceObjects: () => getAllBalanceObjects( State.DB, State.S.selectedCompany ),
+        get: (entity, attribute, eventTime) => DB.isAttribute(attribute) ? DB.get(entity, attribute) : getFromCompany( newState.companyDatoms, entity, attribute, eventTime ),
         getBalanceObjects: balanceObjectType => isDefined(balanceObjectType)
           ? getAllBalanceObjects(DB, State.S.selectedCompany ).filter( balanceObject => isArray(balanceObjectType) 
               ? balanceObjectType.includes( DB.get(balanceObject, 7934) ) 
@@ -152,8 +139,6 @@ const ClientApp = {
           : getAllBalanceObjects(DB, State.S.selectedCompany ),
       }
       
-      //if(isDefined(newState.Company)){ newState.CompanyVersion = newState.Company.getVersion( newState.Company.get(newState.S.selectedCompanyEventIndex).t ) }  
-
       newState.Actions = Object.assign( {}, getDBActions(newState), getClientActions(newState) )
       
       State = newState

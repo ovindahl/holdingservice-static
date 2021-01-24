@@ -20,6 +20,8 @@ let randBetween = (lowest, highest) => Math.round( lowest + Math.random() * (hig
 
 let formatNumber = (num, decimals) => isNumber(num) ? num.toFixed( isNumber(decimals) ? decimals : 0 ).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1 ') : "NaN"
 
+let arrayUnion = Arrays => Arrays.flat().filter( filterUniqueValues )
+
 let tryFunction = Func => {
   let value;
   try {value = Func() }
@@ -115,9 +117,6 @@ let submitButton = (label, onClick) => d(label, {class: "textButton"}, "click", 
   onClick(e)
 }  )
 
-
-
-
 let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns: ${rowSpecification};`
 
 
@@ -148,9 +147,6 @@ d([
   entityPopUp( State, entity ),
 ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
-
-
-
 
 let entityPopUp = (State, entity) => d([
   entityLabel( State, entity ),
@@ -627,75 +623,3 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
 }
 
 //--------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* 
-let companyEntityConstructorRowView = ( State, entity, attribute, index) => {
-  
-  let entityConstructor = State.DB.get( entity, attribute)[index]
-  let companyEntityType = entityConstructor.companyEntityType
-
-  let balanceObjects = State.DB.getAll(7531)
-  let companyTransactions = State.DB.getAll(6778)
-  let companyDocuments = State.DB.getAll(7535)
-
-  let companyEntityTypeSelection = balanceObjects.concat( companyTransactions ).concat( companyDocuments )
-
-  return d([
-    dropdown(
-      companyEntityType, 
-      companyEntityTypeSelection.map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ),
-      async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {companyEntityType: Number( submitInputValue(e) ), attributeAssertions: {}  } ))} )
-      ),
-      br(),
-      d([
-        d( isDefined(State.DB.get( companyEntityType , "companyEntityType/attributes")) ? State.DB.get( companyEntityType , "companyEntityType/attributes").map(  attr => {
-          let attributeAssertions = entityConstructor.attributeAssertions
-
-          let attributeAssertion = attributeAssertions[ attr ]
-
-          let isEnabled = isDefined(attributeAssertion) ? attributeAssertion.isEnabled : false
-          let valueFunction = isDefined(attributeAssertion) ? attributeAssertion.valueFunction : ""
-
-          let isEnabledUpdateFunction = async e =>  {
-            let updatedAssertion = mergerino(attributeAssertion, {isEnabled: isEnabled ? false : true })
-
-            ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion})  } ))} )
-
-          } 
-          let valueFunctionUpdateFunction = async e => {
-
-            let updatedAssertion = mergerino(attributeAssertion, {valueFunction: submitInputValue(e), isEnabled: true })
-
-            ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( entityConstructor, {attributeAssertions: mergerino(attributeAssertions, {[attr]: updatedAssertion}) } ))} )
-          } 
-  
-  
-  
-          return d([
-            checkBox( isEnabled , isEnabledUpdateFunction ),
-            entityLabelWithPopup( State, attr),
-            textArea(valueFunction, {class:"textArea_code"}, valueFunctionUpdateFunction )
-          ], {style: gridColumnsStyle("1fr 3fr 6fr") })
-        }  ) : "ERROR" )
-      ])
-    
-  ])
-}  */

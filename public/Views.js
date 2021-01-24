@@ -135,37 +135,12 @@ let singleAccountingYearView = State => {
       d("31/12 i fjor", {style: `text-align: right;`}),
     ], {style: gridColumnsStyle("1fr 1fr 1fr")}),
     d( balanceCalculatedFields
-        //.filter( calculatedField => State.Company.get(null, calculatedField, openingBalanceEventIndex ) !== 0 || State.Company.get(null, calculatedField, lastEventIndex ) !== 0)
         .map( calculatedField => d([
           entityLabelWithPopup( State, calculatedField ),
-          d(formatNumber( State.Company.get(null, calculatedField, lastEventIndex ) ), {style: `text-align: right;`}),
-          d(formatNumber( State.Company.get(null, calculatedField, openingBalanceEventIndex ) ), {style: `text-align: right;`}),
+          d(formatNumber( State.Company.get( State.S.selectedCompany, calculatedField, lastEventIndex ) ), {style: `text-align: right;`}),
+          d(formatNumber( State.Company.get(State.S.selectedCompany, calculatedField, openingBalanceEventIndex ) ), {style: `text-align: right;`}),
         ], {style: gridColumnsStyle("1fr 1fr 1fr")}) ) ),
     br(),
-    //taxView( State )
-    //submitButton("Slett", e => State.Actions.retractEntity(accountingYear) ),  
-  ])
-} 
-
-let taxView = State => {
-
-  let calculatedFields = State.DB.get( 8220, 7751 )
-
-  return d([
-    h3("Beregnet resultat [NB: Akkummulert]"),
-    d( calculatedFields.map( calculatedField => d([
-      entityLabelWithPopup( State, calculatedField ),
-      d(formatNumber( State.Company.get(null, calculatedField, State.S.selectedCompanyEventIndex ) )),
-    ], {style: gridColumnsStyle("1fr 1fr ")}) ) ),
-    br(),
-    d([
-      entityLabelWithPopup( State, 7819 ),
-      d(formatNumber( State.Company.get(null, 7819, State.S.selectedCompanyEventIndex ) )),
-    ], {style: gridColumnsStyle("1fr 1fr ")}),
-    d([
-      entityLabelWithPopup( State, 7818 ),
-      d(formatNumber( State.Company.get(null, 7818, State.S.selectedCompanyEventIndex ) )),
-    ], {style: gridColumnsStyle("1fr 1fr ")})
   ])
 } 
 
@@ -243,12 +218,12 @@ let allBalanceObjectsView = State => {
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}))),
       d([
         entityLabelWithPopup( State, State.DB.get( balanceSection, 7748 ) ),
-        d( formatNumber( State.Company.get( null, State.DB.get( balanceSection, 7748 ), State.S.selectedCompanyEventIndex  ) ), {style: `text-align: right;`} )        
+        d( formatNumber( State.Company.get( State.S.selectedCompany, State.DB.get( balanceSection, 7748 ), State.S.selectedCompanyEventIndex  ) ), {style: `text-align: right;`} )        
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
       balanceSection === 7538
         ? d([
             entityLabelWithPopup( State, 6296 ),
-            d( formatNumber( State.Company.get( null, 6296, State.S.selectedCompanyEventIndex  ) ), {style: `text-align: right;`} )        
+            d( formatNumber( State.Company.get( State.S.selectedCompany, 6296, State.S.selectedCompanyEventIndex  ) ), {style: `text-align: right;`} )        
           ], {style: gridColumnsStyle("repeat(3, 1fr)")})
         : br(),
     ]),  ) ),
