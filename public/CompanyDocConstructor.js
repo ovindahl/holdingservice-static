@@ -174,6 +174,12 @@ let balanceObjectCalculatedFieldReducer = ( DB, companyDatoms, balanceObject, ca
     transactionIndex, 
   )
 
+  if( calculatedField === 8322 ){
+
+
+    log({newDatom, newValueFunctionString})
+  }
+
   return companyDatoms.concat( newDatom )
   
 }
@@ -244,7 +250,7 @@ let accountingYearReducer = (DB, companyDatoms, accountingYear ) => {
   let datomsWithAccountingYear = accountingYearCalculatedFields.reduce( (companyDatoms, calculatedField) => balanceObjectCalculatedFieldReducer( DB, companyDatoms, accountingYear, calculatedField, undefined, transactionIndex, allTransactions ) , companyDatoms )
 
 
-  let accountingYearReports = [8108, 8105] // getAllReports( DB, accountingYear )
+  let accountingYearReports = [8108] // getAllReports( DB, accountingYear )
 
   let datomsWithAccountingYearReportDatoms = accountingYearReports.reduce( (companyDatoms, report) => reportReducer(DB, companyDatoms, accountingYear, report ) , datomsWithAccountingYear )
 
@@ -260,18 +266,17 @@ let reportReducer = (DB, companyDatoms, accountingYear, report,  ) => {
 
   if( isUndefined(DB.get( reportType, 8106 )) ){return companyDatoms}
 
-  let datomConstructors = DB.get( reportType, 8106 ).filter( datomConstructor => datomConstructor.isEnabled )
+  //let datomConstructors = DB.get( reportType, 8106 ).filter( datomConstructor => datomConstructor.isEnabled )
 
-    let reportDatoms = datomConstructors.reduce( (companyDatoms, datomConstructor) => reportCalculatedFieldReducer(DB, companyDatoms, accountingYear, report, datomConstructor ), companyDatoms )
-    log({reportDatoms})
+  let reportFields = isDefined( DB.get( reportType, 22 ) ) ? DB.get( reportType, 22 ) : []
+
+    let reportDatoms = reportFields.reduce( (companyDatoms, reportField) => reportCalculatedFieldReducer(DB, companyDatoms, accountingYear, report, reportField ), companyDatoms )
     return companyDatoms.concat( reportDatoms )
 
 }
 
 
-let reportCalculatedFieldReducer = ( DB, companyDatoms, accountingYear, report, datomConstructor ) => {
-
-  let options = [{value: 0, label: "Rapportens input"}, {value: 1, label: "Selskapet"}, {value: 2, label: "Regnskapsåret"}, {value: 3, label: "Funksjon"}]
+let reportCalculatedFieldReducer = ( DB, companyDatoms, accountingYear, report, reportField ) => {
 
 
   let allTransactions = getAllTransactions(DB, DB.get(accountingYear, "accountingYear/company" ) )
@@ -287,25 +292,29 @@ let reportCalculatedFieldReducer = ( DB, companyDatoms, accountingYear, report, 
     getAllTransactions: () =>  allTransactions //Denne er veldig treig, TBD
   }
 
-  let sourceEntity = datomConstructor.sourceEntity === 0
-    ? report
-    : datomConstructor.sourceEntity === 1
-      ? null
-      : datomConstructor.sourceEntity === 2
-        ? accountingYear
-        : undefined
+  let sourceEntityTypeController = {
+    "5722": () => CompanyQueryObject.get( null, calculatedField ), //company
+    "7403": () => CompanyQueryObject.get( accountingYear, calculatedField ),
+    "7865": () => CompanyQueryObject.get( report, calculatedField ),
+    "8662": () => tryFunction( () => new Function( [`Database`, `Company`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, CompanyQueryObject ) )
+  }
 
-  let datomValue = CompanyQueryObject.get( sourceEntity, datomConstructor.calculatedField )
+  let sourceEntityType = DB.get( reportField, 8361 )
+
+
+  let calculatedField = DB.get( reportField, 8362 )
+
+  let datomValue = sourceEntityTypeController[ sourceEntityType ]() 
 
 
   let newDatom = newCompanyDatom(
     report, 
-    datomConstructor.attribute, 
+    reportField, 
     datomValue,
     transactionIndex, 
   )
 
-  log({accountingYear, report, datomConstructor, sourceEntity, newDatom})
+  log({accountingYear, report, reportField, sourceEntityType, newDatom})
 
   return companyDatoms.concat( newDatom )
   

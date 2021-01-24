@@ -525,7 +525,8 @@ let singleReportView = State => {
 
   let reportType = State.DB.get( report, 8102 )
   let inputAttributes =  State.DB.get( reportType, 8 )
-  let generatedAttributes =  State.DB.get( reportType, 8106 ).filter( datomConstructor => datomConstructor.isEnabled ).map( datomConstructor => datomConstructor.attribute )
+
+  let generatedAttributes =  State.DB.get( reportType, 22 )
   
   
 
