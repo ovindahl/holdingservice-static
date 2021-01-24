@@ -269,7 +269,9 @@ let companyValueView = (State, companyEntity, attribute, selectedCompanyEventInd
         ? entityLabelWithPopup( State, Value , e => console.log("Cannot access AdminPage from here") )
         : valueType === 32
           ? State.DB.get(attribute, "attribute/isArray")
-            ? d( Value.map( ent => entityLabelWithPopup(State, ent ) ) )
+            ? Value.every( entry => State.DB.get(entry, 19) === 7948 )
+              ?  d( Value.map( ent => transactionLabel( State, ent ) ) )
+              : d( Value.map( ent => entityLabelWithPopup(State, ent ) ) )
             : entityLabelWithPopup(State, Value )
           : valueType === 6553
             ? d( Value.map( accountBalance => d([
@@ -400,6 +402,52 @@ let companyValueView = (State, companyEntity, attribute, selectedCompanyEventInd
   }
 
   let datomConstructorRowView = (  State, entity, attribute, index ) => {
+
+
+    let datomConstructor = State.DB.get( entity, attribute)[index]
+
+    let options = State.DB.getOptions( attribute )
+
+    let datalistID = getNewElementID()
+    let datalistID2 = getNewElementID()
+
+    let options2 = State.DB.getAll(5817).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) )
+
+  
+    return d([
+        checkBox( datomConstructor["isEnabled"] , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {"isEnabled": datomConstructor["isEnabled"] ? false : true  }))} )),
+        d([
+          htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
+          input({value: datomConstructor.attribute, list: datalistID, style: `text-align: right;`}, 
+          "change", 
+          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {attribute: Number( submitInputValue( e ) )  } ))} )
+        ),
+        entityLabelWithPopup( State,  datomConstructor.attribute ), 
+        ]),
+        dropdown( datomConstructor.sourceEntity, 
+          [{value: 0, label: "Rapportens input"}, {value: 1, label: "Selskapet"}, {value: 2, label: "Regnskapsåret"}, {value: 3, label: "Funksjon"}],
+          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {sourceEntity: Number( submitInputValue( e ) )  } ))} )
+          ),
+        d([
+          htmlElementObject("datalist", {id:datalistID2}, optionsElement( options2 ) ),
+          input({value: datomConstructor.calculatedField, list: datalistID2, style: `text-align: right;`}, 
+          "change", 
+          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {calculatedField: Number( submitInputValue( e ) )  } ))} )
+        ),
+        entityLabelWithPopup( State,  datomConstructor.calculatedField ), 
+        ]),
+        textArea(
+          datomConstructor.valueFunction,
+          {class:"textArea_code"}, 
+          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {valueFunction: submitInputValue( e ).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  } ))} )
+          )
+      ], {style: gridColumnsStyle("1fr 2fr 2fr 2fr 2fr")})
+  }
+
+
+
+
+  let datomConstructorRowView_backup = (  State, entity, attribute, index ) => {
 
 
     let datomConstructor = State.DB.get( entity, attribute)[index]

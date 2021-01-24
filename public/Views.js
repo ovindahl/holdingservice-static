@@ -67,7 +67,7 @@ let stateView = State => {
           submitButton("[<<]", () => State.Actions.selectCompanyEventIndex( 0 ) ),
           State.S.selectedCompanyEventIndex >= 1 ? submitButton("<", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex - 1 ) ) : d(""),
           State.S.selectedCompanyEventIndex < companyTransactions.length ? submitButton(">", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex + 1 ) ) : d(""),
-          submitButton("[>>]", () => State.Actions.selectCompanyEventIndex( State.Company.get( companyTransactions.slice( - 1 )[0], 7916  )  ) )
+          submitButton("[>>]", () => State.Actions.selectCompanyEventIndex( State.Company.get( companyTransactions.slice( - 1 )[0], 8354  )  ) )
         ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
       d([
@@ -92,15 +92,11 @@ let singleAccountingYearView = State => {
   let accountingYear = State.S.selectedEntity
   let accountingYearType = State.DB.get( accountingYear, "accountingYear/accountingYearType" )
   let inputAttributes = State.DB.get( accountingYearType, 7942 )
+  let calculatedFields = State.DB.get( accountingYearType, 6789 )
 
   let accountingYearTransactions = getAllTransactions(State.DB, State.S.selectedCompany ).filter( transaction => State.DB.get(transaction, "transaction/accountingYear") === accountingYear )
-
-  let openingBalanceEventIndex = State.Company.get( accountingYearTransactions[0], 7916 ) - 1
-
-  let lastEventIndex = State.Company.get( accountingYearTransactions.slice(-1)[0], 7916 ) 
-
-
-  let PnLCalculatedFields = DB.get(8220, 7751)
+  let openingBalanceEventIndex = State.Company.get( accountingYearTransactions[0], 8354 ) - 1
+  let lastEventIndex = State.Company.get( accountingYearTransactions.slice(-1)[0], 8354 ) 
 
   let balanceCalculatedFields = [
     DB.get(7537, 7751),
@@ -126,11 +122,10 @@ let singleAccountingYearView = State => {
     br(),
     br(),
     h3("Resultatregnskap"),
-    d( PnLCalculatedFields
-      //.filter( calculatedField => State.Company.get(null, calculatedField, openingBalanceEventIndex ) !== 0 || State.Company.get(null, calculatedField, lastEventIndex ) !== 0 )
+    d( calculatedFields
       .map( calculatedField => d([
         entityLabelWithPopup( State, calculatedField ),
-        d(formatNumber( State.Company.get(null, calculatedField, lastEventIndex ) - State.Company.get(null, calculatedField, openingBalanceEventIndex ) ), {style: `text-align: right;`}),
+        d(formatNumber( State.Company.get(accountingYear, calculatedField ) ), {style: `text-align: right;`}),
       ], {style: gridColumnsStyle("1fr 1fr ")}) ) ),
     br(),
     h3("Balanseregnskap"),
@@ -186,7 +181,7 @@ let allAccountingYearsView = State => {
       ], {style: gridColumnsStyle("1fr 1fr ")})  ) ),
     ]),
     br(),
-    //submitButton("Legg til", () => State.Actions.createTransaction() ),
+    submitButton("Legg til", () => State.Actions.createTransaction() ),
     br(),
   ])
 } 
@@ -325,7 +320,7 @@ let definedTransactionView = State => {
     br(),
     d( requiredMetadata.map( attribute => entityAttributeView( State, companyTransaction, attribute ) ) ),
     br(),
-    State.Company.get(companyTransaction, 8261) 
+    State.Company.get(companyTransaction, 8355) 
       ? d("🔒")
       : d([
         submitButton("Splitt i to transaksjoner", e => State.Actions.splitTransaction(companyTransaction) ),  
@@ -351,7 +346,7 @@ let transactionFlowView = (State, companyTransaction) => d([
     d(""),
     d([
       d( moment( State.Company.get( companyTransaction, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
-      entityLabelWithPopup(State, companyTransaction ),
+      transactionLabel( State, companyTransaction ),
       d(formatNumber( State.Company.get(companyTransaction, 1083, State.S.selectedCompanyEventIndex ) )),
       d(" --------------> "),
     ]),
@@ -368,7 +363,7 @@ let transactionFlowView = (State, companyTransaction) => d([
   ])
 ], {class: "feedContainer", style: gridColumnsStyle("2fr 3fr 2fr")})
 
-
+let transactionLabel = (State, companyTransaction) => d([d(`Transaksjon ${ State.Company.get(companyTransaction, 8354) }`, {class: "entityLabel", style: "background-color:#00bcd466;"}, "click", () => State.Actions.selectEntity(companyTransaction) )], {style:"display: inline-flex;"}) 
 
 let allTransactionsView = State => {
 
@@ -379,7 +374,7 @@ let allTransactionsView = State => {
     d([
       d( alltransactions.map( companyTransaction => d([
         entityLabelWithPopup(State, State.DB.get(companyTransaction, "transaction/accountingYear") ),
-        d(`Transaksjon ${ State.Company.get(companyTransaction, 7916) }`, {class: "entityLabel", style: "background-color:#00bcd466;"}, "click", () => State.Actions.selectEntity(companyTransaction) ),
+        transactionLabel( State, companyTransaction ),
         d( moment( State.DB.get( companyTransaction, 1757 ) ).format("DD.MM.YYYY") , {style: `text-align: right;`}),
         d( formatNumber( State.DB.get( companyTransaction, 1083 ) ) , {style: `text-align: right;`}),
         d([
@@ -387,7 +382,7 @@ let allTransactionsView = State => {
           d(" --> "),
           isDefined( State.DB.get(companyTransaction, 7866) ) ? entityLabelWithPopup(State, State.DB.get(companyTransaction, 7866) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ,
         ], {style: gridColumnsStyle("3fr 1fr 3fr") + "padding-left: 3em;"} ),
-        State.Company.get(companyTransaction, 8261) 
+        State.Company.get(companyTransaction, 8355) 
         ? d("🔒")
         : submitButton("❌", e => State.Actions.retractEntity(companyTransaction) )
       ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 3fr 1fr")})  ) ),
@@ -436,13 +431,15 @@ let constructTransactionRowDatoms = ( State, transactionRow, index) => {
 
   let accountingYear = getAllAccountingYears( State.DB, State.S.selectedCompany ).slice(-1)[0]
 
+  let selectedBankAccount = getAllBalanceObjects( State.DB, State.S.selectedCompany ).filter( e => State.DB.get(e, 7934) === 6248 )[0]
+
   let transactionDatoms = [
     newDatom( "newDatom_"+ index, "entity/entityType", 7948  ),
     newDatom( "newDatom_"+ index, "event/company", State.S.selectedCompany  ),
     newDatom( "newDatom_"+ index, 'transaction/accountingYear', accountingYear ), 
     newDatom( "newDatom_"+ index, "transaction/transactionType", 8019 ),
     newDatom( "newDatom_"+ index, "event/date", date  ),
-    newDatom( "newDatom_"+ index, isPayment ? "transaction/originNode" : "transaction/destinationNode", 7313),
+    newDatom( "newDatom_"+ index, isPayment ? "transaction/originNode" : "transaction/destinationNode", selectedBankAccount),
     newDatom( "newDatom_"+ index, "eventAttribute/1083", amount  ),
     newDatom( "newDatom_"+ index, "eventAttribute/1139", description  ),
     newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
@@ -504,7 +501,7 @@ let reportsView = State => isDefined( State.S.selectedEntity ) ? singleReportVie
 
 let allReportsView = State => {
 
-  let allReports = State.DB.getAll(7865) //.filter( e => State.DB.get(e, 7535) === 6790 )
+  let allReports =  getAllReports( State.DB, 7407 )
 
   return d([
     d([

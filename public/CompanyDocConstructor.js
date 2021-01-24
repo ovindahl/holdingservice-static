@@ -49,7 +49,7 @@ let newCompanyDatom = (companyEntity, attribute, value, t) => returnObject({
 let getAllAccountingYears = (DB, company) => DB.getAll( 7403 ).filter( accountingYear => DB.get( accountingYear, 8259) === company ).sort(  (a,b) => DB.get(a, 8255 ) - DB.get(b, 8255 ) )
 let getAllTransactions = (DB, company) => DB.getAll( 7948 ).filter( transaction => DB.get( transaction, "event/company")  === company  ).sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
 let getAllBalanceObjects = (DB, company) => DB.getAll( 7932 ).filter( balanceObject => DB.get( balanceObject, "event/company")  === company  )
-
+let getAllReports = ( DB, accountingYear ) => DB.getAll(7865).filter( report => DB.get( report, 7408 )  === accountingYear  )
 
 
 
@@ -58,10 +58,12 @@ let constructCompanyDatoms = (DB, company ) => {
     
 
   let allTransactions = getAllTransactions( DB, company ).filter( transaction => isDefined( DB.get( transaction, "transaction/transactionType" ) )  )
+
+
+  if(allTransactions.length === 0){return []}
+
   let companyDatomsWithCompanyCalculatedDatoms = allTransactions.reduce( ( companyDatoms, transaction, index ) => companyTransactionReducer(DB, company, companyDatoms, transaction, index), [] )
-
-
-  let companyDatomsWithReportDatoms = DB.getAll(7865).reduce( (companyDatoms, report) => companyReportReducer( DB, companyDatoms, report), companyDatomsWithCompanyCalculatedDatoms )
+  let companyDatomsWithReportDatoms = getAllAccountingYears( DB, company ).reduce( (companyDatoms, accountingYear) => accountingYearReducer( DB, companyDatoms, accountingYear), companyDatomsWithCompanyCalculatedDatoms )
   console.log(`constructCompanyDatoms finished in ${Date.now() - startTime} ms`)
 
   return companyDatomsWithReportDatoms
@@ -82,7 +84,7 @@ let constructCalculatedTransactionDatoms = (DB, companyDatoms, transaction, tran
       .join(";") + ";"
     : "" 
 
-    let calculatedAttributeConstructors = DB.get(transactionType, 7943 ).filter( calculatedAttributeConstructor => calculatedAttributeConstructor.isEnabled )
+    let transactionCalculatedFields = DB.get(transactionType, 6789 )
 
     let CompanyQueryObject = {
       get: (entity, attr) => isDefined( DB.get(entity, attr) )
@@ -95,10 +97,10 @@ let constructCalculatedTransactionDatoms = (DB, companyDatoms, transaction, tran
       get: attr => DB.get(transaction, attr), //Får ikke kalkulerte verdier fra seg selv
     }
 
-  let calculatedTransactionDatoms = calculatedAttributeConstructors.map( calculatedAttributeConstructor => newCompanyDatom(
+  let calculatedTransactionDatoms = transactionCalculatedFields.map( calculatedField => newCompanyDatom(
     transaction, 
-    calculatedAttributeConstructor.attribute, 
-    tryFunction( () => new Function( [`Database`, `Company`, `Transaction`], sharedStatementsString + calculatedAttributeConstructor.valueFunction )( DB, CompanyQueryObject, TransactionQueryObject ) ),
+    calculatedField, 
+    tryFunction( () => new Function( [`Database`, `Company`, `Transaction`], sharedStatementsString + DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, CompanyQueryObject, TransactionQueryObject ) ),
     transactionIndex
   ) )
 
@@ -115,7 +117,7 @@ let companyTransactionReducer = (DB, company, companyDatoms, transaction, index)
   let originNode = DB.get(transaction, 7867)
   let destinationNode = DB.get(transaction, 7866)
 
-  let allTransactions = companyDatomsWithEventTypeDatoms.filter( companyDatom => companyDatom.attribute === 7916 ).filter( companyDatom => companyDatom.value <= transactionIndex ).map( companyDatom => companyDatom.entity )
+  let allTransactions = companyDatomsWithEventTypeDatoms.filter( companyDatom => companyDatom.attribute === 8354 ).filter( companyDatom => companyDatom.value <= transactionIndex ).map( companyDatom => companyDatom.entity )
 
   let companyDatomsWithupdatedOriginNode = isDefined(originNode)
     ? balanceObjectReducer(DB, companyDatomsWithEventTypeDatoms, originNode, transaction, transactionIndex, allTransactions)
@@ -126,6 +128,7 @@ let companyTransactionReducer = (DB, company, companyDatoms, transaction, index)
   : companyDatomsWithupdatedOriginNode
   
   let companyCalculatedFields = [
+    [8356], //placeholder calculatedField
     DB.get(8220, 7751),
     DB.get(7537, 7751),
     DB.get(7538, 7751),
@@ -148,9 +151,9 @@ let balanceObjectReducer = (DB, companyDatoms, balanceObject, transaction, trans
 let balanceObjectCalculatedFieldReducer = ( DB, companyDatoms, balanceObject, calculatedField, transaction, transactionIndex, allTransactions ) => {
 
   let CompanyQueryObject = { 
-    get: (entity, attr) => isDefined( DB.get(entity, attr) )
+    get: (entity, attr, specificT) => isDefined( DB.get(entity, attr) )
     ? DB.get(entity, attr)
-    : getFromCompany( companyDatoms, entity, attr, transactionIndex ),
+    : getFromCompany( companyDatoms, entity, attr, isDefined( specificT ) ? specificT : transactionIndex ),
     getAllTransactions: () =>  allTransactions //Denne er veldig treig, TBD
   }
 
@@ -226,7 +229,32 @@ let companyCalculatedFieldReducer = ( DB, companyDatoms, companyCalculatedField,
 //Updated Company Construction pipeline -- END
 
 
-let companyReportReducer = (DB, companyDatoms, report) => {
+let accountingYearReducer = (DB, companyDatoms, accountingYear ) => {
+
+  let accountingYearType = DB.get( accountingYear, "accountingYear/accountingYearType" )
+
+  let accountingYearCalculatedFields = DB.get( accountingYearType, 6789 )
+
+  let allTransactions = getAllTransactions(DB, DB.get(accountingYear, "accountingYear/company" ) )
+
+  let lastTransaction = allTransactions.filter( transaction => DB.get(transaction, 'transaction/accountingYear') === accountingYear ).slice( -1 )[0]
+
+  let transactionIndex = getFromCompany( companyDatoms, lastTransaction, 8354 )
+
+  let datomsWithAccountingYear = accountingYearCalculatedFields.reduce( (companyDatoms, calculatedField) => balanceObjectCalculatedFieldReducer( DB, companyDatoms, accountingYear, calculatedField, undefined, transactionIndex, allTransactions ) , companyDatoms )
+
+
+  let accountingYearReports = [8108, 8105] // getAllReports( DB, accountingYear )
+
+  let datomsWithAccountingYearReportDatoms = accountingYearReports.reduce( (companyDatoms, report) => reportReducer(DB, companyDatoms, accountingYear, report ) , datomsWithAccountingYear )
+
+  
+
+  return datomsWithAccountingYearReportDatoms
+
+}
+
+let reportReducer = (DB, companyDatoms, accountingYear, report,  ) => {
 
   let reportType = DB.get( report, 8102 )
 
@@ -234,42 +262,54 @@ let companyReportReducer = (DB, companyDatoms, report) => {
 
   let datomConstructors = DB.get( reportType, 8106 ).filter( datomConstructor => datomConstructor.isEnabled )
 
-  
-  let sharedStatements = DB.get( reportType, 6771 )
-
-  let sharedStatementsString = isDefined( sharedStatements ) 
-    ? sharedStatements
-      .filter( statement => statement["statement/isEnabled"] )
-      .map( statement => statement["statement/statement"] )
-      .join(";") + ";"
-    : ""
-
-    let company = DB.get( report, "event/company")
-
-    let CompanyQueryObject = {
-      getAllTransactions: () => getAllTransactions(DB, company ),
-      getBalanceObjects: balanceObjectType => isDefined(balanceObjectType)
-        ? getAllBalanceObjects(DB, company ).filter( balanceObject => isArray(balanceObjectType) 
-            ? balanceObjectType.includes( DB.get(balanceObject, 7934) ) 
-            : DB.get(balanceObject, 7934) === balanceObjectType 
-          )
-        : getAllBalanceObjects(DB, company ),
-      get: (entity, attr) => getFromCompany( companyDatoms, entity, attr ),
-    }
-
-    let reportDatoms = datomConstructors.map( datomConstructor => newCompanyDatom(
-      report, 
-      datomConstructor.attribute, 
-      tryFunction( () => new Function( [`Database`, `Company`, `Event`], sharedStatementsString + datomConstructor.valueFunction )( DB, CompanyQueryObject, DB.get(report) ) ),
-      companyDatoms.slice(-1)[0].t
-    ) )
-
+    let reportDatoms = datomConstructors.reduce( (companyDatoms, datomConstructor) => reportCalculatedFieldReducer(DB, companyDatoms, accountingYear, report, datomConstructor ), companyDatoms )
+    log({reportDatoms})
     return companyDatoms.concat( reportDatoms )
 
 }
 
 
+let reportCalculatedFieldReducer = ( DB, companyDatoms, accountingYear, report, datomConstructor ) => {
 
+  let options = [{value: 0, label: "Rapportens input"}, {value: 1, label: "Selskapet"}, {value: 2, label: "Regnskapsåret"}, {value: 3, label: "Funksjon"}]
+
+
+  let allTransactions = getAllTransactions(DB, DB.get(accountingYear, "accountingYear/company" ) )
+
+  let lastTransaction = allTransactions.filter( transaction => DB.get(transaction, 'transaction/accountingYear') === accountingYear ).slice( -1 )[0]
+
+  let transactionIndex = getFromCompany( companyDatoms, lastTransaction, 8354 )
+
+  let CompanyQueryObject = { 
+    get: (entity, attr, specificT) => isDefined( DB.get(entity, attr) )
+    ? DB.get(entity, attr)
+    : getFromCompany( companyDatoms, entity, attr, isDefined( specificT ) ? specificT : transactionIndex ),
+    getAllTransactions: () =>  allTransactions //Denne er veldig treig, TBD
+  }
+
+  let sourceEntity = datomConstructor.sourceEntity === 0
+    ? report
+    : datomConstructor.sourceEntity === 1
+      ? null
+      : datomConstructor.sourceEntity === 2
+        ? accountingYear
+        : undefined
+
+  let datomValue = CompanyQueryObject.get( sourceEntity, datomConstructor.calculatedField )
+
+
+  let newDatom = newCompanyDatom(
+    report, 
+    datomConstructor.attribute, 
+    datomValue,
+    transactionIndex, 
+  )
+
+  log({accountingYear, report, datomConstructor, sourceEntity, newDatom})
+
+  return companyDatoms.concat( newDatom )
+  
+}
 
 /* 
 let getCompanyEntities = companyDatoms => companyDatoms.map( companyDatom => companyDatom.entity ).filter( entity => !isNull(entity) ).filter(filterUniqueValues)
@@ -336,7 +376,7 @@ let getCompanyEntityLabel = (DB, companyDatoms, companyEntity) => {
     "6264": () => `Gjeld til ${getFromCompany( companyDatoms, getFromCompany(companyDatoms, companyEntity, 5675) , 1113 )}`,
     "7858": () => `Foreløpig årsresultat ${moment( getFromCompany( companyDatoms, companyEntity, 1757 ) ).format("YYYY") }`,
     "7857": () => `Tilleggsutbytte ${moment( getFromCompany( companyDatoms, companyEntity, 1757 ) ).format("DD/MM") }`,
-    "7868": () => `Transaksjon # ${ formatNumber( getFromCompany( companyDatoms, companyEntity, 7916 ), 0 )  }`,
+    "7868": () => `Transaksjon # ${ formatNumber( getFromCompany( companyDatoms, companyEntity, 8354 ), 0 )  }`,
   }
   
   
@@ -351,7 +391,7 @@ let getCompanyEntityLabel = (DB, companyDatoms, companyEntity) => {
 }  
 
 
-let getCompanyTransactionByIndex = (companyDatoms, transactionIndex) => companyDatoms.filter( companyDatom => companyDatom.attribute === 7916 ).filter( companyDatom => companyDatom.value === transactionIndex )[0].entity
+let getCompanyTransactionByIndex = (companyDatoms, transactionIndex) => companyDatoms.filter( companyDatom => companyDatom.attribute === 8354 ).filter( companyDatom => companyDatom.value === transactionIndex )[0].entity
 
 let getAllEntityTransactions = (DB, companyDatoms, companyEntity, eventTime) => getAllCompanyEntitiesByType( companyDatoms, 7817, eventTime )
 .filter( transactionEntity => getFromCompany(companyDatoms, transactionEntity, 7533) === companyEntity )

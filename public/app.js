@@ -132,7 +132,15 @@ const ClientApp = {
 
       newState.Company = {
         companyDatoms: newState.companyDatoms,
-        get: (entity, attribute, eventTime) => getFromCompany(newState.companyDatoms, entity, attribute, eventTime),
+        get: (entity, attribute, eventTime) => isDefined( newState.DB.get(entity, attribute) )
+        ? newState.DB.get(entity, attribute)
+        : getFromCompany( newState.companyDatoms, entity, attribute, eventTime ),
+        
+        
+        //getFromCompany(newState.companyDatoms, entity, attribute, eventTime),
+
+
+
         getAll: (companyEntityType, eventTime) => getAllCompanyEntitiesByType(newState.companyDatoms, companyEntityType, eventTime),
         getAllEntities: () => getCompanyEntities( newState.companyDatoms ),
         //getBalanceObjects: () => getAllBalanceObjects( State.DB, State.S.selectedCompany ),
