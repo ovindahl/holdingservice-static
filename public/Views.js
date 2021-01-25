@@ -240,7 +240,7 @@ let allBalanceObjectsView = State => {
 
 let transactionsView = State => isDefined( State.S.selectedEntity ) ? singleTransactionView( State ) : allTransactionsView( State )
 
-let singleTransactionView = State => isDefined( State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) )
+let singleTransactionView = State => ( isDefined( State.DB.get( State.S.selectedEntity, "transaction/originNode" ) ) && isDefined(  State.DB.get( State.S.selectedEntity, "transaction/destinationNode" ) ) )
  ? definedTransactionView( State )
  : undefinedTransactionView( State )
 
@@ -304,18 +304,46 @@ let definedTransactionView = State => {
   ])
 } 
 
-let undefinedTransactionView = State => d([
-  entityAttributeView(State, State.S.selectedEntity, 7935),
-  submitButton("Slett", e => State.Actions.retractEntity(State.S.selectedEntity) ),  
-])
+let undefinedTransactionView = State => {
+
+  let companyTransaction = State.S.selectedEntity
+  let companyTransactions = getAllTransactions(State.DB, State.S.selectedCompany )
+
+  let prevTransaction = companyTransactions[ companyTransactions.findIndex( t => t === companyTransaction ) - 1 ]
+  let nextTransaction = companyTransactions[ companyTransactions.findIndex( t => t === companyTransaction ) + 1 ]
+
+
+
+
+
+
+  return d([
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
+    br(),
+    d([
+      d([
+        entityLabelWithPopup( State, 7882 ),
+        span( " / " ),
+        entityLabelWithPopup( State, State.DB.get( companyTransaction, "transaction/transactionType" ) ),
+        span( " / " ),
+        entityLabelWithPopup( State, companyTransaction ),
+      ], {style: "display: inline-flex;"}),
+      d([
+        isDefined( prevTransaction ) >= 1 ? submitButton("<", () => State.Actions.selectEntity( prevTransaction ) ) : d(""),
+        isDefined( nextTransaction ) < companyTransactions.length ? submitButton(">", () => State.Actions.selectEntity( nextTransaction ) ) : d(""),
+      ], {style: gridColumnsStyle("3fr 1fr")})
+    ], {style: gridColumnsStyle("3fr 1fr")}),
+    br(),
+    transactionFlowView( State, companyTransaction ),
+    br(),
+    submitButton("Slett", e => State.Actions.retractEntity( companyTransaction ) ),  
+  ])
+} 
 
 let transactionFlowView = (State, companyTransaction) => d([
   d([
-    entityLabelWithPopup( State, 7867 ),
-    singleValueView( State, companyTransaction, 7867 ),
-    State.DB.get( State.DB.get(companyTransaction, 7867) , 7934 ) === 7858
-      ? entityLabelWithPopup( State, State.Company.get( companyTransaction , 7524 ) )
-      : entityLabelWithPopup( State, State.DB.get( State.DB.get(companyTransaction, 7867) , 7934 ) ),
+    d([ entityLabelWithPopup( State, 7867 ) ]),
+    isDefined( State.DB.get(companyTransaction, 7867) ) ? entityLabelWithPopup( State, State.DB.get(companyTransaction, 7867) ) : singleValueView( State, companyTransaction, 7867 )
   ]),
   d([
     d(""),
@@ -328,13 +356,8 @@ let transactionFlowView = (State, companyTransaction) => d([
     d(""),
   ], {style: gridColumnsStyle("3fr 2fr 3fr")}),
   d([
-    entityLabelWithPopup( State, 7866 ),
-    singleValueView( State, companyTransaction, 7866 ),
-    //entityLabelWithPopup( State, State.DB.get( State.DB.get(companyTransaction, 7866) , 1653 ) ),
-    State.DB.get( State.DB.get(companyTransaction, 7866) , 7934 ) === 7858
-      ? entityLabelWithPopup( State, State.Company.get( companyTransaction , 7524 ) )
-      : entityLabelWithPopup( State, State.DB.get( State.DB.get(companyTransaction, 7866) , 7934 ) ),
-    
+    d([ entityLabelWithPopup( State, 7866 ) ]) ,
+    isDefined( State.DB.get(companyTransaction, 7866) ) ? entityLabelWithPopup( State, State.DB.get(companyTransaction, 7866) ) : singleValueView( State, companyTransaction, 7866 )
   ])
 ], {class: "feedContainer", style: gridColumnsStyle("2fr 3fr 2fr")})
 
@@ -463,7 +486,9 @@ let singleActorView = State => {
         entityLabelWithPopup( State, actor ),
       ]),
       br(),
-      d( State.DB.get( 6790, "companyEntityType/attributes" ).map( attribute => entityAttributeView(State, actor, attribute ) ) ),
+      entityAttributeView(State, actor, 8668),
+      br(),
+      d( State.DB.get( State.DB.get( actor, "actor/actorType"), 7942 ).map( attribute => entityAttributeView(State, actor, attribute ) ) ),
       submitButton("Slett", e => State.Actions.retractEntity(actor) ),  
     ])
   : d([
@@ -516,7 +541,7 @@ let singleReportView = State => {
       entityLabelWithPopup( State, report ),
     ]),
     br(),
-    d( inputAttributes.map( attribute => entityAttributeView(State, report, attribute ), ) ),
+    //d( inputAttributes.map( attribute => entityAttributeView(State, report, attribute ), ) ),
     br(),
     d( generatedAttributes.map( attribute => companyDatomView( State, report, attribute ) ) ),
   ])

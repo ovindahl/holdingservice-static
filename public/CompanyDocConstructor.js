@@ -183,6 +183,8 @@ let companyCalculatedFieldReducer = ( DB, companyDatoms, company, companyCalcula
       : getAllBalanceObjects(DB, DB.get( transaction, "event/company") ),
     get: (entity, attr) => {
 
+      
+
       let storedCompanyValue = getFromCompany( companyDatoms, entity, attr, transactionIndex )
 
       return isDefined( storedCompanyValue )
@@ -214,6 +216,9 @@ let companyCalculatedFieldReducer = ( DB, companyDatoms, company, companyCalcula
   return calculatedDatom.value === prevValue
     ? companyDatoms
     : companyDatoms.concat( calculatedDatom )
+
+
+    
   
 }
 
@@ -225,9 +230,7 @@ let accountingYearReducer = (DB, companyDatoms, company, accountingYear, allTran
 
   let accountingYearCalculatedFields = DB.get( accountingYearType, 6789 )
 
-  let lastTransaction = allTransactions.filter( transaction => DB.get(transaction, 'transaction/accountingYear') === accountingYear ).slice( -1 )[0]
-
-  let transactionIndex = getFromCompany( companyDatoms, lastTransaction, 8354 )
+  let transactionIndex = companyDatoms.slice(-1)[0].t
 
   let datomsWithAccountingYear = accountingYearCalculatedFields.reduce( (companyDatoms, calculatedField) => {
 

@@ -104,8 +104,32 @@ let getClientActions = State => returnObject({
     newDatom( 'newEntity' , "event/date", Date.now() ), 
     newDatom( 'newEntity' , "eventAttribute/1139", "" )
   ] )} ),
-  splitTransaction:  async transaction =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, getAllTransactionAttributes(State.DB, transaction).map( attribute =>  newDatom( 'newEntity' , attribute, attribute === 1083 ?  State.DB.get(transaction, "eventAttribute/1083") : State.DB.get(transaction, attribute) )  ) 
-    )} ),
+  splitTransaction:  async companyTransaction => {
+
+    let originNode = State.DB.get( companyTransaction, "transaction/originNode" )
+  let destinationNode = State.DB.get( companyTransaction, "transaction/destinationNode" )
+
+  let requiredAttributes = [7867, 7866, 7935, 8258, 7530, 1757, 1139]
+
+  let requiredMeasures = [
+    State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
+    State.DB.get( State.DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
+  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
+
+
+  let requiredMetadata = [
+    State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
+    State.DB.get( State.DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
+  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
+
+  let allAttributes = requiredAttributes.concat(requiredMeasures).concat(requiredMetadata)
+
+  let updatedDB = await Transactor.createEntity(State.DB, 7948, allAttributes.map( attribute =>  newDatom( 'newEntity' , attribute, State.DB.get(companyTransaction, attribute) )  ) )
+
+
+  ClientApp.update( State, {DB: updatedDB} )
+
+  }  ,
   createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
   createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
   importBankDatoms:  async newDatoms => {
