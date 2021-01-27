@@ -70,39 +70,60 @@ var A = {} //Consle access to Actions
 
 let getDBActions = State => returnObject({
   createEntity: async entityType => ClientApp.update( State, {DB: await Transactor.createEntity( State.DB, entityType )  } ),
-  retractEntity: async entity => ClientApp.update( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined, selectedCompanyEntity: undefined }} ),
-  retractEntities: async entities => ClientApp.update( State, {DB: await Transactor.retractEntities(State.DB, entities), S: {selectedEntity: undefined, selectedCompanyEntity: undefined }} ),
+  retractEntity: async entity => ClientApp.update( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined }} ),
+  retractEntities: async entities => ClientApp.update( State, {DB: await Transactor.retractEntities(State.DB, entities), S: {selectedEntity: undefined }} ),
   duplicateEntity: async entity => {
     let entityType = State.DB.get( entity, "entity/entityType")
     let entityTypeAttributes = State.DB.get( entityType, "entityType/attributes" )
     let newEntityDatoms = entityTypeAttributes.map( attr => newDatom("newEntity", State.DB.attrName(attr), State.DB.get( entity, attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${State.DB.get( entity, 6)}` ) )
     if(entityType === 42){ newEntityDatoms.push( newDatom( "newEntity", "attr/name", "attr/" + Date.now() )  ) }
-
     let updatedDB = await Transactor.createEntity( State.DB, entityType, newEntityDatoms)
-    ClientApp.update( State, {DB: updatedDB, S: {selectedEntity: updatedDB.Entities.slice(-1)[0].entity, selectedCompanyEntity: undefined }} )
+    ClientApp.update( State, {DB: updatedDB, S: {selectedEntity: updatedDB.Entities.slice(-1)[0].entity}} )
   },
-  executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
+  updateEntity: async (entity, attribute, newValue) => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, newValue )  } ),
+  createEntity: async entityType => ClientApp.update( State, {DB: await Transactor.createEntity( State.DB, entityType )  } ),
+  submitDatoms: async newDatoms => ClientApp.update( State, {DB: await Transactor.submitDatoms( State.DB, newDatoms)  } ),
+  //executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
 })
 
 let getClientActions = State => returnObject({
-  selectPage: pageEntity => ClientApp.update( State, {S: {selectedPage: pageEntity, selectedEntity: undefined, selectedCompanyEntity: undefined}}),
+  selectPage: pageEntity => ClientApp.update( State, {S: {selectedPage: pageEntity, selectedEntity: undefined}}),
   selectEntity: entity => ClientApp.update( State, {S: {selectedEntity: entity, selectedPage: isDefined(entity) ? State.DB.get( State.DB.get(entity, 19), 7930 ) : State.S.selectedPage }}),
-  selectCompanyEntity: companyEntity => ClientApp.update( State, {S: {selectedEntity: State.Company.get(companyEntity, 6781), selectedCompanyEntity: companyEntity }}),
   selectCompanyEventIndex: companyDate => ClientApp.update( State, {S: {selectedCompanyEventIndex: companyDate }}),
-  toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedEntity: undefined, selectedCompanyEntity: undefined }}),
+  toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedPage: 7882, selectedEntity: undefined}}),
   updateCompany: company => ClientApp.update( State, {companyDatoms: constructCompanyDatoms( State.DB, company ), S: {selectedCompany: company}} ),
   createBalanceObject:  async balanceObjectType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7932, [
      newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), 
      newDatom( 'newEntity' , 'balanceObject/balanceObjectType', balanceObjectType ),
      newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
     ] )} ),
-  createTransaction:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
+  createBlankTransaction:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
     newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), 
     newDatom( 'newEntity' , 'transaction/accountingYear', getAllAccountingYears( State.DB, State.S.selectedCompany ).slice(-1)[0] ), 
     newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
     newDatom( 'newEntity' , "eventAttribute/1083", 0 ), 
     newDatom( 'newEntity' , "event/date", Date.now() ), 
     newDatom( 'newEntity' , "eventAttribute/1139", "" )
+  ] )} ),
+  createTransaction:  async ( accountingYear, originNode, destinationNode, amount, timestamp, description ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
+    newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), 
+    newDatom( 'newEntity' , 'transaction/accountingYear', accountingYear ), 
+    newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
+    newDatom( 'newEntity' , "transaction/originNode", originNode ), 
+    newDatom( 'newEntity' , "transaction/destinationNode", destinationNode ), 
+    newDatom( 'newEntity' , "eventAttribute/1083", amount ), 
+    newDatom( 'newEntity' , "event/date", timestamp ), 
+    newDatom( 'newEntity' , "eventAttribute/1139", description )
+  ] )} ), 
+  createTaxTransaction:  async ( accountingYear, amount ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
+    newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), 
+    newDatom( 'newEntity' , 'transaction/accountingYear', accountingYear ), 
+    newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
+    newDatom( 'newEntity' , "transaction/originNode", State.Company.getBalanceObjects( 5231 )[0] ), 
+    newDatom( 'newEntity' , "transaction/destinationNode", State.Company.getBalanceObjects( 8746 )[0] ), 
+    newDatom( 'newEntity' , "eventAttribute/1083", amount ), 
+    newDatom( 'newEntity' , "event/date", State.DB.get(accountingYear, "accountingYear/lastDate" ) ), 
+    newDatom( 'newEntity' , "eventAttribute/1139", "Årets skattekostnad" )
   ] )} ),
   splitTransaction:  async companyTransaction => {
 
@@ -129,7 +150,7 @@ let getClientActions = State => returnObject({
 
   ClientApp.update( State, {DB: updatedDB} )
 
-  }  ,
+  },
   createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
   createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
   importBankDatoms:  async newDatoms => {
@@ -137,7 +158,7 @@ let getClientActions = State => returnObject({
     let updatedDB = await Transactor.submitDatoms(State.DB, newDatoms )
 
     ClientApp.update( State, {DB:updatedDB } )
-  } ,
+  },
 })
 
 const ClientApp = {
@@ -155,12 +176,7 @@ const ClientApp = {
       newState.Company = {
         companyDatoms: newState.companyDatoms,
         get: (entity, attribute, eventTime) => DB.isAttribute(attribute) ? DB.get(entity, attribute) : getFromCompany( newState.companyDatoms, entity, attribute, eventTime ),
-        getBalanceObjects: balanceObjectType => isDefined(balanceObjectType)
-          ? getAllBalanceObjects(DB, State.S.selectedCompany ).filter( balanceObject => isArray(balanceObjectType) 
-              ? balanceObjectType.includes( DB.get(balanceObject, 7934) ) 
-              : DB.get(balanceObject, 7934) === balanceObjectType 
-            )
-          : getAllBalanceObjects(DB, State.S.selectedCompany ),
+        getBalanceObjects: queryObject => getBalanceObjects( State.DB, State.companyDatoms, newState.S.selectedCompany, queryObject )
       }
       
       newState.Actions = Object.assign( {}, getDBActions(newState), getClientActions(newState) )

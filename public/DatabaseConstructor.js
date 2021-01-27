@@ -176,6 +176,29 @@ let constructDatabase = Entities => {
       let GlobalAsyncFunction = new AsyncFunction( arguments ,functionString  )
       return GlobalAsyncFunction
     }
+
+    DB.executeCompanyFunction = (company, companyDatoms, entity, functionStatements) => {
+
+      //Not working, TBD.....
+
+      let CompanyQueryObject = {
+        entity: company,
+        getAllTransactions: () => getAllTransactions(DB, company ),
+        getBalanceObjects: queryObject => getBalanceObjects(DB, companyDatoms, company, queryObject),
+        get: (entity, attr, transactionIndex) => getFromCompany( companyDatoms, entity, attr, transactionIndex ),
+      }
+
+      let CompanyEntityQueryObject = { 
+        entity, 
+        get: attr => CompanyQueryObject.get(entity, attr),
+       }
+
+      let functionString = functionStatements.filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";")
+
+      let returnValue = tryFunction( () => new Function( [`Database`, `Company`, `Entity`], functionString )( DB, CompanyQueryObject, CompanyEntityQueryObject ) )
+
+      return returnValue
+    }
   
     return DB
 }

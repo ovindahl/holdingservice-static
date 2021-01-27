@@ -189,12 +189,29 @@ br(),
 
 //NEW VIEWS
 
+let prevNextEntityButtonsView = State => {
+
+  let selectedEntityType = State.DB.get(State.S.selectedEntity, 19)
+  let selectedEntityCategory = State.DB.get(State.S.selectedEntity, 14)
+
+  let entities = State.DB.getAll( selectedEntityType ).filter( e => State.DB.get(e, 14) === selectedEntityCategory ).sort( (a,b) => a-b )
+
+  let prevEntity = entities[ entities.findIndex( t => t === State.S.selectedEntity ) - 1 ]
+  let nextEntity = entities[ entities.findIndex( t => t === State.S.selectedEntity ) + 1 ]
+
+  return d([
+    isDefined( prevEntity ) >= 1 ? submitButton("<", () => State.Actions.selectEntity( prevEntity ) ) : d(""),
+    isDefined( nextEntity ) < entities.length ? submitButton(">", () => State.Actions.selectEntity( nextEntity ) ) : d(""),
+  ], {style: gridColumnsStyle("3fr 1fr")})
+}
+
 let entityView = (State, entity) => isDefined(entity)
   ? d([
       d([
         d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
         entityLabelWithPopup( State, entity),
-      ], {class: "columns_1_1"}),
+        prevNextEntityButtonsView( State )
+      ], {class: "columns_1_1_1"}),
       d( State.DB.get( State.DB.get(entity, "entity/entityType"), "entityType/attributes" ).map( attribute => entityAttributeView(State, entity, attribute) ) ),
       d([
         submitButton( "Slett", e => State.Actions.retractEntity(entity) ),

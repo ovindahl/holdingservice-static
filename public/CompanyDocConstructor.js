@@ -38,25 +38,57 @@ let newCompanyDatom = (companyEntity, attribute, value, t) => returnObject({
 let getAllAccountingYears = (DB, company) => DB.getAll( 7403 ).filter( accountingYear => DB.get( accountingYear, 8259) === company ).sort(  (a,b) => DB.get(a, 8255 ) - DB.get(b, 8255 ) )
 let getAllTransactions = (DB, company) => DB.getAll( 7948 ).filter( transaction => DB.get( transaction, "event/company")  === company  ).sort(  (a,b) => DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
 let getAllBalanceObjects = (DB, company) => DB.getAll( 7932 ).filter( balanceObject => DB.get( balanceObject, "event/company")  === company  )
-let getAllReports = ( DB, accountingYear ) => DB.getAll(7865).filter( report => DB.get( report, 7408 )  === accountingYear  )
+
+let getBalanceObjects = (DB, companyDatoms, company, queryObject) => {
+
+  let CompanyQueryObject = { 
+    entity: company,
+    get: (entity, attr) => DB.isAttribute( attr ) ? DB.get(entity, attr) : getFromCompany( companyDatoms, entity, attr ),
+  }
+
+  let allBalanceObjects = getAllBalanceObjects(DB, company )
+
+  let querryObjectAttributeController = {
+    "5030": 8747, //account
+    "7531": 7934, //balanceObjectType
+    "7536": 8768 //balanceSection
+  }
+
+  let queryAttribute = querryObjectAttributeController[ DB.get( isArray(queryObject) ? queryObject[0] : queryObject , 19 ) ]
+
+  return isUndefined(queryObject)
+  ? allBalanceObjects
+  : isArray(queryObject) 
+    ? queryObject.length === 0
+      ? []
+      : allBalanceObjects.filter( balanceObject => queryObject.includes( CompanyQueryObject.get(balanceObject, queryAttribute) )  )
+    : allBalanceObjects.filter( balanceObject => CompanyQueryObject.get(balanceObject,  queryAttribute) === queryObject  )
+    
+} 
+
+
+
+
+let getAllReports = ( DB, company ) => DB.getAll(7865).filter( report => DB.get( report, "event/company" )  === company  )
 
 let constructCompanyDatoms = (DB, company ) => {
   let startTime = Date.now()
     
+  //Step 1: t=0
+  let companyDatomsWithInitialNodeCalculatedDatoms = getAllBalanceObjects( DB, company ).reduce( ( companyDatoms, node ) => balanceObjectReducer(DB, company, companyDatoms, node, 0, [] ), [] )
 
+  //Step 2: transactions
   let allTransactions = getAllTransactions( DB, company ).filter( transaction => isDefined( DB.get( transaction, "transaction/transactionType" ) )  )
+  if(allTransactions.length === 0){return companyDatomsWithInitialNodeCalculatedDatoms}
+  let companyDatomsWithCompanyCalculatedDatoms = allTransactions.reduce( ( companyDatoms, transaction, index ) => companyTransactionReducer(DB, company, companyDatoms, transaction, index), companyDatomsWithInitialNodeCalculatedDatoms )
+  
+  //Step 3: reports
+  let companyDatomsWithReportDatoms = getAllReports( DB, company ).reduce( (companyDatoms, report) => reportReducer(DB, companyDatoms, company, report ) , companyDatomsWithCompanyCalculatedDatoms )
 
-
-  if(allTransactions.length === 0){return []}
-
-  let companyDatomsWithCompanyCalculatedDatoms = allTransactions.reduce( ( companyDatoms, transaction, index ) => companyTransactionReducer(DB, company, companyDatoms, transaction, index), [] )
-  let companyDatomsWithReportDatoms = getAllAccountingYears( DB, company ).reduce( (companyDatoms, accountingYear) => accountingYearReducer( DB, companyDatoms, company, accountingYear, allTransactions), companyDatomsWithCompanyCalculatedDatoms )
   console.log(`constructCompanyDatoms finished in ${Date.now() - startTime} ms`)
 
   return companyDatomsWithReportDatoms
-
 }
-
 
 let getCompanyQueryObject = (DB, company, companyDatoms, allTransactions, transactionIndex) => returnObject({ 
   entity: company,
@@ -104,7 +136,6 @@ let companyTransactionReducer = (DB, company, companyDatoms, transaction, index)
   let calculatedTransactionDatoms = constructCalculatedTransactionDatoms( DB, companyDatoms, company, transaction, transactionIndex )
   let companyDatomsWithEventTypeDatoms = companyDatoms.concat( calculatedTransactionDatoms )
 
-
   let originNode = DB.get(transaction, 7867)
   let destinationNode = DB.get(transaction, 7866)
 
@@ -118,13 +149,7 @@ let companyTransactionReducer = (DB, company, companyDatoms, transaction, index)
   ? balanceObjectReducer(DB, company, companyDatomsWithupdatedOriginNode, destinationNode, transactionIndex, allTransactions)
   : companyDatomsWithupdatedOriginNode
   
-  let companyCalculatedFields = [
-    [8356], //placeholder calculatedField
-    DB.get(8220, 7751),
-    DB.get(7537, 7751),
-    DB.get(7538, 7751),
-    DB.get(7539, 7751)
-  ].flat()
+  let companyCalculatedFields = DB.getAll(5817).filter( e => DB.get(e, 8357) === 5722 )
 
   let companyDatomsWithCompanyCalculatedDatoms = companyCalculatedFields.reduce( (companyDatoms, companyCalculatedField) => companyCalculatedFieldReducer(DB, companyDatoms, company, companyCalculatedField, transaction, transactionIndex), companyDatomsWithupdatedDestinationNode )
   
@@ -138,7 +163,6 @@ let balanceObjectReducer = (DB, company, companyDatoms, balanceObject, transacti
     (companyDatoms, calculatedField) => balanceObjectCalculatedFieldReducer( DB, company, companyDatoms, balanceObject, calculatedField, transactionIndex, allTransactions ), 
     companyDatoms )
 
-
 let balanceObjectCalculatedFieldReducer = ( DB, company, companyDatoms, balanceObject, calculatedField, transactionIndex, allTransactions ) => {
 
   let CompanyQueryObject = { 
@@ -149,7 +173,7 @@ let balanceObjectCalculatedFieldReducer = ( DB, company, companyDatoms, balanceO
 
   let CompanyEntityQueryObject = { 
     entity: balanceObject, 
-    get: attr => getFromCompany( companyDatoms, balanceObject, attr, transactionIndex ),
+    get: attr => CompanyQueryObject.get(balanceObject, attr),
    }
 
   let newValueFunctionString = DB.get( calculatedField, 6792 ) 
@@ -163,7 +187,6 @@ let balanceObjectCalculatedFieldReducer = ( DB, company, companyDatoms, balanceO
     tryFunction( () => new Function( [`Database`, `Company`, `Entity`], newValueFunctionString )( DB, CompanyQueryObject, CompanyEntityQueryObject ) ),
     transactionIndex, 
   )
-
   return companyDatoms.concat( newDatom )
   
 }
@@ -175,12 +198,7 @@ let companyCalculatedFieldReducer = ( DB, companyDatoms, company, companyCalcula
   let CompanyQueryObject = {
     entity: company,
     getAllTransactions: () => getAllTransactions(DB, DB.get( transaction, "event/company") ),
-    getBalanceObjects: balanceObjectType => isDefined(balanceObjectType)
-      ? getAllBalanceObjects(DB, DB.get( transaction, "event/company") ).filter( balanceObject => isArray(balanceObjectType) 
-          ? balanceObjectType.includes( DB.get(balanceObject, 7934) ) 
-          : DB.get(balanceObject, 7934) === balanceObjectType 
-        )
-      : getAllBalanceObjects(DB, DB.get( transaction, "event/company") ),
+    getBalanceObjects: queryObject => getBalanceObjects(DB, companyDatoms, company, queryObject),
     get: (entity, attr) => {
 
       
@@ -222,90 +240,42 @@ let companyCalculatedFieldReducer = ( DB, companyDatoms, company, companyCalcula
   
 }
 
-//Updated Company Construction pipeline -- END
-
-let accountingYearReducer = (DB, companyDatoms, company, accountingYear, allTransactions ) => {
-
-  let accountingYearType = DB.get( accountingYear, "accountingYear/accountingYearType" )
-
-  let accountingYearCalculatedFields = DB.get( accountingYearType, 6789 )
-
-  let transactionIndex = companyDatoms.slice(-1)[0].t
-
-  let datomsWithAccountingYear = accountingYearCalculatedFields.reduce( (companyDatoms, calculatedField) => {
-
-    let CompanyQueryObject = { 
-      entity: company,
-      get: (entity, attr, specificT) => DB.isAttribute(attr) ? DB.get(entity, attr) : getFromCompany( companyDatoms, entity, attr, isDefined( specificT ) ? specificT : transactionIndex ),
-      getAllTransactions: () =>  allTransactions //Denne er veldig treig, TBD
-    }
-  
-    let CompanyEntityQueryObject = { 
-      entity: accountingYear, 
-      get: attr => getFromCompany( companyDatoms, accountingYear, attr, transactionIndex ),
-     }
-  
-    let newValueFunctionString = DB.get( calculatedField, 6792 ) 
-      .filter( statement => statement["statement/isEnabled"] )
-      .map( statement => statement["statement/statement"] )
-      .join(";")
-  
-    let newDatom = newCompanyDatom(
-      accountingYear, 
-      calculatedField, 
-      tryFunction( () => new Function( [`Database`, `Company`, `Entity`], newValueFunctionString )( DB, CompanyQueryObject, CompanyEntityQueryObject ) ),
-      transactionIndex, 
-    )
-  
-    return companyDatoms.concat( newDatom )
-
-  }, companyDatoms )
-
-
-  let accountingYearReports = getAllReports( DB, accountingYear )
-
-  let datomsWithAccountingYearReportDatoms = accountingYearReports.reduce( (companyDatoms, report) => reportReducer(DB, companyDatoms, company, accountingYear, report, transactionIndex ) , datomsWithAccountingYear )
-
-  
-
-  return datomsWithAccountingYearReportDatoms
-
-}
-
-let reportReducer = (DB, companyDatoms, company, accountingYear, report, transactionIndex ) => {
+let reportReducer = (DB, companyDatoms, company, report ) => {
 
   let reportType = DB.get( report, 8102 )
 
+  let transactionIndex = DB.get( report, 7916 )
+
   if( isUndefined(DB.get( reportType, 8106 )) ){return log(companyDatoms, {ERROR: "report missing type: " + report} )}
 
-  let reportFields = DB.get( reportType, 22 )
+  let reportFields = DB.getAll( 8359 ).filter( reportField => DB.get(reportField, 8363) === reportType )
 
-  let companyDatomsWithReportDatoms = reportFields.reduce( (companyDatoms, reportField) => reportCalculatedFieldReducer(DB, companyDatoms, company, accountingYear, report, reportField, transactionIndex ), companyDatoms )
+  let companyDatomsWithReportDatoms = reportFields.reduce( (companyDatoms, reportField) => reportCalculatedFieldReducer(DB, companyDatoms, company, report, reportField, transactionIndex ), companyDatoms )
 
   return companyDatomsWithReportDatoms
 
 }
 
-let reportCalculatedFieldReducer = ( DB, companyDatoms, company, accountingYear, report, reportField, transactionIndex ) => {
+let reportCalculatedFieldReducer = ( DB, companyDatoms, company, report, reportField, transactionIndex ) => {
 
   let CompanyQueryObject = { 
     entity: company,
     get: (entity, attr, specificT) => DB.isAttribute( attr ) ? DB.get(entity, attr) : getFromCompany( companyDatoms, entity, attr, isDefined( specificT ) ? specificT : transactionIndex ),
   }
 
+
+
   let sourceEntityTypeController = {
+    "5030": () => getBalanceObjects(DB, companyDatoms, company, DB.get(reportField, 7829) ).reduce( (sum, balanceObject) => sum + CompanyQueryObject.get(balanceObject, 7433, transactionIndex), 0 ),
     "5722": () => getFromCompany( companyDatoms, company, calculatedField, transactionIndex ), //company
-    "7403": () => getFromCompany( companyDatoms, accountingYear, calculatedField, transactionIndex ),
     "7865": () => getFromCompany( companyDatoms, report, calculatedField, transactionIndex ),
     "8662": () => tryFunction( () => new Function( [`Database`, `Company`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, CompanyQueryObject ) )
   }
 
   let sourceEntityType = DB.get( reportField, 8361 )
 
-  //log({accountingYear, report, reportField, sourceEntityType})
-
-
   let calculatedField = DB.get( reportField, 8362 )
+  //log({report, reportField, sourceEntityType})
 
   let datomValue = sourceEntityTypeController[ sourceEntityType ]() 
 
