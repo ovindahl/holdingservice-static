@@ -80,9 +80,9 @@ let getDBActions = State => returnObject({
     let updatedDB = await Transactor.createEntity( State.DB, entityType, newEntityDatoms)
     ClientApp.update( State, {DB: updatedDB, S: {selectedEntity: updatedDB.Entities.slice(-1)[0].entity}} )
   },
-  updateEntity: async (entity, attribute, newValue) => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, newValue )  } ),
+  updateEntity: async (entity, attribute, newValue, isAddition) => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, newValue, isAddition )  } ),
   createEntity: async entityType => ClientApp.update( State, {DB: await Transactor.createEntity( State.DB, entityType )  } ),
-  submitDatoms: async newDatoms => ClientApp.update( State, {DB: await Transactor.submitDatoms( State.DB, newDatoms)  } ),
+  postDatoms: async newDatoms => ClientApp.update( State, {DB: await Transactor.updateEntities( State.DB, newDatoms)  } ),
   //executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
 })
 
@@ -93,12 +93,12 @@ let getClientActions = State => returnObject({
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedPage: 7882, selectedEntity: undefined}}),
   updateCompany: company => ClientApp.update( State, {companyDatoms: constructCompanyDatoms( State.DB, company ), S: {selectedCompany: company}} ),
   createBalanceObject:  async balanceObjectType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7932, [
-     newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), 
+     newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
      newDatom( 'newEntity' , 'balanceObject/balanceObjectType', balanceObjectType ),
      newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
     ] )} ),
   createBlankTransaction:  async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
-    newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), 
+    newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
     newDatom( 'newEntity' , 'transaction/accountingYear', getAllAccountingYears( State.DB, State.S.selectedCompany ).slice(-1)[0] ), 
     newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
     newDatom( 'newEntity' , "eventAttribute/1083", 0 ), 
@@ -106,7 +106,7 @@ let getClientActions = State => returnObject({
     newDatom( 'newEntity' , "eventAttribute/1139", "" )
   ] )} ),
   createTransaction:  async ( accountingYear, originNode, destinationNode, amount, timestamp, description ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
-    newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), 
+    newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
     newDatom( 'newEntity' , 'transaction/accountingYear', accountingYear ), 
     newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
     newDatom( 'newEntity' , "transaction/originNode", originNode ), 
@@ -116,7 +116,7 @@ let getClientActions = State => returnObject({
     newDatom( 'newEntity' , "eventAttribute/1139", description )
   ] )} ), 
   createTaxTransaction:  async ( accountingYear, amount ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
-    newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ), 
+    newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
     newDatom( 'newEntity' , 'transaction/accountingYear', accountingYear ), 
     newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
     newDatom( 'newEntity' , "transaction/originNode", State.Company.getBalanceObjects( 5231 )[0] ), 
@@ -130,7 +130,7 @@ let getClientActions = State => returnObject({
     let originNode = State.DB.get( companyTransaction, "transaction/originNode" )
   let destinationNode = State.DB.get( companyTransaction, "transaction/destinationNode" )
 
-  let requiredAttributes = [7867, 7866, 7935, 8258, 7530, 1757, 1139]
+  let requiredAttributes = [7867, 7866, 7935, 8258, 8849, 1757, 1139]
 
   let requiredMeasures = [
     State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
@@ -151,11 +151,17 @@ let getClientActions = State => returnObject({
   ClientApp.update( State, {DB: updatedDB} )
 
   },
-  createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany )] )} ),
-  createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'event/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
+  createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany )] )} ),
+  createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
   importBankDatoms:  async newDatoms => {
 
-    let updatedDB = await Transactor.submitDatoms(State.DB, newDatoms )
+    let updatedDB = await Transactor.createEntities(State.DB, newDatoms )
+
+    ClientApp.update( State, {DB:updatedDB } )
+  },
+  createEntities:  async newDatoms => {
+
+    let updatedDB = await Transactor.createEntities(State.DB, newDatoms )
 
     ClientApp.update( State, {DB:updatedDB } )
   },
@@ -215,7 +221,7 @@ let init = async () => {
   if( Entities.length > 0 ){
 
     let initialDatabase = constructDatabase( Entities )
-    let company = 6829
+    let company = 7873
     let companyDatoms = constructCompanyDatoms( initialDatabase, company ) 
     
 

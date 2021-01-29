@@ -339,131 +339,7 @@ let allBalanceObjectsView = State => {
     ])
 } 
 
-//---
-
-let transactionsView = State => isDefined( State.S.selectedEntity ) ? singleTransactionView( State ) : allTransactionsView( State )
-
-let singleTransactionView = State => ( isDefined( State.DB.get( State.S.selectedEntity, "transaction/originNode" ) ) && isDefined(  State.DB.get( State.S.selectedEntity, "transaction/destinationNode" ) ) )
- ? definedTransactionView( State )
- : undefinedTransactionView( State )
-
-let definedTransactionView = State => {
-
-  let companyTransaction = State.S.selectedEntity
-  let transactionType = State.DB.get( companyTransaction, "transaction/transactionType" )
-  let companyTransactions = getAllTransactions(State.DB, State.S.selectedCompany )
-
-  let prevTransaction = companyTransactions[ companyTransactions.findIndex( t => t === companyTransaction ) - 1 ]
-  let nextTransaction = companyTransactions[ companyTransactions.findIndex( t => t === companyTransaction ) + 1 ]
-
-  let originNode = State.DB.get( companyTransaction, "transaction/originNode" )
-  let destinationNode = State.DB.get( companyTransaction, "transaction/destinationNode" )
-
-  let requiredAttributes = [1757, 1139]
-
-  let requiredMeasures = [
-    State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
-    State.DB.get( State.DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
-  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
-
-
-  let requiredMetadata = [
-    State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
-    State.DB.get( State.DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
-  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
-
-  return d([
-    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
-    br(),
-    d([
-      d([
-        entityLabelWithPopup( State, 7882 ),
-        span( " / " ),
-        entityLabelWithPopup( State, transactionType ),
-        span( " / " ),
-        entityLabelWithPopup( State, companyTransaction ),
-      ], {style: "display: inline-flex;"}),
-      prevNextTransactionButtonsView( State )
-    ], {style: gridColumnsStyle("3fr 1fr")}),
-    br(),
-    br(),
-    transactionFlowView( State, companyTransaction ),
-    br(),
-    d( requiredAttributes.map( attribute => entityAttributeView( State, companyTransaction, attribute ) ) ),
-    br(),
-    d( requiredMeasures.map( attribute => entityAttributeView( State, companyTransaction, attribute ) ) ),
-    br(),
-    d( requiredMetadata.map( attribute => entityAttributeView( State, companyTransaction, attribute ) ) ),
-    br(),
-    State.Company.get(companyTransaction, 8355) 
-      ? d("🔒")
-      : d([
-        submitButton("Splitt i to transaksjoner", e => State.Actions.splitTransaction(companyTransaction) ),  
-        submitButton("Slett", e => State.Actions.retractEntity(companyTransaction) ),
-      ])
-  ])
-} 
-
-let undefinedTransactionView = State => {
-
-  let companyTransaction = State.S.selectedEntity
-
-  return d([
-    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
-    br(),
-    d([
-      d([
-        entityLabelWithPopup( State, 7882 ),
-        span( " / " ),
-        entityLabelWithPopup( State, State.DB.get( companyTransaction, "transaction/transactionType" ) ),
-        span( " / " ),
-        entityLabelWithPopup( State, companyTransaction ),
-      ], {style: "display: inline-flex;"}),
-      prevNextTransactionButtonsView( State )
-    ], {style: gridColumnsStyle("3fr 1fr")}),
-    br(),
-    transactionFlowView( State, companyTransaction ),
-    br(),
-    submitButton("Slett", e => State.Actions.retractEntity( companyTransaction ) ),  
-  ])
-} 
-
-let prevNextTransactionButtonsView = State => {
-
-  let companyTransaction = State.S.selectedEntity
-  let companyTransactions = getAllTransactions(State.DB, State.S.selectedCompany )
-
-  let prevTransaction = companyTransactions[ companyTransactions.findIndex( t => t === companyTransaction ) - 1 ]
-  let nextTransaction = companyTransactions[ companyTransactions.findIndex( t => t === companyTransaction ) + 1 ]
-
-  return d([
-    isDefined( prevTransaction ) >= 1 ? submitButton("<", () => State.Actions.selectEntity( prevTransaction ) ) : d(""),
-    isDefined( nextTransaction ) < companyTransactions.length ? submitButton(">", () => State.Actions.selectEntity( nextTransaction ) ) : d(""),
-  ], {style: gridColumnsStyle("3fr 1fr")})
-}
-
-let transactionFlowView = (State, companyTransaction) => d([
-  d([
-    d([ entityLabelWithPopup( State, 7867 ) ]),
-    isDefined( State.DB.get(companyTransaction, 7867) ) ? entityLabelWithPopup( State, State.DB.get(companyTransaction, 7867) ) : singleValueView( State, companyTransaction, 7867 )
-  ]),
-  d([
-    d(""),
-    d([
-      d( moment( State.Company.get( companyTransaction, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
-      transactionLabel( State, companyTransaction ),
-      d(formatNumber( State.Company.get(companyTransaction, 8748, State.S.selectedCompanyEventIndex ) )),
-      d(" --------------> "),
-    ]),
-    d(""),
-  ], {style: gridColumnsStyle("3fr 2fr 3fr")}),
-  d([
-    d([ entityLabelWithPopup( State, 7866 ) ]) ,
-    isDefined( State.DB.get(companyTransaction, 7866) ) ? entityLabelWithPopup( State, State.DB.get(companyTransaction, 7866) ) : singleValueView( State, companyTransaction, 7866 )
-  ])
-], {class: "feedContainer", style: gridColumnsStyle("2fr 3fr 2fr")})
-
-let transactionLabel = (State, companyTransaction) => d([d(`Transaksjon ${ State.Company.get(companyTransaction, 8354) }`, {class: "entityLabel", style: "background-color:#00bcd466;"}, "click", () => State.Actions.selectEntity(companyTransaction) )], {style:"display: inline-flex;"}) 
+//--- Transaction views
 
 let allTransactionsView = State => {
 
@@ -476,9 +352,9 @@ let allTransactionsView = State => {
         entityLabelWithPopup(State, State.DB.get(companyTransaction, "transaction/accountingYear") ),
         transactionLabel( State, companyTransaction ),
         d( moment( State.DB.get( companyTransaction, 1757 ) ).format("DD.MM.YYYY") , {style: `text-align: right;`}),
-        d( formatNumber( State.DB.get( companyTransaction, 1083 ) ) , {style: `text-align: right;`}),
+        companyValueView( State, companyTransaction, 8748 ),
         d([
-          isDefined( State.DB.get(companyTransaction, 7867) ) ? entityLabelWithPopup(State, State.DB.get(companyTransaction, 7867) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ,
+          isDefined( State.DB.get(companyTransaction, 7867) ) ? entityLabelWithPopup(State, State.DB.get(companyTransaction, 7867) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}),
           d(" --> "),
           isDefined( State.DB.get(companyTransaction, 7866) ) ? entityLabelWithPopup(State, State.DB.get(companyTransaction, 7866) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ,
         ], {style: gridColumnsStyle("3fr 1fr 3fr") + "padding-left: 3em;"} ),
@@ -496,9 +372,8 @@ let allTransactionsView = State => {
       input({type: "file", style: `text-align: right;`}, "change", e => Papa.parse(e.srcElement.files[0], {header: false, complete: async results => {
 
         let transactionRows = results.data.filter( row => row.length > 1 ).slice(5, results.data.length-1)
-
-        let datoms = transactionRows.map( (transactionRow, index) => constructTransactionRowDatoms(State, transactionRow, index)  ).flat()            
-        log({results, transactionRows, datoms})
+        let selectedBankAccount = State.Company.getBalanceObjects( 8737 )[0]
+        let datoms = transactionRows.map( (transactionRow, index) => constructTransactionRowDatoms(State, transactionRow, index, selectedBankAccount)  ).flat()            
 
         State.Actions.importBankDatoms(datoms)
 
@@ -507,17 +382,380 @@ let allTransactionsView = State => {
   ])
 } 
 
+let transactionsView = State => isDefined( State.S.selectedEntity ) 
+  ? State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8019 
+    ? manualTransactionView( State ) 
+    : State.DB.get( State.DB.get(State.S.selectedEntity, "transaction/originNode"), 7934 ) === 8737
+      ? paymentTransactionView( State ) 
+      : receiptTransactionView( State ) 
+  : allTransactionsView( State )
+
+let prevNextTransactionView = State => {
+
+  let companyTransaction = State.S.selectedEntity
+  let selectedIndex = State.Company.get( State.S.selectedEntity, 8354 )
+  let prevTransactionDatom = State.companyDatoms.find( Datom => Datom.attribute === 8354 && Datom.value === selectedIndex - 1 )
+  let prevTransaction = isDefined( prevTransactionDatom ) ? prevTransactionDatom.entity : undefined
+  let nextTransactionDatom = State.companyDatoms.find( Datom => Datom.attribute === 8354 && Datom.value === selectedIndex + 1 )
+  let nextTransaction = isDefined( nextTransactionDatom ) ? nextTransactionDatom.entity : undefined
+
+  return d([
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
+    br(),
+    d([
+      d([
+        entityLabelWithPopup( State, 7882 ),
+        span( " / " ),
+        entityLabelWithPopup( State, State.DB.get( companyTransaction, "transaction/transactionType" ) ),
+        span( " / " ),
+        transactionLabel( State, companyTransaction ),
+      ], {style: "display: inline-flex;"}),
+      d([
+        isDefined( prevTransaction ) ? submitButton("<", () => State.Actions.selectEntity( prevTransaction ) ) : d(""),
+        isDefined( nextTransaction ) ? submitButton(">", () => State.Actions.selectEntity( nextTransaction ) ) : d(""),
+      ], {style: gridColumnsStyle("3fr 1fr")})
+    ], {style: gridColumnsStyle("3fr 1fr")}),
+  ])
+}
+
+let transactionFlowView = (State, companyTransaction) => d([
+  d([
+    entityLabelWithPopup(State, 7867 ),
+    d([ isDefined( State.DB.get(companyTransaction, 7867) ) ? entityLabelWithPopup(State, State.DB.get(companyTransaction, 7867) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ]),
+  ]),
+  d([
+    d(""),
+    d([
+      d( moment( State.Company.get( companyTransaction, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
+      transactionLabel( State, companyTransaction ),
+      companyValueView( State, companyTransaction, 8748 ),
+      d(" --------------> "),
+    ]),
+    d(""),
+  ], {style: gridColumnsStyle("3fr 2fr 3fr")}),
+  d([
+    entityLabelWithPopup(State, 7866 ),
+    d([ isDefined( State.DB.get(companyTransaction, 7866) ) ? entityLabelWithPopup(State, State.DB.get(companyTransaction, 7866) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}), ]) ,
+  ])
+], {class: "feedContainer", style: gridColumnsStyle("2fr 3fr 2fr")})
+
+let manualTransactionView = State => {
+
+  let companyTransaction = State.S.selectedEntity
+
+  let originNode = State.DB.get( companyTransaction, "transaction/originNode" )
+  let destinationNode = State.DB.get( companyTransaction, "transaction/destinationNode" )
+
+  let requiredAttributes = [1757, 1139]
+
+  let requiredMeasures = [
+    State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
+    State.DB.get( State.DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
+  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
+
+
+  return d([
+    prevNextTransactionView( State ),
+    br(),
+    transactionFlowView( State, State.S.selectedEntity ),
+    br(),
+    d( requiredAttributes.map( attribute => entityAttributeView( State, companyTransaction, attribute ) ) ),
+    br(),
+    d( requiredMeasures.map( attribute => entityAttributeView( State, companyTransaction, attribute ) ) ),
+    br(),
+    State.Company.get(companyTransaction, 8355) 
+      ? d("🔒")
+      : d([
+        submitButton("Splitt i to transaksjoner", e => State.Actions.splitTransaction(companyTransaction) ),  
+        submitButton("Slett", e => State.Actions.retractEntity(companyTransaction) ),
+      ])
+  ])
+} 
+
+// Outgoing transactions
+
+let paymentTransactionView = State => d([
+  prevNextTransactionView( State ),
+  br(),
+  transactionFlowView( State, State.S.selectedEntity ),
+  br(),
+  d([
+    h3("Importerte transaksjonsdata"),
+    isDefined( State.DB.get(State.S.selectedEntity, "transaction/parentTransaction") )
+      ? d([
+        d("Splittet ut fra"),
+        transactionLabel( State, State.DB.get(State.S.selectedEntity, "transaction/parentTransaction") ),
+        entityAttributeView( State, State.S.selectedEntity, 1083 )
+      ], {style: gridColumnsStyle("1fr 1fr")})
+      : d([
+        d([
+          entityLabelWithPopup( State, 8737 ),
+          entityLabelWithPopup( State, State.Company.get( State.S.selectedEntity, 7867 )  )
+        ], {style: gridColumnsStyle("1fr 1fr")}),
+        companyDatomView( State, State.S.selectedEntity,  8832 ),
+        companyDatomView( State, State.S.selectedEntity, 8830 ),
+        companyDatomView( State, State.S.selectedEntity,  8831 ),
+        companyDatomView( State, State.S.selectedEntity,  1080 ),
+        State.Company.get( State.S.selectedEntity, 9030 ).length > 0
+          ? d([
+            companyDatomView( State, State.S.selectedEntity,  9030 ),
+            companyDatomView( State, State.S.selectedEntity,  8748 ),
+          ]) 
+          : d("")
+      ])
+    
+  ], {class: "feedContainer"}),
+  br(),
+  d([
+    h3("Kategorisering"),
+    { 
+      "8829": transactionCategoryView_uncategorizedPayment,
+      "8908": transactionCategoryView_securityPurchase,
+      "8954": transactionCategoryView_operatingCost,
+      "8955": transactionCategoryView_transfer
+    }[ State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) ]( State ),
+  ], {class: "feedContainer"}),
+  br(),
+  submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) ),  
+])
+
+let transactionCategoryView_uncategorizedPayment = State => d([
+  d([
+    d([d(`Kostnad`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    d( State.Company.getBalanceObjects( 8743 ).map(  selectedCostNode => entityLabelWithPopup( State, selectedCostNode, () => State.Actions.postDatoms([
+      newDatom( State.S.selectedEntity, "transaction/transactionType", 8954 ),
+      newDatom( State.S.selectedEntity, "transaction/destinationNode", selectedCostNode ),
+    ]) ) ) ),
+  ], {style: gridColumnsStyle("1fr 3fr")}),
+  d([
+    d([d(`Kjøp av verdipapir`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    d([
+      d( State.Company.getBalanceObjects( 8738 ).map(  security => entityLabelWithPopup( State, security, () => State.Actions.postDatoms([
+        newDatom( State.S.selectedEntity, "transaction/transactionType", 8908 ),
+        newDatom( State.S.selectedEntity, "transaction/destinationNode", security ),
+        newDatom( State.S.selectedEntity, 7450, 0 ),
+      ]) ) ) ),
+      span(`Legg til verdipapir`, "", {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8738 ) ),
+    ], {style:"display: inline-flex;"})
+  ], {style: gridColumnsStyle("1fr 3fr")}),
+  d([
+    d([d(`Overføring`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    d([
+      d( State.Company.getBalanceObjects( [8742, 8739, 8737] ).map(  selectedDebtNode => entityLabelWithPopup( State, selectedDebtNode, () => State.Actions.postDatoms([
+        newDatom( State.S.selectedEntity, "transaction/transactionType", 8955 ),
+        newDatom( State.S.selectedEntity, "transaction/destinationNode", selectedDebtNode ),
+      ]) ) ) ),
+      d(`Legg til gjeld`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8742 ) ),
+      d(`Legg til fordring`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8739 ) ),
+      d(`Legg til bankkonto`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8737 ) ),
+    ], {style:"display: inline-flex;"})
+  ], {style: gridColumnsStyle("1fr 3fr")}),
+  d([
+    d([d(`Utbytte`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    d([
+      d( State.Company.getBalanceObjects( 7857 ).map(  selectedDebtNode => entityLabelWithPopup( State, selectedDebtNode, () => State.Actions.postDatoms([
+        newDatom( State.S.selectedEntity, "transaction/transactionType", 8955 ),
+        newDatom( State.S.selectedEntity, "transaction/destinationNode", selectedDebtNode ),
+      ]) ) ) ),
+      d(`Legg til utbytte`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 7857 ) ),
+    ], {style:"display: inline-flex;"})
+  ], {style: gridColumnsStyle("1fr 3fr")}),
+  d([d(`Splitt transaksjon`, {class: "entityLabel", style: "background-color:#7b7b7b70;"}, "click", () => State.Actions.createEntities([
+    newDatom( "newTransaction", "entity/entityType", State.DB.get( State.S.selectedEntity , "entity/entityType") ),
+    newDatom( "newTransaction", "entity/company", State.DB.get( State.S.selectedEntity , "entity/company") ),
+    newDatom( "newTransaction", "event/date", State.DB.get( State.S.selectedEntity , "event/date") ),
+    newDatom( "newTransaction", "transaction/accountingYear", State.DB.get( State.S.selectedEntity , "transaction/accountingYear") ),
+    newDatom( "newTransaction", "transaction/transactionType", State.DB.get( State.S.selectedEntity , "transaction/transactionType") ),
+    newDatom( "newTransaction", "transaction/originNode", State.DB.get( State.S.selectedEntity , "transaction/originNode") ),
+    newDatom( "newTransaction", "transaction/parentTransaction", State.S.selectedEntity ),
+    newDatom( "newTransaction", 1083, 0 ),
+  ]) )], {style:"display: inline-flex;"}),
+])
+
+let transactionCategoryView_securityPurchase = State => d([
+  companyDatomView( State, State.S.selectedEntity,  7935),
+  d([
+    d([d(`Valgt verdipapir`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity,  7866) )
+  ], {style: gridColumnsStyle("1fr 1fr")}),
+  br(),
+  entityAttributeView( State, State.S.selectedEntity , 1139 ),
+  entityAttributeView( State, State.S.selectedEntity , 7450 ),
+  submitButton("Tilbakestill kategori", e => State.Actions.postDatoms([
+    newDatom( State.S.selectedEntity, "transaction/transactionType", 8829 ),
+    newDatom( State.S.selectedEntity, "transaction/destinationNode", State.DB.get(State.S.selectedEntity, "transaction/destinationNode") , false ),
+    newDatom( State.S.selectedEntity, 7450, State.DB.get(State.S.selectedEntity, 7450), false ),
+  ])
+  
+  
+  )
+])
+
+let transactionCategoryView_operatingCost = State => d([
+  d([
+    d([d(`Kategorisert som`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity,  7866) )
+  ], {style: gridColumnsStyle("1fr 1fr")}),
+  br(),
+  entityAttributeView( State, State.S.selectedEntity , 1139 ),
+  submitButton("Tilbakestill kategori", e => State.Actions.postDatoms([
+    newDatom( State.S.selectedEntity, "transaction/transactionType", 8829 ),
+    newDatom( State.S.selectedEntity, "transaction/destinationNode", State.DB.get(State.S.selectedEntity, "transaction/destinationNode") , false ),
+  ])
+  )
+])
+
+let transactionCategoryView_transfer = State => d([
+  d([
+    d([d(`Kategorisert som`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity,  7866) )
+  ], {style: gridColumnsStyle("1fr 1fr")}),
+  br(),
+  entityAttributeView( State, State.S.selectedEntity , 1139 ),
+  submitButton("Tilbakestill kategori", e => State.Actions.postDatoms([
+    newDatom( State.S.selectedEntity, "transaction/transactionType", 8829 ),
+    newDatom( State.S.selectedEntity, "transaction/destinationNode", State.DB.get(State.S.selectedEntity, "transaction/destinationNode") , false ),
+  ])
+  )
+])
+
+
+
+// Incoming transactions
+
+
+let receiptTransactionView = State => d([
+  prevNextTransactionView( State ),
+  br(),
+  transactionFlowView( State, State.S.selectedEntity ),
+  br(),
+  d([
+    h3("Importerte transaksjonsdata"),
+    d([
+      entityLabelWithPopup( State, 8737 ),
+      entityLabelWithPopup( State, State.Company.get( State.S.selectedEntity, 7866 )  )
+    ], {style: gridColumnsStyle("1fr 1fr")}),
+    companyDatomView( State, State.S.selectedEntity,  8832 ),
+    companyDatomView( State, State.S.selectedEntity, 8851 ),
+    companyDatomView( State, State.S.selectedEntity,  8831 ),
+    companyDatomView( State, State.S.selectedEntity,  1080 ),
+  ], {class: "feedContainer"}),
+  br(),
+  d([
+    h3("Kategorisering"),
+    { 
+      "8850": transactionCategoryView_uncategorizedReceipt,
+      "8974": transactionCategoryView_revenues,
+      "8976": transactionCategoryView_securitySale,
+      "8975": transactionCategoryView_receivedTransfer
+    }[ State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) ]( State ),
+  ], {class: "feedContainer"}),
+  br(),
+  submitButton("Slett", e => State.Actions.retractEntity( State.S.selectEntity ) ),  
+])
+
+
+let  transactionCategoryView_uncategorizedReceipt = State => d([
+  d([
+    d([d(`Inntekt`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    d( State.Company.getBalanceObjects( 8745 ).map(  selectedCostNode => entityLabelWithPopup( State, selectedCostNode, () => State.Actions.postDatoms([
+      newDatom( State.S.selectedEntity, "transaction/transactionType", 8974 ),
+      newDatom( State.S.selectedEntity, "transaction/originNode", selectedCostNode ),
+    ]) ) ) ),
+  ], {style: gridColumnsStyle("1fr 3fr")}),
+  d([
+    d([d(`Salg av verdipapir`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    d([
+      d( State.Company.getBalanceObjects( 8738 ).map(  security => entityLabelWithPopup( State, security, () => State.Actions.postDatoms([
+        newDatom( State.S.selectedEntity, "transaction/transactionType", 8976 ),
+        newDatom( State.S.selectedEntity, "transaction/originNode", security ),
+        newDatom( State.S.selectedEntity, 7450, 0 ),
+      ]) ) ) ),
+      span(`Legg til verdipapir`, "", {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8738 ) ),
+    ], {style:"display: inline-flex;"})
+  ], {style: gridColumnsStyle("1fr 3fr")}),
+  d([
+    d([d(`Overføring`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    d([
+      d( State.Company.getBalanceObjects( [8742, 8739, 8737] ).map(  selectedDebtNode => entityLabelWithPopup( State, selectedDebtNode, () => State.Actions.postDatoms([
+        newDatom( State.S.selectedEntity, "transaction/transactionType", 8975 ),
+        newDatom( State.S.selectedEntity, "transaction/originNode", selectedDebtNode ),
+      ]) ) ) ),
+      d(`Legg til gjeld`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8742 ) ),
+      d(`Legg til fordring`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8739 ) ),
+      d(`Legg til bankkonto`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8737 ) ),
+    ], {style:"display: inline-flex;"})
+  ], {style: gridColumnsStyle("1fr 3fr")})
+])
+
+let transactionCategoryView_securitySale = State => d([
+  companyDatomView( State, State.S.selectedEntity,  7935),
+  d([
+    d([d(`Valgt verdipapir`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity,  7866) )
+  ], {style: gridColumnsStyle("1fr 1fr")}),
+  br(),
+  entityAttributeView( State, State.S.selectedEntity , 1139 ),
+  entityAttributeView( State, State.S.selectedEntity , 7450 ),
+  submitButton("Tilbakestill kategori", e => State.Actions.postDatoms([
+    newDatom( State.S.selectedEntity, "transaction/transactionType", 8850 ),
+    newDatom( State.S.selectedEntity, "transaction/originNode", State.DB.get(State.S.selectedEntity, "transaction/originNode") , false ),
+    newDatom( State.S.selectedEntity, 7450, State.DB.get(State.S.selectedEntity, 7450), false ),
+  ])
+  
+  )
+])
+
+let transactionCategoryView_revenues = State => d([
+  d([
+    d([d(`Kategorisert som`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity,  7866) )
+  ], {style: gridColumnsStyle("1fr 1fr")}),
+  br(),
+  entityAttributeView( State, State.S.selectedEntity , 1139 ),
+  submitButton("Tilbakestill kategori", e => State.Actions.postDatoms([
+    newDatom( State.S.selectedEntity, "transaction/transactionType", 8850 ),
+    newDatom( State.S.selectedEntity, "transaction/originNode", State.DB.get(State.S.selectedEntity, "transaction/originNode") , false ),
+  ])
+  )
+])
+
+let transactionCategoryView_receivedTransfer = State => d([
+  d([
+    d([d(`Kategorisert som`, {class: "entityLabel", style: "background-color:#7b7b7b70;"})], {style:"display: inline-flex;"}),
+    entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity,  7866) )
+  ], {style: gridColumnsStyle("1fr 1fr")}),
+  br(),
+  entityAttributeView( State, State.S.selectedEntity , 1139 ),
+  submitButton("Tilbakestill kategori", e => State.Actions.postDatoms([
+    newDatom( State.S.selectedEntity, "transaction/transactionType", 8850 ),
+    newDatom( State.S.selectedEntity, "transaction/originNode", State.DB.get(State.S.selectedEntity, "transaction/originNode") , false ),
+  ])
+  )
+])
+
+
+
+
+
+
+
+
+
+
+
+let transactionLabel = (State, companyTransaction) => d([d(`Transaksjon ${ State.Company.get(companyTransaction, 8354) }`, {class: "entityLabel", style: "background-color:#00bcd466;"}, "click", () => State.Actions.selectEntity(companyTransaction) )], {style:"display: inline-flex;"}) 
+
 let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
 
-
-let constructTransactionRowDatoms = ( State, transactionRow, index) => {
+let constructTransactionRowDatoms = ( State, transactionRow, index, selectedBankAccount) => {
 
   let date = Number( moment( transactionRow[0], "DD.MM.YYYY" ).format("x") )
   let description = `${transactionRow[2]}: ${transactionRow[1]}`
 
   let paidAmount = transactionRow[5] === ""
     ? undefined
-    : parseDNBamount( transactionRow[5] ) 
+    : parseDNBamount( transactionRow[5] ) * -1
 
   let receivedAmount = transactionRow[6] === ""
   ? undefined
@@ -525,23 +763,20 @@ let constructTransactionRowDatoms = ( State, transactionRow, index) => {
 
   let isPayment = isNumber( paidAmount )
 
-  let amount = isPayment ? -paidAmount : receivedAmount
-
   let referenceNumber = transactionRow[7]
 
   let accountingYear = getAllAccountingYears( State.DB, State.S.selectedCompany ).slice(-1)[0]
 
-  let selectedBankAccount = getAllBalanceObjects( State.DB, State.S.selectedCompany ).filter( e => State.DB.get(e, 7934) === 6248 )[0]
-
   let transactionDatoms = [
     newDatom( "newDatom_"+ index, "entity/entityType", 7948  ),
-    newDatom( "newDatom_"+ index, "event/company", State.S.selectedCompany  ),
+    newDatom( "newDatom_"+ index, "entity/company", State.S.selectedCompany  ),
     newDatom( "newDatom_"+ index, 'transaction/accountingYear', accountingYear ), 
-    newDatom( "newDatom_"+ index, "transaction/transactionType", 8019 ),
-    newDatom( "newDatom_"+ index, "event/date", date  ),
+    newDatom( "newDatom_"+ index, "transaction/transactionType", isPayment ? 8829 : 8850 ),
+    newDatom( "newDatom_"+ index, 8832, date  ),
+    newDatom( "newDatom_"+ index, "event/date", date  ), //Denne burde heller være kalkulert verdi?
     newDatom( "newDatom_"+ index, isPayment ? "transaction/originNode" : "transaction/destinationNode", selectedBankAccount),
-    newDatom( "newDatom_"+ index, "eventAttribute/1083", amount  ),
-    newDatom( "newDatom_"+ index, "eventAttribute/1139", description  ),
+    newDatom( "newDatom_"+ index, isPayment ? 8830 : 8851, isPayment ? paidAmount : receivedAmount  ),
+    newDatom( "newDatom_"+ index, 8831, description  ),
     newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
   ]
 
@@ -554,8 +789,7 @@ let constructTransactionRowDatoms = ( State, transactionRow, index) => {
 let actorsView = State => isDefined( State.S.selectedEntity ) ? singleActorView( State ) : allActorsView( State )
 
 let allActorsView = State => {
-
-  let allActors = State.DB.getAll(7979) //.filter( e => State.DB.get(e, 7535) === 6790 )
+  let allActors = getAllActors( State.DB, State.S.selectedCompany )
 
   return d([
     d([
@@ -582,8 +816,6 @@ let singleActorView = State => {
       br(),
       d([
         entityLabelWithPopup( State, 7977 ),
-        span( " / " ),
-        entityLabelWithPopup( State, 6790 ),
         span( " / " ),
         entityLabelWithPopup( State, actor ),
       ]),

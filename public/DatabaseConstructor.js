@@ -1,47 +1,69 @@
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
+let changeToStringAttributes = (DB, Datoms) => Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value ) : Datom )
+
+let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.every( Datom => {
+
+    let attr = DB.attr(Datom.attribute)
+    let isArray = DB.get( attr, 5823)
+
+    let valueType = DB.get( attr , "attribute/valueType")
+
+    let attributeIsArray = isDefined( isArray )
+      ? isArray
+      : false
+
+    let valueInArray = attributeIsArray ? Datom.value : [Datom.value]
+
+    let valueTypeValidatorFunction = new Function("inputValue",  DB.get( valueType, "valueType/validatorFunctionString") )
+
+    let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
+    let isValid_attribute = true
+    let isValid_notNaN = valueInArray.every( arrayValue => !Number.isNaN(arrayValue) )
+    let isValid = ( isValid_valueType && isValid_attribute && isValid_notNaN  )
+
+    return isValid
+
+  } )
+
+let validateExistingEntities = ( DB, Datoms ) => Datoms.every( Datom => DB.isEntity(Datom.entity) )
 
 const Transactor = {
-    submitDatoms: async (DB, Datoms) => {
-    let datomsWithStringAttributes = Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value ) : Datom )
-    let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datomsWithStringAttributes ) )
-    let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
-    return updatedDB
+    createEntities: async (DB, Datoms) => {
+    let datomsWithStringAttributes = changeToStringAttributes( DB, Datoms )
+    let isValid = Datoms.every( Datom => isString(Datom.entity) ) && validateDatomAttributeValues( DB, datomsWithStringAttributes )
+    if(isValid){
+      let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datomsWithStringAttributes ) )
+      let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
+      return updatedDB
+    }else{
+      console.log("DB.createEntities did not pass validation.", {datomsWithStringAttributes})
+      return null;
+    }
+    
     },
-    updateEntity: async (DB, entity, attribute, value) => {
+    updateEntities: async (DB, Datoms) => {
+      
+      let datomsWithStringAttributes = changeToStringAttributes( DB, Datoms )
+      let isValid = validateDatomAttributeValues( DB, datomsWithStringAttributes ) && validateExistingEntities(  DB, Datoms )
+
+      if( isValid ){
   
-      let attr = DB.attr(attribute)
-      let valueType = DB.get( attr , "attribute/valueType")
-  
-      let attributeIsArray = isDefined( DB.get( attr, 5823) )
-        ? DB.get(attr, 5823)
-        : false
-  
-  
-  
-      let valueInArray = attributeIsArray ? value : [value]
-      let isValid_existingEntity = DB.isEntity(entity)
-      let valueTypeValidatorFunction = new Function("inputValue",  DB.get( valueType, "valueType/validatorFunctionString") )
-  
-      let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
-      let isValid_attribute = true
-      let isValid_notNaN = valueInArray.every( arrayValue => !Number.isNaN(arrayValue) )
-  
-      //Add checks for whether attribtue is valid for the entity type?
-  
-      if( isValid_existingEntity && isValid_valueType && isValid_attribute && isValid_notNaN  ){
-  
-        let Datom = newDatom(entity, DB.attrName(attr), value )
-        let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( [Datom] ) )
+        
+        let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datomsWithStringAttributes ) )
         let changedEntities = serverResponse.map( updatedEntity => updatedEntity.entity )
         let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !changedEntities.includes(oldEntity.entity)  ).concat(serverResponse) )
         return updatedDB
   
       }else{
-        console.log("DB.updateEntity did not pass validation.", {entity, attr, value, validators: {isValid_existingEntity, isValid_valueType, isValid_attribute, isValid_notNaN }})
+        console.log("DB.updateEntities did not pass validation.", {Datoms, datomsWithStringAttributes})
         return null;
       }
+
+      //TBD
+
     },
+    updateEntity: async (DB, entity, attribute, value, isAddition) => Transactor.updateEntities(DB, [newDatom(entity, attribute, value, isAddition)]),
     addValueEntry: async (DB, entity, attribute, newValue) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).concat( newValue ) ),
     removeValueEntry: async (DB, entity, attribute, index) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).filter( (Value, i) => i !== index  ) ),
     replaceValueEntry: async (DB, entity, attribute, index, newValue) => {
@@ -157,7 +179,7 @@ let constructDatabase = Entities => {
         if( isDefined(attribute) ){
           if( DB.isAttribute(attribute) ){
             let Datom = DB.getDatom(entity, attribute, version)
-            if(isUndefined(Datom)){return undefined}
+            if( isUndefined(Datom) || Datom.isAddition === false ){return undefined}
             else{ return Datom.value}
           }else if( DB.isCalculatedField(attribute) ){return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Calculated fields for non-company entities not supported`) } //returns calculatedField
         }else{return DB.getEntity(entity)}
