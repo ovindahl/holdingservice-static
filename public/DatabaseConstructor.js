@@ -26,63 +26,36 @@ let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.every( Datom => {
 
   } )
 
-let validateExistingEntities = ( DB, Datoms ) => Datoms.every( Datom => DB.isEntity(Datom.entity) )
 
 const Transactor = {
-    createEntities: async (DB, Datoms) => {
-    let datomsWithStringAttributes = changeToStringAttributes( DB, Datoms )
-    let isValid = Datoms.every( Datom => isString(Datom.entity) ) && validateDatomAttributeValues( DB, datomsWithStringAttributes )
-    if(isValid){
-      let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datomsWithStringAttributes ) )
-      let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
+    postValidDatoms: async (DB, validDatoms) => {
+      let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( validDatoms ) )
+      let changedEntities = serverResponse.map( updatedEntity => updatedEntity.entity )
+      let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !changedEntities.includes(oldEntity.entity)  ).concat(serverResponse) )
       return updatedDB
-    }else{
-      console.log("DB.createEntities did not pass validation.", {datomsWithStringAttributes})
-      return null;
-    }
-    
     },
-    updateEntities: async (DB, Datoms) => {
+    postDatoms: async (DB, Datoms) => {
       
       let datomsWithStringAttributes = changeToStringAttributes( DB, Datoms )
-      let isValid = validateDatomAttributeValues( DB, datomsWithStringAttributes ) && validateExistingEntities(  DB, Datoms )
+      let isValid = validateDatomAttributeValues( DB, datomsWithStringAttributes )
 
       if( isValid ){
-  
-        
-        let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datomsWithStringAttributes ) )
-        let changedEntities = serverResponse.map( updatedEntity => updatedEntity.entity )
-        let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !changedEntities.includes(oldEntity.entity)  ).concat(serverResponse) )
+
+        let updatedDB = await Transactor.postValidDatoms(DB, datomsWithStringAttributes)
         return updatedDB
   
       }else{
-        console.log("DB.updateEntities did not pass validation.", {Datoms, datomsWithStringAttributes})
+        console.log("DB.postDatoms did not pass validation.", {Datoms, datomsWithStringAttributes})
         return null;
       }
-
-      //TBD
-
     },
-    updateEntity: async (DB, entity, attribute, value, isAddition) => Transactor.updateEntities(DB, [newDatom(entity, attribute, value, isAddition)]),
+    createEntity: async (DB, entityType, newEntityDatoms) => Transactor.postDatoms(DB, [newDatom("newEntity", "entity/entityType", entityType )].concat( Array.isArray(newEntityDatoms)  ? newEntityDatoms : [] ) ),
+    updateEntity: async (DB, entity, attribute, value, isAddition) => Transactor.postDatoms(DB, [newDatom(entity, attribute, value, isAddition)]),
     addValueEntry: async (DB, entity, attribute, newValue) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).concat( newValue ) ),
     removeValueEntry: async (DB, entity, attribute, index) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).filter( (Value, i) => i !== index  ) ),
     replaceValueEntry: async (DB, entity, attribute, index, newValue) => {
       let Values = DB.get(entity, attribute)
       return await Transactor.updateEntity( DB, entity, attribute, Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
-    },
-    createEntity: async (DB, entityType, newEntityDatoms) => {
-  
-      let D = [newDatom("newEntity", "entity/entityType", entityType )]
-      if(Array.isArray(newEntityDatoms)){
-
-        let datomsWithStringAttributes = newEntityDatoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value ) : Datom )
-
-        D = D.concat( datomsWithStringAttributes )
-      }
-  
-      let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( D ) )
-      let updatedDB = constructDatabase( DB.Entities.concat(serverResponse) )
-      return updatedDB
     },
     retractEntities: async (DB, entities) => {    
       let retractionDatoms = entities.map( entity => {
@@ -91,7 +64,6 @@ const Transactor = {
         let retractionDatoms = activeDatoms.map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
         return retractionDatoms
       } ).flat()
-      
       let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
       let retractedEntities = serverResponse.map( retractedEntity => retractedEntity.entity )
       let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !retractedEntities.includes(oldEntity.entity)  ) )

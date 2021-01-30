@@ -82,7 +82,7 @@ let getDBActions = State => returnObject({
   },
   updateEntity: async (entity, attribute, newValue, isAddition) => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, newValue, isAddition )  } ),
   createEntity: async entityType => ClientApp.update( State, {DB: await Transactor.createEntity( State.DB, entityType )  } ),
-  postDatoms: async newDatoms => ClientApp.update( State, {DB: await Transactor.updateEntities( State.DB, newDatoms)  } ),
+  postDatoms: async newDatoms => ClientApp.update( State, {DB: await Transactor.postDatoms( State.DB, newDatoms)  } ),
   //executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
 })
 
@@ -125,43 +125,17 @@ let getClientActions = State => returnObject({
     newDatom( 'newEntity' , "event/date", State.DB.get(accountingYear, "accountingYear/lastDate" ) ), 
     newDatom( 'newEntity' , "eventAttribute/1139", "Årets skattekostnad" )
   ] )} ),
-  splitTransaction:  async companyTransaction => {
-
-    let originNode = State.DB.get( companyTransaction, "transaction/originNode" )
-  let destinationNode = State.DB.get( companyTransaction, "transaction/destinationNode" )
-
-  let requiredAttributes = [7867, 7866, 7935, 8258, 8849, 1757, 1139]
-
-  let requiredMeasures = [
-    State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
-    State.DB.get( State.DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMeasures" ),
-  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
-
-
-  let requiredMetadata = [
-    State.DB.get( State.DB.get( originNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
-    State.DB.get( State.DB.get( destinationNode, "balanceObject/balanceObjectType" ), "balanceObjectType/requiredMetadata" ),
-  ].flat().filter( a => isNumber(a) ).filter( filterUniqueValues )
-
-  let allAttributes = requiredAttributes.concat(requiredMeasures).concat(requiredMetadata)
-
-  let updatedDB = await Transactor.createEntity(State.DB, 7948, allAttributes.map( attribute =>  newDatom( 'newEntity' , attribute, State.DB.get(companyTransaction, attribute) )  ) )
-
-
-  ClientApp.update( State, {DB: updatedDB} )
-
-  },
   createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany )] )} ),
   createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
   importBankDatoms:  async newDatoms => {
 
-    let updatedDB = await Transactor.createEntities(State.DB, newDatoms )
+    let updatedDB = await Transactor.postDatoms(State.DB, newDatoms )
 
     ClientApp.update( State, {DB:updatedDB } )
   },
-  createEntities:  async newDatoms => {
+  postDatoms:  async newDatoms => {
 
-    let updatedDB = await Transactor.createEntities(State.DB, newDatoms )
+    let updatedDB = await Transactor.postDatoms(State.DB, newDatoms )
 
     ClientApp.update( State, {DB:updatedDB } )
   },

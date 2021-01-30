@@ -261,16 +261,16 @@ let entityAttributeView = (State, entity, attribute) => d([
 
 
 
-let companyDatomView = (State, companyEntity, attribute, t ) => d([
+let companyDatomView = (State, companyEntity, attribute, transactionIndex ) => d([
   entityLabelWithPopup( State, attribute, e => console.log("Cannot access AdminPage from here")),
-  companyValueView(State, companyEntity, attribute, State.S.selectedCompanyEventIndex),
+  companyValueView(State, companyEntity, attribute, isDefined(transactionIndex) ? transactionIndex : State.S.selectedCompanyEventIndex),
 ], {class: "columns_1_1"}) 
 
-let companyValueView = (State, companyEntity, attribute, selectedCompanyEventIndex) => {
+let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
 
   let valueType = State.DB.get(attribute, "attribute/valueType")
 
-  let Value = State.Company.get( companyEntity, attribute, selectedCompanyEventIndex )
+  let Value = State.Company.get( companyEntity, attribute, transactionIndex )
 
   try {
     return isDefined( Value )
