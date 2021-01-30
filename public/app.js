@@ -69,7 +69,7 @@ var A = {} //Consle access to Actions
 
 
 let getDBActions = State => returnObject({
-  createEntity: async entityType => ClientApp.update( State, {DB: await Transactor.createEntity( State.DB, entityType )  } ),
+  createEntity: async (entityType, entityDatoms) => ClientApp.update( State, {DB: await Transactor.createEntity( State.DB, entityType, entityDatoms )  } ),
   retractEntity: async entity => ClientApp.update( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined }} ),
   retractEntities: async entities => ClientApp.update( State, {DB: await Transactor.retractEntities(State.DB, entities), S: {selectedEntity: undefined }} ),
   duplicateEntity: async entity => {
@@ -81,7 +81,6 @@ let getDBActions = State => returnObject({
     ClientApp.update( State, {DB: updatedDB, S: {selectedEntity: updatedDB.Entities.slice(-1)[0].entity}} )
   },
   updateEntity: async (entity, attribute, newValue, isAddition) => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, newValue, isAddition )  } ),
-  createEntity: async entityType => ClientApp.update( State, {DB: await Transactor.createEntity( State.DB, entityType )  } ),
   postDatoms: async newDatoms => ClientApp.update( State, {DB: await Transactor.postDatoms( State.DB, newDatoms)  } ),
   //executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
 })
@@ -105,40 +104,8 @@ let getClientActions = State => returnObject({
     newDatom( 'newEntity' , "event/date", Date.now() ), 
     newDatom( 'newEntity' , "eventAttribute/1139", "" )
   ] )} ),
-  createTransaction:  async ( accountingYear, originNode, destinationNode, amount, timestamp, description ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
-    newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-    newDatom( 'newEntity' , 'transaction/accountingYear', accountingYear ), 
-    newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
-    newDatom( 'newEntity' , "transaction/originNode", originNode ), 
-    newDatom( 'newEntity' , "transaction/destinationNode", destinationNode ), 
-    newDatom( 'newEntity' , "eventAttribute/1083", amount ), 
-    newDatom( 'newEntity' , "event/date", timestamp ), 
-    newDatom( 'newEntity' , "eventAttribute/1139", description )
-  ] )} ), 
-  createTaxTransaction:  async ( accountingYear, amount ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7948, [
-    newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-    newDatom( 'newEntity' , 'transaction/accountingYear', accountingYear ), 
-    newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
-    newDatom( 'newEntity' , "transaction/originNode", State.Company.getBalanceObjects( 5231 )[0] ), 
-    newDatom( 'newEntity' , "transaction/destinationNode", State.Company.getBalanceObjects( 8746 )[0] ), 
-    newDatom( 'newEntity' , "eventAttribute/1083", amount ), 
-    newDatom( 'newEntity' , "event/date", State.DB.get(accountingYear, "accountingYear/lastDate" ) ), 
-    newDatom( 'newEntity' , "eventAttribute/1139", "Årets skattekostnad" )
-  ] )} ),
   createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany )] )} ),
   createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
-  importBankDatoms:  async newDatoms => {
-
-    let updatedDB = await Transactor.postDatoms(State.DB, newDatoms )
-
-    ClientApp.update( State, {DB:updatedDB } )
-  },
-  postDatoms:  async newDatoms => {
-
-    let updatedDB = await Transactor.postDatoms(State.DB, newDatoms )
-
-    ClientApp.update( State, {DB:updatedDB } )
-  },
 })
 
 const ClientApp = {
@@ -202,7 +169,7 @@ let init = async () => {
     ClientApp.update( firstState, {
       DB: initialDatabase,
       companyDatoms,
-      S: { selectedCompany: company, selectedPage: 7882, selectedCompanyEventIndex: getAllTransactions(initialDatabase, company).length }
+      S: { selectedCompany: company, selectedPage: 7882, selectedCompanyEventIndex: getAllTransactions(initialDatabase, company).length, selectedAccountingYear: getAllAccountingYears( initialDatabase, company ).slice(-1)[0] }
     } )
     
   }else{ ClientApp.update( firstState, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }

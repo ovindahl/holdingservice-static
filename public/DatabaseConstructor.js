@@ -26,6 +26,9 @@ let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.every( Datom => {
 
   } )
 
+let getEntityRetractionDatoms = (DB, entity) => DB.get(entity).Datoms.filter( Datom => DB.get(entity).Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  ).map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
+
+let getEntitiesRetractionDatoms = (DB, entities) => isArray(entities) ? entities.map( entity => getEntityRetractionDatoms( DB, entity ) ).flat() : log([], {ERROR: "getEntitiesRetractionDatoms did not receive array", entities} )
 
 const Transactor = {
     postValidDatoms: async (DB, validDatoms) => {
@@ -58,12 +61,7 @@ const Transactor = {
       return await Transactor.updateEntity( DB, entity, attribute, Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
     },
     retractEntities: async (DB, entities) => {    
-      let retractionDatoms = entities.map( entity => {
-        let Datoms = DB.get(entity).Datoms
-        let activeDatoms = Datoms.filter( Datom => Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  )
-        let retractionDatoms = activeDatoms.map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
-        return retractionDatoms
-      } ).flat()
+      let retractionDatoms = getEntitiesRetractionDatoms( DB, entities )
       let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
       let retractedEntities = serverResponse.map( retractedEntity => retractedEntity.entity )
       let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !retractedEntities.includes(oldEntity.entity)  ) )
