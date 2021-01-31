@@ -147,9 +147,15 @@ const ClientApp = {
       let startTime = Date.now()
       let elementTree = [newState.S.isAdmin ? adminPage( newState ) : clientPage( newState )]
       sideEffects.updateDOM( elementTree )
+      if( State.S.selectedPage === 9338 ){ renderGraph( State ) } 
       console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
   }
 }
+
+
+
+
+
 
 let init = async () => {
 

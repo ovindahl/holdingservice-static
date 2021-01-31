@@ -26,6 +26,7 @@ let clientPage = State => {
     "7882": transactionsView,
     "7977": actorsView,
     "7919": reportsView,
+    "9338": graphView
   }
   
   return d([
@@ -38,7 +39,7 @@ let clientPage = State => {
       d([
         stateView( State ),
         d([
-          d( [7509, 7860, 7882, 7977, 7919].map( pageEntity => entityLabelWithPopup( State, Number(pageEntity), () => State.Actions.selectPage(pageEntity) ) ), {class: "feedContainer"} ),
+          d( [7509, 7860, 7882, 7977, 7919, 9338].map( pageEntity => entityLabelWithPopup( State, Number(pageEntity), () => State.Actions.selectPage(pageEntity) ) ), {class: "feedContainer"} ),
           br(),
           d([pageRouter[ State.S.selectedPage ]( State ) ], {class: "feedContainer"} )
         ])
@@ -101,7 +102,94 @@ let singleAccountingYearView = State => State.DB.get(State.S.selectedEntity, 19)
   : accountingYearOverviewView( State )
   
   
+//var cy = {}
+
+let graphView = State => {
+
+  return d("", {id: "cy"})
+
+}
+
+let renderGraph = State => {
+
+  let allTransactions = getAllTransactions( State.DB, State.S.selectedCompany ).filter( t => State.Company.get(t, 8354) <= State.S.selectedCompanyEventIndex  )
+
+  let selectedTransaction = allTransactions.find( t => State.Company.get(t, 8354) === State.S.selectedCompanyEventIndex  )
+
+  let nodes = getAllBalanceObjects( State.DB, State.S.selectedCompany ).map( e => returnObject({data: {
+    id: String(e), 
+    label: State.DB.get(e, 6),
+    col: State.Company.get(e, 8768) === 7538
+      ? 1
+      : State.Company.get(e, 8768) === 7539
+        ? 2
+        : State.Company.get(e, 7934) === 8744 || State.Company.get(e, 7934) === 8745
+          ? 3
+          : State.Company.get(e, 7934) === 8737
+            ? 4
+            : State.Company.get(e, 8768) === 7537
+              ? 5
+              : 6,
+      weight: 50 + State.Company.get(e, 7433, State.S.selectedCompanyEventIndex) / 1000000,
+      color: State.Company.get(selectedTransaction, "transaction/originNode") === e 
+        ? "red"
+        : State.Company.get(selectedTransaction, "transaction/destinationNode") === e 
+          ? "green"
+          : "black"
+  } }  ) )
+  let edges = allTransactions
+    .filter( t => isNumber( State.Company.get(t, "transaction/originNode") ) && isNumber( State.Company.get(t, "transaction/destinationNode") )   )
+    .map( t => returnObject({data: {
+      id: String(t), 
+      source: String( State.Company.get(t, "transaction/originNode") ), 
+      target: String( State.Company.get(t, "transaction/destinationNode") ),
+      label: t === selectedTransaction ? formatNumber( State.Company.get(t, 8748), 0 ) : "",
+      weight: 3 + State.Company.get(t, 8748) / 1000000
+    }}) )
+
+  log({nodes, edges})
+
+  let elements = nodes.concat(edges)
+
+  cytoscape({
+
+    container: document.getElementById('cy'), // container to render in
+    elements,
+    style: [ // the stylesheet for the graph
+      {
+        selector: 'node',
+        style: {
+          'background-color': 'data(color)',
+          'label': 'data(label)',
+          'width': 'data(weight)',
+          'height': 'data(weight)',
+        }
+      },
   
+      {
+        selector: 'edge',
+        style: {
+          'width': 'data(weight)',
+          'line-color': '#ccc',
+          'target-arrow-color': '#ccc',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'label': 'data(label)'
+        }
+      }
+    ],
+  
+    layout: {
+      name: 'grid',
+      position: node => returnObject({
+        col: node.data('col')
+       })
+    }
+  
+  });
+} 
+
+
 
 let accountingYearOverviewView = State => {
 
@@ -507,36 +595,14 @@ let manualTransactionView = State => {
 
 let transactionDataSourceView = State => d([
   h3("Datakilde"),
-  isDefined( State.DB.get(State.S.selectedEntity, "transaction/parentTransaction") )
-    ? d([
-      companyDatomView( State, State.S.selectedEntity,  9011 ),
-      entityAttributeView( State, State.S.selectedEntity, 1083 )
-    ])
-    : State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 9035
-      ? d([
-        companyDatomView( State, State.S.selectedEntity,  9041 ),
-        companyDatomView( State, State.S.selectedEntity,  9191 ),
-        companyDatomView( State, State.S.selectedEntity,  9042 )
-        ])
-      : d([
-        companyDatomView( State, State.S.selectedEntity,  9104 ),
-        companyDatomView( State, State.S.selectedEntity,  9084 ),
-        companyDatomView( State, State.S.selectedEntity,  8832 ),
-        companyDatomView( State, State.S.selectedEntity, 8830 ),
-        companyDatomView( State, State.S.selectedEntity,  8831 ),
-        companyDatomView( State, State.S.selectedEntity,  1080 ),
-        State.Company.get( State.S.selectedEntity, 9030 ).length > 0
-          ? d([
-            companyDatomView( State, State.S.selectedEntity,  9030 ),
-          ]) 
-          : d(""),
+  d([
+      companyDatomView( State, State.S.selectedEntity,  9104 ),
+      companyDatomView( State, State.S.selectedEntity,  9084 ),
+      companyDatomView( State, State.S.selectedEntity,  8832 ),
+      companyDatomView( State, State.S.selectedEntity, 8830 ),
+      companyDatomView( State, State.S.selectedEntity,  8831 ),
+      companyDatomView( State, State.S.selectedEntity,  1080 ),
       ]),
-      State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8976
-            ? d([
-              companyDatomView( State, State.S.selectedEntity,  9253 ),
-            ]) 
-            : d(""),
-  
 ], {class: "feedContainer"})
 
 
@@ -546,12 +612,34 @@ let importedTransactionView = State => d([
   br(),
   transactionFlowView( State, State.S.selectedEntity ),
   br(),
-  transactionDataSourceView( State ),
+  [8829, 8850].includes( State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) ) ? transactionDataSourceView( State ) : d(""),
   br(),
   d([
     h3("Kategorisering"),
     companyDatomView( State, State.S.selectedEntity,  7935),
-    companyDatomView( State, State.S.selectedEntity,  8748),
+    State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 9035
+      ? d([
+        companyDatomView( State, State.S.selectedEntity,  9041 ),
+        companyDatomView( State, State.S.selectedEntity,  9191 ),
+        companyDatomView( State, State.S.selectedEntity,  9042 ),
+        br()
+        ])
+      : d(""),
+    State.Company.get( State.S.selectedEntity, 9030 ).length > 0
+    ? d([
+      companyDatomView( State, State.S.selectedEntity,  9030 ),
+    ]) 
+    : d(""),
+    isDefined( State.DB.get(State.S.selectedEntity, "transaction/parentTransaction") )
+    ? d([
+      companyDatomView( State, State.S.selectedEntity,  9011 ),
+      entityAttributeView( State, State.S.selectedEntity, 1083 ),
+    ]) : d(""),
+    State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8976
+            ? d([
+              companyDatomView( State, State.S.selectedEntity,  9253 ),
+            ]) 
+            : d(""),
   br(),
   d( State.DB.get( State.DB.get( State.S.selectedEntity, "transaction/transactionType" ), 7942 ).map( inputAttribute => entityAttributeView( State, State.S.selectedEntity , inputAttribute ) ) ),
   State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8829 
@@ -579,6 +667,10 @@ let importedTransactionView = State => d([
         ))
   ], {class: "feedContainer"}),
   br(),
+  d([
+    companyDatomView( State, State.S.selectedEntity,  8748)
+  ], {class: "feedContainer"})
+  
   //submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) ),  
 ])
 

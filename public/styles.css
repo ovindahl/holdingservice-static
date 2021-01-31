@@ -1,5 +1,11 @@
 body {background-color: #F2F3F5;}
 
+#cy {
+    width: 1000px;
+    height: 1000px;
+    display: block;
+  }
+
 .feedContainer {
     max-width: 1200px;
     padding:1em;
