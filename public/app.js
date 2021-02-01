@@ -91,6 +91,13 @@ let getClientActions = State => returnObject({
   selectCompanyEventIndex: companyDate => ClientApp.update( State, {S: {selectedCompanyEventIndex: companyDate }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedPage: 7882, selectedEntity: undefined}}),
   updateCompany: company => ClientApp.update( State, {companyDatoms: constructCompanyDatoms( State.DB, company ), S: {selectedCompany: company}} ),
+  postDatomsAndUpdateCompany: async newDatoms => {
+
+    let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
+    let updatedCompanyDatoms = constructCompanyDatoms( updatedDB, State.S.selectedCompany )
+    ClientApp.update( State, {DB: updatedDB, companyDatoms: updatedCompanyDatoms } )
+
+  },
   createBalanceObject:  async balanceObjectType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7932, [
      newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
      newDatom( 'newEntity' , 'balanceObject/balanceObjectType', balanceObjectType ),
@@ -121,6 +128,7 @@ const ClientApp = {
         }
 
       newState.Company = {
+        entity: newState.S.selectedCompany,
         companyDatoms: newState.companyDatoms,
         get: (entity, attribute, eventTime) => DB.isAttribute(attribute) ? DB.get(entity, attribute) : getFromCompany( newState.companyDatoms, entity, attribute, eventTime ),
         getBalanceObjects: queryObject => getBalanceObjects( State.DB, State.companyDatoms, newState.S.selectedCompany, queryObject )
