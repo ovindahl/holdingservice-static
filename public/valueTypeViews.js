@@ -285,7 +285,9 @@ let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
             ? Value.every( entry => State.DB.get(entry, 19) === 7948 )
               ?  d( Value.map( ent => transactionLabel( State, ent ) ) )
               : d( Value.map( ent => entityLabelWithPopup(State, ent ) ) )
-            : entityLabelWithPopup(State, Value )
+            : State.DB.get( Value , "entity/entityType") === 7948
+              ? transactionLabel( State, Value )
+              : entityLabelWithPopup(State, Value )
           : valueType === 6553
             ? d( Value.map( accountBalance => d([
                 entityLabelWithPopup( State, accountBalance.account),

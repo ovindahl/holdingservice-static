@@ -168,7 +168,7 @@ let init = async () => {
   if( Entities.length > 0 ){
 
     let initialDatabase = constructDatabase( Entities )
-    let company = 7873
+    let company = 6829
     let companyDatoms = constructCompanyDatoms( initialDatabase, company ) 
     
 
