@@ -189,8 +189,6 @@ let renderGraph = State => {
   });
 } 
 
-
-
 let accountingYearOverviewView = State => {
 
 
