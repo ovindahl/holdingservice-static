@@ -31,7 +31,7 @@ let clientPage = State => {
   
   return d([
     d([d('<header><h1>Holdingservice Beta</h1></header>'),d([
-      d([dropdown(State.S.selectedCompany, State.DB.getAll( 5722 ).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.updateCompany( Number( submitInputValue(e) ) ))]),
+      d([dropdown(State.S.selectedCompany, State.DB.getAll( 5722 ).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
       submitButton("Bytt til admin", e => State.Actions.toggleAdmin() )
     ], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
     d([
@@ -487,7 +487,7 @@ let allTransactionsView = State => {
     br(),
     d([
       d("Importer fra:"),
-      entityLabelWithPopup( State, 7313),
+      entityLabelWithPopup( State, State.Company.getBalanceObjects( 8737 )[0]),
       input({type: "file", style: `text-align: right;`}, "change", e => Papa.parse(e.srcElement.files[0], {header: false, complete: async results => {
 
         let transactionRows = results.data.filter( row => row.length > 1 ).slice(5, results.data.length-1)
