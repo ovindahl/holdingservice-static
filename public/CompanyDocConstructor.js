@@ -36,7 +36,12 @@ let newCompanyDatom = (companyEntity, attribute, value, t) => returnObject({
 
 //SSOT
 let getAllAccountingYears = (DB, company) => DB.getAll( 7403 ).filter( accountingYear => DB.get( accountingYear, "entity/company") === company ).sort(  (a,b) => DB.get(a, 8255 ) - DB.get(b, 8255 ) )
-let getAllTransactions = (DB, company) => DB.getAll( 7948 ).filter( transaction => DB.get( transaction, "entity/company")  === company  ).sort(  (a,b) => DB.get(a, 'event/date' ) === DB.get(b, 'event/date' ) ? a - b : DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
+let getAllTransactions = (DB, company, accountingYear) => DB.getAll( 7948 )
+  .filter( transaction => DB.get( transaction, "entity/company")  === company  )
+  .filter( t => isDefined(accountingYear) ? State.Company.get(t, "transaction/accountingYear") === accountingYear : true )
+  .sort(  (a,b) => DB.get(a, 'event/date' ) === DB.get(b, 'event/date' ) ? a - b : DB.get(a, 'event/date' ) - DB.get(b, 'event/date' ) )
+let getTransactionByIndex = (DB, company, companyDatoms, index) => getAllTransactions(DB, company).find( t => getFromCompany(companyDatoms, t, 8354) === index )
+
 let getAllBalanceObjects = (DB, company) => DB.getAll( 7932 ).filter( balanceObject => DB.get( balanceObject, "entity/company")  === company  )
 let getAllActors = (DB, company) => DB.getAll( 7979 ).filter( entity => DB.get( entity, 8849 )  === company  )
 let getBalanceObjects = (DB, companyDatoms, company, queryObject) => {

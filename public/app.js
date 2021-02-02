@@ -89,11 +89,12 @@ let getClientActions = State => returnObject({
   selectPage: pageEntity => ClientApp.update( State, {S: {selectedPage: pageEntity, selectedEntity: undefined}}),
   selectEntity: entity => ClientApp.update( State, {S: {selectedEntity: entity, selectedPage: isDefined(entity) ? State.DB.get( State.DB.get(entity, 19), 7930 ) : State.S.selectedPage }}),
   selectCompanyEventIndex: companyDate => ClientApp.update( State, {S: {selectedCompanyEventIndex: companyDate }}),
+  selectAccountingYear: accountingYear => ClientApp.update( State, {S: {selectedAccountingYear: accountingYear }}),
   toggleAdmin: () => ClientApp.update( State, {S: {isAdmin: State.S.isAdmin ? false : true, selectedPage: 7882, selectedEntity: undefined}}),
   selectCompany: (company) => ClientApp.update( State, {
     DB: State.DB,
     companyDatoms: constructCompanyDatoms( State.DB, company ) ,
-    S: { selectedCompany: company, selectedPage: 7882, selectedCompanyEventIndex: getAllTransactions(State.DB, company).length, selectedAccountingYear: getAllAccountingYears( State.DB, company ).slice(-1)[0] }
+    S: { selectedCompany: company, selectedPage: 7882, selectedEntity: undefined, selectedCompanyEventIndex: getAllTransactions(State.DB, company).length, selectedAccountingYear: getAllAccountingYears( State.DB, company ).slice(-1)[0] }
   } ),
   updateCompany: company => ClientApp.update( State, {companyDatoms: constructCompanyDatoms( State.DB, company ), S: {selectedCompany: company}} ),
   postDatomsAndUpdateCompany: async newDatoms => {
