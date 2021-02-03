@@ -96,7 +96,7 @@ let constructDatabase = Entities => {
   
     DB.isEntity = entity => DB.entities.includes(entity)
   
-    DB.isCalculatedField = calculatedField => DB.getAll(5817).includes( calculatedField )
+    DB.isCalculatedField = calculatedField => DB.getAll(9815).includes( calculatedField )
   
     DB.getDatom = (entity, attribute, version) => {
 
@@ -139,6 +139,8 @@ let constructDatabase = Entities => {
   
       return EntityAttribute
     }
+
+    DB.getGlobalCalculatedValue = (entity, calculatedField) => calculateGlobalCalculatedValue( DB, entity, calculatedField )
   
     DB.getAll = entityType => DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity) //Kan bli sirkulær med isAttribute
   
@@ -151,7 +153,7 @@ let constructDatabase = Entities => {
             let Datom = DB.getDatom(entity, attribute, version)
             if( isUndefined(Datom) || Datom.isAddition === false ){return undefined}
             else{ return Datom.value}
-          }else if( DB.isCalculatedField(attribute) ){return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Calculated fields for non-company entities not supported`) } //returns calculatedField
+          }else if( DB.isCalculatedField(attribute) ){return DB.getGlobalCalculatedValue( entity, attribute ) } //returns calculatedField
         }else{return DB.getEntity(entity)}
       }else{return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`)}
     }
@@ -228,3 +230,4 @@ getEntityLabel = (DB, entity) => DB.get(entity, "entity/entityType") === 7948
 getEntityDescription = (DB, entity) => `${ DB.get( entity, "entity/doc") ? DB.get( entity, "entity/doc") : ""}`
 
 
+let calculateGlobalCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )

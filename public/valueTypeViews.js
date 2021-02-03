@@ -262,7 +262,7 @@ let entityAttributeView = (State, entity, attribute) => d([
 
 
 let companyDatomView = (State, companyEntity, attribute, transactionIndex ) => d([
-  entityLabelWithPopup( State, attribute, e => console.log("Cannot access AdminPage from here")),
+  entityLabelWithPopup( State, attribute ),
   companyValueView(State, companyEntity, attribute, isDefined(transactionIndex) ? transactionIndex : State.S.selectedCompanyEventIndex),
 ], {class: "columns_1_1"}) 
 
@@ -279,7 +279,7 @@ let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
         ? d( Value.map( companyEnt => companyEntityLabelWithPopup(State, companyEnt ) ) )
         : companyEntityLabelWithPopup(State, Value )
       : [1653, 6781, 1099].includes(attribute)
-        ? entityLabelWithPopup( State, Value , e => console.log("Cannot access AdminPage from here") )
+        ? entityLabelWithPopup( State, Value )
         : valueType === 32
           ? State.DB.get(attribute, "attribute/isArray")
             ? Value.every( entry => State.DB.get(entry, 19) === 7948 )
