@@ -131,7 +131,9 @@ const ClientApp = {
         get: (entity, attribute, transactionIndex) => DB.isAttribute(attribute) 
           ? DB.get(entity, attribute) 
           : getFromCompany( newState.companyDatoms, entity, attribute, transactionIndex ),
+        getAllTransactions: accountingYear => getAllTransactions(State.DB, newState.S.selectedCompany, accountingYear),
         getBalanceObjects: queryObject => getBalanceObjects( State.DB, State.companyDatoms, newState.S.selectedCompany, queryObject ),
+        getTransactionByIndex: index => isDefined(index) ? getTransactionByIndex( State.DB, newState.S.selectedCompany, State.companyDatoms,  index ) : getAllTransactions(State.DB, newState.S.selectedCompany).slice(-1)[0]
       }
       
       newState.Actions = Object.assign( {}, getDBActions(newState), getClientActions(newState) )
