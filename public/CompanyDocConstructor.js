@@ -271,7 +271,7 @@ let getReportFieldValue = ( DB, companyDatoms, company, accountingYear, reportFi
    }
 
   let sourceEntityTypeController = {
-    "5030": () => getBalanceObjects(DB, companyDatoms, company, DB.get(reportField, 7829) ).reduce( (sum, balanceObject) => sum + CompanyQueryObject.get(balanceObject, 7433, closingBalanceIndex), 0 ),
+    "5030": () => CompanyQueryObject.getBalanceObjects( DB.get(reportField, 7829) ).reduce( (sum, balanceObject) => sum + CompanyQueryObject.get(balanceObject, 7433), 0 ),
     "5722": () => getFromCompany( companyDatoms, company, calculatedField, closingBalanceIndex ), //company
     "7865": () => getFromCompany( companyDatoms, accountingYear, calculatedField, closingBalanceIndex ),
     "8662": () => tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, CompanyQueryObject, ReportQueryObject ) )
@@ -282,6 +282,8 @@ let getReportFieldValue = ( DB, companyDatoms, company, accountingYear, reportFi
   let calculatedField = DB.get( reportField, 8362 )
 
   let value = sourceEntityTypeController[ sourceEntityType ]() 
+
+  
 
   return value
   
