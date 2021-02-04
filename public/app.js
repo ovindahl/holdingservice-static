@@ -110,8 +110,68 @@ let getClientActions = State => returnObject({
      newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
     ] )} ),
   createCompanyActor: async ( ) =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany )] )} ),
-  createCompanyReport: async reportType =>  ClientApp.update( State, {DB: await Transactor.createEntity(State.DB, 7865, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 'companyDocument/documentType', reportType ),  newDatom( 'newEntity' , "event/date", Date.now() )] )} ),
+  importBankTransactions: (bankAccount, e) => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => {
+
+  let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
+  
+  let constructTransactionRowDatoms = ( State, transactionRow, index, selectedBankAccount) => {
+  
+    let date = Number( moment( transactionRow[0], "DD.MM.YYYY" ).format("x") )
+    let description = `${transactionRow[2]}: ${transactionRow[1]}`
+  
+    let paidAmount = transactionRow[5] === ""
+      ? undefined
+      : parseDNBamount( transactionRow[5] ) * -1
+  
+    let receivedAmount = transactionRow[6] === ""
+    ? undefined
+    :parseDNBamount( transactionRow[6] ) 
+  
+    let isPayment = isNumber( paidAmount )
+  
+    let referenceNumber = transactionRow[7]
+  
+    let accountingYear = getAllAccountingYears( State.DB, State.S.selectedCompany ).slice(-1)[0]
+  
+    let transactionDatoms = [
+      newDatom( "newDatom_"+ index, "entity/entityType", 7948  ),
+      newDatom( "newDatom_"+ index, "entity/company", State.S.selectedCompany  ),
+      newDatom( "newDatom_"+ index, 'transaction/accountingYear', accountingYear ), 
+      newDatom( "newDatom_"+ index, "transaction/transactionType", isPayment ? 8829 : 8850 ),
+      newDatom( "newDatom_"+ index, "transaction/paymentType", isPayment ? 9086 : 9087 ),
+      newDatom( "newDatom_"+ index, 8832, date  ),
+      newDatom( "newDatom_"+ index, "event/date", date  ), //Denne burde heller være kalkulert verdi?
+      newDatom( "newDatom_"+ index, isPayment ? "transaction/originNode" : "transaction/destinationNode", selectedBankAccount),
+      newDatom( "newDatom_"+ index, 8830, isPayment ? paidAmount : receivedAmount  ),
+      newDatom( "newDatom_"+ index, 8831, description  ),
+      newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
+      newDatom( "newDatom_"+ index, "entity/sourceDocument", "[TBD] Bankimport lastet opp " + moment( Date.now() ).format("DD/MM/YYYY HH:mm")  ),
+      newDatom( "newDatom_"+ index, 1139, ""  ),
+    ]
+  
+    return transactionDatoms
+  
+  }
+  
+    State.Actions.postDatomsAndUpdateCompany( results.data.filter( row => row.length > 1 ).slice(5, results.data.length-1).map( (transactionRow, index) => constructTransactionRowDatoms(State, transactionRow, index, bankAccount)  ).flat()   )
+  
+    } }),
+  splitTransaction: transaction => State.Actions.postDatomsAndUpdateCompany([
+    newDatom( "newTransaction", "entity/entityType", State.DB.get( transaction , "entity/entityType") ),
+    newDatom( "newTransaction", "entity/company", State.DB.get( transaction , "entity/company") ),
+    newDatom( "newTransaction", "event/date", State.DB.get( transaction , "event/date") ),
+    newDatom( "newTransaction", "transaction/accountingYear", State.DB.get( transaction , "transaction/accountingYear") ),
+    newDatom( "newTransaction", "transaction/transactionType", State.DB.get( transaction , "transaction/transactionType") ),
+    State.DB.get( transaction , "transaction/transactionType") === 8850 
+      ? newDatom( "newTransaction", "transaction/destinationNode", State.DB.get( transaction , "transaction/destinationNode") ) 
+      : newDatom( "newTransaction", "transaction/originNode", State.DB.get( transaction , "transaction/originNode") ),
+    newDatom( "newTransaction", "transaction/parentTransaction", transaction ),
+    newDatom( "newTransaction", 1139, "" ),
+    newDatom( "newTransaction", 1083, 0 ),
+  ])
 })
+
+
 
 const ClientApp = {
     States: [],
@@ -161,9 +221,6 @@ const ClientApp = {
       console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
   }
 }
-
-
-
 
 
 

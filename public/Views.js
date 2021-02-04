@@ -338,7 +338,20 @@ let openAccountingYearView = State => {
     ], {class: "feedContainer"}), 
     br(),
     d([
-      h3("Bankavstemming"),
+      h3("Bank"),
+      br(),
+      d([
+        d([
+          entityLabelWithPopup( State, 8737 ),
+          entityLabelWithPopup( State, 7433 ),
+          d("Importer")
+        ], {style: gridColumnsStyle("1fr 1fr 1fr")}),
+        d( State.Company.getBalanceObjects(8737).map( bankAccount => d([
+          entityLabelWithPopup( State, bankAccount ),
+          companyValueView( State, bankAccount, 7433 ),
+          input({type: "file", style: `text-align: right;`}, "change", e => State.Actions.importBankTransactions( bankAccount, e ) ),
+        ], {style: gridColumnsStyle("1fr 1fr 1fr")}) ) )
+      ]),
       entityAttributeView( State, State.S.selectedAccountingYear, 8750 ),
     ], {class: "feedContainer"}),
     br(),
@@ -381,6 +394,7 @@ let openAccountingYearView = State => {
   ])
 
 } 
+
 
 //var cy = {}
 
@@ -726,26 +740,12 @@ let allTransactionsView = State => {
           newDatom( 'newEntity' , "event/date", Date.now() ), 
           newDatom( 'newEntity' , "eventAttribute/1139", "" )
         ]) ),
-      br(),
-      d([
-        d("Importer fra:"),
-        entityLabelWithPopup( State, State.Company.getBalanceObjects( 8737 )[0]),
-        input({type: "file", style: `text-align: right;`}, "change", e => Papa.parse(e.srcElement.files[0], {header: false, complete: async results => {
-
-          let transactionRows = results.data.filter( row => row.length > 1 ).slice(5, results.data.length-1)
-          let selectedBankAccount = State.Company.getBalanceObjects( 8737 )[0]
-          let datoms = transactionRows.map( (transactionRow, index) => constructTransactionRowDatoms(State, transactionRow, index, selectedBankAccount)  ).flat()         
-
-          State.Actions.postDatomsAndUpdateCompany(datoms)
-
-          } }) ),
-      ]),
     ], {class: "feedContainer"})
   ])
 } 
 
 let transactionsView = State => isDefined( State.S.selectedEntity ) 
-  ? transactionView( State ) 
+  ? transactionView2( State ) 
   : allTransactionsView( State )
 
 let prevNextTransactionView = State => {
@@ -859,7 +859,7 @@ let transactionLabel = (State, companyTransaction) => d([
     ], {style: gridColumnsStyle("3fr 2fr 3fr")})
   ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;width: 400px;"})
 
-
+/* 
 let transactionAttributesView = State => d([
   State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 9035
     ? d([
@@ -940,6 +940,100 @@ let transactionView = State => d([
   ], {class: "feedContainer"})
   
   //submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) ),  
+]) */
+
+let transactionView2 = State => d([
+  prevNextTransactionView( State ),
+  br(),
+  transactionFlowView( State, State.S.selectedEntity ),
+  br(),
+  d([
+    h3("Transaksjonstype"),
+    companyDatomView( State, State.S.selectedEntity, 7935 ),
+    State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8829 
+    ? categorizePaymentView( State )
+    : State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8850 
+      ? categorizeReceiptView( State )
+      : (State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8019 || State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 9035 )
+          ? d("")
+          : submitButton("Tilbakestill kategori", e => State.Actions.postDatoms(
+            State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8976
+              ? [
+                newDatom( State.S.selectedEntity, "transaction/transactionType", 8850 ),
+                newDatom( State.S.selectedEntity, "transaction/originNode", State.DB.get(State.S.selectedEntity, "transaction/originNode") , false ),
+              ].concat( getEntityRetractionDatoms( State.DB, State.Company.get( State.S.selectedEntity, 9253) ) )
+              : State.DB.get( State.S.selectedEntity, "transaction/paymentType") === 9086
+              ? [
+            newDatom( State.S.selectedEntity, "transaction/transactionType", 8829 ),
+            newDatom( State.S.selectedEntity, "transaction/destinationNode", State.DB.get(State.S.selectedEntity, "transaction/destinationNode") , false ),
+              ]
+            : [
+              newDatom( State.S.selectedEntity, "transaction/transactionType", 8850 ),
+              newDatom( State.S.selectedEntity, "transaction/originNode", State.DB.get(State.S.selectedEntity, "transaction/originNode") , false ),
+            ]
+            
+          ))
+  ], {class: "feedContainer"}),
+  br(),
+  d([
+    h3("Kilde"),
+    State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8019 
+      ? d("Fri postering")
+      : isNumber( State.Company.get(State.S.selectedEntity, 9011) ) 
+        ? companyDatomView( State, State.S.selectedEntity,  9011 )
+        : State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 9035 
+          ? d([
+            companyDatomView( State, State.S.selectedEntity,  9041 ),
+            companyDatomView( State, State.Company.get( State.S.selectedEntity,  9041 ),  8748 ),
+            companyDatomView( State, State.S.selectedEntity,  9191 ),
+            companyDatomView( State, State.S.selectedEntity,  9042 ),
+          ]) 
+          : d([
+              companyDatomView( State, State.S.selectedEntity,  9104 ),
+              companyDatomView( State, State.S.selectedEntity,  9084 ),
+              companyDatomView( State, State.S.selectedEntity,  8832 ),
+              companyDatomView( State, State.S.selectedEntity, 8830 ),
+              companyDatomView( State, State.S.selectedEntity,  8831 ),
+              companyDatomView( State, State.S.selectedEntity,  1080 ),
+              br(),
+              d([
+                h3("Splitt"),
+                d([
+                  (State.DB.get( State.S.selectedEntity , "transaction/transactionType") === 8829 || State.DB.get( State.S.selectedEntity , "transaction/transactionType") === 8850) ? submitButton("Splitt transaksjon", () => State.Actions.splitTransaction( State.S.selectedEntity) ) : d("Tilbakestill kategori for å splitte"),
+                  State.Company.get(State.S.selectedEntity, 9030).length > 0 
+                    ? d([
+                      entityLabelWithPopup( State, 9030 ),
+                      d( State.Company.get(State.S.selectedEntity, 9030).map( t => d([
+                        transactionLabel( State, t ),
+                        entityAttributeView( State, t, 1083),
+                        submitButton("X", () => State.Actions.retractEntity( t ))
+                      ], {style: gridColumnsStyle("6fr 3fr 1fr") + "padding-left: 1em;"} ) ) ),
+                      companyDatomView( State, State.S.selectedEntity, 9040) 
+                    ]) 
+                    : d("Transaksjonen er ikke splittet")
+                ])
+              ]),
+      ]),
+  ], {class: "feedContainer"}),
+  br(),
+  d([
+    h3("Brukerinput"),
+    State.DB.get( State.S.selectedEntity, "transaction/transactionType" ) === 8019 
+    ? d([
+      h3("Fri postering"),
+      d( [7867, 7866, 1757, 1139, 1083, 7450].map( attribute => State.DB.get(attribute, "entity/entityType") === 42 ? entityAttributeView( State, State.S.selectedEntity, attribute ) : companyDatomView( State, State.S.selectedEntity, attribute) ) ),
+      br(),
+      State.Company.get(State.S.selectedEntity, 8355) ? d("🔒") : submitButton("Slett", e => State.Actions.retractEntity(State.S.selectedEntity) )
+    ])
+    : d( State.DB.get( State.DB.get( State.S.selectedEntity, "transaction/transactionType" ), 7942 ).map( inputAttribute => entityAttributeView( State, State.S.selectedEntity , inputAttribute ) ) ),
+  ], {class: "feedContainer"}),
+  d([
+    h3("Transaksjosoutput"),
+    d([
+      companyDatomView( State, State.S.selectedEntity,  8748),
+      isNumber( State.DB.get( State.S.selectedEntity, 7450)   ) ? companyDatomView( State, State.S.selectedEntity,  8749) : d("")
+    ])
+  ], {class: "feedContainer"})
 ])
 
 let categorizePaymentView = State => d([
@@ -983,20 +1077,6 @@ let categorizePaymentView = State => d([
       d(`Legg til utbytte`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 7857 ) ),
     ], {style:"display: inline-flex;"})
   ], {style: gridColumnsStyle("1fr 3fr")}),
-  br(),
-  isNumber( State.DB.get( State.S.selectedEntity, "transaction/parentTransaction" ) )
-      ? submitButton("Tilbakestill splittet transaksjon", e => State.Actions.retractEntity( State.S.selectedEntity ) )
-      : d([d(`Splitt transaksjon`, {class: "entityLabel", style: "background-color:#7b7b7b70;"}, "click", () => State.Actions.postDatoms([
-        newDatom( "newTransaction", "entity/entityType", State.DB.get( State.S.selectedEntity , "entity/entityType") ),
-        newDatom( "newTransaction", "entity/company", State.DB.get( State.S.selectedEntity , "entity/company") ),
-        newDatom( "newTransaction", "event/date", State.DB.get( State.S.selectedEntity , "event/date") ),
-        newDatom( "newTransaction", "transaction/accountingYear", State.DB.get( State.S.selectedEntity , "transaction/accountingYear") ),
-        newDatom( "newTransaction", "transaction/transactionType", State.DB.get( State.S.selectedEntity , "transaction/transactionType") ),
-        newDatom( "newTransaction", "transaction/originNode", State.DB.get( State.S.selectedEntity , "transaction/originNode") ),
-        newDatom( "newTransaction", "transaction/parentTransaction", State.S.selectedEntity ),
-        newDatom( "newTransaction", 1139, "" ),
-        newDatom( "newTransaction", 1083, 0 ),
-      ]) )], {style:"display: inline-flex;"}),
 ])
 
 let  categorizeReceiptView = State => d([
@@ -1038,63 +1118,12 @@ let  categorizeReceiptView = State => d([
       d(`Legg til fordring`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8739 ) ),
       d(`Legg til bankkonto`, {class: "entityLabel", style: "background-color:#03a9f43b;"}, "click", () => State.Actions.createBalanceObject( 8737 ) ),
     ], {style:"display: inline-flex;"})
-  ], {style: gridColumnsStyle("1fr 3fr")}),
-  d([d(`Splitt transaksjon`, {class: "entityLabel", style: "background-color:#7b7b7b70;"}, "click", () => State.Actions.postDatoms([
-    newDatom( "newTransaction", "entity/entityType", State.DB.get( State.S.selectedEntity , "entity/entityType") ),
-    newDatom( "newTransaction", "entity/company", State.DB.get( State.S.selectedEntity , "entity/company") ),
-    newDatom( "newTransaction", "event/date", State.DB.get( State.S.selectedEntity , "event/date") ),
-    newDatom( "newTransaction", "transaction/accountingYear", State.DB.get( State.S.selectedEntity , "transaction/accountingYear") ),
-    newDatom( "newTransaction", "transaction/transactionType", State.DB.get( State.S.selectedEntity , "transaction/transactionType") ),
-    newDatom( "newTransaction", "transaction/destinationNode", State.DB.get( State.S.selectedEntity , "transaction/destinationNode") ),
-    newDatom( "newTransaction", "transaction/parentTransaction", State.S.selectedEntity ),
-    newDatom( "newTransaction", 1083, 0 ),
-  ]) )], {style:"display: inline-flex;"})
+  ], {style: gridColumnsStyle("1fr 3fr")})
 ])
 
 
 
 
-
-let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
-
-let constructTransactionRowDatoms = ( State, transactionRow, index, selectedBankAccount) => {
-
-  let date = Number( moment( transactionRow[0], "DD.MM.YYYY" ).format("x") )
-  let description = `${transactionRow[2]}: ${transactionRow[1]}`
-
-  let paidAmount = transactionRow[5] === ""
-    ? undefined
-    : parseDNBamount( transactionRow[5] ) * -1
-
-  let receivedAmount = transactionRow[6] === ""
-  ? undefined
-  :parseDNBamount( transactionRow[6] ) 
-
-  let isPayment = isNumber( paidAmount )
-
-  let referenceNumber = transactionRow[7]
-
-  let accountingYear = getAllAccountingYears( State.DB, State.S.selectedCompany ).slice(-1)[0]
-
-  let transactionDatoms = [
-    newDatom( "newDatom_"+ index, "entity/entityType", 7948  ),
-    newDatom( "newDatom_"+ index, "entity/company", State.S.selectedCompany  ),
-    newDatom( "newDatom_"+ index, 'transaction/accountingYear', accountingYear ), 
-    newDatom( "newDatom_"+ index, "transaction/transactionType", isPayment ? 8829 : 8850 ),
-    newDatom( "newDatom_"+ index, "transaction/paymentType", isPayment ? 9086 : 9087 ),
-    newDatom( "newDatom_"+ index, 8832, date  ),
-    newDatom( "newDatom_"+ index, "event/date", date  ), //Denne burde heller være kalkulert verdi?
-    newDatom( "newDatom_"+ index, isPayment ? "transaction/originNode" : "transaction/destinationNode", selectedBankAccount),
-    newDatom( "newDatom_"+ index, 8830, isPayment ? paidAmount : receivedAmount  ),
-    newDatom( "newDatom_"+ index, 8831, description  ),
-    newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
-    newDatom( "newDatom_"+ index, "entity/sourceDocument", "[TBD] Bankimport lastet opp " + moment( Date.now() ).format("DD/MM/YYYY HH:mm")  ),
-    newDatom( "newDatom_"+ index, 1139, ""  ),
-  ]
-
-  return transactionDatoms
-
-}
 
 //----
 
