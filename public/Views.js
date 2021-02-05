@@ -6,6 +6,31 @@
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
+
+const ClientApp = {
+  initial: DB => returnObject({ 
+    company: 6829,
+    companyDatoms: constructCompanyDatoms( DB, 6829 ),
+    selectedCompany: 6829, 
+    selectedPage: 7882,
+  }),
+  Actions: State => returnObject({
+    selectPage: pageEntity => updateState( State, {S: {selectedPage: pageEntity, selectedEntity: undefined}}),
+    selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
+    selectCompany: (company) => updateState( State, {
+      DB: State.DB,
+      companyDatoms: constructCompanyDatoms( State.DB, company ) ,
+      S: { selectedCompany: company, selectedPage: 7882, selectedEntity: undefined, selectedCompanyEventIndex: getAllTransactions(State.DB, company).length, selectedAccountingYear: getAllAccountingYears( State.DB, company ).slice(-1)[0] }
+    } ),
+    postDatomsAndUpdateCompany: async newDatoms => {
+      let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
+      let updatedCompanyDatoms = constructCompanyDatoms( updatedDB, State.S.selectedCompany )
+      updateState( State, {DB: updatedDB, companyDatoms: updatedCompanyDatoms } )
+  
+    }
+  })
+}
+
 // CLIENT PAGE VIEWS
 
 let navBarView = (State) => d([
@@ -31,9 +56,7 @@ let clientPage = State => {
   }
   
   return d([
-    d([d('<header><h1>Holdingservice Beta</h1></header>'),d([
-      d([dropdown(State.S.selectedCompany, State.DB.getAll( 5722 ).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
-    ], {style: "display:flex;"} ),], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
+    d([d('<header><h1>Holdingservice Beta</h1></header>')], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
     d([
       d(""),
       d([
@@ -67,12 +90,6 @@ let homeView = State => d([
 
 let stateView = State => {
 
-  let companyTransactions = getAllTransactions( State.DB, State.S.selectedCompany )
-
-  let allAccountingYears = getAllAccountingYears( State.DB, State.S.selectedCompany )
-  let currentAccontingYearIndex = allAccountingYears.findIndex( a => a === State.S.selectedAccountingYear )
-  let prevAccountingYear = allAccountingYears[ currentAccontingYearIndex - 1 ]
-  let nextAccountingYear = allAccountingYears[ currentAccontingYearIndex + 1 ]
   
   return d([
     d([
@@ -80,33 +97,16 @@ let stateView = State => {
       d([
         entityLabelWithPopup( State, 5722),
         isDefined( State.S.selectedCompany ) ? entityLabelWithPopup( State, State.S.selectedCompany ) : d(" MANGLER "),
+        d([dropdown(State.S.selectedCompany, State.DB.getAll( 5722 ).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")} ),,
       d([
         entityLabelWithPopup( State, 7927),
         isDefined( State.S.selectedPage ) ? entityLabelWithPopup( State, State.S.selectedPage ) : d(" MANGLER "),
+        submitButton( "Gå til adminsiden", () => State.Actions.selectPage(10025) )
       ], {style: gridColumnsStyle("repeat(3, 1fr)")} ),
-      d([
-        entityLabelWithPopup( State, 7929),
-        isDefined( State.S.selectedCompanyEventIndex ) ? d( `${formatNumber( State.S.selectedCompanyEventIndex, 0 )} / ${companyTransactions.length} `) : d(" MANGLER "),
-        d([
-          submitButton("[<<]", () => State.Actions.selectCompanyEventIndex( 0 ) ),
-          State.S.selectedCompanyEventIndex >= 1 ? submitButton("<", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex - 1 ) ) : d(""),
-          State.S.selectedCompanyEventIndex < getAllTransactions( State.DB, State.S.selectedCompany ).length ? submitButton(">", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex + 1 ) ) : d(""),
-          submitButton("[>>]", () => State.Actions.selectCompanyEventIndex( State.Company.get( getAllTransactions( State.DB, State.S.selectedCompany ).slice( - 1 )[0], 8354  )  ) )
-        ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
       d([
         entityLabelWithPopup( State, 7928),
         isDefined( State.S.selectedEntity ) ? entityLabelWithPopup( State, State.S.selectedEntity ) : d(" - "),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-      d([
-        entityLabelWithPopup( State, 9279),
-        entityLabelWithPopup( State, State.S.selectedAccountingYear ),
-        d([
-          isDefined(prevAccountingYear) ? submitButton("<", () => State.Actions.selectAccountingYear( prevAccountingYear ) ) : d(""),
-          isDefined(nextAccountingYear) ? submitButton(">", () => State.Actions.selectAccountingYear( nextAccountingYear ) ) : d(""),
-          submitButton("X", () => State.Actions.selectAccountingYear( undefined ) )
-        ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
       br(),
       submitButton("Oppdatter kalkulerte verdier", () => State.Actions.selectCompany( State.S.selectedCompany ) ),

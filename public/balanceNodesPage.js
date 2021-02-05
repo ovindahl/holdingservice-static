@@ -1,16 +1,17 @@
 const BalancePage = {
     initial: DB => returnObject({ 
         "BalancePage/selectedNode": undefined,   
-        selectedCompanyEventIndex: getAllTransactions( DB, 6829).length,
+        "BalancePage/selectedTransactionIndex": getAllTransactions( DB, 6829).length,
     }),
     Actions: State => returnObject({
-        selectNode: node => updateState( State, {S: {"BalancePage/selectedNode": node }}),
-        selectCompanyEventIndex: transactionIndex => updateState( State, {S: {selectedCompanyEventIndex: transactionIndex }}),
-        createBalanceObject:  async balanceObjectType =>  updateState( State, {DB: await Transactor.createEntity(State.DB, 7932, [
-            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-            newDatom( 'newEntity' , 'balanceObject/balanceObjectType', balanceObjectType ),
-            newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
-        ] )} ),
+        "BalancePage/selectNode": entity => updateState( State, {S: {"BalancePage/selectedNode": entity}}),
+        "BalancePage/selectTransactionIndex": transactionIndex => updateState( State, {S: {"BalancePage/selectedTransactionIndex": transactionIndex}}),
+        "BalancePage/retractNode": async node => updateState( State, { DB: await Transactor.retractEntity(State.DB, node), S: {"BalancePage/selectedNode": undefined } } ),
+        "BalancePage/createNode": async actor => updateState( State, {DB: await Transactor.createEntity(State.DB, 7932, [
+          newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+          newDatom( 'newEntity' , 'balanceObject/balanceObjectType', balanceObjectType ),
+          newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
+      ] )} ),
     })
   }
 
@@ -22,7 +23,7 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
   
   //---
   
-  let nodeLabelText = (State, node, onclick) => d([d(State.Company.get(node, 6), {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(node, "balanceObject/balanceObjectType"), 20  )};`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectNode(node) )], {style:"display: flex;"})
+  let nodeLabelText = (State, node, onclick) => d([d(State.Company.get(node, 6), {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(node, "balanceObject/balanceObjectType"), 20  )};`}, "click", isDefined(onclick) ? onclick : () => State.Actions["BalancePage/selectNode"](node) )], {style:"display: flex;"})
   
   
   let nodeLabel = (State, node, transactionIndex, onclick) => d([
@@ -61,7 +62,7 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
         ),
       br()
     ])), {class: "feedContainer"} ),
-    submitButton("Slett", e => State.Actions.retractEntity( State.S["BalancePage/selectedNode"] ) )
+    submitButton("Slett", e => State.Actions["BalancePage/retractNode"]( State.S["BalancePage/selectedNode"] ) )
   ], {class: "feedContainer"})
   
   
@@ -84,7 +85,7 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
       : State.Company.get(balanceObject, 7885).length > 0 || State.Company.get(balanceObject, 7884).length > 0
   
     return d([
-      submitButton( " <---- Tilbake ", () => State.Actions.selectNode( undefined )  ),
+      submitButton( " <---- Tilbake ", () => State.Actions["BalancePage/selectNode"]( undefined )  ),
         br(),
         transactionIndexSelectionView( State ),
         br(),
@@ -98,7 +99,7 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
           br(),
           d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => isLocked ? companyDatomView( State, balanceObject, attribute ) : entityAttributeView( State, balanceObject, attribute ) ) ),
           br(),
-          d( balanceObjectCalculatedFields.filter( calculatedField => ![8768, 7895, 7896].includes(calculatedField) ).map( calculatedField => companyDatomView( State, balanceObject, calculatedField ) ) ),
+          d( balanceObjectCalculatedFields.filter( calculatedField => ![8768, 7895, 7896].includes(calculatedField) ).map( calculatedField => companyDatomView( State, balanceObject, calculatedField, State.S["BalancePage/selectedTransactionIndex"] ) ) ),
       ], {class: "feedContainer"})
   
     ]) 
@@ -162,14 +163,14 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
     entityLabelWithPopup( State, 7929 ),
     d([
       d([
-        submitButton("[<<]", () => State.Actions.selectCompanyEventIndex( 0 ) ),
-        State.S.selectedCompanyEventIndex >= 1 ? submitButton("<", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex - 1 ) ) : d(""),
-        State.S.selectedCompanyEventIndex < getAllTransactions( State.DB, State.S.selectedCompany ).length ? submitButton(">", () => State.Actions.selectCompanyEventIndex( State.S.selectedCompanyEventIndex + 1 ) ) : d(""),
-        submitButton("[>>]", () => State.Actions.selectCompanyEventIndex( State.Company.get( getAllTransactions( State.DB, State.S.selectedCompany ).slice( - 1 )[0], 8354  )  ) )
+        submitButton("[<<]", () => State.Actions["BalancePage/selectTransactionIndex"]( 0 ) ),
+        State.S["BalancePage/selectedTransactionIndex"] >= 1 ? submitButton("<", () => State.Actions["BalancePage/selectTransactionIndex"]( State.S["BalancePage/selectedTransactionIndex"] - 1 ) ) : d(""),
+        State.S["BalancePage/selectedTransactionIndex"] < getAllTransactions( State.DB, State.S.selectedCompany ).length ? submitButton(">", () => State.Actions["BalancePage/selectTransactionIndex"]( State.S["BalancePage/selectedTransactionIndex"] + 1 ) ) : d(""),
+        submitButton("[>>]", () => State.Actions["BalancePage/selectTransactionIndex"]( State.Company.get( getAllTransactions( State.DB, State.S.selectedCompany ).slice( - 1 )[0], 8354  )  ) )
       ], {style: gridColumnsStyle("repeat(8, 1fr)")}),
-      transactionLabel( State, getTransactionByIndex( State.DB, State.S.selectedCompany, State.S.companyDatoms, State.S.selectedCompanyEventIndex ) ),
-      entityLabelWithPopup( State, State.DB.get( getTransactionByIndex( State.DB, State.S.selectedCompany, State.S.companyDatoms, State.S.selectedCompanyEventIndex ), "transaction/accountingYear" )  ),
-      d( moment( State.DB.get( getTransactionByIndex( State.DB, State.S.selectedCompany, State.S.companyDatoms, State.S.selectedCompanyEventIndex ), 1757 ) ).format("DD.MM.YYYY")),
+      transactionLabel( State, getTransactionByIndex( State.DB, State.S.selectedCompany, State.S.companyDatoms, State.S["BalancePage/selectedTransactionIndex"] ) ),
+      entityLabelWithPopup( State, State.DB.get( getTransactionByIndex( State.DB, State.S.selectedCompany, State.S.companyDatoms, State.S["BalancePage/selectedTransactionIndex"] ), "transaction/accountingYear" )  ),
+      d( moment( State.DB.get( getTransactionByIndex( State.DB, State.S.selectedCompany, State.S.companyDatoms, State.S["BalancePage/selectedTransactionIndex"] ), 1757 ) ).format("DD.MM.YYYY")),
     ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
   ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")})
   
@@ -185,21 +186,18 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
             d( [7537, 7539, 7538].map( balanceSection =>  d([
             d([
                 entityLabelWithPopup( State, balanceSection ),
-                submitButton("+", () => State.Actions.createBalanceObject( D.getAll(7531).find( e => D.get(e, 7540) ===  balanceSection ) ) ),
+                submitButton("+", () => State.Actions["BalancePage/createNode"]( D.getAll(7531).find( e => D.get(e, 7540) ===  balanceSection ) ) ),
             ], {style: "display: flex;"}),
             d( allBalanceObjects.filter( balanceObject => State.DB.get( State.DB.get( balanceObject, "balanceObject/balanceObjectType" ), 7540 ) === balanceSection ).map( balanceObject => d([
                 nodeLabel(State, balanceObject),
-                companyValueView( State, balanceObject,  7433, State.S.selectedCompanyEventIndex ),
+                companyValueView( State, balanceObject,  7433, State.S["BalancePage/selectedTransactionIndex"] ),
             ], {style: gridColumnsStyle("repeat(4, 1fr)") + "padding-left: 1em;"}))),
             d([
                 entityLabelWithPopup( State, State.DB.get( balanceSection, 7748 ) ),
-                companyValueView( State, State.S.selectedCompany, State.DB.get( balanceSection, 7748 ), State.S.selectedCompanyEventIndex )   
+                companyValueView( State, State.S.selectedCompany, State.DB.get( balanceSection, 7748 ), State.S["BalancePage/selectedTransactionIndex"] )   
             ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
             br()
             ]),  ) ),
         ], {class: "feedContainer"})
         ])
   } 
-  
-  
-  

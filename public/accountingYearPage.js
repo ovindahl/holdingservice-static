@@ -1,11 +1,12 @@
 const AccountingYearPage = {
     initial: DB => returnObject({ 
-      "AccountingYearPage/selectedAccountingYear": getAllAccountingYears( DB, 6829 ).slice(-1)[0] ,
+      "AccountingYearPage/selectedAccountingYear": undefined,
       "AccountingYearPage/selectedReportType": undefined,
     }),
     Actions: State => returnObject({
         "AccountingYearPage/selectAccountingYear": accountingYear => updateState( State, {S: {"AccountingYearPage/selectedAccountingYear": accountingYear}}),
         "AccountingYearPage/selectReportType": reportType => updateState( State, {S: {"AccountingYearPage/selectedReportType": reportType}}),
+        "AccountingYearPage/retractAccountingYear": async accountingYear => updateState( State, { DB: await Transactor.retractEntity(State.DB, accountingYear), S: {"TransactionsPage/selectedTransaction": undefined } } ),
     })
   }
 

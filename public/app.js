@@ -71,46 +71,10 @@ var A = {} //Consle access to Actions
 const DB = {
   initial: DB => returnObject({ }),
   Actions: State => returnObject({
-    createEntity: async (entityType, entityDatoms) => updateState( State, {DB: await Transactor.createEntity( State.DB, entityType, entityDatoms )  } ),
-    retractEntity: async entity => updateState( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined }} ),
-    retractEntities: async entities => updateState( State, {DB: await Transactor.retractEntities(State.DB, entities), S: {selectedEntity: undefined }} ),
-    duplicateEntity: async entity => {
-      let entityType = State.DB.get( entity, "entity/entityType")
-      let entityTypeAttributes = State.DB.get( entityType, "entityType/attributes" )
-      let newEntityDatoms = entityTypeAttributes.map( attr => newDatom("newEntity", State.DB.attrName(attr), State.DB.get( entity, attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${State.DB.get( entity, 6)}` ) )
-      if(entityType === 42){ newEntityDatoms.push( newDatom( "newEntity", "attr/name", "attr/" + Date.now() )  ) }
-      let updatedDB = await Transactor.createEntity( State.DB, entityType, newEntityDatoms)
-      updateState( State, {DB: updatedDB, S: {selectedEntity: updatedDB.Entities.slice(-1)[0].entity}} )
-    },
-    updateEntity: async (entity, attribute, newValue, isAddition) => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, newValue, isAddition )  } ),
-    postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms)  } ),
     //executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
   })
 } 
 
-const ClientApp = {
-  initial: DB => returnObject({ 
-    company: 6829,
-    companyDatoms: constructCompanyDatoms( DB, 6829 ),
-    selectedCompany: 6829, 
-    selectedPage: 7882,
-  }),
-  Actions: State => returnObject({
-    selectPage: pageEntity => updateState( State, {S: {selectedPage: pageEntity, selectedEntity: undefined}}),
-    selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
-    selectCompany: (company) => updateState( State, {
-      DB: State.DB,
-      companyDatoms: constructCompanyDatoms( State.DB, company ) ,
-      S: { selectedCompany: company, selectedPage: 7882, selectedEntity: undefined, selectedCompanyEventIndex: getAllTransactions(State.DB, company).length, selectedAccountingYear: getAllAccountingYears( State.DB, company ).slice(-1)[0] }
-    } ),
-    postDatomsAndUpdateCompany: async newDatoms => {
-      let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
-      let updatedCompanyDatoms = constructCompanyDatoms( updatedDB, State.S.selectedCompany )
-      updateState( State, {DB: updatedDB, companyDatoms: updatedCompanyDatoms } )
-  
-    }
-  })
-}
 
 const Components = [DB, ClientApp, AdminPage, TransactionsPage, BalancePage, AccountingYearPage, ActorsPage]
 

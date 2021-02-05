@@ -9,6 +9,7 @@ const TransactionsPage = {
     Actions: State => returnObject({
       "TransactionsPage/selectAccountingYear": accountingYear => updateState( State, {S: {"TransactionsPage/selectedAccountingYear": accountingYear}}),
       "TransactionsPage/selectTransaction": transaction => updateState( State, {S: {"TransactionsPage/selectedTransaction": transaction}}),
+      "TransactionsPage/retractTransaction": async transaction => updateState( State, { DB: await Transactor.retractEntity(State.DB, transaction), S: {"TransactionsPage/selectedTransaction": undefined } } ),
       importBankTransactions: (bankAccount, e) => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => {
       
         let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
@@ -100,7 +101,7 @@ let allTransactionsView = State => {
         submitButton("Legg til fri postering", () => State.Actions.postDatomsAndUpdateCompany([
           newDatom( 'newEntity' , 'entity/entityType', 7948 ),
           newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-          newDatom( 'newEntity' , 'transaction/accountingYear', State.S.selectedAccountingYear ), 
+          newDatom( 'newEntity' , 'transaction/accountingYear', State.S["TransactionsPage/selectedAccountingYear"] ), 
           newDatom( 'newEntity' , "transaction/transactionType", 8019 ), 
           newDatom( 'newEntity' , "eventAttribute/1083", 0 ), 
           newDatom( 'newEntity' , "event/date", Date.now() ), 
@@ -280,7 +281,7 @@ let allTransactionsView = State => {
         h3("Fri postering"),
         d( [7867, 7866, 1757, 1139, 1083, 7450].map( attribute => State.DB.get(attribute, "entity/entityType") === 42 ? entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"], attribute ) : companyDatomView( State, State.S["TransactionsPage/selectedTransaction"], attribute) ) ),
         br(),
-        State.Company.get(State.S["TransactionsPage/selectedTransaction"], 8355) ? d("🔒") : submitButton("Slett", e => State.Actions.retractEntity(State.S["TransactionsPage/selectedTransaction"]) )
+        State.Company.get(State.S["TransactionsPage/selectedTransaction"], 8355) ? d("🔒") : submitButton("Slett", e => State.Actions["TransactionsPage/retractTransaction"](State.S["TransactionsPage/selectedTransaction"]) )
       ])
       : d( State.DB.get( State.DB.get( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType" ), 7942 ).map( inputAttribute => entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"] , inputAttribute ) ) ),
     ], {class: "feedContainer"}),
