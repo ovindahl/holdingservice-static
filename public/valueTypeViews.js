@@ -180,7 +180,7 @@ d([
   entityLabel( State,  State.DB.get( entity, "entity/entityType" ) ),
 ], {class: "columns_1_1"}),
 br(),
-submitButton("Rediger", e => ClientApp.update( State, {S: {isAdmin: true, selectedEntity: entity}} )  ),
+submitButton("Rediger", e => updateState( State, {S: {isAdmin: true, selectedEntity: entity}} )  ),
 br(),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
@@ -240,7 +240,7 @@ let entityVersionPopup = (State, entity, attribute) => {
       d( EntityDatoms.reverse().slice(1, 5).map( Datom => d([
         d( moment(Datom.tx).format("YYYY-MM-DD") ),
         d(JSON.stringify(Datom.value)),
-        submitButton( "Gjenopprett", async e => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, Datom.attribute, Datom.value )} )
+        submitButton( "Gjenopprett", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, Datom.attribute, Datom.value )} )
         )
       ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) )
     ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
@@ -339,12 +339,12 @@ let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
         ?  d( State.DB.get(entity, attribute).map( (Value, index) => d([
               positionInArrayView(State, entity, attribute, index),
               valueTypeViews[ valueType ](State, entity, attribute, index),
-              submitButton( "[ X ]", async e => ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).filter( (Value, i) => i !== index  )  )} ) )
+              submitButton( "[ X ]", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).filter( (Value, i) => i !== index  )  )} ) )
             ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
         : d("Ingen verdier"),
         submitButton( "[ + ]", async e => isArray( State.DB.get( entity, attribute) ) 
-          ? ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).concat(startValue)  )} )
-          : ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, [startValue]  )} )
+          ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).concat(startValue)  )} )
+          : updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, [startValue]  )} )
         )
 
     ])
@@ -366,7 +366,7 @@ let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
     let newArray = stillBefore.concat( movedUp ).concat( movedDown ).concat( stillAfter )
 
 
-    ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, newArray  )} )
+    updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, newArray  )} )
 
   }   ) : d("")
   
@@ -377,7 +377,7 @@ let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
     let movedDown = Values[index]
     let stillAfter = Values.filter( (Value, i) => i > index +1 )
     let newArray = stillBefore.concat( movedUp ).concat( movedDown ).concat( stillAfter )
-    ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, newArray  )} )
+    updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, newArray  )} )
   }   ) : d("")
   
   
@@ -391,8 +391,8 @@ let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
     let Value = State.DB.get(entity, attribute)[index]
   
     return d([
-      input( {value: Value["argument/name"] }, "change", async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/name": submitInputValue(e)}))} ) ),
-      dropdown( Value["argument/valueType"], State.DB.getAll(44).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ), async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }))} )
+      input( {value: Value["argument/name"] }, "change", async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/name": submitInputValue(e)}))} ) ),
+      dropdown( Value["argument/valueType"], State.DB.getAll(44).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ), async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }))} )
       )
     ], {class: "columns_1_1"}) 
   
@@ -407,10 +407,10 @@ let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
     
   
     return d([
-      checkBox( Value["statement/isEnabled"] , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/isEnabled": Value["statement/isEnabled"] ? false : true  }))} )),
+      checkBox( Value["statement/isEnabled"] , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/isEnabled": Value["statement/isEnabled"] ? false : true  }))} )),
   
   
-      textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;"} , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }))}) )
+      textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;"} , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }))}) )
   
     ], {class: "columns_1_9"}) 
   
@@ -430,31 +430,31 @@ let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
 
   
     return d([
-        checkBox( datomConstructor["isEnabled"] , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {"isEnabled": datomConstructor["isEnabled"] ? false : true  }))} )),
+        checkBox( datomConstructor["isEnabled"] , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {"isEnabled": datomConstructor["isEnabled"] ? false : true  }))} )),
         d([
           htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
           input({value: datomConstructor.attribute, list: datalistID, style: `text-align: right;`}, 
           "change", 
-          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {attribute: Number( submitInputValue( e ) )  } ))} )
+          async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {attribute: Number( submitInputValue( e ) )  } ))} )
         ),
         entityLabelWithPopup( State,  datomConstructor.attribute ), 
         ]),
         dropdown( datomConstructor.sourceEntity, 
           [{value: 0, label: "Rapportens input"}, {value: 1, label: "Selskapet"}, {value: 2, label: "Regnskapsåret"}, {value: 3, label: "Funksjon"}],
-          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {sourceEntity: Number( submitInputValue( e ) )  } ))} )
+          async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {sourceEntity: Number( submitInputValue( e ) )  } ))} )
           ),
         d([
           htmlElementObject("datalist", {id:datalistID2}, optionsElement( options2 ) ),
           input({value: datomConstructor.calculatedField, list: datalistID2, style: `text-align: right;`}, 
           "change", 
-          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {calculatedField: Number( submitInputValue( e ) )  } ))} )
+          async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {calculatedField: Number( submitInputValue( e ) )  } ))} )
         ),
         entityLabelWithPopup( State,  datomConstructor.calculatedField ), 
         ]),
         textArea(
           datomConstructor.valueFunction,
           {class:"textArea_code"}, 
-          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {valueFunction: submitInputValue( e ).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  } ))} )
+          async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {valueFunction: submitInputValue( e ).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  } ))} )
           )
       ], {style: gridColumnsStyle("1fr 2fr 2fr 2fr 2fr")})
   }
@@ -473,19 +473,19 @@ let companyValueView = (State, companyEntity, attribute, transactionIndex) => {
 
   
     return d([
-        checkBox( datomConstructor["isEnabled"] , async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {"isEnabled": datomConstructor["isEnabled"] ? false : true  }))} )),
+        checkBox( datomConstructor["isEnabled"] , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {"isEnabled": datomConstructor["isEnabled"] ? false : true  }))} )),
         d([
           htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
         input({value: datomConstructor.attribute, list: datalistID, style: `text-align: right;`}, 
           "change", 
-          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {attribute: Number( submitInputValue( e ) )  } ))} )
+          async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {attribute: Number( submitInputValue( e ) )  } ))} )
         ),
         entityLabelWithPopup( State,  datomConstructor.attribute ), 
         ]),
         textArea(
           datomConstructor.valueFunction,
           {class:"textArea_code"}, 
-          async e => ClientApp.update( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {valueFunction: submitInputValue( e ).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  } ))} )
+          async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( datomConstructor, {valueFunction: submitInputValue( e ).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  } ))} )
           )
       ], {style: gridColumnsStyle("1fr 2fr 3fr")})
   }
@@ -544,7 +544,7 @@ let singleValueView = ( State, entity, attribute  ) => {
   let updateFunction = (valueType === 5824)
   ? async element => {
 
-    let updateFunction = () => ClientApp.update(  )
+    let updateFunction = () => updateState(  )
 
     let submitFunction = new Function(["Database", "entity", "attribute", "element", "updateFunction"], State.DB.get(valueType, "valueType/unformatFunction") )
 
@@ -556,7 +556,7 @@ let singleValueView = ( State, entity, attribute  ) => {
     
 
   }
-  : async e => ClientApp.update( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
+  : async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
 
 
   let options = [32, 40].includes(valueType)
@@ -619,7 +619,7 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
     let submittedValue = submitInputValue( e )
     let unformattedValue = unFormatFunction( submittedValue )
 
-    ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, storedValues.slice(0, index ).concat( unformattedValue ).concat( storedValues.slice(index + 1, storedValues.length ) ) ) }  )
+    updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, storedValues.slice(0, index ).concat( unformattedValue ).concat( storedValues.slice(index + 1, storedValues.length ) ) ) }  )
   }
 
   let options = [ 32 ].includes(valueType) ? State.DB.getOptions( attribute ) : []
@@ -630,12 +630,12 @@ let newMultipleValuesView = ( State, entity, attribute ) => {
       ?  d( storedValues.map( (storedValue, index) => d([
             positionInArrayView(State, entity, attribute, index),
             viewFunction(  State, formatFunction( storedValue ), getUpdateFunction( index ) , options  ),
-            submitButton( "[ X ]", async e => ClientApp.update( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, storedValues.filter( (Value, i) => i !== index  )  )} ) )
+            submitButton( "[ X ]", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, storedValues.filter( (Value, i) => i !== index  )  )} ) )
           ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
       : d("Ingen verdier"),
       submitButton( "[ + ]", async e => {
         let newDBversion = await Transactor.updateEntity(State.DB, entity, attribute, isArray( State.DB.get( entity, attribute) ) ? storedValues.concat( startValue ) : [startValue]  )
-        ClientApp.update( State, {DB: newDBversion} )
+        updateState( State, {DB: newDBversion} )
       } )
   ])
 
