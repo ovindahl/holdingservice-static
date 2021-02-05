@@ -78,6 +78,8 @@ let constructDatabase = Entities => {
     DB.attributes = DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
     DB.attrNames = mergeArray(DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => createObject(serverEntity.current["attr/name"], serverEntity.entity) ))
     DB.tx = DB.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
+
+    DB.calculatedDatoms = []
   
     DB.attrName = attribute => {
       if( isNumber(attribute)  ){
@@ -136,11 +138,38 @@ let constructDatabase = Entities => {
         Datoms: EntityAttributeDatoms,
       }
   
-  
       return EntityAttribute
     }
 
-    DB.getGlobalCalculatedValue = (entity, calculatedField) => calculateGlobalCalculatedValue( DB, entity, calculatedField )
+    DB.getCalculatedDatom = ( entity, calculatedField ) => {
+
+
+      let calculatedDatom = DB.calculatedDatoms.find( calculatedDatom => calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField )
+
+        return calculatedDatom
+
+    }
+
+    DB.getGlobalCalculatedValue = (entity, calculatedField) => {
+
+      let cachedCalculatedDatom = DB.getCalculatedDatom( entity, calculatedField )
+
+      if(isDefined(cachedCalculatedDatom)){
+        //log("Returning cached version")
+        return cachedCalculatedDatom.value
+      }else{
+        //log("Returning calculated version")
+        let value = calculateGlobalCalculatedValue( DB, entity, calculatedField )
+        let calculatedDatom = { entity, calculatedField, value }
+        DB.calculatedDatoms = DB.calculatedDatoms.filter( calculatedDatom => !(calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField) ).concat( calculatedDatom )
+
+        return value
+      }
+
+
+
+      
+    } 
   
     DB.getAll = entityType => DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity) //Kan bli sirkulær med isAttribute
   
@@ -218,16 +247,6 @@ getBalanceObjectLabel = (DB, balanceObject) => {
 
 }
 
-
-getEntityLabel = (DB, entity) => DB.get(entity, "entity/entityType") === 7948
-  ? `Transaksjon ${ entity }`
-  :  DB.get(entity, "entity/entityType") === 7979
-    ? DB.get(entity, "actor/actorType") === 8666
-      ? `${ DB.get(entity, 1001) }`
-      : `${ DB.get(entity, 1113) }`
-    : `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
-  
-getEntityDescription = (DB, entity) => `${ DB.get( entity, "entity/doc") ? DB.get( entity, "entity/doc") : ""}`
-
+getEntityLabel = (DB, entity) => `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
 
 let calculateGlobalCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )

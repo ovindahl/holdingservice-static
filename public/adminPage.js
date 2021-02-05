@@ -50,7 +50,7 @@ let entityPopUp = (State, entity) => d([
   br(),
   d( getEntityLabel( State.DB, State.DB.get(entity, "entity/entityType") )  ),
   br(),
-  d( getEntityDescription( State.DB, entity ) ),
+  d( State.DB.get( entity, "entity/doc") ? State.DB.get( entity, "entity/doc") : "" ),
   br(),
   span(`Entitet: ${ entity}`),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})

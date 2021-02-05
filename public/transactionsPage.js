@@ -8,7 +8,7 @@ const TransactionsPage = {
     }),
     Actions: State => returnObject({
       "TransactionsPage/selectAccountingYear": accountingYear => updateState( State, {S: {"TransactionsPage/selectedAccountingYear": accountingYear}}),
-      "TransactionsPage/selectTransaction": transaction => updateState( State, {S: {"TransactionsPage/selectedTransaction": transaction}}),
+      "TransactionsPage/selectTransaction": transaction => updateState( State, {S: {selectedPage: 7882, "TransactionsPage/selectedTransaction": transaction}}),
       "TransactionsPage/retractTransaction": async transaction => updateState( State, { DB: await Transactor.retractEntity(State.DB, transaction), S: {"TransactionsPage/selectedTransaction": undefined } } ),
       importBankTransactions: (bankAccount, e) => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => {
       
@@ -86,7 +86,7 @@ let transactionRowView = (State, companyTransaction) => d([
 
 let allTransactionsView = State => {
 
-    let alltransactions = getAllTransactions(State.DB, State.S.selectedCompany, State.S["TransactionsPage/selectedAccountingYear"] )
+    let alltransactions = getAccountingYearTransactions(State.DB, State.S.selectedCompany, State.S["TransactionsPage/selectedAccountingYear"] )
   
     return d([
       h3("Transaksjoner"),

@@ -1,10 +1,10 @@
 const BalancePage = {
     initial: DB => returnObject({ 
         "BalancePage/selectedNode": undefined,   
-        "BalancePage/selectedTransactionIndex": getAllTransactions( DB, 6829).length,
+        "BalancePage/selectedTransactionIndex": DB.get( 6829, 9817 ).length,
     }),
     Actions: State => returnObject({
-        "BalancePage/selectNode": entity => updateState( State, {S: {"BalancePage/selectedNode": entity}}),
+        "BalancePage/selectNode": entity => updateState( State, {S: {selectedPage: 7860, "BalancePage/selectedNode": entity}}),
         "BalancePage/selectTransactionIndex": transactionIndex => updateState( State, {S: {"BalancePage/selectedTransactionIndex": transactionIndex}}),
         "BalancePage/retractNode": async node => updateState( State, { DB: await Transactor.retractEntity(State.DB, node), S: {"BalancePage/selectedNode": undefined } } ),
         "BalancePage/createNode": async actor => updateState( State, {DB: await Transactor.createEntity(State.DB, 7932, [
@@ -165,8 +165,8 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
       d([
         submitButton("[<<]", () => State.Actions["BalancePage/selectTransactionIndex"]( 0 ) ),
         State.S["BalancePage/selectedTransactionIndex"] >= 1 ? submitButton("<", () => State.Actions["BalancePage/selectTransactionIndex"]( State.S["BalancePage/selectedTransactionIndex"] - 1 ) ) : d(""),
-        State.S["BalancePage/selectedTransactionIndex"] < getAllTransactions( State.DB, State.S.selectedCompany ).length ? submitButton(">", () => State.Actions["BalancePage/selectTransactionIndex"]( State.S["BalancePage/selectedTransactionIndex"] + 1 ) ) : d(""),
-        submitButton("[>>]", () => State.Actions["BalancePage/selectTransactionIndex"]( State.Company.get( getAllTransactions( State.DB, State.S.selectedCompany ).slice( - 1 )[0], 8354  )  ) )
+        State.S["BalancePage/selectedTransactionIndex"] < State.DB.get( State.S.selectedCompany, 9817 ).length ? submitButton(">", () => State.Actions["BalancePage/selectTransactionIndex"]( State.S["BalancePage/selectedTransactionIndex"] + 1 ) ) : d(""),
+        submitButton("[>>]", () => State.Actions["BalancePage/selectTransactionIndex"]( State.Company.get( State.DB.get( State.S.selectedCompany, 9817 ).slice( - 1 )[0], 8354  )  ) )
       ], {style: gridColumnsStyle("repeat(8, 1fr)")}),
       transactionLabel( State, getTransactionByIndex( State.DB, State.S.selectedCompany, State.S.companyDatoms, State.S["BalancePage/selectedTransactionIndex"] ) ),
       entityLabelWithPopup( State, State.DB.get( getTransactionByIndex( State.DB, State.S.selectedCompany, State.S.companyDatoms, State.S["BalancePage/selectedTransactionIndex"] ), "transaction/accountingYear" )  ),

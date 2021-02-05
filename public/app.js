@@ -132,7 +132,6 @@ let init = async () => {
   if( Entities.length > 0 ){
 
     let initialDatabase = constructDatabase( Entities )
-    
 
     updateState( firstState, {
       DB: initialDatabase,

@@ -8,8 +8,7 @@
 
 
 const ClientApp = {
-  initial: DB => returnObject({ 
-    company: 6829,
+  initial: DB => returnObject({
     companyDatoms: constructCompanyDatoms( DB, 6829 ),
     selectedCompany: 6829, 
     selectedPage: 7882,
@@ -78,7 +77,7 @@ let clientPage = State => {
 
 let homeView = State => d([
   h3("Sider i applikasjonen"),
-  d(State.DB.getAll( 7487  ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+  d(State.DB.getAll( 7487  ).filter( page => ![9951, 9338, 10025].includes(page) ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
     h3(category),
     d(State.DB.getAll(7487).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( entity => d([
       entityLabelWithPopup( State, entity, () => State.Actions.selectPage(entity) ),
