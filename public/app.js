@@ -66,9 +66,6 @@ var C = {} //Consle access to Company
 var Company = {} //Consle access to Company
 var A = {} //Consle access to Actions
 
-
-
-
 //COMPONENTS
 
 const DB = {
@@ -115,7 +112,7 @@ const ClientApp = {
   })
 }
 
-const Components = [DB, ClientApp, AdminPage, TransactionsPage, BalancePage, AccountingYearPage]
+const Components = [DB, ClientApp, AdminPage, TransactionsPage, BalancePage, AccountingYearPage, ActorsPage]
 
 var States = []
 var Patches = []

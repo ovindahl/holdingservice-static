@@ -11,7 +11,6 @@ const BalancePage = {
             newDatom( 'newEntity' , 'balanceObject/balanceObjectType', balanceObjectType ),
             newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
         ] )} ),
-        createCompanyActor: async ( ) =>  updateState( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany )] )} ),
     })
   }
 
@@ -202,52 +201,5 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
         ])
   } 
   
-  
-  
-  
-  let actorsView = State => isDefined( State.S.selectedEntity ) ? singleActorView( State ) : allActorsView( State )
-  
-  let allActorsView = State => {
-    let allActors = getAllActors( State.DB, State.S.selectedCompany )
-  
-    return d([
-      d([
-        entityLabelWithPopup( State, 1113 ),
-      ], {style: gridColumnsStyle("3fr 1fr")}),
-      d( allActors.map( actor => d([
-        entityLabelWithPopup( State, actor ),
-        submitButton("X", e => State.Actions.retractEntity(actor) )
-      ], {style: gridColumnsStyle("3fr 1fr")}) )),
-    br(),
-    submitButton("Legg til", () => State.Actions.createCompanyActor() ),
-    br(),
-    ]) 
-  } 
-  
-  let singleActorView = State => {
-  
-    let actor = State.S.selectedEntity
-    
-  
-    return isDefined(actor)
-      ? d([
-        submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined )  ),
-        br(),
-        d([
-          entityLabelWithPopup( State, 7977 ),
-          span( " / " ),
-          entityLabelWithPopup( State, actor ),
-        ]),
-        br(),
-        entityAttributeView(State, actor, 8668),
-        br(),
-        d( State.DB.get( State.DB.get( actor, "actor/actorType"), 7942 ).map( attribute => entityAttributeView(State, actor, attribute ) ) ),
-        submitButton("Slett", e => State.Actions.retractEntity(actor) ),  
-      ])
-    : d([
-      entityAttributeView(State, actor, 7535),
-      submitButton("Slett", e => State.Actions.retractEntity(actor) ),  
-    ])
-  } 
   
   
