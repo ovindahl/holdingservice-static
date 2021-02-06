@@ -222,6 +222,7 @@ let constructDatabase = Entities => {
 
       return returnValue
     }
+
   
     return DB
 }
@@ -250,3 +251,4 @@ getBalanceObjectLabel = (DB, balanceObject) => {
 getEntityLabel = (DB, entity) => `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
 
 let calculateGlobalCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
+

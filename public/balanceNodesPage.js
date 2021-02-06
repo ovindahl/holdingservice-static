@@ -15,6 +15,20 @@ const BalancePage = {
     })
   }
 
+let calculatedValueViewWithLabel = (State, entity, calculatedField, transactionIndex) => d([
+  entityLabelWithPopup( State, calculatedField ),
+  calculatedValueView( State, entity, calculatedField, transactionIndex )
+], {style: gridColumnsStyle("1fr 1fr")})
+
+let combinedBalanceViewWithLabel = (State, entity, queryObject, transactionIndex) => d([
+  entityLabelWithPopup( State, 10053 ),
+  d( formatNumber( State.DB.get(entity, 10053)( queryObject, transactionIndex ) ), {style: `text-align: right;`} )
+], {style: gridColumnsStyle("1fr 1fr")})
+
+
+
+let calculatedValueView = (State, entity, calculatedField, transactionIndex) => d( formatNumber( State.DB.get(entity, calculatedField)( transactionIndex ) ), {style: `text-align: right;`} )
+
 let nodeBalanceView = (State, nodeType, transactionIndex) => d([
     entityLabelWithPopup( State, nodeType),
     d(formatNumber( State.Company.getBalanceObjects(nodeType).reduce( (sum, node) => sum + State.Company.get(node, 7433, transactionIndex), 0 )   ), {style: `text-align: right;`} )
@@ -77,9 +91,6 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
     let balanceObject = State.S["BalancePage/selectedNode"]
     let balanceObjectType = State.DB.get( balanceObject, "balanceObject/balanceObjectType" )
   
-  
-    let balanceObjectCalculatedFields = State.DB.get( balanceObjectType, "companyEntityType/calculatedFields" )
-  
     let isLocked = isUndefined( State.Company.get(balanceObject, 7885) )
       ? false
       : State.Company.get(balanceObject, 7885).length > 0 || State.Company.get(balanceObject, 7884).length > 0
@@ -99,7 +110,8 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
           br(),
           d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => isLocked ? companyDatomView( State, balanceObject, attribute ) : entityAttributeView( State, balanceObject, attribute ) ) ),
           br(),
-          d( balanceObjectCalculatedFields.filter( calculatedField => ![8768, 7895, 7896].includes(calculatedField) ).map( calculatedField => companyDatomView( State, balanceObject, calculatedField, State.S["BalancePage/selectedTransactionIndex"] ) ) ),
+          d( [10045, 10048, 10049].map( calculatedField => calculatedValueViewWithLabel(State, balanceObject, calculatedField, State.S["BalancePage/selectedTransactionIndex"] ) ) ),
+          br(),
       ], {class: "feedContainer"})
   
     ]) 
@@ -190,13 +202,15 @@ let nodeBalanceView = (State, nodeType, transactionIndex) => d([
             ], {style: "display: flex;"}),
             d( allBalanceObjects.filter( balanceObject => State.DB.get( State.DB.get( balanceObject, "balanceObject/balanceObjectType" ), 7540 ) === balanceSection ).map( balanceObject => d([
                 nodeLabel(State, balanceObject),
-                companyValueView( State, balanceObject,  7433, State.S["BalancePage/selectedTransactionIndex"] ),
+                calculatedValueView(State, balanceObject, 10045, State.S["BalancePage/selectedTransactionIndex"] )
+                //companyValueView( State, balanceObject,  7433, State.S["BalancePage/selectedTransactionIndex"] ),
             ], {style: gridColumnsStyle("repeat(4, 1fr)") + "padding-left: 1em;"}))),
             d([
                 entityLabelWithPopup( State, State.DB.get( balanceSection, 7748 ) ),
                 companyValueView( State, State.S.selectedCompany, State.DB.get( balanceSection, 7748 ), State.S["BalancePage/selectedTransactionIndex"] )   
             ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
-            br()
+            br(),
+            combinedBalanceViewWithLabel( State, State.S.selectedCompany, balanceSection, State.S["BalancePage/selectedTransactionIndex"] ),
             ]),  ) ),
         ], {class: "feedContainer"})
         ])

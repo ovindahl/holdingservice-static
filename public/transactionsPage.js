@@ -72,16 +72,19 @@ const TransactionsPage = {
     })
   }
 
+
+let transactionValueView = (State, companyTransaction) => d( formatNumber( State.DB.get(companyTransaction, 10047) ), {style: `text-align: right;`} )
+
 let transactionRowView = (State, companyTransaction) => d([
     transactionLabel( State, companyTransaction ),
     d( moment( State.DB.get( companyTransaction, 1757 ) ).format("DD.MM.YYYY") , {style: `text-align: right;`}),
     d([
-      isDefined( State.DB.get(companyTransaction, 7867) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7867), State.Company.get(companyTransaction, 8354) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}),
+      isDefined( State.DB.get(companyTransaction, 7867) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7867), State.DB.get(companyTransaction, 8354) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}),
       d(" --> "),
-      isDefined( State.DB.get(companyTransaction, 7866) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7866), State.Company.get(companyTransaction, 8354) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ,
+      isDefined( State.DB.get(companyTransaction, 7866) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7866), State.DB.get(companyTransaction, 8354) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ,
     ], {style: gridColumnsStyle("3fr 1fr 3fr") + "padding-left: 3em;"} ),
-    companyValueView( State, companyTransaction, 8748 ),
-  ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr ")})
+    transactionValueView( State, companyTransaction )
+  ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr ")})
   
 
 let allTransactionsView = State => {
@@ -117,7 +120,7 @@ let allTransactionsView = State => {
   
   let prevNextTransactionView = State => {
   
-    let selectedIndex = State.Company.get( State.S["TransactionsPage/selectedTransaction"], 8354 )
+    let selectedIndex = State.DB.get( State.S["TransactionsPage/selectedTransaction"], 8354 )
     let prevTransactionDatom = State.S.companyDatoms.find( Datom => Datom.attribute === 8354 && Datom.value === selectedIndex - 1 )
     let prevTransaction = isDefined( prevTransactionDatom ) ? prevTransactionDatom.entity : undefined
     let nextTransactionDatom = State.S.companyDatoms.find( Datom => Datom.attribute === 8354 && Datom.value === selectedIndex + 1 )
@@ -139,33 +142,33 @@ let allTransactionsView = State => {
     d([
       entityLabelWithPopup(State, 7433 ),
       d([
-        d( formatNumber( State.Company.get( balanceObject, 7433, State.Company.get( companyTransaction, 8354 ) - 1 ) ), {class: "redlineText", style: `text-align: right;`} ),
-        d( formatNumber( State.Company.get( balanceObject, 7433, State.Company.get( companyTransaction, 8354 )  ) ), {style: `text-align: right;`} ),
+        d( formatNumber( State.DB.get( balanceObject, 10045 )( State.DB.get( companyTransaction, 8354 ) - 1 ) ), {class: "redlineText", style: `text-align: right;`} ),
+        d( formatNumber( State.DB.get( balanceObject, 10045 )( State.DB.get( companyTransaction, 8354 ) ) ), {style: `text-align: right;`} ),
       ]),
     ], {style: gridColumnsStyle("1fr 1fr")}),
   ])
   
   let transactionFlowView = (State, companyTransaction) => d([
     d([
-      d([ isDefined( State.DB.get(companyTransaction, 7867) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7867), State.Company.get(companyTransaction, 8354) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ]),
+      d([ isDefined( State.DB.get(companyTransaction, 7867) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7867), State.DB.get(companyTransaction, 8354) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ]),
       isDefined( State.DB.get(companyTransaction, 7867) ) 
-        ? balanceChangeView( State, State.Company.get( companyTransaction, 7867 ), companyTransaction ) 
+        ? balanceChangeView( State, State.DB.get( companyTransaction, 7867 ), companyTransaction ) 
         : d("")
     ]),
     d([
       d(""),
       d([
-        d( moment( State.Company.get( companyTransaction, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
+        d( moment( State.DB.get( companyTransaction, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
         transactionLabel( State, companyTransaction ),
-        companyValueView( State, companyTransaction, 8748 ),
+        transactionValueView( State, companyTransaction ),
         d(" --------------> "),
       ]),
       d(""),
     ], {style: gridColumnsStyle("3fr 2fr 3fr")}),
     d([
-      d([ isDefined( State.DB.get(companyTransaction, 7866) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7866), State.Company.get(companyTransaction, 8354) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}), ]) ,
+      d([ isDefined( State.DB.get(companyTransaction, 7866) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7866), State.DB.get(companyTransaction, 8354) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}), ]) ,
       isDefined( State.DB.get(companyTransaction, 7866) ) 
-        ? balanceChangeView( State, State.Company.get( companyTransaction, 7866 ), companyTransaction ) 
+        ? balanceChangeView( State, State.DB.get( companyTransaction, 7866 ), companyTransaction ) 
         : d("")
     ])
   ], {class: "feedContainer", style: gridColumnsStyle("2fr 3fr 2fr")})
@@ -173,7 +176,7 @@ let allTransactionsView = State => {
   // Outgoing transactions
   
   
-  let transactionLabelText = (State, companyTransaction) => d([d(`Transaksjon ${ State.Company.get(companyTransaction, 8354) }`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(companyTransaction, "transaction/transactionType"), 20  )};`}, "click", () => State.Actions["TransactionsPage/selectTransaction"](companyTransaction) )], {style:"display: flex;"})
+  let transactionLabelText = (State, companyTransaction) => d([d(`Transaksjon ${ State.DB.get(companyTransaction, 8354) }`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(companyTransaction, "transaction/transactionType"), 20  )};`}, "click", () => State.Actions["TransactionsPage/selectTransaction"](companyTransaction) )], {style:"display: flex;"})
   
   let transactionLabel = (State, companyTransaction) => d([
     d([
@@ -185,13 +188,13 @@ let allTransactionsView = State => {
     let transactionPopUp = (State, companyTransaction) => d([
       d([
         transactionLabelText( State, companyTransaction ),
-        d( moment( State.Company.get( companyTransaction, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
+        d( moment( State.DB.get( companyTransaction, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
       ], {style: gridColumnsStyle("1fr 1fr")}),
-      companyDatomView( State, companyTransaction, 8748 ),
+      transactionValueView( State, companyTransaction ),
       d([
         entityLabelWithPopup(State, State.DB.get(companyTransaction, 7867) ),
         d([
-          companyValueView( State, companyTransaction, 8748 ),
+          transactionValueView( State, companyTransaction ),
           d(" ---------> "),
         ]),
         entityLabelWithPopup(State, State.DB.get(companyTransaction, 7866) )
@@ -219,7 +222,7 @@ let allTransactionsView = State => {
                 ? [
                   newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8850 ),
                   newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/originNode", State.DB.get(State.S["TransactionsPage/selectedTransaction"], "transaction/originNode") , false ),
-                ].concat( getEntityRetractionDatoms( State.DB, State.Company.get( State.S["TransactionsPage/selectedTransaction"], 9253) ) )
+                ].concat( getEntityRetractionDatoms( State.DB, State.DB.get( State.S["TransactionsPage/selectedTransaction"], 9253) ) )
                 : State.DB.get( State.S["TransactionsPage/selectedTransaction"], "transaction/paymentType") === 9086
                 ? [
               newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8829 ),
@@ -237,12 +240,12 @@ let allTransactionsView = State => {
       h3("Kilde"),
       State.DB.get( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType" ) === 8019 
         ? d("Fri postering")
-        : isNumber( State.Company.get(State.S["TransactionsPage/selectedTransaction"], 9011) ) 
+        : isNumber( State.DB.get(State.S["TransactionsPage/selectedTransaction"], 9011) ) 
           ? companyDatomView( State, State.S["TransactionsPage/selectedTransaction"],  9011 )
           : State.DB.get( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType" ) === 9035 
             ? d([
               companyDatomView( State, State.S["TransactionsPage/selectedTransaction"],  9041 ),
-              companyDatomView( State, State.Company.get( State.S["TransactionsPage/selectedTransaction"],  9041 ),  8748 ),
+              transactionValueView( State, State.DB.get( State.S["TransactionsPage/selectedTransaction"],  9041 ) ),
               companyDatomView( State, State.S["TransactionsPage/selectedTransaction"],  9191 ),
               companyDatomView( State, State.S["TransactionsPage/selectedTransaction"],  9042 ),
             ]) 
@@ -258,10 +261,10 @@ let allTransactionsView = State => {
                   h3("Splitt"),
                   d([
                     (State.DB.get( State.S["TransactionsPage/selectedTransaction"] , "transaction/transactionType") === 8829 || State.DB.get( State.S["TransactionsPage/selectedTransaction"] , "transaction/transactionType") === 8850) ? submitButton("Splitt transaksjon", () => State.Actions.splitTransaction( State.S["TransactionsPage/selectedTransaction"]) ) : d("Tilbakestill kategori for å splitte"),
-                    State.Company.get(State.S["TransactionsPage/selectedTransaction"], 9030).length > 0 
+                    State.DB.get(State.S["TransactionsPage/selectedTransaction"], 9030).length > 0 
                       ? d([
                         entityLabelWithPopup( State, 9030 ),
-                        d( State.Company.get(State.S["TransactionsPage/selectedTransaction"], 9030).map( t => d([
+                        d( State.DB.get(State.S["TransactionsPage/selectedTransaction"], 9030).map( t => d([
                           transactionLabel( State, t ),
                           entityAttributeView( State, t, 1083),
                           submitButton("X", () => State.Actions.retractEntity( t ))
@@ -281,14 +284,17 @@ let allTransactionsView = State => {
         h3("Fri postering"),
         d( [7867, 7866, 1757, 1139, 1083, 7450].map( attribute => State.DB.get(attribute, "entity/entityType") === 42 ? entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"], attribute ) : companyDatomView( State, State.S["TransactionsPage/selectedTransaction"], attribute) ) ),
         br(),
-        State.Company.get(State.S["TransactionsPage/selectedTransaction"], 8355) ? d("🔒") : submitButton("Slett", e => State.Actions["TransactionsPage/retractTransaction"](State.S["TransactionsPage/selectedTransaction"]) )
+        State.DB.get(State.S["TransactionsPage/selectedTransaction"], 8355) ? d("🔒") : submitButton("Slett", e => State.Actions["TransactionsPage/retractTransaction"](State.S["TransactionsPage/selectedTransaction"]) )
       ])
       : d( State.DB.get( State.DB.get( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType" ), 7942 ).map( inputAttribute => entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"] , inputAttribute ) ) ),
     ], {class: "feedContainer"}),
     d([
       h3("Transaksjosoutput"),
       d([
-        companyDatomView( State, State.S["TransactionsPage/selectedTransaction"],  8748),
+        d([
+          entityLabelWithPopup( State, 10047 ),
+          d( formatNumber( State.DB.get(State.S["TransactionsPage/selectedTransaction"], 10047) ), {style: `text-align: right;`} ),
+        ], {style: gridColumnsStyle("1fr 1fr")}),
         isNumber( State.DB.get( State.S["TransactionsPage/selectedTransaction"], 7450)   ) ? companyDatomView( State, State.S["TransactionsPage/selectedTransaction"],  8749) : d("")
       ])
     ], {class: "feedContainer"})
@@ -297,7 +303,7 @@ let allTransactionsView = State => {
   let categorizePaymentView = State => d([
     d([
       h3(`Kostnad`),
-      d( State.Company.getBalanceObjects( 8743 ).map(  selectedCostNode => nodeLabel( State, selectedCostNode, undefined, () => State.Actions.postDatoms([
+      d( State.DB.get( State.S.selectedCompany, 10052)( 8743 ).map(  selectedCostNode => nodeLabel( State, selectedCostNode, undefined, () => State.Actions.postDatoms([
         newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8954 ),
         newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/destinationNode", selectedCostNode ),
       ]) ) ) ),
@@ -306,7 +312,7 @@ let allTransactionsView = State => {
     d([
       h3(`Kjøp av verdipapir`),
       d([
-        d( State.Company.getBalanceObjects( 8738 ).map(  security => nodeLabel( State, security, undefined, () => State.Actions.postDatoms([
+        d( State.DB.get( State.S.selectedCompany, 10052)( 8738 ).map(  security => nodeLabel( State, security, undefined, () => State.Actions.postDatoms([
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8908 ),
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/destinationNode", security ),
           newDatom( State.S["TransactionsPage/selectedTransaction"], 7450, 0 ),
@@ -317,7 +323,7 @@ let allTransactionsView = State => {
     d([
       h3(`Overføring`),
       d([
-        d( State.Company.getBalanceObjects( [8742, 8739, 8737] ).map(  selectedDebtNode => nodeLabel( State, selectedDebtNode, undefined, () => State.Actions.postDatoms([
+        d( State.DB.get( State.S.selectedCompany, 10052)( [8742, 8739, 8737] ).map(  selectedDebtNode => nodeLabel( State, selectedDebtNode, undefined, () => State.Actions.postDatoms([
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8955 ),
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/destinationNode", selectedDebtNode ),
         ]) ) ) ),
@@ -327,7 +333,7 @@ let allTransactionsView = State => {
     d([
       h3(`Utbytte`),
       d([
-        d( State.Company.getBalanceObjects( 7857 ).map(  selectedDebtNode => nodeLabel( State, selectedDebtNode, undefined, () => State.Actions.postDatoms([
+        d( State.DB.get( State.S.selectedCompany, 10052)( 7857 ).map(  selectedDebtNode => nodeLabel( State, selectedDebtNode, undefined, () => State.Actions.postDatoms([
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8955 ),
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/destinationNode", selectedDebtNode ),
         ]) ) ) ),
@@ -338,7 +344,7 @@ let allTransactionsView = State => {
   let  categorizeReceiptView = State => d([
     d([
       h3(`Inntekt`),
-      d( State.Company.getBalanceObjects( 8745 ).map(  selectedCostNode => nodeLabel( State, selectedCostNode, undefined, () => State.Actions.postDatoms([
+      d(  State.DB.get( State.S.selectedCompany, 10052)( 8745 ).map(  selectedCostNode => nodeLabel( State, selectedCostNode, undefined, () => State.Actions.postDatoms([
         newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8974 ),
         newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/originNode", selectedCostNode ),
       ]) ) ) ),
@@ -347,7 +353,7 @@ let allTransactionsView = State => {
     d([
       h3(`Salg av verdipapir`),
       d([
-        d( State.Company.getBalanceObjects( 8738 ).map(  security => nodeLabel( State, security, undefined, async () => State.Actions.postDatoms([
+        d( State.DB.get( State.S.selectedCompany, 10052)( 8738 ).map(  security => nodeLabel( State, security, undefined, async () => State.Actions.postDatoms([
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8976 ),
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/originNode", security ),
           newDatom( State.S["TransactionsPage/selectedTransaction"], 7450, 0 ),
@@ -357,7 +363,7 @@ let allTransactionsView = State => {
           newDatom( "newTransaction", "transaction/accountingYear", State.DB.get( State.S["TransactionsPage/selectedTransaction"] , "transaction/accountingYear") ),
           newDatom( "newTransaction", "transaction/transactionType", 9035 ),
           newDatom( "newTransaction", "transaction/destinationNode", security ),
-          newDatom( "newTransaction", "transaction/originNode", State.Company.getBalanceObjects( 8744 )[0] ),
+          newDatom( "newTransaction", "transaction/originNode", State.DB.get( State.S.selectedCompany, 10052)( 8744 )[0] ),
           newDatom( "newTransaction", "transaction/sourceTransactionForProfitCalculation", State.S["TransactionsPage/selectedTransaction"] ),
           newDatom( "newTransaction", 1139, "" ),
         ])  ) ) )
@@ -367,7 +373,7 @@ let allTransactionsView = State => {
     d([
       h3(`Overføring`),
       d([
-        d( State.Company.getBalanceObjects( [8742, 8739, 8737] ).map(  selectedDebtNode => nodeLabel( State, selectedDebtNode, undefined, () => State.Actions.postDatoms([
+        d( State.DB.get( State.S.selectedCompany, 10052)( [8742, 8739, 8737] ).map(  selectedDebtNode => nodeLabel( State, selectedDebtNode, undefined, () => State.Actions.postDatoms([
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8975 ),
           newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/originNode", selectedDebtNode ),
         ]) ) ) ),
