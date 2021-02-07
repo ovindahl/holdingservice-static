@@ -32,8 +32,8 @@ app.get("/", (req,res)=>{res.send(`
         <script src="https://cdn.auth0.com/js/auth0-spa-js/1.2/auth0-spa-js.production.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
         <script src="https://momentjs.com/downloads/moment-with-locales.min.js"></script>
-        
         <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.18.0/dist/cytoscape.min.js"></script>
+        
         <script src="/static/valueTypeViews.js"></script>
         <script src="/static/Views.js"></script>
         <script src="/static/adminPage.js"></script>
@@ -41,7 +41,6 @@ app.get("/", (req,res)=>{res.send(`
         <script src="/static/transactionsPage.js"></script>
         <script src="/static/accountingYearPage.js"></script>
         <script src="/static/actorsPage.js"></script>
-        <script src="/static/CompanyDocConstructor.js"></script>
         <script src="/static/DatabaseConstructor.js"></script>
         <script src="/static/app.js"></script>
     </body>

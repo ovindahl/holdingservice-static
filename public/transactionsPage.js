@@ -3,7 +3,7 @@
 
 const TransactionsPage = {
     initial: DB => returnObject({ 
-      "TransactionsPage/selectedAccountingYear": getAllAccountingYears( DB, 6829 ).slice(-1)[0],
+      "TransactionsPage/selectedAccountingYear": DB.get(6829, 10061).slice(-1)[0],
       "TransactionsPage/selectedTransaction": undefined
     }),
     Actions: State => returnObject({
@@ -31,7 +31,7 @@ const TransactionsPage = {
         
           let referenceNumber = transactionRow[7]
         
-          let accountingYear = getAllAccountingYears( State.DB, State.S.selectedCompany ).slice(-1)[0]
+          let accountingYear = State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0]
         
           let transactionDatoms = [
             newDatom( "newDatom_"+ index, "entity/entityType", 7948  ),
@@ -89,17 +89,15 @@ let transactionRowView = (State, companyTransaction) => d([
 
 let allTransactionsView = State => {
 
-    let alltransactions = getAccountingYearTransactions(State.DB, State.S.selectedCompany, State.S["TransactionsPage/selectedAccountingYear"] )
-  
     return d([
       h3("Transaksjoner"),
       d([
         entityLabelWithPopup( State, 7403 ),
-        d( getAllAccountingYears(State.DB, State.S.selectedCompany).map( e => accountingYearLabel(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
+        d( State.DB.get(State.S.selectedCompany, 10061).map( e => accountingYearLabel(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
       ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
       br(),
       d([
-        d( alltransactions.map( companyTransaction => transactionRowView(State, companyTransaction)  ) ),
+        d( State.DB.get(State.S["TransactionsPage/selectedAccountingYear"], 9715).map( companyTransaction => transactionRowView(State, companyTransaction)  ) ),
         br(),
         submitButton("Legg til fri postering", () => State.Actions.postDatomsAndUpdateCompany([
           newDatom( 'newEntity' , 'entity/entityType', 7948 ),
@@ -242,8 +240,6 @@ let allTransactionsView = State => {
             ? d([
               entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"],  9041, true ),
               transactionValueView( State, State.DB.get( State.S["TransactionsPage/selectedTransaction"],  9041 ) ),
-              entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"],  9191, true ),
-              entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"],  9042, true ),
             ]) 
             : d([
                 entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"],  9104, true ),
@@ -290,8 +286,7 @@ let allTransactionsView = State => {
         d([
           entityLabelWithPopup( State, 10047 ),
           d( formatNumber( State.DB.get(State.S["TransactionsPage/selectedTransaction"], 10047) ), {style: `text-align: right;`} ),
-        ], {style: gridColumnsStyle("1fr 1fr")}),
-        isNumber( State.DB.get( State.S["TransactionsPage/selectedTransaction"], 7450)   ) ? entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"],  8749, true) : d("")
+        ], {style: gridColumnsStyle("1fr 1fr")})
       ])
     ], {class: "feedContainer"})
   ])

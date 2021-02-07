@@ -17,7 +17,7 @@ const ClientApp = {
     selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
     selectCompany: (company) => updateState( State, {
       DB: State.DB,
-      S: { selectedCompany: company, selectedPage: 7882, selectedEntity: undefined, selectedCompanyEventIndex: getAllTransactions(State.DB, company).length, selectedAccountingYear: getAllAccountingYears( State.DB, company ).slice(-1)[0] }
+      S: { selectedCompany: company, selectedPage: 7882, selectedEntity: undefined, selectedCompanyEventIndex: getAllTransactions(State.DB, company).length, selectedAccountingYear: State.DB.get(company, 10061).slice(-1)[0] }
     } ),
     postDatomsAndUpdateCompany: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } )
   })
@@ -103,7 +103,7 @@ let stateView = State => {
       br(),
       submitButton("Oppdatter kalkulerte verdier", () => State.Actions.selectCompany( State.S.selectedCompany ) ),
       br(),
-      submitButton("Slett alle transaksjoner i siste regnskapsår", () => State.Actions.retractEntities( getAllTransactions(State.DB, State.S.selectedCompany, getAllAccountingYears(State.DB, State.S.selectedCompany).slice(-1)[0] )  ) )
+      submitButton("Slett alle transaksjoner i siste regnskapsår", () => State.Actions.retractEntities( getAllTransactions(State.DB, State.S.selectedCompany, State.DB.get(company, 10061).slice(-1)[0] )  ) )
     ])
   ], {class: "feedContainer"})
 } 

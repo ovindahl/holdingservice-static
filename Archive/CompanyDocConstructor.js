@@ -1,6 +1,6 @@
 
 //--------------
-
+/* 
 let getCompanyEntityQueryObject = (companyDatoms, entity, eventTime) => returnObject({
   entityDatoms: companyDatoms
     .filter( companyDatom => isDefined(eventTime) ? companyDatom.t <= eventTime : true )
@@ -43,19 +43,23 @@ let newCompanyDatom = (companyEntity, attribute, value, t) => returnObject({
 })
 
 
-
+ */
 
 
 //SSOT
-let getAllAccountingYears = (DB, company) => DB.getAll( 7403 ).filter( accountingYear => DB.get( accountingYear, "entity/company") === company ).sort(  (a,b) => DB.get(a, 8255 ) - DB.get(b, 8255 ) )
-let getAccountingYearTransactions = (DB, company, accountingYear) => DB.get( company, 9817 ).filter( t => DB.get(t, "transaction/accountingYear") === accountingYear )
+
+//let getAllAccountingYears = (DB, company) => DB.getAll( 7403 ).filter( accountingYear => DB.get( accountingYear, "entity/company") === company ).sort(  (a,b) => DB.get(a, 8255 ) - DB.get(b, 8255 ) )
+
+//let getAccountingYearTransactions = (DB, company, accountingYear) => DB.get( company, 9817 ).filter( t => DB.get(t, "transaction/accountingYear") === accountingYear )
+
+/* 
 let getTransactionByIndex = (DB, company, companyDatoms, index) => DB.get( company, 9817 ).find( t => getFromCompany(companyDatoms, t, 8354) === index )
 
 let getAccountingYearOpeningBalanceIndex = (DB,  companyDatoms, company, accountingYear) => getFromCompany( companyDatoms, getAccountingYearTransactions( DB, company, accountingYear )[0], 8354 ) - 1
 let getAccountingYearClosingBalanceIndex = (DB, companyDatoms, company, accountingYear) => getFromCompany( companyDatoms, getAccountingYearTransactions( DB, company, accountingYear ).find( t => State.DB.get(t, "transaction/transactionType") === 9384 ), 8354 )
 
 let getAllActors = (DB, company) => DB.getAll( 7979 ).filter( entity => DB.get( entity, 8849 )  === company  )
-let getBalanceObjects = (DB, companyDatoms, company, queryObject) => DB.get(company, 10052)( queryObject )
+let getBalanceObjects = (DB, companyDatoms, company, queryObject) => DB.get(company, 10052)( queryObject ) */
 /* 
 {
 
@@ -84,15 +88,15 @@ let getBalanceObjects = (DB, companyDatoms, company, queryObject) => DB.get(comp
     
 }  */
 
-
+/* 
 let constructCompanyDatoms = (DB, company ) => {
   let startTime = Date.now()
   
-  /* let allTransactions = DB.get( company, 9817 ).filter( transaction => isDefined( DB.get( transaction, "transaction/transactionType" ) )  )
+  let allTransactions = DB.get( company, 9817 ).filter( transaction => isDefined( DB.get( transaction, "transaction/transactionType" ) )  )
   if(allTransactions.length === 0){return []}
   let companyDatomsWithCompanyCalculatedDatoms = allTransactions.reduce( ( companyDatoms, transaction, index ) => companyTransactionReducer(DB, company, companyDatoms, transaction, index), [] )
 
-  console.log(`constructCompanyDatoms finished in ${Date.now() - startTime} ms`) */
+  console.log(`constructCompanyDatoms finished in ${Date.now() - startTime} ms`)
 
   return []// companyDatomsWithCompanyCalculatedDatoms
 }
@@ -201,7 +205,7 @@ let companyCalculatedFieldReducer = ( DB, companyDatoms, company, companyCalcula
     : companyDatoms.concat( calculatedDatom )
   
 }
-
+ */
 
 /* 
 {

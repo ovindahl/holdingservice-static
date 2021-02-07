@@ -31,20 +31,20 @@ let singleAccountingYearView = State => d([
 
 let allAccountingYearsView = State => d([
 h3("Alle regnskapsår"),
-d( getAllAccountingYears(State.DB, State.S.selectedCompany).map( accountingYear => d([
+d( State.DB.get(State.S.selectedCompany, 10061).map( accountingYear => d([
   entityLabelWithPopup( State, accountingYear, () => State.Actions["AccountingYearPage/selectAccountingYear"]( accountingYear ) ),
   entityLabelWithPopup( State, State.DB.get( accountingYear, "accountingYear/accountingYearType")  ),
 ], {style: gridColumnsStyle("1fr 1fr 4fr")}) ), {class: "feedContainer"} ),
 br(),
-getAllAccountingYears(State.DB, State.S.selectedCompany).every( accYear => State.DB.get(accYear, 9753) )
+State.DB.get(State.S.selectedCompany, 10061).every( accYear => State.DB.get(accYear, 9753) )
   ? submitButton("Legg til", () => State.Actions.postDatomsAndUpdateCompany([
         newDatom( "newEntity", "entity/entityType", 7403 ),
         newDatom( "newEntity", "entity/company", State.S.selectedCompany ),
         newDatom( "newEntity", "accountingYear/accountingYearType", 8254 ),
-        newDatom( "newEntity", "accountingYear/firstDate", Number( moment( State.DB.get( getAllAccountingYears(State.DB, State.S.selectedCompany).slice(-1)[0], "accountingYear/firstDate" ) ).add(1, "y").format("x") )    ),
-        newDatom( "newEntity", "accountingYear/lastDate", Number(  moment( State.DB.get( getAllAccountingYears(State.DB, State.S.selectedCompany).slice(-1)[0], "accountingYear/lastDate" ) ).add(1, "y").format("x") ) ),
-        newDatom( "newEntity", 9629, getAllAccountingYears(State.DB, State.S.selectedCompany).slice(-1)[0] ),
-        newDatom( "newEntity", "entity/label", moment( State.DB.get( getAllAccountingYears(State.DB, State.S.selectedCompany).slice(-1)[0], "accountingYear/firstDate" ) ).add(1, "y").format("YYYY") ),
+        newDatom( "newEntity", "accountingYear/firstDate", Number( moment( State.DB.get( State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0], "accountingYear/firstDate" ) ).add(1, "y").format("x") )    ),
+        newDatom( "newEntity", "accountingYear/lastDate", Number(  moment( State.DB.get( State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0], "accountingYear/lastDate" ) ).add(1, "y").format("x") ) ),
+        newDatom( "newEntity", 9629, State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0] ),
+        newDatom( "newEntity", "entity/label", moment( State.DB.get( State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0], "accountingYear/firstDate" ) ).add(1, "y").format("YYYY") ),
       ]) )
   : d("")
 ]) 
@@ -156,7 +156,7 @@ d([
   h3("Status på året"),
   lockedValueView(State, State.S["AccountingYearPage/selectedAccountingYear"], 8257),
   br(),
-  getAllAccountingYears( State.DB, State.S.selectedCompany ).some( accountingYear => State.DB.get(accountingYear, "accountingYear/prevAccountingYear") === State.S["AccountingYearPage/selectedAccountingYear"] )
+  State.DB.get(State.S.selectedCompany, 10061).some( accountingYear => State.DB.get(accountingYear, "accountingYear/prevAccountingYear") === State.S["AccountingYearPage/selectedAccountingYear"] )
     ? d("Alle senere år må slettes for å gjøre endirnger")
     : submitButton("Tilbakestill årsavslutning", () => State.Actions.postDatomsAndUpdateCompany( getEntitiesRetractionDatoms( State.DB, State.DB.get(State.S["AccountingYearPage/selectedAccountingYear"], 9715).filter( transaction => [9286, 9384, 9716, 9723].includes( State.DB.get(transaction, "transaction/transactionType") )  ) ).concat(newDatom(State.S["AccountingYearPage/selectedAccountingYear"], "accountingYear/accountingYearType", 8254))   )  )
 ], {class: "feedContainer"}),
@@ -177,7 +177,7 @@ entityLabelWithPopup( State, State.S["AccountingYearPage/selectedReportType"] ),
 d(  State.DB.getAll( 8359 )
   .filter( reportField => State.DB.get(reportField, 8363) === State.S["AccountingYearPage/selectedReportType"] )
   .sort( (a,b) => a-b )
-  .map( reportField => reportFieldView( State, State.S["AccountingYearPage/selectedAccountingYear"], reportField, State.DB.get( accountingYear, 9814 ) ) ) )
+  .map( reportField => reportFieldView( State, State.S["AccountingYearPage/selectedAccountingYear"], reportField, State.DB.get( State.S["AccountingYearPage/selectedAccountingYear"], 9814 ) ) ) )
 ])
 : d("Kan kun generere rapporter for avsluttede regnskapsår")
 
