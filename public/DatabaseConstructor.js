@@ -173,7 +173,7 @@ let constructDatabase = Entities => {
   
     DB.getAll = entityType => DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity) //Kan bli sirkulær med isAttribute
   
-    DB.getOptions = (attribute, tx ) => tryFunction( () => new Function( ["Database"] , DB.get(attribute, "attribute/selectableEntitiesFilterFunction", tx) )( DB ) );
+    DB.getOptions = (attribute, tx ) => tryFunction( () => new Function( ["Database"] , DB.get( attribute, "attribute/selectableEntitiesFilterFunction", tx) )( DB ) );
   
     DB.get = (entity, attribute, version) => {
       if(DB.isEntity(entity)){
@@ -200,16 +200,9 @@ let constructDatabase = Entities => {
       return GlobalAsyncFunction
     }
 
-    DB.executeCompanyFunction = (company, companyDatoms, entity, functionStatements) => {
+    DB.executeCompanyFunction = (company, entity, functionStatements) => {
 
       //Not working, TBD.....
-
-      let CompanyQueryObject = {
-        entity: company,
-        getAllTransactions: () => getAllTransactions(DB, company ),
-        getBalanceObjects: queryObject => getBalanceObjects(DB, companyDatoms, company, queryObject),
-        get: (entity, attr, transactionIndex) => getFromCompany( companyDatoms, entity, attr, transactionIndex ),
-      }
 
       let CompanyEntityQueryObject = { 
         entity, 
@@ -218,7 +211,7 @@ let constructDatabase = Entities => {
 
       let functionString = functionStatements.filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";")
 
-      let returnValue = tryFunction( () => new Function( [`Database`, `Company`, `Entity`], functionString )( DB, CompanyQueryObject, CompanyEntityQueryObject ) )
+      let returnValue = tryFunction( () => new Function( [`Database`, , `Entity`], functionString )( DB, CompanyEntityQueryObject ) )
 
       return returnValue
     }
@@ -252,3 +245,10 @@ getEntityLabel = (DB, entity) => `${ DB.get( entity, "entity/label") ? DB.get( e
 
 let calculateGlobalCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
 
+
+
+let getReportFieldValue = ( DB, company, accountingYear, reportField ) => DB.get( reportField, 8361 ) === 8662
+  ? tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, DB.get(company), DB.get(accountingYear) ) )
+  : DB.get( reportField, 8361 ) === 5030
+    ? DB.get(company, 10053)(DB.get(reportField, 7829), DB.get( accountingYear, 9814 ) )
+    : null

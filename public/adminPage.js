@@ -150,14 +150,6 @@ let entityVersionPopup = (State, entity, attribute) => {
 }
 
 
-let entityAttributeView = (State, entity, attribute) => d([
-  entityLabelWithPopup( State, attribute),
-  State.DB.get(attribute, "attribute/isArray") 
-    ? multipleValuesView(State, entity, attribute ) 
-    : singleValueView( State, entity, attribute ),
-  entityVersionLabel( State, entity, attribute )
-], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
-
 
 let adminPage = State => d([
     d([d('<header><h1>Holdingservice Admin</h1></header>'),d([submitButton("Bytt til klient", e => State.Actions.toggleAdmin() )], {style: "display:flex;"} )], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),

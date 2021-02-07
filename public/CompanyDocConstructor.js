@@ -203,13 +203,6 @@ let companyCalculatedFieldReducer = ( DB, companyDatoms, company, companyCalcula
 }
 
 
-let getReportFieldValue = ( DB, companyDatoms, company, accountingYear, reportField ) => DB.get( reportField, 8361 ) === 8662
-  ? tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, DB.get(company), DB.get(accountingYear) ) )
-  : DB.get( reportField, 8361 ) === 5030
-    ? DB.get(company, 10053)(DB.get(reportField, 7829), DB.get( accountingYear, 9814 ) )
-    : null
-
-
 /* 
 {
 

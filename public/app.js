@@ -62,8 +62,6 @@ const sideEffects = {
 var State = {} //Consle access to State
 var S = {} //Consle access to localState
 var D = {} //Consle access to DB
-var C = {} //Consle access to Company
-var Company = {} //Consle access to Company
 var A = {} //Consle access to Actions
 
 //COMPONENTS
@@ -71,7 +69,6 @@ var A = {} //Consle access to Actions
 const DB = {
   initial: DB => returnObject({ }),
   Actions: State => returnObject({
-    //executeCompanyAction: async actionEntity => await DB.getGlobalAsyncFunction( actionEntity )( DB, Company, Process, Event ).then( updateCallback  )
   })
 } 
 
@@ -86,28 +83,14 @@ let updateState = (prevState, patch) => {
   let newState = {
       created: Date.now(),
       DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
-      companyDatoms: Object.keys(patch).includes( "companyDatoms" ) ? patch.companyDatoms : prevState.companyDatoms,
       S: mergerino(prevState.S, patch.S),
     }
-
-  newState.Company = {
-    entity: newState.S.selectedCompany,
-    companyDatoms: newState.S.companyDatoms,
-    get: (entity, attribute, transactionIndex) => newState.DB.isAttribute(attribute) 
-      ? newState.DB.get(entity, attribute) 
-      : getFromCompany( newState.S.companyDatoms, entity, attribute, transactionIndex ),
-    getAllTransactions: accountingYear => getAllTransactions(newState.DB, newState.S.selectedCompany, accountingYear),
-    getBalanceObjects: queryObject => getBalanceObjects( newState.DB, newState.S.companyDatoms, newState.S.selectedCompany, queryObject ),
-    getTransactionByIndex: index => isDefined(index) ? getTransactionByIndex( newState.DB, newState.S.selectedCompany, State.companyDatoms,  index ) : getAllTransactions(newState.DB, newState.S.selectedCompany).slice(-1)[0]
-  }
   
   newState.Actions = Components.reduce( (Actions, Component) => Object.assign( Actions, Component.Actions( newState ) ), {} )
       
   State = newState
   S = newState.S
   D = newState.DB
-  C = newState.Company
-  Company = newState.Company
   A = newState.Actions
 
   States.push( newState )

@@ -124,50 +124,110 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
-let companyDatomView = (State, entity, attribute, transactionIndex ) => d([
-  entityLabelWithPopup( State, attribute ),
-  companyValueView(State, entity, attribute, isDefined(transactionIndex) ? transactionIndex : State.S["BalancePage/selectedTransactionIndex"]),
-], {class: "columns_1_1"}) 
 
-let companyValueView = (State, entity, attribute, transactionIndex) => {
-
-  let valueType = State.DB.get(attribute, "attribute/valueType")
-
-  let Value = State.Company.get( entity, attribute, transactionIndex )
-
-  try {
-    return isDefined( Value )
-    ? valueType === 41
-      ? State.DB.get(attribute, "attribute/isArray")
-        ? d( Value.map( companyEnt => companyEntityLabelWithPopup(State, companyEnt ) ) )
-        : companyEntityLabelWithPopup(State, Value )
-      : [1653, 6781, 1099].includes(attribute)
-        ? entityLabelWithPopup( State, Value )
-        : valueType === 32
-          ? State.DB.get(attribute, "attribute/isArray")
-            ? Value.every( entry => State.DB.get(entry, 19) === 7948 )
-              ?  d( Value.map( ent => transactionLabel( State, ent ) ) )
-              : d( Value.map( ent => entityLabelWithPopup(State, ent ) ) )
-            : State.DB.get( Value , "entity/entityType") === 7948
-              ? transactionLabel( State, Value )
-              : entityLabelWithPopup(State, Value )
-          : valueType === 6553
-            ? d( Value.map( accountBalance => d([
-                entityLabelWithPopup( State, accountBalance.account),
-                d( String(accountBalance.amount) ),
-              ], {class: "columns_1_1"})
-             )  )
-            : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( Value  ), {style: isNumber(Value) ? `text-align: right;` : ""}  )
-    : d("na.")
-  } catch (error) {
-    return d(error)
-  }
-
-}
-  
 
 
 // VALUE TYPE VIEWS
+
+
+let entityAttributeView = (State, entity, attribute, isLocked ) => d([
+  entityLabelWithPopup( State, attribute),
+  State.DB.get(attribute, "attribute/isArray") 
+    ? isLocked
+      ? lockedMultipleValuesView( State, entity, attribute )
+      : multipleValuesView( State, entity, attribute ) 
+    : isLocked
+      ? lockedSingleValueView( State, entity, attribute )
+      : singleValueView( State, entity, attribute ),
+  entityVersionLabel( State, entity, attribute )
+], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
+
+
+
+let lockedValueView = (State, entity, attribute ) => State.DB.get(attribute, "attribute/isArray") ? lockedMultipleValuesView( State, entity, attribute ) : lockedSingleValueView( State, entity, attribute )
+  
+let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
+  ? State.DB.get(attribute, "attribute/valueType") === 32
+    ? State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 7948
+      ? transactionLabel( State, State.DB.get( entity, attribute ) )
+      : entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
+    : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( State.DB.get( entity, attribute )  ) , {style: isNumber(State.DB.get( entity, attribute )) ? `text-align: right;` : ""}  )
+  : d("na.")
+
+let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
+? State.DB.get(attribute, "attribute/valueType") === 32
+  ? Value.every( entry => State.DB.get(entry, 19) === 7948 )
+    ?  d( Value.map( ent => transactionLabel( State, ent ) ) )
+    : d( Value.map( ent => entityLabelWithPopup(State, ent ) ) )
+  : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( Value  ), {style: isNumber(Value) ? `text-align: right;` : ""}  )
+: d("na.")
+
+let singleValueView = ( State, entity, attribute  ) => {
+
+  let valueType = State.DB.get(attribute, "attribute/valueType")
+
+  let viewFunction = {
+    "30": textInput, //Tekst
+    "31": numberInput, //Tall
+    "34": textAreaView, //Funksjonstekst
+    "36": boolView, //Boolean
+    "40": optionsViews, //Velg alternativ
+    "32": entityRefView,
+    "5721": dateInput, //Dato
+    "5824": fileuploadView, //File
+  }[ valueType ]
+
+  let formatFunction = new Function(["storedValue"], State.DB.get(valueType, "valueType/formatFunction") )
+  let storedValue = State.DB.get( entity, attribute )
+  let formattedValue = formatFunction( storedValue  )
+  let unFormatFunction = new Function(["submittedValue"], State.DB.get(valueType, "valueType/unformatFunction") ) 
+  let updateFunction = async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
+  let options = [32, 40].includes(valueType) ? State.DB.getOptions( attribute ) : []
+  let valueView = viewFunction( State, formattedValue, updateFunction, options )
+  return valueView
+
+
+}
+
+let multipleValuesView = (State, entity, attribute) => {
+
+  let valueType = State.DB.get(attribute, "attribute/valueType")
+
+  let valueTypeViews = {
+    "6613": argumentRowView,
+    "6614": statementRowView,
+    "32": refsView
+  }
+
+  let startValuesByType = {
+    "6613": {"argument/name": "argumentNavn", "argument/valueType": 30},
+    "6614": {"statement/statement": "console.log({Database, Entity})", "statement/isEnabled": true},
+    "32": 6
+  }
+  let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : ``
+  let Value = State.DB.get(entity, attribute)
+
+  return d([
+    d([
+      d( "#" ),
+      d( "Verdi" ),
+      d("")
+    ], {class: "columns_1_8_1"}),
+    isArray( Value )
+      ?  d( State.DB.get(entity, attribute).map( (Value, index) => d([
+            positionInArrayView(State, entity, attribute, index),
+            valueTypeViews[ valueType ](State, entity, attribute, index),
+            submitButton( "[ X ]", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).filter( (Value, i) => i !== index  )  )} ) )
+          ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
+      : d("Ingen verdier"),
+      submitButton( "[ + ]", async e => isArray( State.DB.get( entity, attribute) ) 
+        ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).concat(startValue)  )} )
+        : updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, [startValue]  )} )
+      )
+
+  ])
+
+}
 
 //Multiple valueType views
 
@@ -200,45 +260,7 @@ let moveDownButton = (State, entity, attribute, index) => index < State.DB.get(e
   updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, newArray  )} )
 }   ) : d("")
 
-let multipleValuesView = (State, entity, attribute) => {
 
-  let valueType = State.DB.get(attribute, "attribute/valueType")
-
-  let valueTypeViews = {
-    "6613": argumentRowView,
-    "6614": statementRowView,
-    "32": refsView
-  }
-
-  let startValuesByType = {
-    "6613": {"argument/name": "argumentNavn", "argument/valueType": 30},
-    "6614": {"statement/statement": "console.log({Company, Process, Event})", "statement/isEnabled": true},
-    "32": 6
-  }
-  let startValue = Object.keys(startValuesByType).includes( String(valueType) ) ? startValuesByType[valueType] : ``
-  let Value = State.DB.get(entity, attribute)
-
-  return d([
-    d([
-      d( "#" ),
-      d( "Verdi" ),
-      d("")
-    ], {class: "columns_1_8_1"}),
-    isArray( Value )
-      ?  d( State.DB.get(entity, attribute).map( (Value, index) => d([
-            positionInArrayView(State, entity, attribute, index),
-            valueTypeViews[ valueType ](State, entity, attribute, index),
-            submitButton( "[ X ]", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).filter( (Value, i) => i !== index  )  )} ) )
-          ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
-      : d("Ingen verdier"),
-      submitButton( "[ + ]", async e => isArray( State.DB.get( entity, attribute) ) 
-        ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).concat(startValue)  )} )
-        : updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, [startValue]  )} )
-      )
-
-  ])
-
-}
   
 let argumentRowView = (State, entity, attribute, index) => {
 
@@ -305,31 +327,6 @@ let entityRefView = ( State, formattedValue, updateFunction, options ) => {
 }
 let fileuploadView = ( State, formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", updateFunction)
 
-let singleValueView = ( State, entity, attribute  ) => {
 
-  let valueType = State.DB.get(attribute, "attribute/valueType")
-
-  let viewFunction = {
-    "30": textInput, //Tekst
-    "31": numberInput, //Tall
-    "34": textAreaView, //Funksjonstekst
-    "36": boolView, //Boolean
-    "40": optionsViews, //Velg alternativ
-    "32": entityRefView,
-    "5721": dateInput, //Dato
-    "5824": fileuploadView, //File
-  }[ valueType ]
-
-  let formatFunction = new Function(["storedValue"], State.DB.get(valueType, "valueType/formatFunction") )
-  let storedValue = State.DB.get( entity, attribute )
-  let formattedValue = formatFunction( storedValue  )
-  let unFormatFunction = new Function(["submittedValue"], State.DB.get(valueType, "valueType/unformatFunction") ) 
-  let updateFunction = async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
-  let options = [32, 40].includes(valueType) ? State.DB.getOptions( attribute ) : []
-  let valueView = viewFunction( State, formattedValue, updateFunction, options )
-  return valueView
-
-
-}
 
 //--------------

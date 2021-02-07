@@ -9,7 +9,6 @@
 
 const ClientApp = {
   initial: DB => returnObject({
-    companyDatoms: constructCompanyDatoms( DB, 6829 ),
     selectedCompany: 6829, 
     selectedPage: 7882,
   }),
@@ -18,15 +17,9 @@ const ClientApp = {
     selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
     selectCompany: (company) => updateState( State, {
       DB: State.DB,
-      companyDatoms: constructCompanyDatoms( State.DB, company ) ,
       S: { selectedCompany: company, selectedPage: 7882, selectedEntity: undefined, selectedCompanyEventIndex: getAllTransactions(State.DB, company).length, selectedAccountingYear: getAllAccountingYears( State.DB, company ).slice(-1)[0] }
     } ),
-    postDatomsAndUpdateCompany: async newDatoms => {
-      let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
-      let updatedCompanyDatoms = constructCompanyDatoms( updatedDB, State.S.selectedCompany )
-      updateState( State, {DB: updatedDB, companyDatoms: updatedCompanyDatoms } )
-  
-    }
+    postDatomsAndUpdateCompany: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } )
   })
 }
 
@@ -132,39 +125,36 @@ let graphView = State => {
 
 let renderGraph = State => {
 
-  let allTransactions = getAllTransactions( State.DB, State.S.selectedCompany ).filter( t => State.Company.get(t, 8354) <= State.S.selectedCompanyEventIndex  )
+  let allTransactions = State.DB.get( State.S.selectedCompany , 9817)
+  
 
-  let selectedTransaction = allTransactions.find( t => State.Company.get(t, 8354) === State.S.selectedCompanyEventIndex  )
+  let selectedTransaction = allTransactions.find( t => State.DB.get(t, 8354) === State.S.selectedCompanyEventIndex  )
 
-  let nodes = getAllBalanceObjects( State.DB, State.S.selectedCompany ).map( e => returnObject({data: {
+  let nodes = State.DB.get( State.S.selectedCompany , 10052)().map( e => returnObject({data: {
     id: String(e), 
     label: State.DB.get(e, 6),
-    col: State.Company.get(e, 8768) === 7538
+    col: State.DB.get(e, 8768) === 7538
       ? 1
-      : State.Company.get(e, 8768) === 7539
+      : State.DB.get(e, 8768) === 7539
         ? 2
-        : State.Company.get(e, 7934) === 8744 || State.Company.get(e, 7934) === 8745
+        : State.DB.get(e, 7934) === 8744 || State.DB.get(e, 7934) === 8745
           ? 3
-          : State.Company.get(e, 7934) === 8737
+          : State.DB.get(e, 7934) === 8737
             ? 4
-            : State.Company.get(e, 8768) === 7537
+            : State.DB.get(e, 8768) === 7537
               ? 5
               : 6,
-      weight: 50 + State.Company.get(e, 7433, State.S.selectedCompanyEventIndex) / 1000000,
-      color: State.Company.get(selectedTransaction, "transaction/originNode") === e 
-        ? "red"
-        : State.Company.get(selectedTransaction, "transaction/destinationNode") === e 
-          ? "green"
-          : "black"
+      weight: 50,
+      color: "black"
   } }  ) )
   let edges = allTransactions
-    .filter( t => isNumber( State.Company.get(t, "transaction/originNode") ) && isNumber( State.Company.get(t, "transaction/destinationNode") )   )
+    .filter( t => isNumber( State.DB.get(t, "transaction/originNode") ) && isNumber( State.DB.get(t, "transaction/destinationNode") )   )
     .map( t => returnObject({data: {
       id: String(t), 
-      source: String( State.Company.get(t, "transaction/originNode") ), 
-      target: String( State.Company.get(t, "transaction/destinationNode") ),
-      label: t === selectedTransaction ? formatNumber( State.Company.get(t, 8748), 0 ) : "",
-      weight: 3 + State.Company.get(t, 8748) / 1000000
+      source: String( State.DB.get(t, "transaction/originNode") ), 
+      target: String( State.DB.get(t, "transaction/destinationNode") ),
+      label: t === selectedTransaction ? formatNumber( State.DB.get(t, 8748), 0 ) : "",
+      weight: 3 + State.DB.get(t, 8748) / 1000000
     }}) )
 
   log({nodes, edges})
