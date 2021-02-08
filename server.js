@@ -33,12 +33,13 @@ app.get("/", (req,res)=>{res.send(`
         <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
         <script src="https://momentjs.com/downloads/moment-with-locales.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.18.0/dist/cytoscape.min.js"></script>
-        
         <script src="/static/valueTypeViews.js"></script>
         <script src="/static/Views.js"></script>
         <script src="/static/adminPage.js"></script>
         <script src="/static/balanceNodesPage.js"></script>
         <script src="/static/transactionsPage.js"></script>
+        <script src="/static/sourceDocumentsPage.js"></script>
+        <script src="/static/bankImport.js"></script>
         <script src="/static/accountingYearPage.js"></script>
         <script src="/static/actorsPage.js"></script>
         <script src="/static/DatabaseConstructor.js"></script>

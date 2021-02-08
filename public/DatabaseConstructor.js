@@ -17,10 +17,14 @@ let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.every( Datom => {
 
     let valueTypeValidatorFunction = new Function("inputValue",  DB.get( valueType, "valueType/validatorFunctionString") )
 
+
+    let isValid_entity = isNumber(Datom.entity) || isString(Datom.entity)
     let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
     let isValid_attribute = true
     let isValid_notNaN = valueInArray.every( arrayValue => !Number.isNaN(arrayValue) )
-    let isValid = ( isValid_valueType && isValid_attribute && isValid_notNaN  )
+    let isValid = ( isValid_entity && isValid_valueType && isValid_attribute && isValid_notNaN  )
+
+    //log({isValid, Datom})
 
     return isValid
 

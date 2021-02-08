@@ -7,9 +7,10 @@ const BalancePage = {
         "BalancePage/selectNode": entity => updateState( State, {S: {selectedPage: 7860, "BalancePage/selectedNode": entity}}),
         "BalancePage/selectTransactionIndex": transactionIndex => updateState( State, {S: {"BalancePage/selectedTransactionIndex": transactionIndex}}),
         "BalancePage/retractNode": async node => updateState( State, { DB: await Transactor.retractEntity(State.DB, node), S: {"BalancePage/selectedNode": undefined } } ),
-        "BalancePage/createNode": () => State.Actions.postDatomsAndUpdateCompany([
-          newDatom( "newTransaction", "entity/entityType", 7932 ),
+        "BalancePage/createNode": balanceObjectType => State.Actions.postDatoms([
+          newDatom( "newEntity", "entity/entityType", 7932 ),
           newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+          newDatom( 'newEntity' , "balanceObject/balanceObjectType", balanceObjectType ), 
           newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
       ] ),
     })
@@ -175,7 +176,7 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
             d( [7537, 7539, 7538].map( balanceSection =>  d([
             d([
                 entityLabelWithPopup( State, balanceSection ),
-                submitButton("+", () => State.Actions["BalancePage/createNode"](  ) ),
+                submitButton("+", () => State.Actions["BalancePage/createNode"]( 8742 ) ),
             ], {style: "display: flex;"}),
             d( State.DB.get(State.S.selectedCompany, 10052)( balanceSection ).map( balanceObject => d([
                 nodeLabel(State, balanceObject),

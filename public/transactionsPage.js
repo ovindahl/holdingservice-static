@@ -10,53 +10,7 @@ const TransactionsPage = {
       "TransactionsPage/selectAccountingYear": accountingYear => updateState( State, {S: {"TransactionsPage/selectedAccountingYear": accountingYear}}),
       "TransactionsPage/selectTransaction": transaction => updateState( State, {S: {selectedPage: 7882, "TransactionsPage/selectedTransaction": transaction}}),
       "TransactionsPage/retractTransaction": async transaction => updateState( State, { DB: await Transactor.retractEntity(State.DB, transaction), S: {"TransactionsPage/selectedTransaction": undefined } } ),
-      importBankTransactions: (bankAccount, e) => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => {
-      
-        let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
-        
-        let constructTransactionRowDatoms = ( State, transactionRow, index, selectedBankAccount) => {
-        
-          let date = Number( moment( transactionRow[0], "DD.MM.YYYY" ).format("x") )
-          let description = `${transactionRow[2]}: ${transactionRow[1]}`
-        
-          let paidAmount = transactionRow[5] === ""
-            ? undefined
-            : parseDNBamount( transactionRow[5] ) * -1
-        
-          let receivedAmount = transactionRow[6] === ""
-          ? undefined
-          :parseDNBamount( transactionRow[6] ) 
-        
-          let isPayment = isNumber( paidAmount )
-        
-          let referenceNumber = transactionRow[7]
-        
-          let accountingYear = State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0]
-        
-          let transactionDatoms = [
-            newDatom( "newDatom_"+ index, "entity/entityType", 7948  ),
-            newDatom( "newDatom_"+ index, "entity/company", State.S.selectedCompany  ),
-            newDatom( "newDatom_"+ index, 'transaction/accountingYear', accountingYear ), 
-            newDatom( "newDatom_"+ index, "transaction/transactionType", isPayment ? 8829 : 8850 ),
-            newDatom( "newDatom_"+ index, "transaction/paymentType", isPayment ? 9086 : 9087 ),
-            newDatom( "newDatom_"+ index, 8832, date  ),
-            newDatom( "newDatom_"+ index, "event/date", date  ), //Denne burde heller være kalkulert verdi?
-            newDatom( "newDatom_"+ index, isPayment ? "transaction/originNode" : "transaction/destinationNode", selectedBankAccount),
-            newDatom( "newDatom_"+ index, 8830, isPayment ? paidAmount : receivedAmount  ),
-            newDatom( "newDatom_"+ index, 8831, description  ),
-            newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
-            newDatom( "newDatom_"+ index, "entity/sourceDocument", "[TBD] Bankimport lastet opp " + moment( Date.now() ).format("DD/MM/YYYY HH:mm")  ),
-            newDatom( "newDatom_"+ index, 1139, ""  ),
-          ]
-        
-          return transactionDatoms
-        
-        }
-        
-          State.Actions.postDatomsAndUpdateCompany( results.data.filter( row => row.length > 1 ).slice(5, results.data.length-1).map( (transactionRow, index) => constructTransactionRowDatoms(State, transactionRow, index, bankAccount)  ).flat()   )
-        
-          } }),
-        splitTransaction: transaction => State.Actions.postDatomsAndUpdateCompany([
+        splitTransaction: transaction => State.Actions.postDatoms([
           newDatom( "newTransaction", "entity/entityType", State.DB.get( transaction , "entity/entityType") ),
           newDatom( "newTransaction", "entity/company", State.DB.get( transaction , "entity/company") ),
           newDatom( "newTransaction", "event/date", State.DB.get( transaction , "event/date") ),
@@ -99,7 +53,7 @@ let allTransactionsView = State => {
       d([
         d( State.DB.get(State.S["TransactionsPage/selectedAccountingYear"], 9715).map( companyTransaction => transactionRowView(State, companyTransaction)  ) ),
         br(),
-        submitButton("Legg til fri postering", () => State.Actions.postDatomsAndUpdateCompany([
+        submitButton("Legg til fri postering", () => State.Actions.postDatoms([
           newDatom( 'newEntity' , 'entity/entityType', 7948 ),
           newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
           newDatom( 'newEntity' , 'transaction/accountingYear', State.S["TransactionsPage/selectedAccountingYear"] ), 
@@ -258,7 +212,7 @@ let allTransactionsView = State => {
                         entityLabelWithPopup( State, 9030 ),
                         d( State.DB.get(State.S["TransactionsPage/selectedTransaction"], 9030).map( t => d([
                           transactionLabel( State, t ),
-                          entityAttributeView( State, t, 1083, true),
+                          entityAttributeView( State, t, 1083 ),
                           submitButton("X", () => State.Actions.retractEntity( t ))
                         ], {style: gridColumnsStyle("6fr 3fr 1fr") + "padding-left: 1em;"} ) ) ),
                         entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"], 9040, true) 
@@ -292,44 +246,13 @@ let allTransactionsView = State => {
   ])
   
   let categorizePaymentView = State => d([
+    h3(`Overføring`),
     d([
-      h3(`Kostnad`),
-      d( State.DB.get( State.S.selectedCompany, 10052)( 8743 ).map(  selectedCostNode => nodeLabel( State, selectedCostNode, () => State.Actions.postDatoms([
-        newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8954 ),
-        newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/destinationNode", selectedCostNode ),
+      d( State.DB.get( State.S.selectedCompany, 10052)( [8742, 8739, 8737, 10167] ).map(  selectedDebtNode => nodeLabel( State, selectedDebtNode, () => State.Actions.postDatoms([
+        newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8955 ),
+        newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/destinationNode", selectedDebtNode ),
       ]) ) ) ),
-    ]),
-    br(),
-    d([
-      h3(`Kjøp av verdipapir`),
-      d([
-        d( State.DB.get( State.S.selectedCompany, 10052)( 8738 ).map(  security => nodeLabel( State, security, () => State.Actions.postDatoms([
-          newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8908 ),
-          newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/destinationNode", security ),
-          newDatom( State.S["TransactionsPage/selectedTransaction"], 7450, 0 ),
-        ]) ) ) ),
-      ], {style:"display: inline-flex;"})
-    ]),
-    br(),
-    d([
-      h3(`Overføring`),
-      d([
-        d( State.DB.get( State.S.selectedCompany, 10052)( [8742, 8739, 8737] ).map(  selectedDebtNode => nodeLabel( State, selectedDebtNode, () => State.Actions.postDatoms([
-          newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8955 ),
-          newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/destinationNode", selectedDebtNode ),
-        ]) ) ) ),
-      ], {style:"display: inline-flex;"})
-    ]),
-    br(),
-    d([
-      h3(`Utbytte`),
-      d([
-        d( State.DB.get( State.S.selectedCompany, 10052)( 7857 ).map(  selectedDebtNode => nodeLabel( State, selectedDebtNode, () => State.Actions.postDatoms([
-          newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8955 ),
-          newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/destinationNode", selectedDebtNode ),
-        ]) ) ) ),
-      ], {style:"display: inline-flex;"})
-    ]),
+    ], {style:"display: inline-flex;"})
   ])
   
   let  categorizeReceiptView = State => d([
@@ -339,26 +262,6 @@ let allTransactionsView = State => {
         newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8974 ),
         newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/originNode", selectedCostNode ),
       ]) ) ) ),
-    ]),
-    br(),
-    d([
-      h3(`Salg av verdipapir`),
-      d([
-        d( State.DB.get( State.S.selectedCompany, 10052)( 8738 ).map(  security => nodeLabel( State, security, async () => State.Actions.postDatoms([
-          newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType", 8976 ),
-          newDatom( State.S["TransactionsPage/selectedTransaction"], "transaction/originNode", security ),
-          newDatom( State.S["TransactionsPage/selectedTransaction"], 7450, 0 ),
-          newDatom( "newTransaction", "entity/entityType", State.DB.get( State.S["TransactionsPage/selectedTransaction"] , "entity/entityType") ),
-          newDatom( "newTransaction", "entity/company", State.DB.get( State.S["TransactionsPage/selectedTransaction"] , "entity/company") ),
-          newDatom( "newTransaction", "event/date", State.DB.get( State.S["TransactionsPage/selectedTransaction"] , "event/date") ),
-          newDatom( "newTransaction", "transaction/accountingYear", State.DB.get( State.S["TransactionsPage/selectedTransaction"] , "transaction/accountingYear") ),
-          newDatom( "newTransaction", "transaction/transactionType", 9035 ),
-          newDatom( "newTransaction", "transaction/destinationNode", security ),
-          newDatom( "newTransaction", "transaction/originNode", State.DB.get( State.S.selectedCompany, 10052)( 8744 )[0] ),
-          newDatom( "newTransaction", "transaction/sourceTransactionForProfitCalculation", State.S["TransactionsPage/selectedTransaction"] ),
-          newDatom( "newTransaction", 1139, "" ),
-        ])  ) ) )
-      ], {style:"display: inline-flex;"})
     ]),
     br(),
     d([

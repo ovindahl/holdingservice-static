@@ -125,6 +125,59 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 //----------------------------------------------------------------------
 
 
+let entityLabel = (State, entity, onClick, isSelected) => State.DB.isEntity(entity)
+  ?  d([d( 
+        getEntityLabel(State.DB, entity), 
+        {
+          class: "entityLabel", 
+          style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${(isSelected || State.S["AdminPage/selectedEntity"] === entity ) ? "border: 2px solid black;" : ""}`
+        }, 
+        "click", 
+        isDefined(onClick) ? onClick : e => State.Actions.selectEntity( entity )
+      )], {style:"display: inline-flex;"})
+  : d(`[${ entity}] na.`, {class: "entityLabel", style: `background-color:gray;`})
+
+
+
+
+
+
+
+
+
+
+
+
+let entityLabelWithPopup = ( State, entity, onClick, isSelected) => {
+
+  let entityTypeLabelController = {
+    "7948": transactionLabel,
+    "7979": actorLabel,
+    "7932": nodeLabel,
+  }
+
+  return isDefined( entityTypeLabelController[ State.DB.get( entity , "entity/entityType") ])
+  ? entityTypeLabelController[ State.DB.get( entity , "entity/entityType") ]( State, entity, onClick )
+  : d([
+      d([
+        entityLabel( State, entity, onClick, isSelected),
+        entityPopUp( State, entity ),
+      ], {class: "popupContainer", style:"display: inline-flex;"})
+    ], {style:"display: inline-flex;"} )
+} 
+
+let entityPopUp = (State, entity) => d([
+  entityLabel( State, entity ),
+  br(),
+  d( getEntityLabel( State.DB, State.DB.get(entity, "entity/entityType") )  ),
+  br(),
+  d( State.DB.get( entity, "entity/doc") ? State.DB.get( entity, "entity/doc") : "" ),
+  br(),
+  span(`Entitet: ${ entity}`),
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+
+
+
 
 
 // VALUE TYPE VIEWS
@@ -139,10 +192,15 @@ let entityAttributeView = (State, entity, attribute, isLocked ) => d([
     : isLocked
       ? lockedSingleValueView( State, entity, attribute )
       : singleValueView( State, entity, attribute ),
-  entityVersionLabel( State, entity, attribute )
+    isLocked ? d(""): entityVersionLabel( State, entity, attribute )
 ], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
 
-
+let entityVersionLabel = (State, entity, attribute) => d([
+  d([
+    d( "v" + State.DB.getEntityAttribute(entity, attribute).Datoms.length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
+    entityVersionPopup( State, entity, attribute )
+  ], {class: "popupContainer"})
+  ], {style:"display: inline-flex;"} )
 
 let lockedValueView = (State, entity, attribute ) => State.DB.get(attribute, "attribute/isArray") ? lockedMultipleValuesView( State, entity, attribute ) : lockedSingleValueView( State, entity, attribute )
   
@@ -150,16 +208,25 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
   ? State.DB.get(attribute, "attribute/valueType") === 32
     ? State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 7948
       ? transactionLabel( State, State.DB.get( entity, attribute ) )
-      : entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
+      : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 7979
+        ? actorLabel( State, State.DB.get( entity, attribute ) )
+        : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 7932
+          ? nodeLabel( State, State.DB.get( entity, attribute ) )
+          : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 10062
+            ? sourceDocumentLabel( State, State.DB.get( entity, attribute ) )
+            : entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
+
+
+          
     : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( State.DB.get( entity, attribute )  ) , {style: isNumber(State.DB.get( entity, attribute )) ? `text-align: right;` : ""}  )
   : d("na.")
 
 let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
 ? State.DB.get(attribute, "attribute/valueType") === 32
-  ? Value.every( entry => State.DB.get(entry, 19) === 7948 )
-    ?  d( Value.map( ent => transactionLabel( State, ent ) ) )
-    : d( Value.map( ent => entityLabelWithPopup(State, ent ) ) )
-  : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( Value  ), {style: isNumber(Value) ? `text-align: right;` : ""}  )
+  ? State.DB.get( entity, attribute ).every( entry => State.DB.get(entry, 19) === 7948 )
+    ?  d( State.DB.get( entity, attribute ).map( ent => transactionLabel( State, ent ) ) )
+    : d( State.DB.get( entity, attribute ).map( ent => entityLabelWithPopup(State, ent ) ) )
+  : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( State.DB.get( entity, attribute )  ), {style: isNumber(State.DB.get( entity, attribute )) ? `text-align: right;` : ""}  )
 : d("na.")
 
 let singleValueView = ( State, entity, attribute  ) => {
@@ -174,14 +241,17 @@ let singleValueView = ( State, entity, attribute  ) => {
     "40": optionsViews, //Velg alternativ
     "32": entityRefView,
     "5721": dateInput, //Dato
-    "5824": fileuploadView, //File
+    "5824": CSVuploadView, //File
   }[ valueType ]
 
   let formatFunction = new Function(["storedValue"], State.DB.get(valueType, "valueType/formatFunction") )
   let storedValue = State.DB.get( entity, attribute )
   let formattedValue = formatFunction( storedValue  )
   let unFormatFunction = new Function(["submittedValue"], State.DB.get(valueType, "valueType/unformatFunction") ) 
-  let updateFunction = async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
+  let updateFunction = valueType === 5824
+    ? async e => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, results.data )} ) }) 
+    : async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
+
   let options = [32, 40].includes(valueType) ? State.DB.getOptions( attribute ) : []
   let valueView = viewFunction( State, formattedValue, updateFunction, options )
   return valueView
@@ -325,7 +395,7 @@ let entityRefView = ( State, formattedValue, updateFunction, options ) => {
     input({value: formattedValue, list: datalistID, style: `text-align: right;max-width: 50px;`}, "change", updateFunction),
     ])
 }
-let fileuploadView = ( State, formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", updateFunction)
+let CSVuploadView = ( State, formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", updateFunction)
 
 
 

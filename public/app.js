@@ -62,18 +62,18 @@ const sideEffects = {
 var State = {} //Consle access to State
 var S = {} //Consle access to localState
 var D = {} //Consle access to DB
+var Database = {} //Consle access to DB
 var A = {} //Consle access to Actions
 
 //COMPONENTS
 
 const DB = {
-  initial: DB => returnObject({ }),
-  Actions: State => returnObject({
-  })
+  initial: async () => returnObject({}), // returnObject({DB: constructDatabase( await sideEffects.APIRequest("GET", "Entities", null) )}),
+  Actions: State => returnObject({})
 } 
 
 
-const Components = [DB, ClientApp, AdminPage, TransactionsPage, BalancePage, AccountingYearPage, ActorsPage]
+const Components = [DB, ClientApp, AdminPage, TransactionsPage, BalancePage, SourceDocumentsPage, AccountingYearPage, ActorsPage, BankImportPage]
 
 var States = []
 var Patches = []
@@ -91,6 +91,7 @@ let updateState = (prevState, patch) => {
   State = newState
   S = newState.S
   D = newState.DB
+  Database = newState.DB
   A = newState.Actions
 
   States.push( newState )
@@ -98,17 +99,20 @@ let updateState = (prevState, patch) => {
 
   log({prevState, patch, newState})
   
+  updateView( State )
+}
+
+let updateView = State => {
   let startTime = Date.now()
-  sideEffects.updateDOM( [clientPage( newState )] )
+  sideEffects.updateDOM( [clientPage( State )] )
   if( State.S.selectedPage === 9338 ){ renderGraph( State ) } 
   console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 }
 
 let init = async () => {
 
-  let firstState = {created: Date.now(), isAdmin: false}
 
-  updateState( {}, firstState )
+  //let nextState = Components.slice(1).reduce( (State, Component) => Object.assign( State, Component.initial( State.DB ) ), await DB.initial() )
 
   let Entities = await sideEffects.APIRequest("GET", "Entities", null)
 
@@ -116,12 +120,14 @@ let init = async () => {
 
     let initialDatabase = constructDatabase( Entities )
 
-    updateState( firstState, {
+    let initialComponentState = Components.reduce( (Initial, Component) => Object.assign( Initial, Component.initial( initialDatabase ) ), {} )
+
+    updateState( {}, {
       DB: initialDatabase,
-      S: Components.reduce( (Initial, Component) => Object.assign( Initial, Component.initial( initialDatabase ) ), {} )
+      S: initialComponentState
       } )
     
-  }else{ updateState( firstState, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }
+  }else{ updateState( {}, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }
   
 }
 

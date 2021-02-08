@@ -6,7 +6,6 @@
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
-
 const ClientApp = {
   initial: DB => returnObject({
     selectedCompany: 6829, 
@@ -19,7 +18,7 @@ const ClientApp = {
       DB: State.DB,
       S: { selectedCompany: company, selectedPage: 7882, selectedEntity: undefined, selectedCompanyEventIndex: getAllTransactions(State.DB, company).length, selectedAccountingYear: State.DB.get(company, 10061).slice(-1)[0] }
     } ),
-    postDatomsAndUpdateCompany: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } )
+    postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } )
   })
 }
 
@@ -42,9 +41,12 @@ let clientPage = State => {
     "7509": accountingYearsView,
     "7860": balanceObjectsView,
     "7882": transactionsView,
+    "10038": bankImportView,
     "7977": actorsView,
     "9338": graphView,
-    "10025": adminPage
+    "10025": adminPage,
+    "10072": sourceDocumentsView,
+    //"10041": sharePurchaseView,
   }
   
   return d([
@@ -101,9 +103,7 @@ let stateView = State => {
         isDefined( State.S.selectedEntity ) ? entityLabelWithPopup( State, State.S.selectedEntity ) : d(" - "),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
       br(),
-      submitButton("Oppdatter kalkulerte verdier", () => State.Actions.selectCompany( State.S.selectedCompany ) ),
-      br(),
-      submitButton("Slett alle transaksjoner i siste regnskapsår", () => State.Actions.retractEntities( getAllTransactions(State.DB, State.S.selectedCompany, State.DB.get(company, 10061).slice(-1)[0] )  ) )
+      submitButton("Slett alle transaksjoner i siste regnskapsår", () => State.Actions.retractEntities( State.DB.get( State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0], 9715) )  )
     ])
   ], {class: "feedContainer"})
 } 

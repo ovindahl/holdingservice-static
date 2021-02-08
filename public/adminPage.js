@@ -25,36 +25,6 @@ const AdminPage = {
 
 //Basic entity views
 
-let entityLabel = (State, entity, onClick, isSelected) => State.DB.isEntity(entity)
-  ?  d([d( 
-        getEntityLabel(State.DB, entity), 
-        {
-          class: "entityLabel", 
-          style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${(isSelected || State.S["AdminPage/selectedEntity"] === entity ) ? "border: 2px solid black;" : ""}`
-        }, 
-        "click", 
-        isDefined(onClick) ? onClick : e => State.Actions.selectEntity( entity )
-      )], {style:"display: inline-flex;"})
-  : d(`[${ entity}] na.`, {class: "entityLabel", style: `background-color:gray;`})
-
-
-let entityLabelWithPopup = ( State, entity, onClick, isSelected) => d([
-d([
-  entityLabel( State, entity, onClick, isSelected),
-  entityPopUp( State, entity ),
-], {class: "popupContainer", style:"display: inline-flex;"})
-], {style:"display: inline-flex;"} )
-
-let entityPopUp = (State, entity) => d([
-  entityLabel( State, entity ),
-  br(),
-  d( getEntityLabel( State.DB, State.DB.get(entity, "entity/entityType") )  ),
-  br(),
-  d( State.DB.get( entity, "entity/doc") ? State.DB.get( entity, "entity/doc") : "" ),
-  br(),
-  span(`Entitet: ${ entity}`),
-], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-
 //AdminEntityLabel
 
 
@@ -124,12 +94,7 @@ let entityView = (State, entity) => isDefined(entity)
       ])
   : d("Ingen entitet valgt", {class: "feedContainer"})
 
-let entityVersionLabel = (State, entity, attribute) => d([
-  d([
-    d( "v" + State.DB.getEntityAttribute(entity, attribute).Datoms.length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
-    entityVersionPopup( State, entity, attribute )
-  ], {class: "popupContainer"})
-  ], {style:"display: inline-flex;"} )
+
 
 let entityVersionPopup = (State, entity, attribute) => {
 
