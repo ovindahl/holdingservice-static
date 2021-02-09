@@ -9,20 +9,6 @@ const SourceDocumentsPage = {
 
 
             let sourceDocumentTypeActions = {
-                "10096": sourceDocument => newTransactionDatoms( 
-                    10105, 
-                    sourceDocument, 
-                    10110, 
-                    State.DB.get( sourceDocument, 7048), 
-                    State.DB.get( sourceDocument, 1757), 
-                    "Aksjekjøp" ),
-                "10123": sourceDocument => newTransactionDatoms( 
-                    10130, 
-                    sourceDocument, 
-                    State.DB.get(State.S.selectedCompany, 10052)(10263)[0], 
-                    State.DB.get(State.S.selectedCompany, 10052)(7857)[0],
-                    State.DB.get( sourceDocument, 1757), 
-                    "Vedtak av tilleggsutbytte" ),
                 "10111": sourceDocument => [
                     newTransactionDatoms( 
                         8976, 

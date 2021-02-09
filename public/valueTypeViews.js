@@ -176,10 +176,6 @@ let entityPopUp = (State, entity) => d([
   span(`Entitet: ${ entity}`),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-
-
-
-
 // VALUE TYPE VIEWS
 
 

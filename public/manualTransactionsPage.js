@@ -15,7 +15,7 @@ const ManualTransactionsPage = {
         "ManualTransactionsPage/recordSharePurchase": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity" , 'entity/entityType', 7948 ),
             newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity" , 'transaction/accountingYear', State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0] ), 
+            newDatom( "newEntity" , 'transaction/accountingYear',  State.DB.get( sourceDocument, 10300) ), 
             newDatom( "newEntity" , "transaction/transactionType", 8019 ), 
             newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
             newDatom( "newEntity" , "transaction/originNode", State.DB.get( sourceDocument, 7867) ),
@@ -38,7 +38,8 @@ const ManualTransactionsPage = {
         entityLabelWithPopup( State, 7867 ),
         entityLabelWithPopup( State, 7866 ),
         entityLabelWithPopup( State, 1083 ),
-    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr")}),
+        entityLabelWithPopup( State, 10401 ),
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr")}),
     d( State.DB.get( State.S.selectedCompany, 10073 )
         .filter( sourceDocument => [10317].includes( State.DB.get(sourceDocument, 10070 ) )   )
         .map( sourceDocument => d([
@@ -46,8 +47,9 @@ const ManualTransactionsPage = {
         lockedSingleValueView( State, sourceDocument, 7867 ),
         lockedSingleValueView( State, sourceDocument, 7866 ),
         lockedSingleValueView( State, sourceDocument, 1083 ),
+        d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
         submitButton( "Vis", () => State.Actions["ManualTransactionsPage/selectSourceDocument"]( sourceDocument ))
-    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr")}) )),
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
   submitButton( "Ny fri postering", () => State.Actions["ManualTransactionsPage/new"]( ))
   ]) 
@@ -62,9 +64,11 @@ const ManualTransactionsPage = {
         submitButton( " <---- Tilbake ", () => State.Actions["ManualTransactionsPage/selectSourceDocument"]( undefined )  ),
         prevNextSourceDocumentView( State ),
         br(),
-        entityAttributeView(State, State.S["ManualTransactionsPage/selectedSourceDocument"], 10070),
+        entityAttributeView(State, State.S["ManualTransactionsPage/selectedSourceDocument"], 10070, true),
         br(),
-        isDefined( State.DB.get( State.S["ManualTransactionsPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType") ) ? d( State.DB.get( State.DB.get( State.S["ManualTransactionsPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, State.S["ManualTransactionsPage/selectedSourceDocument"], attribute ) ) ) : d(""),
+        isDefined( State.DB.get( State.S["ManualTransactionsPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType") ) 
+            ? d( State.DB.get( State.DB.get( State.S["ManualTransactionsPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, State.S["ManualTransactionsPage/selectedSourceDocument"], attribute, State.DB.get(State.S["ManualTransactionsPage/selectedSourceDocument"], 10401) ) ) ) 
+            : d(""),
         br(),
         d([
             State.DB.get(State.S["ManualTransactionsPage/selectedSourceDocument"], 10401)
