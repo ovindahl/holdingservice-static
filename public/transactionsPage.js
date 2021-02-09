@@ -154,7 +154,7 @@ let allTransactionsView = State => {
     prevNextTransactionView( State ),
     br(),
     transactionFlowView( State, State.S["TransactionsPage/selectedTransaction"] ),
-    br(),
+    /* br(),
     d([
       h3("Transaksjonstype"),
       entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"], 7935, true ),
@@ -182,11 +182,13 @@ let allTransactionsView = State => {
               ]
               
             ))
-    ], {class: "feedContainer"}),
+    ], {class: "feedContainer"}), */
     br(),
     d([
       h3("Kilde"),
-      State.DB.get( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType" ) === 8019 
+      entityAttributeView(State, State.S["TransactionsPage/selectedTransaction"], 9104, true),
+      entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"], 7935, true ),
+      /* State.DB.get( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType" ) === 8019 
         ? d("Fri postering")
         : isNumber( State.DB.get(State.S["TransactionsPage/selectedTransaction"], 9011) ) 
           ? entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"],  9011, true )
@@ -220,10 +222,10 @@ let allTransactionsView = State => {
                       : d("Transaksjonen er ikke splittet")
                   ])
                 ]),
-        ]),
+        ]), */
     ], {class: "feedContainer"}),
     br(),
-    d([
+    /* d([
       h3("Brukerinput"),
       State.DB.get( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType" ) === 8019 
       ? d([
@@ -233,14 +235,20 @@ let allTransactionsView = State => {
         State.DB.get(State.S["TransactionsPage/selectedTransaction"], 8355) ? d("🔒") : submitButton("Slett", e => State.Actions["TransactionsPage/retractTransaction"](State.S["TransactionsPage/selectedTransaction"]) )
       ])
       : d( State.DB.get( State.DB.get( State.S["TransactionsPage/selectedTransaction"], "transaction/transactionType" ), 7942 ).map( inputAttribute => entityAttributeView( State, State.S["TransactionsPage/selectedTransaction"] , inputAttribute ) ) ),
-    ], {class: "feedContainer"}),
+    ], {class: "feedContainer"}), */
     d([
       h3("Transaksjosoutput"),
       d([
         d([
           entityLabelWithPopup( State, 10047 ),
           d( formatNumber( State.DB.get(State.S["TransactionsPage/selectedTransaction"], 10047) ), {style: `text-align: right;`} ),
-        ], {style: gridColumnsStyle("1fr 1fr")})
+        ], {style: gridColumnsStyle("1fr 1fr")}),
+        isNumber( State.DB.get(State.S["TransactionsPage/selectedTransaction"], 10394) ) 
+          ? d([
+            entityLabelWithPopup( State, 10394 ),
+            d( formatNumber( State.DB.get(State.S["TransactionsPage/selectedTransaction"], 10394) ), {style: `text-align: right;`} ),
+          ], {style: gridColumnsStyle("1fr 1fr")})
+          : d("")
       ])
     ], {class: "feedContainer"})
   ])
@@ -276,3 +284,5 @@ let allTransactionsView = State => {
   ], {class: "feedContainer"})
   
   //----
+
+  

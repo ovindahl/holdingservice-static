@@ -57,7 +57,11 @@ const BankImportPage = {
   
 
 
-  let bankImportView = State => isDefined( State.S["BankImportPage/selectedSourceDocument"]) ? singleBankImportView( State ) : allBankImportsView( State )
+  let bankImportView = State => isDefined( State.S["BankImportPage/selectedSourceDocument"]) 
+    ? State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10070) === 10132
+        ? singleTransactionView( State )
+        : singleBankImportView( State ) 
+    : allBankImportsView( State )
   
   let allBankImportsView = State => d([
     h3("Importer banktransaksjoner"),
@@ -73,7 +77,15 @@ const BankImportPage = {
             lockedSingleValueView( State, sourceDocument, 1757 )
         ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr")}) )),
     br(),
-    submitButton("Ny import", () => State.Actions["BankImportPage/createBankImport"]( ) )
+    submitButton("Ny import", () => State.Actions["BankImportPage/createBankImport"]( ) ),
+    br(),
+    h3("Importerte transaksjoner"),
+    d( State.DB.get( State.S.selectedCompany, 10073 )
+        .filter( sourceDocument => State.DB.get(sourceDocument, 10070 ) === 10132 )
+        .map( sourceDocument => d([
+            sourceDocumentLabel( State, sourceDocument, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
+            lockedSingleValueView( State, sourceDocument, 1757 )
+        ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr")}) )),
   ])
   
   let singleBankImportView = State => {
@@ -86,11 +98,13 @@ const BankImportPage = {
 
     let rowIDs = isDefined( importedFile ) ? rows.map( row => row[7] ) : undefined
 
-    let existingIDs = isDefined( importedFile ) ? State.DB.get(State.S.selectedCompany, 9817).map( transaction =>  State.DB.get(transaction, 1080)  ).filter( id => isDefined(id) ) : undefined
+    let existingIDs = isDefined( importedFile ) ? State.DB.get(State.S.selectedCompany, 10073).filter( sourceDocument => State.DB.get(sourceDocument, "sourceDocument/sourceDocumentType") === 10132 ).map( transaction =>  State.DB.get(transaction, 1080)  ).filter( id => isDefined(id) ) : undefined
 
     let alreadyImportedCount = isDefined( importedFile ) ? rowIDs.filter( rowID => existingIDs.includes( rowID )  ) : undefined
 
     let newTransactions = isDefined( importedFile ) ? rows.filter( row => !existingIDs.includes(row[7])  ) : undefined
+
+    let sourceDocuments = isDefined( importedFile ) ? State.DB.get(State.S.selectedCompany, 10073).filter( transaction => State.DB.get(transaction, 9104) === State.S["BankImportPage/selectedSourceDocument"] ) : []
 
 
 
@@ -112,15 +126,14 @@ const BankImportPage = {
                         br(),
                         d("Uimporterte transaksjoner:"),
                         d( newTransactions.map( row => d( JSON.stringify(row) ) ) ),
-                        submitButton("Importer nye transaksjoner", () => State.Actions["BankImportPage/importBankTransactions"]( State.S["BankImportPage/selectedSourceDocument"] ) ),
-
                         br(),
                         submitButton("Importer hver transaksjon som eget bilag", () => State.Actions["BankImportPage/importBankSourceDocuments"]( State.S["BankImportPage/selectedSourceDocument"] ) ),
                     ])
                     : d(""),
                 d( [
                     d("Importerte transaksjoner tilknyttet dette bilaget:"),
-                    d( State.DB.get(State.S.selectedCompany, 9817).filter( transaction => State.DB.get(transaction, 9104) === State.S["BankImportPage/selectedSourceDocument"] ).map( transaction => transactionLabel( State, transaction) ) ),
+                    d( sourceDocuments.map( transaction => sourceDocumentLabel( State, transaction) ) ),
+                    submitButton("Slett importerte transaksjoner", () => State.Actions.retractEntities( sourceDocuments.concat( State.DB.get(State.S.selectedCompany, 9817).filter( transaction => sourceDocuments.includes( State.DB.get(transaction, 9104) )  ) ) ) ),
                 ] )
 
             ]) 
@@ -133,7 +146,51 @@ const BankImportPage = {
   } 
 
 
-  let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
+
+
+
+let singleTransactionView = State => {
+
+    let sourceDocument = State.S["BankImportPage/selectedSourceDocument"]
+
+    let recordedTransaction = State.DB.get(State.S.selectedCompany, 9817).find( transaction => State.DB.get(transaction, 9104) === sourceDocument )
+
+
+    return d([
+        submitButton( " <---- Tilbake ", () => State.Actions["BankImportPage/selectSourceDocument"]( undefined )  ),
+        br(),
+        h3("Importert banktransaksjon"),
+        entityAttributeView(State, sourceDocument, 10070, true),
+        entityAttributeView(State, sourceDocument, 9104, true),
+        br(),
+        d( State.DB.get( State.DB.get( sourceDocument, "sourceDocument/sourceDocumentType"), 7942 ).filter( e => e!== 10200 ).map( attribute => entityAttributeView(State, sourceDocument, attribute, true ) ) ),
+        br(),
+        h3("Bokføring"),
+        isDefined(recordedTransaction)
+                ? d([
+                    transactionFlowView( State, recordedTransaction),
+                    submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( [recordedTransaction] )  )
+                ]) 
+                : d([
+                    entityAttributeView(State, sourceDocument, 10200 ),
+                    submitButton("Bokfør", () => State.Actions["SourceDocumentsPage/recordSourceDocument"]( sourceDocument )   ),
+                ]) 
+    ])
+    
+    
+    
+    
+    
+    
+    
+
+
+
+
+
+} 
+
+let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
 
 
 
