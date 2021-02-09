@@ -45,9 +45,9 @@ let clientPage = State => {
     "7977": actorsView,
     "9338": graphView,
     "10025": adminPage,
-    "10072": sourceDocumentsView,
     "10041": sharePurchaseView,
-    "10042": manualTransactionsView
+    "10042": manualTransactionsView,
+    "10464": reportView
   }
   
   return d([

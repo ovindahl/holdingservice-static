@@ -117,7 +117,6 @@ let entityVersionPopup = (State, entity, attribute) => {
 
 
 let adminPage = State => d([
-    d([d('<header><h1>Holdingservice Admin</h1></header>'),d([submitButton("Bytt til klient", e => State.Actions.toggleAdmin() )], {style: "display:flex;"} )], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
     d([
       adminEntityLabelWithPopup( State,  47 ),
       span(" / "  ),

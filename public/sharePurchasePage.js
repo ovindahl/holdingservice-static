@@ -4,6 +4,7 @@ const SharePurchasesPage = {
     }),
     Actions: State => returnObject({
         "SharePurchasesPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: 10041, "SharePurchasesPage/selectedSourceDocument": entity}}),
+        "SharePurchasesPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {"SharePurchasesPage/selectedSourceDocument": undefined } } ),
         "SharePurchasesPage/newSharePurchase": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10096 ),
@@ -111,7 +112,7 @@ const SharePurchasesPage = {
                     ? submitButton("Bokfør aksjekjøp", () => State.Actions["SharePurchasesPage/recordSharePurchase"]( State.S["SharePurchasesPage/selectedSourceDocument"] )   )
                     : submitButton("Bokfør aksjesalg", () => State.Actions["SharePurchasesPage/recordShareSale"]( State.S["SharePurchasesPage/selectedSourceDocument"] )   ),
                 br(),
-                submitButton("Slett", State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], e => State.Actions["SourceDocumentsPage/retractSourceDocument"]( State.S["SharePurchasesPage/selectedSourceDocument"] )) )
+                submitButton("Slett", State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], e => State.Actions["SharePurchasesPage/retractSourceDocument"]( State.S["SharePurchasesPage/selectedSourceDocument"] )) )
             ]) 
     ]) 
   ])

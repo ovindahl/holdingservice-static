@@ -4,6 +4,7 @@ const ManualTransactionsPage = {
     }),
     Actions: State => returnObject({
         "ManualTransactionsPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: 10042, "ManualTransactionsPage/selectedSourceDocument": entity}}),
+        "ManualTransactionsPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {"ManualTransactionsPage/selectedSourceDocument": undefined } } ),
         "ManualTransactionsPage/new": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10317 ),
@@ -12,7 +13,7 @@ const ManualTransactionsPage = {
             newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
             newDatom( 'newEntity' , "eventAttribute/1139", "Fri postering" ), 
         ] ),
-        "ManualTransactionsPage/recordSharePurchase": sourceDocument => State.Actions.postDatoms( [
+        "ManualTransactionsPage/recordTransaction": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity" , 'entity/entityType', 7948 ),
             newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
             newDatom( "newEntity" , 'transaction/accountingYear',  State.DB.get( sourceDocument, 10300) ), 
@@ -62,7 +63,6 @@ const ManualTransactionsPage = {
 
     return d([
         submitButton( " <---- Tilbake ", () => State.Actions["ManualTransactionsPage/selectSourceDocument"]( undefined )  ),
-        prevNextSourceDocumentView( State ),
         br(),
         entityAttributeView(State, State.S["ManualTransactionsPage/selectedSourceDocument"], 10070, true),
         br(),
@@ -78,9 +78,9 @@ const ManualTransactionsPage = {
                     submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S["ManualTransactionsPage/selectedSourceDocument"], 10402) )  )
                 ]) 
                 : d([
-                    submitButton("Bokfør", () => State.Actions["ManualTransactionsPage/recordSharePurchase"]( State.S["ManualTransactionsPage/selectedSourceDocument"] )   ),
+                    submitButton("Bokfør", () => State.Actions["ManualTransactionsPage/recordTransaction"]( State.S["ManualTransactionsPage/selectedSourceDocument"] )   ),
                     br(),
-                    submitButton("Slett", e => State.Actions["SourceDocumentsPage/retractSourceDocument"]( State.S["ManualTransactionsPage/selectedSourceDocument"] ) )
+                    submitButton("Slett", e => State.Actions["ManualTransactionsPage/retractSourceDocument"]( State.S["ManualTransactionsPage/selectedSourceDocument"] ) )
                 ]) 
     ]) 
       ])

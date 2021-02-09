@@ -73,7 +73,7 @@ const DB = {
 } 
 
 
-const Components = [DB, ClientApp, AdminPage, TransactionsPage, BalancePage, SourceDocumentsPage, SharePurchasesPage, ManualTransactionsPage, AccountingYearPage, ActorsPage, BankImportPage]
+const Components = [DB, ClientApp, AdminPage, TransactionsPage, BalancePage, SharePurchasesPage, ManualTransactionsPage, AccountingYearPage, ReportPage, ActorsPage, BankImportPage]
 
 var States = []
 var Patches = []
