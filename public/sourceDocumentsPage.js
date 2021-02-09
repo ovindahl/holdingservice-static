@@ -124,7 +124,7 @@ const SourceDocumentsPage = {
   let allSourceDocumentsView = State => d([
       h3("Bilag"),
     d( State.DB.get( State.S.selectedCompany, 10073 )
-        .filter( sourceDocument => State.DB.get(sourceDocument, 10070 ) !== 10132 )
+        .filter( sourceDocument => ![10132, 10096, 10111, 10317].includes( State.DB.get(sourceDocument, 10070 ) )  )
         .map( sourceDocument => d([
         sourceDocumentLabel( State, sourceDocument, () => State.Actions["SourceDocumentsPage/selectSourceDocument"]( sourceDocument ) ),
         entityLabelWithPopup( State, State.DB.get(sourceDocument, 10070) ),
