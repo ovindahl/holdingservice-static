@@ -47,7 +47,7 @@ let allTransactionsView = State => {
       h3("Transaksjoner"),
       d([
         entityLabelWithPopup( State, 7403 ),
-        d( State.DB.get(State.S.selectedCompany, 10061).map( e => accountingYearLabel(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
+        d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
       ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
       br(),
       d( State.DB.get(State.S["TransactionsPage/selectedAccountingYear"], 9715).map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} ),

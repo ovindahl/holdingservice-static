@@ -24,35 +24,36 @@ const SharePurchasesPage = {
         "SharePurchasesPage/recordSharePurchase": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity" , 'entity/entityType', 7948 ),
             newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity" , 'transaction/accountingYear', State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0] ), 
+            newDatom( "newEntity" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
             newDatom( "newEntity" , "transaction/transactionType", 10105 ), 
             newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity" , "transaction/originNode", 10110 ),
+            newDatom( "newEntity" , "transaction/originNode", State.DB.get(State.S.selectedCompany, 10052)(10485)[0] ),
             newDatom( "newEntity" , "transaction/destinationNode", State.DB.get( sourceDocument, 7048) ),
             newDatom( "newEntity" , "event/date", State.DB.get( sourceDocument, 1757) ), 
             newDatom( "newEntity" , "eventAttribute/1139",  "Aksjekjøp" )
         ]),
         "SharePurchasesPage/recordShareSale": sourceDocument => State.Actions.postDatoms( [
-            newTransactionDatoms( 
-                8976, 
-                sourceDocument, 
-                State.DB.get( sourceDocument, 7048),
-                10155, 
-                State.DB.get( sourceDocument, 1757), 
-                "Salgsvederlag",
-                1 ),
-            newTransactionDatoms( 
-                9035, 
-                sourceDocument, 
-                State.DB.get(State.S.selectedCompany, 10052)(8744)[0],
-                State.DB.get( sourceDocument, 7048), 
-                State.DB.get( sourceDocument, 1757), 
-                "Gevinst ved salg av verdipapir",
-                2 ),
-        ].flat()),
-        
-            
-    })
+            newDatom( "newEntity1" , 'entity/entityType', 7948 ),
+            newDatom( "newEntity1" , 'entity/company', State.S.selectedCompany ), 
+            newDatom( "newEntity1" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
+            newDatom( "newEntity1" , "transaction/transactionType", 8976 ), 
+            newDatom( "newEntity1" , "entity/sourceDocument", sourceDocument ), 
+            newDatom( "newEntity1" , "transaction/originNode", State.DB.get( sourceDocument, 7048)),
+            newDatom( "newEntity1" , "transaction/destinationNode", State.DB.get(State.S.selectedCompany, 10052)( 10486 )[0]),
+            newDatom( "newEntity1" , "event/date", State.DB.get( sourceDocument, 1757) ), 
+            newDatom( "newEntity1" , "eventAttribute/1139",  "Salgsvederlag" ),
+
+            newDatom( "newEntity2" , 'entity/entityType', 7948 ),
+            newDatom( "newEntity2" , 'entity/company', State.S.selectedCompany ), 
+            newDatom( "newEntity2" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
+            newDatom( "newEntity2" , "transaction/transactionType", 9035 ), 
+            newDatom( "newEntity2" , "entity/sourceDocument", sourceDocument ), 
+            newDatom( "newEntity2" , "transaction/originNode", State.DB.get(State.S.selectedCompany, 10052)(8744)[0]),
+            newDatom( "newEntity2" , "transaction/destinationNode", State.DB.get( sourceDocument, 7048) ),
+            newDatom( "newEntity2" , "event/date", State.DB.get( sourceDocument, 1757) ), 
+            newDatom( "newEntity2" , "eventAttribute/1139",  "Gevinst ved salg av verdipapir" )
+        ])
+        })
   }
 
 
@@ -100,6 +101,13 @@ const SharePurchasesPage = {
     d( State.DB.get( State.DB.get( State.S["SharePurchasesPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType"), 7942 )
         .map( attribute => entityAttributeView(State, State.S["SharePurchasesPage/selectedSourceDocument"], attribute, State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], 10401) ) ) 
     ),
+    br(),
+    State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType") === 10111
+        ? d([
+            entityAttributeView(State, State.S["SharePurchasesPage/selectedSourceDocument"], 10490, true ),
+            entityAttributeView(State, State.S["SharePurchasesPage/selectedSourceDocument"], 10491, true ),
+        ])
+        : d(""),
     br(),
     d([
         State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], 10401)
