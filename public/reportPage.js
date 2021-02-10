@@ -14,8 +14,10 @@ const ReportPage = {
 let reportView = State => d([
     h3("Rapporter"),
     d([
-        entityLabelWithPopup( State, 7403 ),
-        d( State.DB.get(State.S.selectedCompany, 10061).map( accountingYear => entityLabelWithPopup(State, accountingYear, () => State.Actions["ReportPage/selectAccountingYear"]( accountingYear )) ), {display: "flex"} )
+        entityLabelWithPopup( State, 10309 ),
+        d( State.DB.get( State.S.selectedCompany, 10073 )
+          .filter( sourceDocument => State.DB.get(sourceDocument,"sourceDocument/sourceDocumentType") === 10309 )
+          .map( sourceDocument => entityLabelWithPopup(State, sourceDocument, () => State.Actions["ReportPage/selectAccountingYear"]( sourceDocument )) ), {display: "flex"} )
       ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
     d([
     entityLabelWithPopup( State, 7976 ),
@@ -28,15 +30,16 @@ let reportView = State => d([
 ])
 
 
-let singleReportView = ( State, reportType, accountingYear ) => d([
+let singleReportView = ( State, reportType, sourceDocument ) => d([
     entityLabelWithPopup( State, reportType ),
     d(  State.DB.getAll( 8359 )
       .filter( reportField => State.DB.get(reportField, 8363) === reportType )
       .sort( (a,b) => a-b )
-      .map( reportField => reportFieldView( State, reportField, State.DB.get( accountingYear, 9814 ) ) ) )
+      .map( reportField => reportFieldView( State, reportField, sourceDocument ) )
+    )
     ])
 
-let reportFieldView = ( State, reportField, transactionIndex ) => d([
+let reportFieldView = ( State, reportField, sourceDocument ) => d([
 entityLabelWithPopup( State, reportField ),
-d( new Function(["storedValue"], State.DB.get(State.DB.get(reportField, "attribute/valueType"), "valueType/formatFunction") )( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, transactionIndex )  ), {style: State.DB.get(reportField, "attribute/valueType") === 31 ? `text-align: right;` : ""}  )
+d( new Function(["storedValue"], State.DB.get(State.DB.get(reportField, "attribute/valueType"), "valueType/formatFunction") )( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, sourceDocument ) ), {style: State.DB.get(reportField, "attribute/valueType") === 31 ? `text-align: right;` : ""}  )
 ], {style: gridColumnsStyle("3fr 1fr")})

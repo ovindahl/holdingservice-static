@@ -22,7 +22,7 @@ const AccountingYearPage = {
           },
         "AccountingYearPage/closeAccountingYear": async sourceDocument => {
 
-          let transactionDatoms = [
+          let taxDatoms = [
             newDatom( "newEntity_tax" , 'entity/entityType', 7948 ),
             newDatom( "newEntity_tax" , 'entity/company', State.S.selectedCompany ), 
             newDatom( "newEntity_tax" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
@@ -31,7 +31,34 @@ const AccountingYearPage = {
             newDatom( "newEntity_tax" , "transaction/originNode", State.DB.get(State.S.selectedCompany, 10052)(10302)[0] ),
             newDatom( "newEntity_tax" , "transaction/destinationNode", State.DB.get(State.S.selectedCompany, 10052)(8746)[0] ),
             newDatom( "newEntity_tax" , "event/date", State.DB.get( State.DB.get( sourceDocument, 10300 ), "accountingYear/lastDate")), 
-            newDatom( "newEntity_tax" , "eventAttribute/1139", "Årets skattekostnad"  ),
+            newDatom( "newEntity_tax" , "eventAttribute/1139", "Årets skattekostnad"  )
+          ]
+
+          let resetNodesDatoms = State.DB.get(State.S.selectedCompany, 10052)([8788])
+            .filter( PnLnode => State.DB.get(PnLnode, 10045)( State.DB.get(sourceDocument , 10499) ) !== 0 )
+            .map( PnLnode => {
+
+            let nodeBalance =  State.DB.get(PnLnode, 10045)( State.DB.get(sourceDocument , 10499) )
+
+            let originNode = nodeBalance < 0 ? State.DB.get(State.S.selectedCompany, 10052)(8784)[0] : PnLnode
+            let destinationNode = nodeBalance < 0 ? PnLnode : State.DB.get(State.S.selectedCompany, 10052)(8784)[0]
+
+
+            return [
+              newDatom( "newEntity_node_" + PnLnode , 'entity/entityType', 7948 ),
+              newDatom( "newEntity_node_" + PnLnode , 'entity/company', State.S.selectedCompany ), 
+              newDatom( "newEntity_node_" + PnLnode , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
+              newDatom( "newEntity_node_" + PnLnode , "transaction/transactionType", 9716 ), 
+              newDatom( "newEntity_node_" + PnLnode , "entity/sourceDocument", sourceDocument ), 
+              newDatom( "newEntity_node_" + PnLnode , "transaction/originNode", originNode ),
+              newDatom( "newEntity_node_" + PnLnode , "transaction/destinationNode", destinationNode ),
+              newDatom( "newEntity_node_" + PnLnode , "event/date", State.DB.get( State.DB.get( sourceDocument, 10300 ), "accountingYear/lastDate")), 
+              newDatom( "newEntity_node_" + PnLnode , "eventAttribute/1139", "Tilbakestilling av kostnads- og inntektskonto"  ),
+              newDatom( "newEntity_node_" + PnLnode , 1083, Math.abs( nodeBalance )   ),
+            ]
+          }   ).flat()
+
+          let annualResultDatoms = [
             newDatom( "newEntity_annualResult" , 'entity/entityType', 7948 ),
             newDatom( "newEntity_annualResult" , 'entity/company', State.S.selectedCompany ), 
             newDatom( "newEntity_annualResult" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
@@ -41,12 +68,15 @@ const AccountingYearPage = {
             newDatom( "newEntity_annualResult" , "transaction/destinationNode", State.DB.get(State.S.selectedCompany, 10052)(8784)[0] ),
             newDatom( "newEntity_annualResult" , "event/date", State.DB.get( State.DB.get( sourceDocument, 10300 ), "accountingYear/lastDate")  ), 
             newDatom( "newEntity_annualResult" , "eventAttribute/1139", "Årets resultat"  ),
-
           ]
 
+          let yearEndDatoms = [
+            taxDatoms,
+            resetNodesDatoms,
+            annualResultDatoms
+          ].flat()
           
-
-          State.Actions.postDatoms( transactionDatoms )
+          State.Actions.postDatoms( yearEndDatoms )
           },
     })
   }
