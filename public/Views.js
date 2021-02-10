@@ -16,7 +16,7 @@ const ClientApp = {
     selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
     selectCompany: (company) => updateState( State, {
       DB: State.DB,
-      S: { selectedCompany: company, selectedPage: 7882, selectedEntity: undefined, selectedCompanyEventIndex: getAllTransactions(State.DB, company).length, selectedAccountingYear: State.DB.get(company, 10061).slice(-1)[0] }
+      S: mergerino( Components.reduce( (Initial, Component) => Object.assign( Initial, Component.initial( State.DB ) ), {} ),  { selectedCompany: company, selectedPage: 7882}     ) 
     } ),
     postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } )
   })
@@ -104,7 +104,6 @@ let stateView = State => {
         isDefined( State.S.selectedEntity ) ? entityLabelWithPopup( State, State.S.selectedEntity ) : d(" - "),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
       br(),
-      submitButton("Slett alle transaksjoner i siste regnskapsår", () => State.Actions.retractEntities( State.DB.get( State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0], 9715) )  )
     ])
   ], {class: "feedContainer"})
 } 

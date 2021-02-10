@@ -10,19 +10,6 @@ const TransactionsPage = {
       "TransactionsPage/selectAccountingYear": accountingYear => updateState( State, {S: {"TransactionsPage/selectedAccountingYear": accountingYear}}),
       "TransactionsPage/selectTransaction": transaction => updateState( State, {S: {selectedPage: 7882, "TransactionsPage/selectedTransaction": transaction}}),
       "TransactionsPage/retractTransaction": async transaction => updateState( State, { DB: await Transactor.retractEntity(State.DB, transaction), S: {"TransactionsPage/selectedTransaction": undefined } } ),
-        splitTransaction: transaction => State.Actions.postDatoms([
-          newDatom( "newTransaction", "entity/entityType", State.DB.get( transaction , "entity/entityType") ),
-          newDatom( "newTransaction", "entity/company", State.DB.get( transaction , "entity/company") ),
-          newDatom( "newTransaction", "event/date", State.DB.get( transaction , "event/date") ),
-          newDatom( "newTransaction", "transaction/accountingYear", State.DB.get( transaction , "transaction/accountingYear") ),
-          newDatom( "newTransaction", "transaction/transactionType", State.DB.get( transaction , "transaction/transactionType") ),
-          State.DB.get( transaction , "transaction/transactionType") === 8850 
-            ? newDatom( "newTransaction", "transaction/destinationNode", State.DB.get( transaction , "transaction/destinationNode") ) 
-            : newDatom( "newTransaction", "transaction/originNode", State.DB.get( transaction , "transaction/originNode") ),
-          newDatom( "newTransaction", "transaction/parentTransaction", transaction ),
-          newDatom( "newTransaction", 1139, "" ),
-          newDatom( "newTransaction", 1083, 0 ),
-        ])
     })
   }
 
@@ -44,13 +31,18 @@ let transactionRowView = (State, companyTransaction) => d([
 let allTransactionsView = State => {
 
     return d([
-      h3("Transaksjoner"),
+      h3("Bokførte transaksjoner"),
       d([
         entityLabelWithPopup( State, 7403 ),
         d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
       ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
       br(),
-      d( State.DB.get(State.S["TransactionsPage/selectedAccountingYear"], 9715).map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} ),
+
+
+      
+      d( State.DB.get(State.S.selectedCompany, 9817)
+          .filter( companyTransaction => State.DB.get(companyTransaction, 10542) === State.S["TransactionsPage/selectedAccountingYear"] )
+          .map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} ),
     ])
   } 
 

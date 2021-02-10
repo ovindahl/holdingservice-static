@@ -1,13 +1,11 @@
 const AccountingYearPage = {
     initial: DB => returnObject({ 
-      "AccountingYearPage/selectedAccountingYear": undefined,
-      "AccountingYearPage/selectedReportType": undefined,
+      "AccountingYearPage/selectedAccountingYearSourceDocument": undefined,
     }),
     Actions: State => returnObject({
-        "AccountingYearPage/selectAccountingYear": accountingYear => updateState( State, {S: {selectedPage: 7509, "AccountingYearPage/selectedAccountingYear": accountingYear}}),
-        "AccountingYearPage/selectReportType": reportType => updateState( State, {S: {"AccountingYearPage/selectedReportType": reportType}}),
-        "AccountingYearPage/retractAccountingYear": async accountingYear => updateState( State, { DB: await Transactor.retractEntity(State.DB, accountingYear), S: {"TransactionsPage/selectedTransaction": undefined } } ),
-        "AccountingYearPage/createAnnualResultSourceDocument": async accountingYear => {
+       "AccountingYearPage/selectAccountingYearSourceDocument": sourceDocument => updateState( State, {S: {selectedPage: 7509, "AccountingYearPage/selectedAccountingYearSourceDocument": sourceDocument}}),
+        "AccountingYearPage/retractAccountingYearSourceDocument": async sourceDocument => updateState( State, { DB: await Transactor.retractEntity(State.DB, sourceDocument), S: {"AccountingYearPage/selectedAccountingYearSourceDocument": undefined } } ),
+        "AccountingYearPage/createAnnualResultSourceDocument": async () => {
 
           let Datoms = [
             newDatom( "newDatom_annualResult", "entity/entityType", 10062  ),
@@ -25,12 +23,11 @@ const AccountingYearPage = {
           let taxDatoms = [
             newDatom( "newEntity_tax" , 'entity/entityType', 7948 ),
             newDatom( "newEntity_tax" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity_tax" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
             newDatom( "newEntity_tax" , "transaction/transactionType", 9286 ), 
             newDatom( "newEntity_tax" , "entity/sourceDocument", sourceDocument ), 
             newDatom( "newEntity_tax" , "transaction/originNode", State.DB.get(State.S.selectedCompany, 10052)(10302)[0] ),
             newDatom( "newEntity_tax" , "transaction/destinationNode", State.DB.get(State.S.selectedCompany, 10052)(8746)[0] ),
-            newDatom( "newEntity_tax" , "event/date", State.DB.get( State.DB.get( sourceDocument, 10300 ), "accountingYear/lastDate")), 
+            newDatom( "newEntity_tax" , "event/date", State.DB.get( State.DB.get( sourceDocument, 7512 ), "accountingYear/lastDate")), 
             newDatom( "newEntity_tax" , "eventAttribute/1139", "Årets skattekostnad"  )
           ]
 
@@ -47,12 +44,11 @@ const AccountingYearPage = {
             return [
               newDatom( "newEntity_node_" + PnLnode , 'entity/entityType', 7948 ),
               newDatom( "newEntity_node_" + PnLnode , 'entity/company', State.S.selectedCompany ), 
-              newDatom( "newEntity_node_" + PnLnode , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
               newDatom( "newEntity_node_" + PnLnode , "transaction/transactionType", 9716 ), 
               newDatom( "newEntity_node_" + PnLnode , "entity/sourceDocument", sourceDocument ), 
               newDatom( "newEntity_node_" + PnLnode , "transaction/originNode", originNode ),
               newDatom( "newEntity_node_" + PnLnode , "transaction/destinationNode", destinationNode ),
-              newDatom( "newEntity_node_" + PnLnode , "event/date", State.DB.get( State.DB.get( sourceDocument, 10300 ), "accountingYear/lastDate")), 
+              newDatom( "newEntity_node_" + PnLnode , "event/date", State.DB.get( State.DB.get( sourceDocument, 7512 ), "accountingYear/lastDate")), 
               newDatom( "newEntity_node_" + PnLnode , "eventAttribute/1139", "Tilbakestilling av kostnads- og inntektskonto"  ),
               newDatom( "newEntity_node_" + PnLnode , 1083, Math.abs( nodeBalance )   ),
             ]
@@ -61,12 +57,11 @@ const AccountingYearPage = {
           let annualResultDatoms = [
             newDatom( "newEntity_annualResult" , 'entity/entityType', 7948 ),
             newDatom( "newEntity_annualResult" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity_annualResult" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
             newDatom( "newEntity_annualResult" , "transaction/transactionType", 9384 ), 
             newDatom( "newEntity_annualResult" , "entity/sourceDocument", sourceDocument ), 
             newDatom( "newEntity_annualResult" , "transaction/originNode", State.DB.get(State.S.selectedCompany, 10052)(8741)[0] ),
             newDatom( "newEntity_annualResult" , "transaction/destinationNode", State.DB.get(State.S.selectedCompany, 10052)(8784)[0] ),
-            newDatom( "newEntity_annualResult" , "event/date", State.DB.get( State.DB.get( sourceDocument, 10300 ), "accountingYear/lastDate")  ), 
+            newDatom( "newEntity_annualResult" , "event/date", State.DB.get( State.DB.get( sourceDocument, 7512 ), "accountingYear/lastDate")  ), 
             newDatom( "newEntity_annualResult" , "eventAttribute/1139", "Årets resultat"  ),
           ]
 
@@ -75,23 +70,24 @@ const AccountingYearPage = {
             resetNodesDatoms,
             annualResultDatoms
           ].flat()
+
+          log({yearEndDatoms})
           
           State.Actions.postDatoms( yearEndDatoms )
           },
     })
   }
 
-let accountingYearLabel = (State, entity, onClick ) => d([ d(State.DB.get(entity,6), {class: "entityLabel", style: `background-color: ${ entity === State.S["AccountingYearPage/selectedAccountingYear"] ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray" } ;`}, "click", onClick) ], {style:"display: inline-flex;"})
 
-let accountingYearsView = State => isDefined(State.S["AccountingYearPage/selectedAccountingYear"]) ? singleAccountingYearView( State ) : allAccountingYearsView( State )
+let accountingYearsView = State => isDefined(State.S["AccountingYearPage/selectedAccountingYearSourceDocument"]) ? singleAccountingYearView( State ) : allAccountingYearsView( State )
 
 let singleAccountingYearView = State => {
 
-  let currentAnnualResultSourceDocument = State.S["AccountingYearPage/selectedAccountingYear"]
+  let currentAnnualResultSourceDocument = State.S["AccountingYearPage/selectedAccountingYearSourceDocument"]
 
 
 return d([
-  submitButton( " <---- Tilbake ", () => isDefined(State.S["AccountingYearPage/selectedReportType"]) ? State.Actions["AccountingYearPage/selectReportType"]( undefined ) : State.Actions["AccountingYearPage/selectAccountingYear"]( undefined )  ),
+  submitButton( " <---- Tilbake ", () => State.Actions["AccountingYearPage/selectAccountingYearSourceDocument"]( undefined )  ),
   d([
     h3("Årets resultat"),
     d([
@@ -122,15 +118,15 @@ return d([
 let allAccountingYearsView = State => d([
   h3("Alle årsavslutninger"),
   d([
-      entityLabelWithPopup( State, 10300 ),
+      entityLabelWithPopup( State, 7512 ),
       entityLabelWithPopup( State, 10401 ),
   ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr")}),
   d( State.DB.get( State.S.selectedCompany, 10073 )
       .filter( sourceDocument => [10309].includes( State.DB.get(sourceDocument, 10070 ) )   )
       .map( sourceDocument => d([
-      entityLabelWithPopup( State,State.DB.get(sourceDocument, 10300 ), () => State.Actions["AccountingYearPage/selectAccountingYear"]( sourceDocument ) ),
+      entityLabelWithPopup( State,State.DB.get(sourceDocument, 7512 ), () => State.Actions["AccountingYearPage/selectAccountingYearSourceDocument"]( sourceDocument ) ),
       d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
-      submitButton( "Vis", () => State.Actions["AccountingYearPage/selectAccountingYear"]( sourceDocument ))
+      submitButton( "Vis", () => State.Actions["AccountingYearPage/selectAccountingYearSourceDocument"]( sourceDocument ))
   ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr")}) )),
 br(),
 submitButton( "Ny årsavslutning", () => State.Actions["AccountingYearPage/createAnnualResultSourceDocument"]( ))

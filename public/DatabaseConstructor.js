@@ -252,7 +252,7 @@ let calculateGlobalCalculatedValue = ( DB, entity, calculatedField ) => tryFunct
 
 
 let getReportFieldValue = ( DB, company, reportField, sourceDocument ) => DB.get( reportField, 8361 ) === 8662
-  ? tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, mergerino( DB.get(company), {t: State.DB.get( State.DB.get(sourceDocument, "entity/accountingYear"), 9814 )}), DB.get(sourceDocument) ) )
+  ? tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, mergerino( DB.get(company), {t: State.DB.get(sourceDocument, 10502) }), DB.get(sourceDocument) ) )
   : DB.get( reportField, 8361 ) === 5030
     ? DB.get(company, 10053)( DB.get(reportField, 7829), State.DB.get(sourceDocument, 10502) )
     : null

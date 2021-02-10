@@ -9,7 +9,6 @@ const SharePurchasesPage = {
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10096 ),
             newDatom( "newEntity", 1757, Date.now() ),
-            newDatom( "newEntity", 10300, State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0] ),
             newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
             newDatom( 'newEntity' , "eventAttribute/1139", "Nytt aksjekjøp" ), 
         ] ),
@@ -17,14 +16,12 @@ const SharePurchasesPage = {
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10111 ),
             newDatom( "newEntity", 1757, Date.now() ),
-            newDatom( "newEntity", 10300, State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0] ),
             newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
             newDatom( 'newEntity' , "eventAttribute/1139", "Nytt aksjesalg" ), 
         ] ),
         "SharePurchasesPage/recordSharePurchase": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity" , 'entity/entityType', 7948 ),
             newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
             newDatom( "newEntity" , "transaction/transactionType", 10105 ), 
             newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
             newDatom( "newEntity" , "transaction/originNode", State.DB.get(State.S.selectedCompany, 10052)(10485)[0] ),
@@ -35,7 +32,6 @@ const SharePurchasesPage = {
         "SharePurchasesPage/recordShareSale": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity1" , 'entity/entityType', 7948 ),
             newDatom( "newEntity1" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity1" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
             newDatom( "newEntity1" , "transaction/transactionType", 8976 ), 
             newDatom( "newEntity1" , "entity/sourceDocument", sourceDocument ), 
             newDatom( "newEntity1" , "transaction/originNode", State.DB.get( sourceDocument, 7048)),
@@ -45,7 +41,6 @@ const SharePurchasesPage = {
 
             newDatom( "newEntity2" , 'entity/entityType', 7948 ),
             newDatom( "newEntity2" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity2" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
             newDatom( "newEntity2" , "transaction/transactionType", 9035 ), 
             newDatom( "newEntity2" , "entity/sourceDocument", sourceDocument ), 
             newDatom( "newEntity2" , "transaction/originNode", State.DB.get(State.S.selectedCompany, 10052)(8744)[0]),
@@ -120,7 +115,7 @@ const SharePurchasesPage = {
                     ? submitButton("Bokfør aksjekjøp", () => State.Actions["SharePurchasesPage/recordSharePurchase"]( State.S["SharePurchasesPage/selectedSourceDocument"] )   )
                     : submitButton("Bokfør aksjesalg", () => State.Actions["SharePurchasesPage/recordShareSale"]( State.S["SharePurchasesPage/selectedSourceDocument"] )   ),
                 br(),
-                submitButton("Slett", State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], e => State.Actions["SharePurchasesPage/retractSourceDocument"]( State.S["SharePurchasesPage/selectedSourceDocument"] )) )
+                submitButton("Slett", () => State.Actions["SharePurchasesPage/retractSourceDocument"]( State.S["SharePurchasesPage/selectedSourceDocument"] ))
             ]) 
     ]) 
   ])

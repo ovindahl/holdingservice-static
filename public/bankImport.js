@@ -29,7 +29,6 @@ const BankImportPage = {
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
             newDatom( 'newEntity' , "sourceDocument/sourceDocumentType", 10465 ), 
-            newDatom( 'newEntity' , 10300, State.DB.get(sourceDocument, 10300) ), 
             newDatom( 'newEntity' , 9084, State.DB.get(sourceDocument, 9084) ), 
             newDatom( 'newEntity' , 9011, sourceDocument ), 
             newDatom( 'newEntity' , 7463, State.DB.get(sourceDocument, 7463) ), 
@@ -40,7 +39,6 @@ const BankImportPage = {
         "BankImportPage/recordSourceDocument": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity" , 'entity/entityType', 7948 ),
             newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity" , 'transaction/accountingYear', State.DB.get( sourceDocument, 10300 ) ), 
             newDatom( "newEntity" , "transaction/transactionType", State.DB.get( sourceDocument, 9084) === 9086 ? 8955 : 8975 ), 
             newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
             newDatom( "newEntity" , "transaction/originNode", State.DB.get( sourceDocument, 9084) === 9086 ? State.DB.get( sourceDocument, 7463) : State.DB.get( sourceDocument, 10200) ),
@@ -61,63 +59,50 @@ let bankImportView = State => isDefined( State.S["BankImportPage/selectedSourceD
     : allBankImportsView( State )
 
 let allBankImportsView = State => d([
-h3("Importer banktransaksjoner"),
-br(),
-d("Her kan du laste opp og bokføre betalinger fra banken på en enkel måte."),
-br(),
-h3("Tidligerte filer"),
-d( State.DB.get( State.S.selectedCompany, 10073 )
-    .filter( sourceDocument => State.DB.get(sourceDocument, 10070 ) === 10064 )
-    .map( sourceDocument => d([
-        entityLabelWithPopup( State, sourceDocument, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
-        entityLabelWithPopup( State, State.DB.get(sourceDocument, 10070) ),
-        lockedSingleValueView( State, sourceDocument, 1757 )
-    ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr")}) )),
-br(),
-submitButton("Importer ny fil", () => State.Actions["BankImportPage/createBankImport"]( ) ),
-br(),
-h3("Importerte transaksjoner"),
-d([
-    entityLabelWithPopup( State, 7463 ),
-    entityLabelWithPopup( State, 9084 ),
-    entityLabelWithPopup( State, 1757 ),
-    entityLabelWithPopup( State, 8831 ),
-    entityLabelWithPopup( State, 1083 ),
-    entityLabelWithPopup( State, 10401 ),
-    d("")
-], {style: gridColumnsStyle("1fr 1fr 1fr 3fr 1fr 1fr 1fr")}),
-d( State.DB.get( State.S.selectedCompany, 10073 )
-    .filter( sourceDocument => [10132, 10465].includes( State.DB.get(sourceDocument, 10070 ) )   )
-    .map( sourceDocument => d([
-    lockedSingleValueView( State, sourceDocument, 7463, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
-    lockedSingleValueView( State, sourceDocument, 9084, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
-    lockedSingleValueView( State, sourceDocument, 1757 ),
-    lockedSingleValueView( State, sourceDocument, 8831 ),
-    lockedSingleValueView( State, sourceDocument, 1083 ),
-    d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
-    submitButton( "Vis", () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ))
-], {style: gridColumnsStyle("1fr 1fr 1fr 3fr 1fr 1fr 1fr")}) )),
+    h3("Importer banktransaksjoner"),
+    br(),
+    d("Her kan du laste opp og bokføre betalinger fra banken på en enkel måte."),
+    br(),
+    h3("Tidligerte filer"),
+    d( State.DB.get( State.S.selectedCompany, 10073 )
+        .filter( sourceDocument => State.DB.get(sourceDocument, 10070 ) === 10064 )
+        .map( sourceDocument => d([
+            entityLabelWithPopup( State, sourceDocument, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
+            entityLabelWithPopup( State, State.DB.get(sourceDocument, 10070) ),
+            lockedSingleValueView( State, sourceDocument, 1757 )
+        ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr")}) )),
+    br(),
+    submitButton("Importer ny fil", () => State.Actions["BankImportPage/createBankImport"]( ) ),
+    br(),
+    h3("Importerte transaksjoner"),
+    importedTransactionsTableView( State, State.DB.get( State.S.selectedCompany, 10073 ).filter( sourceDocument => [10132, 10465].includes( State.DB.get(sourceDocument, 10070 ) ) ) )
 ])
+
+
+let importedTransactionsTableView = (State, transactions) => d([
+    d([
+        entityLabelWithPopup( State, 7463 ),
+        entityLabelWithPopup( State, 9084 ),
+        entityLabelWithPopup( State, 1757 ),
+        entityLabelWithPopup( State, 10542 ),
+        entityLabelWithPopup( State, 8831 ),
+        entityLabelWithPopup( State, 1083 ),
+        entityLabelWithPopup( State, 10401 ),
+        d("")
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 3fr 1fr 1fr 1fr")}),
+    d( transactions .map( sourceDocument => d([
+        lockedSingleValueView( State, sourceDocument, 7463, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
+        lockedSingleValueView( State, sourceDocument, 9084, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
+        lockedSingleValueView( State, sourceDocument, 1757 ),
+        lockedSingleValueView( State, sourceDocument, 10542 ),
+        lockedSingleValueView( State, sourceDocument, 8831 ),
+        lockedSingleValueView( State, sourceDocument, 1083 ),
+        d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
+        submitButton( "Vis", () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ))
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 3fr 1fr 1fr 1fr")}) ))
+]) 
   
 let singleBankImportView = State => {
-
-let importedFile = State.DB.get( State.S["BankImportPage/selectedSourceDocument"], 1759)
-
-
-
-let rows = isDefined( importedFile ) ? importedFile.filter( row => row.length > 1 ).slice(5) : undefined
-
-let rowIDs = isDefined( importedFile ) ? rows.map( row => row[7] ) : undefined
-
-let existingIDs = isDefined( importedFile ) ? State.DB.get(State.S.selectedCompany, 10073).filter( sourceDocument => State.DB.get(sourceDocument, "sourceDocument/sourceDocumentType") === 10132 ).map( transaction =>  State.DB.get(transaction, 1080)  ).filter( id => isDefined(id) ) : undefined
-
-let alreadyImportedCount = isDefined( importedFile ) ? rowIDs.filter( rowID => existingIDs.includes( rowID )  ) : undefined
-
-let newTransactions = isDefined( importedFile ) ? rows.filter( row => !existingIDs.includes(row[7])  ) : undefined
-
-let sourceDocuments = isDefined( importedFile ) ? State.DB.get(State.S.selectedCompany, 10073).filter( transaction => State.DB.get(transaction, 9104) === State.S["BankImportPage/selectedSourceDocument"] ) : []
-
-
 
 return d([
     submitButton( " <---- Tilbake ", () => State.Actions["BankImportPage/selectSourceDocument"]( undefined )  ),
@@ -128,28 +113,21 @@ return d([
         ? d( State.DB.get( State.DB.get( State.S["BankImportPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, State.S["BankImportPage/selectedSourceDocument"], attribute ) ) )
         : d(""),
     br(),
-    isDefined( importedFile )
+    d([
+        entityLabelWithPopup( State, 10536 ),
+        State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10536).length > 0
         ? d([
-            d( ` Filen inneholder  ${rows.length} transaksjoner.` ),
-            d( ` Av disse er ${alreadyImportedCount.length} allerede importert.` ),
-            rows.length > alreadyImportedCount.length
-                ? d([
-                    br(),
-                    d("Uimporterte transaksjoner:"),
-                    d( newTransactions.map( row => d( JSON.stringify(row) ) ) ),
-                    br(),
-                    submitButton("Importer hver transaksjon som eget bilag", () => State.Actions["BankImportPage/importBankSourceDocuments"]( State.S["BankImportPage/selectedSourceDocument"] ) ),
-                ])
-                : d(""),
-            d( [
-                d("Importerte transaksjoner tilknyttet dette bilaget:"),
-                d( sourceDocuments.map( transaction => entityLabelWithPopup( State, transaction, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument )) ) ),
-                submitButton("Slett importerte transaksjoner", () => State.Actions.retractEntities( sourceDocuments.concat( State.DB.get(State.S.selectedCompany, 9817).filter( transaction => sourceDocuments.includes( State.DB.get(transaction, 9104) )  ) ) ) ),
-            ] )
-
-        ]) 
-        : d("Last opp fil for å importere")
+                importedTransactionsTableView( State, State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10536) ),
+                State.DB.get(State.S.selectedCompany, 9817).filter( transaction => State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10536).includes( State.DB.get(transaction, 9104) )  ).length > 0
+                    ? d("Tilbakestill bokføring av bilagene for å slette")
+                    : submitButton("Slett importerte transaksjoner", () => State.Actions.retractEntities( State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10536) ) ),
+            ]) 
+        : d([
+                d("Ingen importerte transaksjoner"),
+                submitButton(`Importer transaksjoner fra fil`, () => State.Actions["BankImportPage/importBankSourceDocuments"]( State.S["BankImportPage/selectedSourceDocument"] ) ),
+            ]) 
     ])
+])
 } 
 
 

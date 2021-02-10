@@ -155,10 +155,10 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
     entityLabelWithPopup( State, 7929 ),
     d([
       d([
-        submitButton("[<<]", () => State.Actions["BalancePage/selectTransactionIndex"]( 0 ) ),
-        State.S["BalancePage/selectedTransactionIndex"] >= 1 ? submitButton("<", () => State.Actions["BalancePage/selectTransactionIndex"]( State.S["BalancePage/selectedTransactionIndex"] - 1 ) ) : d(""),
-        State.S["BalancePage/selectedTransactionIndex"] < State.DB.get( State.S.selectedCompany, 9817 ).length ? submitButton(">", () => State.Actions["BalancePage/selectTransactionIndex"]( State.S["BalancePage/selectedTransactionIndex"] + 1 ) ) : d(""),
-        submitButton("[>>]", () => State.Actions["BalancePage/selectTransactionIndex"]( State.DB.get( State.DB.get( State.S.selectedCompany, 9817 ).slice( - 1 )[0], 8354  )  ) )
+        State.S["BalancePage/selectedTransactionIndex"] > 1 ? submitButton("[<<]", () => State.Actions["BalancePage/selectTransactionIndex"]( 1 ) ) : d(""),
+        State.S["BalancePage/selectedTransactionIndex"] > 1 ? submitButton("<", () => State.Actions["BalancePage/selectTransactionIndex"]( State.S["BalancePage/selectedTransactionIndex"] - 1 ) ) : d(" [ "),
+        State.S["BalancePage/selectedTransactionIndex"] < State.DB.get( State.S.selectedCompany, 9817 ).length ? submitButton(">", () => State.Actions["BalancePage/selectTransactionIndex"]( State.S["BalancePage/selectedTransactionIndex"] + 1 ) ) : d(" ] "),
+        State.S["BalancePage/selectedTransactionIndex"] < State.DB.get( State.S.selectedCompany, 9817 ).length ? submitButton("[>>]", () => State.Actions["BalancePage/selectTransactionIndex"]( State.DB.get( State.DB.get( State.S.selectedCompany, 9817 ).slice( - 1 )[0], 8354  )  ) ) : d("")
       ], {style: gridColumnsStyle("repeat(8, 1fr)")}),
       transactionLabel( State, State.DB.get( State.S.selectedCompany,  10056 )( State.S["BalancePage/selectedTransactionIndex"] ) ),
       d( moment( State.DB.get( State.DB.get( State.S.selectedCompany,  10056 )( State.S["BalancePage/selectedTransactionIndex"] ), 1757 ) ).format("DD.MM.YYYY")),

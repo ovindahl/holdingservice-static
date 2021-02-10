@@ -208,7 +208,9 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
         ? actorLabel( State, State.DB.get( entity, attribute ) )
         : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 7932
           ? nodeLabel( State, State.DB.get( entity, attribute ) )
-          : entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
+          : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 10062
+            ? entityLabelWithPopup( State, State.DB.get( entity, attribute ), () => State.Actions.selectPage( State.DB.get( State.DB.get( State.DB.get(entity, "entity/sourceDocument"), "sourceDocument/sourceDocumentType" ), 7930 ) ) )
+            : entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
 
 
           
@@ -389,7 +391,10 @@ let entityRefView = ( State, formattedValue, updateFunction, options ) => {
     input({value: formattedValue, list: datalistID, style: `text-align: right;max-width: 50px;`}, "change", updateFunction),
     ])
 }
-let CSVuploadView = ( State, formattedValue, updateFunction ) => isArray( formattedValue ) ? d( formattedValue.map( row => d(JSON.stringify(row)) ) ) : input({type: "file", style: `text-align: right;`}, "change", updateFunction)
+let CSVuploadView = ( State, formattedValue, updateFunction ) => d([
+  isArray( formattedValue ) ? d( "[Opplastet fil]" ) : d("Last opp fil"),
+  input({type: "file", style: `text-align: right;`}, "change", updateFunction)
+]) 
 
 
 
