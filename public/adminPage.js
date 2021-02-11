@@ -1,5 +1,5 @@
 const AdminPage = {
-    initial: DB => returnObject({ 
+    initial: State => returnObject({ 
       "AdminPage/selectedEntity": 47
     }),
     Actions: State => returnObject({

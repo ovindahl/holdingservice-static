@@ -1,7 +1,7 @@
 const BalancePage = {
     initial: DB => returnObject({ 
         "BalancePage/selectedNode": undefined,   
-        "BalancePage/selectedTransactionIndex": DB.get( 6829, 9817 ).length,
+        "BalancePage/selectedTransactionIndex": DB.get( 6829, 10069 ),
     }),
     Actions: State => returnObject({
         "BalancePage/selectNode": entity => updateState( State, {S: {selectedPage: 7860, "BalancePage/selectedNode": entity}}),

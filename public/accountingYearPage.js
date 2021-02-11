@@ -91,16 +91,24 @@ let singleAccountingYearView = State => {
 return d([
   submitButton( " <---- Tilbake ", () => State.Actions["AccountingYearPage/selectAccountingYearSourceDocument"]( undefined )  ),
   d([
-    h3("Årets resultat"),
+    h3("Årsavslutning"),
     d([
       d( State.DB.get( State.DB.get( currentAnnualResultSourceDocument, "sourceDocument/sourceDocumentType"), 7942 )
         .map( attribute => entityAttributeView(State, currentAnnualResultSourceDocument, attribute, State.DB.get(currentAnnualResultSourceDocument, 10401) ) ) 
       ),
-      d( State.DB.get( State.DB.get( currentAnnualResultSourceDocument, "sourceDocument/sourceDocumentType"), 10433 )
-        .map( attribute => entityAttributeView(State, currentAnnualResultSourceDocument, attribute, true ) ) 
-      ),
+      br(),
+      h3("Beregnet resultat"),
+      d( [10618, 10686, 10687, 10689].map( balanceObject => d([
+          nodeLabel(State, balanceObject),
+          calculatedValueView(State, balanceObject, 10045, State.DB.get(currentAnnualResultSourceDocument, 10499) )
+      ], {style: gridColumnsStyle("repeat(4, 1fr)") + "padding-left: 1em;"}))),
+      br(),
+      d( State.DB.get( State.DB.get( currentAnnualResultSourceDocument, "sourceDocument/sourceDocumentType"), 10433 ).map( attribute => entityAttributeView(State, currentAnnualResultSourceDocument, attribute, true ) ) ),
+      
+      
     ]),
     br(),
+    h3("Bokføring"),
     State.DB.get(currentAnnualResultSourceDocument, 10401)
       ? d([
         d( State.DB.get(currentAnnualResultSourceDocument, 10402).map( transaction => transactionFlowView( State, transaction) ) ),

@@ -7,16 +7,16 @@
 //----------------------------------------------------------------------
 
 const ClientApp = {
-  initial: DB => returnObject({
+  initial: State => returnObject( {
     selectedCompany: 6829, 
     selectedPage: 7882,
   }),
   Actions: State => returnObject({
     selectPage: pageEntity => updateState( State, {S: {selectedPage: pageEntity, selectedEntity: undefined}}),
     selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
-    selectCompany: (company) => updateState( State, {
+    selectCompany: company => updateState( State, {
       DB: State.DB,
-      S: mergerino( Components.reduce( (Initial, Component) => Object.assign( Initial, Component.initial( State.DB ) ), {} ),  { selectedCompany: company, selectedPage: 7882}     ) 
+      S: {selectedCompany: company, selectedPage: 7882} 
     } ),
     postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } )
   })
