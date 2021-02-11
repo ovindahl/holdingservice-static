@@ -18,7 +18,7 @@ let transactionValueView = (State, companyTransaction) => d( formatNumber( State
 
 let transactionRowView = (State, companyTransaction) => d([
     transactionLabel( State, companyTransaction ),
-    d( moment( State.DB.get( companyTransaction, 1757 ) ).format("DD.MM.YYYY") , {style: `text-align: right;`}),
+    d( moment( State.DB.get( companyTransaction, 10632 ) ).format("DD.MM.YYYY") , {style: `text-align: right;`}),
     d([
       isDefined( State.DB.get(companyTransaction, 7867) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7867) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}),
       d(" --> "),
@@ -41,7 +41,7 @@ let allTransactionsView = State => {
 
       
       d( State.DB.get(State.S.selectedCompany, 9817)
-          .filter( companyTransaction => State.DB.get(companyTransaction, 10542) === State.S["TransactionsPage/selectedAccountingYear"] )
+          .filter( companyTransaction => State.DB.get(companyTransaction, 10632) >= State.DB.get(State.S["TransactionsPage/selectedAccountingYear"], 'accountingYear/firstDate') && State.DB.get(companyTransaction, 10632) <= State.DB.get(State.S["TransactionsPage/selectedAccountingYear"], 'accountingYear/lastDate')  )
           .map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} ),
     ])
   } 
@@ -88,7 +88,7 @@ let allTransactionsView = State => {
     d([
       d(""),
       d([
-        d( moment( State.DB.get( companyTransaction, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
+        d( moment( State.DB.get( companyTransaction, 10632, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
         transactionLabel( State, companyTransaction ),
         transactionValueView( State, companyTransaction ),
         d(" --------------> "),
@@ -118,7 +118,7 @@ let allTransactionsView = State => {
     let transactionPopUp = (State, companyTransaction) => d([
       d([
         transactionLabelText( State, companyTransaction ),
-        d( moment( State.DB.get( companyTransaction, 1757, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
+        d( moment( State.DB.get( companyTransaction, 10632, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
       ], {style: gridColumnsStyle("1fr 1fr")}),
       br(),
       d([

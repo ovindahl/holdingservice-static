@@ -43,7 +43,6 @@ const BankImportPage = {
             newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
             newDatom( "newEntity" , "transaction/originNode", State.DB.get( sourceDocument, 9084) === 9086 ? State.DB.get( sourceDocument, 7463) : State.DB.get( sourceDocument, 10200) ),
             newDatom( "newEntity" , "transaction/destinationNode", State.DB.get( sourceDocument, 9084) === 9086 ? State.DB.get( sourceDocument, 10200) : State.DB.get( sourceDocument, 7463) ),
-            newDatom( "newEntity" , "event/date", State.DB.get( sourceDocument, 1757)  ), 
             newDatom( "newEntity" , "eventAttribute/1139", "Bankbetaling" )
           ])
     })
@@ -230,7 +229,7 @@ let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, inde
       newDatom( "newDatom_"+ index, "entity/company", State.S.selectedCompany  ),
       newDatom( "newDatom_"+ index, 10070, 10132 ),
       newDatom( "newDatom_"+ index, "transaction/paymentType", isPayment ? 9086 : 9087 ),
-      newDatom( "newDatom_"+ index, "event/date", date  ), //Denne burde heller være kalkulert verdi?
+      newDatom( "newDatom_"+ index, "event/date", date  ),
       newDatom( "newDatom_"+ index, 7463, selectedBankAccount),
       newDatom( "newDatom_"+ index, 1083, isPayment ? paidAmount : receivedAmount  ),
       newDatom( "newDatom_"+ index, 8831, description  ),

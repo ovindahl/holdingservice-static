@@ -156,7 +156,7 @@ let entityLabelWithPopup = ( State, entity, onClick, isSelected) => {
     "7932": nodeLabel,
   }
 
-  return isDefined( entityTypeLabelController[ State.DB.get( entity , "entity/entityType") ])
+  return isDefined( entityTypeLabelController[ State.DB.get(entity  , "entity/entityType") ])
   ? entityTypeLabelController[ State.DB.get( entity , "entity/entityType") ]( State, entity, onClick )
   : d([
       d([

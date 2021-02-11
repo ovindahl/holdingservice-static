@@ -19,7 +19,6 @@ const ManualTransactionsPage = {
             newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
             newDatom( "newEntity" , "transaction/originNode", State.DB.get( sourceDocument, 7867) ),
             newDatom( "newEntity" , "transaction/destinationNode", State.DB.get( sourceDocument, 7866) ),
-            newDatom( "newEntity" , "event/date", State.DB.get( sourceDocument, 1757) ), 
             newDatom( "newEntity" , "eventAttribute/1139",  State.DB.get( sourceDocument, 1139) )
         ])
             

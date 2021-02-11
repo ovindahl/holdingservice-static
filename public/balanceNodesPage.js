@@ -27,7 +27,7 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
   
   //---
   
-  let nodeLabelText = (State, node, onclick) => d([d(State.DB.get(node, 6), {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(node, "balanceObject/balanceObjectType"), 20  )};`}, "click", isDefined(onclick) ? onclick : () => State.Actions["BalancePage/selectNode"](node) )], {style:"display: flex;"})
+  let nodeLabelText = (State, node, onclick) => d([d(State.DB.get(node, 6), {class: "entityLabel", style: `background-color:${ State.DB.get(node, "entity/entityType") === 10617 ? "#79554852" : State.DB.get(State.DB.get(node, "balanceObject/balanceObjectType") , 20)};`}, "click", isDefined(onclick) ? onclick : () => State.Actions["BalancePage/selectNode"](node) )], {style:"display: flex;"})
   
   let nodeLabel = (State, node, onclick) => d([
     d([
@@ -64,9 +64,11 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
   
   
   let balanceObjectsView = State => isDefined( State.S["BalancePage/selectedNode"] ) 
-    ? State.DB.get( State.S["BalancePage/selectedNode"] , "balanceObject/balanceObjectType" ) === 9906
-      ? undefinedNodeView( State ) 
-      : singleBalanceObjectView( State ) 
+    ? State.DB.get( State.S["BalancePage/selectedNode"] , "entity/entityType" ) === 10617
+      ? sharedNodeView( State ) 
+      : State.DB.get( State.S["BalancePage/selectedNode"] , "balanceObject/balanceObjectType" ) === 9906
+        ? undefinedNodeView( State ) 
+        : singleBalanceObjectView( State ) 
     : allBalanceObjectsView( State )
   
   let singleBalanceObjectView = State => {
@@ -90,67 +92,43 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
           br(),
           d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView( State, balanceObject, attribute ) ) ),
           br(),
-          d( [10045, 10048, 10049].map( calculatedField => calculatedValueViewWithLabel(State, balanceObject, calculatedField, State.S["BalancePage/selectedTransactionIndex"] ) ) ),
-          br(),
+          calculatedValueViewWithLabel(State, balanceObject, 10045, State.S["BalancePage/selectedTransactionIndex"] ),
+          State.DB.get( balanceObject, "balanceObject/balanceObjectType" ) === 8738
+            ? d([
+              calculatedValueViewWithLabel(State, balanceObject, 10048, State.S["BalancePage/selectedTransactionIndex"] ),
+              calculatedValueViewWithLabel(State, balanceObject, 10049, State.S["BalancePage/selectedTransactionIndex"] ),
+            ])
+            : d("")
       ], {class: "feedContainer"})
   
     ]) 
   } 
   
-  let balanceSheetView = (State, currentIndex, previousIndex) => d([
-    d([
-      d(""),
-      d( moment( State.DB.get( getTransactionByIndex(State.DB, State.S.selectedCompany, undefined, currentIndex), 1757  )  ).format("DD.MM.YYYY"), {style: `text-align: right;`} ),
-      isDefined(previousIndex) ? d( moment( State.DB.get( getTransactionByIndex(State.DB, State.S.selectedCompany, undefined, previousIndex), 1757  )  ).format("DD.MM.YYYY"), {style: `text-align: right;`} ) : d(""),
-    ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-    d([
-      entityLabelWithPopup( State, 7537 ),
-      d( State.DB.getBalanceObjects().filter( balanceObject => State.DB.get( State.DB.get( balanceObject, "balanceObject/balanceObjectType" ), 7540 ) === 7537 ).map( balanceObject => d([
-        entityLabelWithPopup( State, balanceObject ),
-        lockedValueView( State, balanceObject,  7433, currentIndex ),
-        isDefined( previousIndex) ? lockedValueView( State, balanceObject,  7433, previousIndex ) : d("na.", {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}))),
-      d([
-        entityLabelWithPopup( State, State.DB.get( 7537, 7748 ) ),
-        lockedValueView( State, State.S.selectedCompany, State.DB.get( 7537, 7748 ), currentIndex ),
-        isDefined( previousIndex) ? lockedValueView( State, State.S.selectedCompany, State.DB.get( 7537, 7748 ), previousIndex ) : d("na.", {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-    ]),
-    br(),
-    d([
-      entityLabelWithPopup( State, 7539 ),
-      d( State.DB.getBalanceObjects().filter( balanceObject => State.DB.get( State.DB.get( balanceObject, "balanceObject/balanceObjectType" ), 7540 ) === 7539 ).map( balanceObject => d([
-        entityLabelWithPopup( State, balanceObject ),
-        lockedValueView( State, balanceObject,  7433, currentIndex ),
-        isDefined( previousIndex) ? lockedValueView( State, balanceObject,  7433, previousIndex ) : d("na.", {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}))),
-      d([
-        entityLabelWithPopup( State, State.DB.get( 7539, 7748 ) ),
-        lockedValueView( State, State.S.selectedCompany, State.DB.get( 7539, 7748 ), currentIndex ),
-        isDefined( previousIndex) ? lockedValueView( State, State.S.selectedCompany, State.DB.get( 7539, 7748 ), previousIndex ) : d("na.", {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-    ]),
-    br(),
-    d([
-      entityLabelWithPopup( State, 7538 ),
-      d( State.DB.getBalanceObjects().filter( balanceObject => State.DB.get( State.DB.get( balanceObject, "balanceObject/balanceObjectType" ), 7540 ) === 7538 ).map( balanceObject => d([
-        entityLabelWithPopup( State, balanceObject ),
-        lockedValueView( State, balanceObject,  7433, currentIndex ),
-        isDefined( previousIndex) ? lockedValueView( State, balanceObject,  7433, previousIndex ) : d("na.", {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}))),
-      d([
-        entityLabelWithPopup( State, State.DB.get( 7538, 7748 ) ),
-        lockedValueView( State, State.S.selectedCompany, State.DB.get( 7538, 7748 ), currentIndex ),
-        isDefined( previousIndex) ? lockedValueView( State, State.S.selectedCompany, State.DB.get( 7538, 7748 ), previousIndex ) : d("na.", {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-      d([
-        entityLabelWithPopup( State, 9647 ),
-        lockedValueView( State, State.S.selectedCompany, 9647, currentIndex ),
-        isDefined( previousIndex) ? lockedValueView( State, State.S.selectedCompany, State.DB.get( 7538, 7748 ), previousIndex ) : d("na.", {style: `text-align: right;`}),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-    ])
-  ]) 
+
+let sharedNodeView = State => {
   
+  let balanceObject = State.S["BalancePage/selectedNode"]
+
+  return d([
+      submitButton( " <---- Tilbake ", () => State.Actions["BalancePage/selectNode"]( undefined )  ),
+      br(),
+      transactionIndexSelectionView( State ),
+      br(),
+      d([
+        h3( State.DB.get(balanceObject, 6) ),
+        br(),
+        entityAttributeView( State, balanceObject, 1653, true ),
+        calculatedValueViewWithLabel(State, balanceObject, 10045, State.S["BalancePage/selectedTransactionIndex"] ),
+        br(),
+    ], {class: "feedContainer"})
+
+  ]) 
+} 
+
+
+
+
+
   let transactionIndexSelectionView = State => d([
     entityLabelWithPopup( State, 7929 ),
     d([
@@ -161,7 +139,7 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
         State.S["BalancePage/selectedTransactionIndex"] < State.DB.get( State.S.selectedCompany, 9817 ).length ? submitButton("[>>]", () => State.Actions["BalancePage/selectTransactionIndex"]( State.DB.get( State.DB.get( State.S.selectedCompany, 9817 ).slice( - 1 )[0], 8354  )  ) ) : d("")
       ], {style: gridColumnsStyle("repeat(8, 1fr)")}),
       transactionLabel( State, State.DB.get( State.S.selectedCompany,  10056 )( State.S["BalancePage/selectedTransactionIndex"] ) ),
-      d( moment( State.DB.get( State.DB.get( State.S.selectedCompany,  10056 )( State.S["BalancePage/selectedTransactionIndex"] ), 1757 ) ).format("DD.MM.YYYY")),
+      d( moment( State.DB.get( State.DB.get( State.S.selectedCompany,  10056 )( State.S["BalancePage/selectedTransactionIndex"] ), 10632 ) ).format("DD.MM.YYYY")),
     ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
   ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")})
   
@@ -173,10 +151,10 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
         transactionIndexSelectionView( State ),
         br(),
         d([
-            d( [7537, 7539, 7538].map( balanceSection =>  d([
+            d( [7537, 7539, 7538, 8788].map( balanceSection =>  d([
             d([
                 entityLabelWithPopup( State, balanceSection ),
-                submitButton("+", () => State.Actions["BalancePage/createNode"]( 8742 ) ),
+                submitButton("+", () => State.Actions["BalancePage/createNode"]( 9906 ) ),
             ], {style: "display: flex;"}),
             d( State.DB.get(State.S.selectedCompany, 10052)( balanceSection ).map( balanceObject => d([
                 nodeLabel(State, balanceObject),
