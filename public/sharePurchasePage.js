@@ -1,10 +1,9 @@
 const SharePurchasesPage = {
-    initial: DB => returnObject({ 
-      "SharePurchasesPage/selectedSourceDocument": undefined
-    }),
+    entity: 10041,
+    onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "SharePurchasesPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: 10041, "SharePurchasesPage/selectedSourceDocument": entity}}),
-        "SharePurchasesPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {"SharePurchasesPage/selectedSourceDocument": undefined } } ),
+        "SharePurchasesPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: SharePurchasesPage.entity, selectedEntity: entity}}),
+        "SharePurchasesPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedPage: 10041, selectedEntity: undefined } } ),
         "SharePurchasesPage/newSharePurchase": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10096 ),
@@ -50,7 +49,7 @@ const SharePurchasesPage = {
 
 
   
-  let sharePurchaseView = State => isDefined( State.S["SharePurchasesPage/selectedSourceDocument"]) 
+  let sharePurchaseView = State => isDefined( State.S.selectedEntity) 
     ? singleShareTransactionView( State )
     : allSharePurchasesView( State )
   
@@ -88,31 +87,31 @@ const SharePurchasesPage = {
     submitButton( " <---- Tilbake ", () => State.Actions["SharePurchasesPage/selectSourceDocument"]( undefined )  ),
     //prevNextSourceDocumentView( State ),
     br(),
-    entityAttributeView(State, State.S["SharePurchasesPage/selectedSourceDocument"], 10070, true ),
+    entityAttributeView(State, State.S.selectedEntity, 10070, true ),
     br(),
-    d( State.DB.get( State.DB.get( State.S["SharePurchasesPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType"), 7942 )
-        .map( attribute => entityAttributeView(State, State.S["SharePurchasesPage/selectedSourceDocument"], attribute, State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], 10401) ) ) 
+    d( State.DB.get( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType"), 7942 )
+        .map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 10401) ) ) 
     ),
     br(),
-    State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType") === 10111
+    State.DB.get(State.S.selectedEntity, "sourceDocument/sourceDocumentType") === 10111
         ? d([
-            entityAttributeView(State, State.S["SharePurchasesPage/selectedSourceDocument"], 10490, true ),
-            entityAttributeView(State, State.S["SharePurchasesPage/selectedSourceDocument"], 10491, true ),
+            entityAttributeView(State, State.S.selectedEntity, 10490, true ),
+            entityAttributeView(State, State.S.selectedEntity, 10491, true ),
         ])
         : d(""),
     br(),
     d([
-        State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], 10401)
+        State.DB.get(State.S.selectedEntity, 10401)
             ? d([
-                d( State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], 10402).map( transaction => transactionFlowView( State, transaction) ) ),
-                submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], 10402) )  )
+                d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) ),
+                submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S.selectedEntity, 10402) )  )
             ]) 
             : d([
-                State.DB.get(State.S["SharePurchasesPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType") === 10096
-                    ? submitButton("Bokfør aksjekjøp", () => State.Actions["SharePurchasesPage/recordSharePurchase"]( State.S["SharePurchasesPage/selectedSourceDocument"] )   )
-                    : submitButton("Bokfør aksjesalg", () => State.Actions["SharePurchasesPage/recordShareSale"]( State.S["SharePurchasesPage/selectedSourceDocument"] )   ),
+                State.DB.get(State.S.selectedEntity, "sourceDocument/sourceDocumentType") === 10096
+                    ? submitButton("Bokfør aksjekjøp", () => State.Actions["SharePurchasesPage/recordSharePurchase"]( State.S.selectedEntity )   )
+                    : submitButton("Bokfør aksjesalg", () => State.Actions["SharePurchasesPage/recordShareSale"]( State.S.selectedEntity )   ),
                 br(),
-                submitButton("Slett", () => State.Actions["SharePurchasesPage/retractSourceDocument"]( State.S["SharePurchasesPage/selectedSourceDocument"] ))
+                submitButton("Slett", () => State.Actions["SharePurchasesPage/retractSourceDocument"]( State.S.selectedEntity ))
             ]) 
     ]) 
   ])

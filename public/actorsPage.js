@@ -1,10 +1,9 @@
 const ActorsPage = {
-    initial: DB => returnObject({ 
-      "ActorsPage/selectedActor": undefined
-    }),
+    entity: 7977,
+    onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "ActorsPage/selectActor": entity => updateState( State, {S: {selectedPage: 7977, "ActorsPage/selectedActor": entity}}),
-        "ActorsPage/retractActor": async actor => updateState( State, { DB: await Transactor.retractEntity(State.DB, actor), S: {"ActorsPage/selectedActor": undefined } } ),
+        "ActorsPage/selectActor": entity => updateState( State, {S: {selectedPage: 7977, selectedEntity: entity}}),
+        "ActorsPage/retractActor": async actor => updateState( State, { DB: await Transactor.retractEntity(State.DB, actor), S: {selectedEntity: undefined } } ),
         "ActorsPage/createActor": async actor => updateState( State, {DB: await Transactor.createEntity(State.DB, 7979, [ newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ),  newDatom( 'newEntity' , 1113, "Aktør uten navn" )] )} ),
     })
   }
@@ -28,7 +27,7 @@ const ActorsPage = {
   ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;width: 400px;"})
   
   
-  let actorsView = State => isDefined( State.S["ActorsPage/selectedActor"]) ? singleActorView( State ) : allActorsView( State )
+  let actorsView = State => isDefined( State.S.selectedEntity) ? singleActorView( State ) : allActorsView( State )
   
   let allActorsView = State => d([
     d([
@@ -47,10 +46,10 @@ const ActorsPage = {
   let singleActorView = State => d([
     submitButton( " <---- Tilbake ", () => State.Actions["ActorsPage/selectActor"]( undefined )  ),
     br(),
-    entityAttributeView(State, State.S["ActorsPage/selectedActor"], 8668),
+    entityAttributeView(State, State.S.selectedEntity, 8668),
     br(),
-    isDefined( State.DB.get( State.S["ActorsPage/selectedActor"], "actor/actorType") )
-        ? d( State.DB.get( State.DB.get( State.S["ActorsPage/selectedActor"], "actor/actorType"), 7942 ).map( attribute => entityAttributeView(State, State.S["ActorsPage/selectedActor"], attribute ) ) )
+    isDefined( State.DB.get( State.S.selectedEntity, "actor/actorType") )
+        ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "actor/actorType"), 7942 ).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute ) ) )
         : d(""),
-    submitButton("Slett", e => State.Actions["ActorsPage/retractActor"]( State.S["ActorsPage/selectedActor"] ) ),  
+    submitButton("Slett", e => State.Actions["ActorsPage/retractActor"]( State.S.selectedEntity ) ),  
   ])

@@ -1,19 +1,18 @@
 const AdminPage = {
-    initial: State => returnObject({ 
-      "AdminPage/selectedEntity": 47
-    }),
+    entity: 10025,
+    onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-      selectEntity: entity => updateState( State, {S: {"AdminPage/selectedEntity": entity}}),
+      selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
       createEntity: async (entityType, entityDatoms) => updateState( State, {DB: await Transactor.createEntity( State.DB, entityType, entityDatoms )  } ),
-      retractEntity: async entity => updateState( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {"AdminPage/selectedEntity": undefined }} ),
-      retractEntities: async entities => updateState( State, {DB: await Transactor.retractEntities(State.DB, entities), S: {"AdminPage/selectedEntity": undefined }} ),
+      retractEntity: async entity => updateState( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined }} ),
+      retractEntities: async entities => updateState( State, {DB: await Transactor.retractEntities(State.DB, entities), S: {selectedEntity: undefined }} ),
       duplicateEntity: async entity => {
         let entityType = State.DB.get( entity, "entity/entityType")
         let entityTypeAttributes = State.DB.get( entityType, "entityType/attributes" )
         let newEntityDatoms = entityTypeAttributes.map( attr => newDatom("newEntity", State.DB.attrName(attr), State.DB.get( entity, attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${State.DB.get( entity, 6)}` ) )
         if(entityType === 42){ newEntityDatoms.push( newDatom( "newEntity", "attr/name", "attr/" + Date.now() )  ) }
         let updatedDB = await Transactor.createEntity( State.DB, entityType, newEntityDatoms)
-        updateState( State, {DB: updatedDB, S: {"AdminPage/selectedEntity": updatedDB.Entities.slice(-1)[0].entity}} )
+        updateState( State, {DB: updatedDB, S: {selectedEntity: updatedDB.Entities.slice(-1)[0].entity}} )
       },
       updateEntity: async (entity, attribute, newValue, isAddition) => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, newValue, isAddition )  } ),
       postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms)  } ),
@@ -56,13 +55,13 @@ br(),
 
 let prevNextEntityButtonsView = State => {
 
-  let selectedEntityType = State.DB.get(State.S["AdminPage/selectedEntity"], 19)
-  let selectedEntityCategory = State.DB.get(State.S["AdminPage/selectedEntity"], 14)
+  let selectedEntityType = State.DB.get(State.S.selectedEntity, 19)
+  let selectedEntityCategory = State.DB.get(State.S.selectedEntity, 14)
 
   let entities = State.DB.getAll( selectedEntityType ).filter( e => State.DB.get(e, 14) === selectedEntityCategory ).sort( (a,b) => a-b )
 
-  let prevEntity = entities[ entities.findIndex( t => t === State.S["AdminPage/selectedEntity"] ) - 1 ]
-  let nextEntity = entities[ entities.findIndex( t => t === State.S["AdminPage/selectedEntity"] ) + 1 ]
+  let prevEntity = entities[ entities.findIndex( t => t === State.S.selectedEntity ) - 1 ]
+  let nextEntity = entities[ entities.findIndex( t => t === State.S.selectedEntity ) + 1 ]
 
   return d([
     isDefined( prevEntity ) >= 1 ? submitButton("<", () => State.Actions.selectEntity( prevEntity ) ) : d(""),
@@ -120,24 +119,24 @@ let adminPage = State => d([
     d([
       adminEntityLabelWithPopup( State,  47 ),
       span(" / "  ),
-      isDefined(State.S["AdminPage/selectedEntity"])
-        ? adminEntityLabelWithPopup( State, State.DB.get(State.S["AdminPage/selectedEntity"], "entity/entityType")   )
+      isDefined(State.S.selectedEntity)
+        ? adminEntityLabelWithPopup( State, State.DB.get(State.S.selectedEntity, "entity/entityType")   )
         : span(" ... "),
       span(" / "  ),
-      isDefined(State.S["AdminPage/selectedEntity"])
-        ? adminEntityLabelWithPopup( State,  State.S["AdminPage/selectedEntity"] )
+      isDefined(State.S.selectedEntity)
+        ? adminEntityLabelWithPopup( State,  State.S.selectedEntity )
         : span("Ingen entitet valgt.")
     ]),
     br(),
     d([
       d(""),
-     State.DB.get( State.S["AdminPage/selectedEntity"], "entity/entityType" ) === 47
+     State.DB.get( State.S.selectedEntity, "entity/entityType" ) === 47
         ? d([
-          multipleEntitiesView( State, State.S["AdminPage/selectedEntity"] ),
+          multipleEntitiesView( State, State.S.selectedEntity ),
           br(),
-          entityView( State, State.S["AdminPage/selectedEntity"] )
+          entityView( State, State.S.selectedEntity )
         ]) 
-        : entityView( State, State.S["AdminPage/selectedEntity"] )
+        : entityView( State, State.S.selectedEntity )
     ])
   
   ])

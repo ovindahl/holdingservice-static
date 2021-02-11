@@ -68,7 +68,6 @@ var A = {} //Consle access to Actions
 //COMPONENTS
 
 const DB = {
-  initial: async () => returnObject({}), // returnObject({DB: constructDatabase( await sideEffects.APIRequest("GET", "Entities", null) )}),
   Actions: State => returnObject({})
 } 
 
@@ -120,11 +119,12 @@ let init = async () => {
 
     let initialDatabase = constructDatabase( Entities )
 
-    let initialComponentState = Components.reduce( (Initial, Component) => Object.assign( Initial, Component.initial( initialDatabase ) ), {} )
-
     updateState( {}, {
       DB: initialDatabase,
-      S: initialComponentState
+      S: {
+        selectedCompany: 6829,
+        selectedPage: 7882
+      }
       } )
     
   }else{ updateState( {}, {S: {isError: true, error: "ERROR: Mottok ingen data fra serveren. Last på nytt om 30 sek." }} ) }

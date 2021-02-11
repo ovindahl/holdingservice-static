@@ -1,33 +1,37 @@
 
 const ReportPage = {
-    initial: DB => returnObject({ 
-      "ReportPage/selectedReportType": undefined
-    }),
+    entity: 10464,
+    onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "ReportPage/selectReportType": entity => updateState( State, {S: {selectedPage: 10464, "ReportPage/selectedReportType": entity}}),
-        "ReportPage/selectAccountingYear": entity => updateState( State, {S: {selectedPage: 10464, "ReportPage/selectedAccountingYear": entity}}),
+        "ReportPage/selectReportType": entity => updateState( State, {S: {selectedPage: 10464, selectedEntity: entity}}),
+        "ReportPage/selectAccountingYear": accountingYear => updateState( State, {S: {selectedPage: 10464, selectedAccountingYear: accountingYear}}),
     })
   }
 
 
 
-let reportView = State => d([
+let reportView = State => {
+
+
+  let accountingYearSourceDocument = State.DB.get( State.S.selectedCompany ,10073).find( sourceDocument => State.DB.get(sourceDocument, "sourceDocument/sourceDocumentType") === 10309 && State.DB.get(sourceDocument, "entity/accountingYear") === State.S.selectedAccountingYear )
+
+  return d([
     h3("Rapporter"),
     d([
         entityLabelWithPopup( State, 10309 ),
-        d( State.DB.get( State.S.selectedCompany, 10073 )
-          .filter( sourceDocument => State.DB.get(sourceDocument,"sourceDocument/sourceDocumentType") === 10309 )
-          .map( sourceDocument => entityLabelWithPopup(State, sourceDocument, () => State.Actions["ReportPage/selectAccountingYear"]( sourceDocument )) ), {display: "flex"} )
+        d( State.DB.get( State.S.selectedCompany, 10061 )
+          .map( accountingYear => entityLabelWithPopup(State, accountingYear, () => State.Actions["ReportPage/selectAccountingYear"]( accountingYear  )) ), {display: "flex"} )
       ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
     d([
     entityLabelWithPopup( State, 7976 ),
     d( State.DB.getAll(7976).map( reportType => entityLabelWithPopup(State, reportType, () => State.Actions["ReportPage/selectReportType"]( reportType )) ), {display: "flex"} )
     ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
     br(),
-    isNumber( State.S["ReportPage/selectedReportType"] ) && isNumber( State.S["ReportPage/selectedAccountingYear"] )
-        ? singleReportView( State, State.S["ReportPage/selectedReportType"], State.S["ReportPage/selectedAccountingYear"] )
+    isNumber( State.S.selectedEntity ) && isNumber( accountingYearSourceDocument )
+        ? singleReportView( State, State.S.selectedEntity, accountingYearSourceDocument )
         : d("Velg rapport og regnskapsår")
 ])
+} 
 
 
 let singleReportView = ( State, reportType, sourceDocument ) => d([

@@ -1,10 +1,9 @@
 const ManualTransactionsPage = {
-    initial: DB => returnObject({ 
-      "ManualTransactionsPage/selectedSourceDocument": undefined
-    }),
+    entity: 10042,
+    onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "ManualTransactionsPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: 10042, "ManualTransactionsPage/selectedSourceDocument": entity}}),
-        "ManualTransactionsPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {"ManualTransactionsPage/selectedSourceDocument": undefined } } ),
+        "ManualTransactionsPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: 10042, selectedEntity: entity}}),
+        "ManualTransactionsPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
         "ManualTransactionsPage/new": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10317 ),
@@ -27,7 +26,7 @@ const ManualTransactionsPage = {
 
 
   
-  let manualTransactionsView = State => isDefined( State.S["ManualTransactionsPage/selectedSourceDocument"]) ? singleManualTransactionView( State ) : allManualTransactionsView( State )
+  let manualTransactionsView = State => isDefined( State.S.selectedEntity) ? singleManualTransactionView( State ) : allManualTransactionsView( State )
   
   let allManualTransactionsView = State => d([
     h3("Alle fri posteringer"),
@@ -63,23 +62,23 @@ const ManualTransactionsPage = {
     return d([
         submitButton( " <---- Tilbake ", () => State.Actions["ManualTransactionsPage/selectSourceDocument"]( undefined )  ),
         br(),
-        entityAttributeView(State, State.S["ManualTransactionsPage/selectedSourceDocument"], 10070, true),
+        entityAttributeView(State, State.S.selectedEntity, 10070, true),
         br(),
-        isDefined( State.DB.get( State.S["ManualTransactionsPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType") ) 
-            ? d( State.DB.get( State.DB.get( State.S["ManualTransactionsPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, log(State.S["ManualTransactionsPage/selectedSourceDocument"]), log(attribute), State.DB.get(State.S["ManualTransactionsPage/selectedSourceDocument"], 10401) ) ) ) 
+        isDefined( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType") ) 
+            ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, log(State.S.selectedEntity), log(attribute), State.DB.get(State.S.selectedEntity, 10401) ) ) ) 
             : d(""),
         br(),
         d([
-            State.DB.get(State.S["ManualTransactionsPage/selectedSourceDocument"], 10401)
+            State.DB.get(State.S.selectedEntity, 10401)
                 ? d([
                     d("Tilknyttede transaksjoner"),
-                    d( State.DB.get(State.S["ManualTransactionsPage/selectedSourceDocument"], 10402).map( transaction => transactionFlowView( State, transaction) ) ),
-                    submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S["ManualTransactionsPage/selectedSourceDocument"], 10402) )  )
+                    d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) ),
+                    submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S.selectedEntity, 10402) )  )
                 ]) 
                 : d([
-                    submitButton("Bokfør", () => State.Actions["ManualTransactionsPage/recordTransaction"]( State.S["ManualTransactionsPage/selectedSourceDocument"] )   ),
+                    submitButton("Bokfør", () => State.Actions["ManualTransactionsPage/recordTransaction"]( State.S.selectedEntity )   ),
                     br(),
-                    submitButton("Slett", e => State.Actions["ManualTransactionsPage/retractSourceDocument"]( State.S["ManualTransactionsPage/selectedSourceDocument"] ) )
+                    submitButton("Slett", e => State.Actions["ManualTransactionsPage/retractSourceDocument"]( State.S.selectedEntity ) )
                 ]) 
     ]) 
       ])

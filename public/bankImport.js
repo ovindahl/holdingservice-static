@@ -1,10 +1,9 @@
 const BankImportPage = {
-    initial: DB => returnObject({
-        "BankImportPage/selectedSourceDocument": undefined
-    }),
+    entity: 10038,
+    onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "BankImportPage/selectSourceDocument": entity => updateState( State, {S: {"BankImportPage/selectedSourceDocument": entity}}),
-        "BankImportPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {"BankImportPage/selectedSourceDocument": undefined } } ),
+        "BankImportPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: 10038, selectedEntity: entity}}),
+        "BankImportPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
         "BankImportPage/createBankImport": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
@@ -49,10 +48,10 @@ const BankImportPage = {
   }
 
 
-let bankImportView = State => isDefined( State.S["BankImportPage/selectedSourceDocument"]) 
-    ? State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10070) === 10064
+let bankImportView = State => isDefined( State.S.selectedEntity) 
+    ? State.DB.get(State.S.selectedEntity, 10070) === 10064
         ? singleBankImportView( State )
-        : State.DB.get(State.S["BankImportPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType") === 10465
+        : State.DB.get(State.S.selectedEntity, "sourceDocument/sourceDocumentType") === 10465
             ? splitTransactionView( State )
             : singleTransactionView( State )
     : allBankImportsView( State )
@@ -106,24 +105,24 @@ let singleBankImportView = State => {
 return d([
     submitButton( " <---- Tilbake ", () => State.Actions["BankImportPage/selectSourceDocument"]( undefined )  ),
     br(),
-    entityAttributeView(State, State.S["BankImportPage/selectedSourceDocument"], 10070),
+    entityAttributeView(State, State.S.selectedEntity, 10070),
     br(),
-    isDefined( State.DB.get( State.S["BankImportPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType") )
-        ? d( State.DB.get( State.DB.get( State.S["BankImportPage/selectedSourceDocument"], "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, State.S["BankImportPage/selectedSourceDocument"], attribute ) ) )
+    isDefined( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType") )
+        ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute ) ) )
         : d(""),
     br(),
     d([
         entityLabelWithPopup( State, 10536 ),
-        State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10536).length > 0
+        State.DB.get(State.S.selectedEntity, 10536).length > 0
         ? d([
-                importedTransactionsTableView( State, State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10536) ),
-                State.DB.get(State.S.selectedCompany, 9817).filter( transaction => State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10536).includes( State.DB.get(transaction, 9104) )  ).length > 0
+                importedTransactionsTableView( State, State.DB.get(State.S.selectedEntity, 10536) ),
+                State.DB.get(State.S.selectedCompany, 9817).filter( transaction => State.DB.get(State.S.selectedEntity, 10536).includes( State.DB.get(transaction, 9104) )  ).length > 0
                     ? d("Tilbakestill bokføring av bilagene for å slette")
-                    : submitButton("Slett importerte transaksjoner", () => State.Actions.retractEntities( State.DB.get(State.S["BankImportPage/selectedSourceDocument"], 10536) ) ),
+                    : submitButton("Slett importerte transaksjoner", () => State.Actions.retractEntities( State.DB.get(State.S.selectedEntity, 10536) ) ),
             ]) 
         : d([
                 d("Ingen importerte transaksjoner"),
-                submitButton(`Importer transaksjoner fra fil`, () => State.Actions["BankImportPage/importBankSourceDocuments"]( State.S["BankImportPage/selectedSourceDocument"] ) ),
+                submitButton(`Importer transaksjoner fra fil`, () => State.Actions["BankImportPage/importBankSourceDocuments"]( State.S.selectedEntity ) ),
             ]) 
     ])
 ])
@@ -132,7 +131,7 @@ return d([
 
 let singleTransactionView = State => {
 
-    let sourceDocument = State.S["BankImportPage/selectedSourceDocument"]
+    let sourceDocument = State.S.selectedEntity
 
     let recordedTransaction = State.DB.get(State.S.selectedCompany, 9817).find( transaction => State.DB.get(transaction, 9104) === sourceDocument )
 
@@ -173,7 +172,7 @@ let singleTransactionView = State => {
 
 let splitTransactionView = State => {
 
-    let sourceDocument = State.S["BankImportPage/selectedSourceDocument"]
+    let sourceDocument = State.S.selectedEntity
 
     let recordedTransaction = State.DB.get(State.S.selectedCompany, 9817).find( transaction => State.DB.get(transaction, 9104) === sourceDocument )
 

@@ -7,12 +7,8 @@
 //----------------------------------------------------------------------
 
 const ClientApp = {
-  initial: State => returnObject( {
-    selectedCompany: 6829, 
-    selectedPage: 7882,
-  }),
   Actions: State => returnObject({
-    selectPage: pageEntity => updateState( State, {S: {selectedPage: pageEntity, selectedEntity: undefined}}),
+    selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectEntity: undefined}, isDefined( Components.find( Component => Component.entity === pageEntity ) ) ? Components.find( Component => Component.entity === pageEntity ).onLoad( State ) : {}) }),
     selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
     selectCompany: company => updateState( State, {
       DB: State.DB,
@@ -102,6 +98,14 @@ let stateView = State => {
       d([
         entityLabelWithPopup( State, 7928),
         isDefined( State.S.selectedEntity ) ? entityLabelWithPopup( State, State.S.selectedEntity ) : d(" - "),
+      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
+      d([
+        entityLabelWithPopup( State, 7929),
+        isDefined( State.S.selectedTransactionIndex ) ? d( `${State.S.selectedTransactionIndex} / ${State.DB.get( State.S.selectedCompany, 10069 )} `) : d(" - "),
+      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
+      d([
+        entityLabelWithPopup( State, 9279),
+        isDefined( State.S.selectedAccountingYear ) ? entityLabelWithPopup( State, State.S.selectedAccountingYear ) : d(" - "),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
       br(),
     ])

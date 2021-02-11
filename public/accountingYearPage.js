@@ -1,10 +1,9 @@
 const AccountingYearPage = {
-    initial: DB => returnObject({ 
-      "AccountingYearPage/selectedAccountingYearSourceDocument": undefined,
-    }),
+    entity: 7509,
+    onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-       "AccountingYearPage/selectAccountingYearSourceDocument": sourceDocument => updateState( State, {S: {selectedPage: 7509, "AccountingYearPage/selectedAccountingYearSourceDocument": sourceDocument}}),
-        "AccountingYearPage/retractAccountingYearSourceDocument": async sourceDocument => updateState( State, { DB: await Transactor.retractEntity(State.DB, sourceDocument), S: {"AccountingYearPage/selectedAccountingYearSourceDocument": undefined } } ),
+       "AccountingYearPage/selectAccountingYearSourceDocument": sourceDocument => updateState( State, {S: {selectedPage: 7509, selectedEntity: sourceDocument}}),
+        "AccountingYearPage/retractAccountingYearSourceDocument": async sourceDocument => updateState( State, { DB: await Transactor.retractEntity(State.DB, sourceDocument), S: {selectedEntity: undefined } } ),
         "AccountingYearPage/createAnnualResultSourceDocument": async () => {
 
           let Datoms = [
@@ -81,12 +80,13 @@ const AccountingYearPage = {
   }
 
 
-let accountingYearsView = State => isDefined(State.S["AccountingYearPage/selectedAccountingYearSourceDocument"]) ? singleAccountingYearView( State ) : allAccountingYearsView( State )
+let accountingYearsView = State => isDefined(State.S.selectedEntity) ? singleAccountingYearView( State ) : allAccountingYearsView( State )
 
 let singleAccountingYearView = State => {
 
-  let currentAnnualResultSourceDocument = State.S["AccountingYearPage/selectedAccountingYearSourceDocument"]
+  let currentAnnualResultSourceDocument = State.S.selectedEntity
 
+  log({State})
 
 return d([
   submitButton( " <---- Tilbake ", () => State.Actions["AccountingYearPage/selectAccountingYearSourceDocument"]( undefined )  ),
