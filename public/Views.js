@@ -8,7 +8,7 @@
 
 const ClientApp = {
   Actions: State => returnObject({
-    selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectEntity: undefined}, isDefined( Components.find( Component => Component.entity === pageEntity ) ) ? Components.find( Component => Component.entity === pageEntity ).onLoad( State ) : {}) }),
+    selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectedEntity: undefined}, isDefined( Components.find( Component => Component.entity === pageEntity ) ) ? Components.find( Component => Component.entity === pageEntity ).onLoad( State ) : {}) }),
     selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
     selectCompany: company => updateState( State, {
       DB: State.DB,

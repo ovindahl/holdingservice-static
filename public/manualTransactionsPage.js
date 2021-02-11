@@ -65,7 +65,7 @@ const ManualTransactionsPage = {
         entityAttributeView(State, State.S.selectedEntity, 10070, true),
         br(),
         isDefined( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType") ) 
-            ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, log(State.S.selectedEntity), log(attribute), State.DB.get(State.S.selectedEntity, 10401) ) ) ) 
+            ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 10401) ) ) ) 
             : d(""),
         br(),
         d([

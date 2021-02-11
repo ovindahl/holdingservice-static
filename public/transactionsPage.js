@@ -26,23 +26,17 @@ let transactionRowView = (State, companyTransaction) => d([
   ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr ")})
   
 
-let allTransactionsView = State => {
-
-    return d([
-      h3("Bokførte transaksjoner"),
-      d([
-        entityLabelWithPopup( State, 7403 ),
-        d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
-      ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
-      br(),
-
-
-      
-      d( State.DB.get(State.S.selectedCompany, 9817)
-          .filter( companyTransaction => State.DB.get(companyTransaction, 10632) >= State.DB.get(State.S.selectedAccountingYear, 'accountingYear/firstDate') && State.DB.get(companyTransaction, 10632) <= State.DB.get(State.S.selectedAccountingYear, 'accountingYear/lastDate')  )
-          .map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} ),
-    ])
-  } 
+let allTransactionsView = State => d([
+  h3("Bokførte transaksjoner"),
+  d([
+    entityLabelWithPopup( State, 7403 ),
+    d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
+  ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
+  br(),  
+  d( State.DB.get(State.S.selectedCompany, 9817)
+      .filter( companyTransaction => State.DB.get(companyTransaction, 10632) >= State.DB.get(State.S.selectedAccountingYear, 'accountingYear/firstDate') && State.DB.get(companyTransaction, 10632) <= State.DB.get(State.S.selectedAccountingYear, 'accountingYear/lastDate')  )
+      .map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} ),
+])
 
   
   let transactionsView = State => isDefined( State.S.selectedEntity ) 
@@ -135,7 +129,11 @@ let allTransactionsView = State => {
     br(),
     d([
       h3("Kilde"),
-      entityAttributeView(State, State.S.selectedEntity, 9104, true),
+      d([
+        entityLabelWithPopup( State, 9104 ),
+        entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity, 9104) ),
+      ], {style: gridColumnsStyle("1fr 1fr")}),
+      //entityAttributeView(State, State.S.selectedEntity, 9104, true),
       entityAttributeView( State, State.S.selectedEntity, 7935, true ),
     ], {class: "feedContainer"}),
     br(),

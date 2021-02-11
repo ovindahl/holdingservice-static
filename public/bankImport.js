@@ -135,6 +135,8 @@ let singleTransactionView = State => {
 
     let recordedTransaction = State.DB.get(State.S.selectedCompany, 9817).find( transaction => State.DB.get(transaction, 9104) === sourceDocument )
 
+    log({State})
+
 
     return d([
         submitButton( " <---- Tilbake ", () => State.Actions["BankImportPage/selectSourceDocument"]( undefined )  ),

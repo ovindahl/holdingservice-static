@@ -133,19 +133,9 @@ let entityLabel = (State, entity, onClick, isSelected) => State.DB.isEntity(enti
           style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${(isSelected || State.S["AdminPage/selectedEntity"] === entity ) ? "border: 2px solid black;" : ""}`
         }, 
         "click", 
-        isDefined(onClick) ? onClick : e => State.Actions.selectEntity( entity )
+        isDefined(onClick) ? onClick : null
       )], {style:"display: inline-flex;"})
   : d(`[${ entity}] na.`, {class: "entityLabel", style: `background-color:gray;`})
-
-
-
-
-
-
-
-
-
-
 
 
 let entityLabelWithPopup = ( State, entity, onClick, isSelected) => {
@@ -167,13 +157,13 @@ let entityLabelWithPopup = ( State, entity, onClick, isSelected) => {
 } 
 
 let entityPopUp = (State, entity) => d([
-  entityLabel( State, entity ),
-  br(),
-  d( getEntityLabel( State.DB, State.DB.get(entity, "entity/entityType") )  ),
-  br(),
-  d( State.DB.get( entity, "entity/doc") ? State.DB.get( entity, "entity/doc") : "" ),
-  br(),
-  span(`Entitet: ${ entity}`),
+    h3( getEntityLabel( State.DB, entity ) ),
+    br(),
+    d( getEntityLabel( State.DB, State.DB.get(entity, "entity/entityType") )  ),
+    br(),
+    d( State.DB.get( entity, "entity/doc") ? State.DB.get( entity, "entity/doc") : "" ),
+    br(),
+    span(`Entitet: ${ entity}`),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 // VALUE TYPE VIEWS
