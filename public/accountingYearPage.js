@@ -102,8 +102,6 @@ return d([
       ], {style: gridColumnsStyle("repeat(4, 1fr)") + "padding-left: 1em;"}))),
       br(),
       d( State.DB.get( State.DB.get( currentAnnualResultSourceDocument, "sourceDocument/sourceDocumentType"), 10433 ).map( attribute => entityAttributeView(State, currentAnnualResultSourceDocument, attribute, true ) ) ),
-      
-      
     ]),
     br(),
     h3("Bokføring"),

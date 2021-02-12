@@ -84,11 +84,11 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
           h3( State.DB.get(balanceObject, 6) ),
           d([
             entityAttributeView( State, balanceObject, 7934, true ),
-            submitButton("X", () => State.Actions.updateEntity(State.S.selectedEntity, "balanceObject/balanceObjectType", 9906) )
+            State.DB.get(balanceObject, 11045) ? submitButton("X", () => State.Actions.updateEntity(State.S.selectedEntity, "balanceObject/balanceObjectType", 9906) ) : d("")
           ], {style: gridColumnsStyle("7fr 1fr")}),
           entityAttributeView(State, balanceObject, 6),
           br(),
-          d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView( State, balanceObject, attribute ) ) ),
+          d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView( State, balanceObject, attribute, !State.DB.get(balanceObject, 11045) ) ) ),
           br(),
           entityAttributeView(State, balanceObject, 8768, true),
           entityAttributeView(State, balanceObject, 8747, true),

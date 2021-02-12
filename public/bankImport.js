@@ -191,17 +191,6 @@ let splitTransactionView = State => {
         entityAttributeView(State, sourceDocument, 1757, true),
         br(),
         recordBankTransactionView( State, sourceDocument, false ),
-        /* isDefined(recordedTransaction)
-            ? d([
-                transactionFlowView( State, recordedTransaction),
-                submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( [recordedTransaction] )  )
-            ]) 
-            : d([
-                entityAttributeView(State, sourceDocument, 1083 ),
-                entityAttributeView(State, sourceDocument, 10200 ),
-                submitButton("Bokfør", () => State.Actions["BankImportPage/recordSourceDocument"]( sourceDocument )   ),
-                submitButton("Slett", () => State.Actions["BankImportPage/retractSourceDocument"]( sourceDocument )   ),
-            ])  */
     ])
 
 
