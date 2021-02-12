@@ -34,7 +34,7 @@ const ManualTransactionsPage = {
         entityLabelWithPopup( State, 1757 ),
         entityLabelWithPopup( State, 7867 ),
         entityLabelWithPopup( State, 7866 ),
-        entityLabelWithPopup( State, 1083 ),
+        entityLabelWithPopup( State, 10107 ),
         entityLabelWithPopup( State, 10401 ),
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr  1fr 1fr")}),
     d( State.DB.get( State.S.selectedCompany, 10073 )
@@ -43,7 +43,7 @@ const ManualTransactionsPage = {
         lockedSingleValueView( State, sourceDocument, 1757 ),
         lockedSingleValueView( State, sourceDocument, 7867 ),
         lockedSingleValueView( State, sourceDocument, 7866 ),
-        lockedSingleValueView( State, sourceDocument, 1083 ),
+        lockedSingleValueView( State, sourceDocument, 10107 ),
         d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
         submitButton( "Vis", () => State.Actions["ManualTransactionsPage/selectSourceDocument"]( sourceDocument ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr  1fr 1fr")}) )),

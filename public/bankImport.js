@@ -82,22 +82,20 @@ let importedTransactionsTableView = (State, transactions) => d([
         entityLabelWithPopup( State, 7463 ),
         entityLabelWithPopup( State, 9084 ),
         entityLabelWithPopup( State, 1757 ),
-        entityLabelWithPopup( State, 10542 ),
         entityLabelWithPopup( State, 8831 ),
-        entityLabelWithPopup( State, 1083 ),
+        entityLabelWithPopup( State, 10107 ),
         entityLabelWithPopup( State, 10401 ),
         d("")
-    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 3fr 1fr 1fr 1fr")}),
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr 1fr 1fr 1fr")}),
     d( transactions .map( sourceDocument => d([
         lockedSingleValueView( State, sourceDocument, 7463, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
         lockedSingleValueView( State, sourceDocument, 9084, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
         lockedSingleValueView( State, sourceDocument, 1757 ),
-        lockedSingleValueView( State, sourceDocument, 10542 ),
         lockedSingleValueView( State, sourceDocument, 8831 ),
-        lockedSingleValueView( State, sourceDocument, 1083 ),
+        d( formatNumber( State.DB.get(sourceDocument, 10107) ), {style: `text-align: right;color:${State.DB.get(sourceDocument, 9084) === 9086 ? "red" : "black"} ;`} ),
         d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
         submitButton( "Vis", () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ))
-    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 3fr 1fr 1fr 1fr")}) ))
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr 1fr 1fr 1fr")}) ))
 ]) 
   
 let singleBankImportView = State => {
@@ -154,19 +152,6 @@ let singleTransactionView = State => {
         h3("Bokføring"),
         entityAttributeView(State, sourceDocument, 10200, State.DB.get(sourceDocument, 10401) ),
         recordBankTransactionView( State, sourceDocument, true ),
-/* 
-
-
-        isDefined(recordedTransaction)
-            ? d([
-                transactionFlowView( State, recordedTransaction),
-                submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( [recordedTransaction] )  )
-            ]) 
-            : d([
-                entityAttributeView(State, sourceDocument, 10200 ),
-                submitButton("Splitt i to", () => State.Actions["BankImportPage/splitTransaction"]( sourceDocument )   ),
-                submitButton("Bokfør", () => State.Actions["BankImportPage/recordSourceDocument"]( sourceDocument )   ),
-            ])  */
     ])
 
 
@@ -193,6 +178,7 @@ let splitTransactionView = State => {
         entityAttributeView(State, sourceDocument, 1083, isDefined(recordedTransaction) ),
         entityAttributeView(State, sourceDocument, 10200, isDefined(recordedTransaction) ),
         recordBankTransactionView( State, sourceDocument, false ),
+        isDefined(recordedTransaction) ? d("") : submitButton("Slett", () => State.Actions["BankImportPage/retractSourceDocument"](sourceDocument) )
     ])
 
 
