@@ -114,9 +114,9 @@ let allTransactionsView = State => d([
       br(),
       d([
         entityLabelWithPopup( State, 10047 ),
-        transactionValueView( State, companyTransaction ),
+        transactionValueView( State, log(companyTransaction, "1") ),
       ], {style: gridColumnsStyle("1fr 1fr")}),
-      d(`Entitet: ${companyTransaction}`)
+      d(`Entitet: ${log(companyTransaction, "2")}`)
       
     ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;width: 400px;"})
   

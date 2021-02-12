@@ -240,7 +240,7 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
         : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 7932
           ? nodeLabel( State, State.DB.get( entity, attribute ) )
           : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 10062
-            ? entityLabelWithPopup( State, State.DB.get( entity, attribute ), () => State.Actions.selectPage( State.DB.get( State.DB.get( State.DB.get(entity, "entity/sourceDocument"), "sourceDocument/sourceDocumentType" ), 7930 ) ) )
+            ? sourceDocumentLabel( State, State.DB.get( entity, attribute ) )
             : entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
 
 
