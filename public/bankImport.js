@@ -191,6 +191,7 @@ let splitTransactionView = State => {
         entityAttributeView(State, sourceDocument, 1757, true),
         br(),
         entityAttributeView(State, sourceDocument, 1083, isDefined(recordedTransaction) ),
+        entityAttributeView(State, sourceDocument, 10200, isDefined(recordedTransaction) ),
         recordBankTransactionView( State, sourceDocument, false ),
     ])
 
