@@ -37,7 +37,7 @@ const ManualTransactionsPage = {
         entityLabelWithPopup( State, 7866 ),
         entityLabelWithPopup( State, 1083 ),
         entityLabelWithPopup( State, 10401 ),
-    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr")}),
+    ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr  1fr 1fr 1fr")}),
     d( State.DB.get( State.S.selectedCompany, 10073 )
         .filter( sourceDocument => [10317].includes( State.DB.get(sourceDocument, 10070 ) )   )
         .map( sourceDocument => d([
@@ -56,9 +56,6 @@ const ManualTransactionsPage = {
   
   let singleManualTransactionView = State => {
 
-
-    
-
     return d([
         submitButton( " <---- Tilbake ", () => State.Actions["ManualTransactionsPage/selectSourceDocument"]( undefined )  ),
         br(),
@@ -68,21 +65,29 @@ const ManualTransactionsPage = {
             ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 10401) ) ) ) 
             : d(""),
         br(),
-        d([
-            State.DB.get(State.S.selectedEntity, 10401)
-                ? d([
-                    d("Tilknyttede transaksjoner"),
-                    d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) ),
-                    submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S.selectedEntity, 10402) )  )
-                ]) 
-                : d([
-                    submitButton("Bokfør", () => State.Actions["ManualTransactionsPage/recordTransaction"]( State.S.selectedEntity )   ),
-                    br(),
-                    submitButton("Slett", e => State.Actions["ManualTransactionsPage/retractSourceDocument"]( State.S.selectedEntity ) )
-                ]) 
-    ]) 
+        recordManualTransactionView( State, State.S.selectedEntity )
       ])
   } 
 
 
 
+let recordManualTransactionView = (State, sourceDocument) => d([
+    d([
+        d("Tilknyttede transaksjoner:"),
+        State.DB.get(sourceDocument, 10401)
+            ? d( State.DB.get(sourceDocument, 10402).map( transaction => transactionFlowView( State, transaction) ) )
+            : d("Ingen bokførte transaksjoner")
+        ], {class: "feedContainer"}),
+    State.DB.get(sourceDocument, 11012)
+    ? State.DB.get(sourceDocument, 10401)
+        ? d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen for å endre bilaget.")
+        : d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen først, eller velg en senere dato.")
+    : State.DB.get(sourceDocument, 10401)
+        ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(sourceDocument, 10402) )  )
+        : d([
+            State.DB.get( State.DB.get( sourceDocument, "sourceDocument/sourceDocumentType"), 7942 ).every( attribute => isDefined( State.DB.get(sourceDocument, attribute) ) )
+                ? submitButton("Bokfør", () => State.Actions["ManualTransactionsPage/recordTransaction"]( sourceDocument )   )
+                : d("Fyll ut alle felter for å bokføre"),
+            submitButton("Slett", e => State.Actions["ManualTransactionsPage/retractSourceDocument"]( sourceDocument ) )
+        ])   
+])

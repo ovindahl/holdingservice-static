@@ -125,12 +125,12 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 //----------------------------------------------------------------------
 
 
-let entityLabel = (State, entity, onClick, isSelected) => State.DB.isEntity(entity)
+let entityLabel = (State, entity, onClick ) => State.DB.isEntity(entity)
   ?  d([d( 
         getEntityLabel(State.DB, entity), 
         {
           class: "entityLabel", 
-          style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${(isSelected || State.S["AdminPage/selectedEntity"] === entity ) ? "border: 2px solid black;" : ""}`
+          style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${( State.S.selectedEntity === entity || State.S.selectedAccountingYear === entity) ? "border: 2px solid black;" : ""}`
         }, 
         "click", 
         isDefined(onClick) ? onClick : null
@@ -138,7 +138,7 @@ let entityLabel = (State, entity, onClick, isSelected) => State.DB.isEntity(enti
   : d(`[${ entity}] na.`, {class: "entityLabel", style: `background-color:gray;`})
 
 
-let entityLabelWithPopup = ( State, entity, onClick, isSelected) => {
+let entityLabelWithPopup = ( State, entity, onClick ) => {
 
   let entityTypeLabelController = {
     "7948": transactionLabel,
@@ -150,7 +150,7 @@ let entityLabelWithPopup = ( State, entity, onClick, isSelected) => {
   ? entityTypeLabelController[ State.DB.get( entity , "entity/entityType") ]( State, entity, onClick )
   : d([
       d([
-        entityLabel( State, entity, onClick, isSelected),
+        entityLabel( State, entity, onClick ),
         entityPopUp( State, entity ),
       ], {class: "popupContainer", style:"display: inline-flex;"})
     ], {style:"display: inline-flex;"} )

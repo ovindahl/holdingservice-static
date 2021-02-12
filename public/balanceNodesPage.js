@@ -90,7 +90,8 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
           br(),
           d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView( State, balanceObject, attribute ) ) ),
           br(),
-          calculatedValueViewWithLabel(State, balanceObject, 10045, State.S.selectedTransactionIndex ),
+          entityAttributeView(State, balanceObject, 8768, true),
+          entityAttributeView(State, balanceObject, 8747, true),
           State.DB.get( balanceObject, "balanceObject/balanceObjectType" ) === 8738
             ? d([
               calculatedValueViewWithLabel(State, balanceObject, 10048, State.S.selectedTransactionIndex ),
@@ -115,7 +116,8 @@ let sharedNodeView = State => {
       d([
         h3( State.DB.get(balanceObject, 6) ),
         br(),
-        entityAttributeView( State, balanceObject, 1653, true ),
+        entityAttributeView(State, balanceObject, 8768, true),
+        entityAttributeView(State, balanceObject, 8747, true),
         calculatedValueViewWithLabel(State, balanceObject, 10045, State.S.selectedTransactionIndex ),
         br(),
     ], {class: "feedContainer"})

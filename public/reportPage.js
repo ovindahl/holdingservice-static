@@ -13,7 +13,7 @@ const ReportPage = {
 let reportView = State => {
 
 
-  let accountingYearSourceDocument = State.DB.get( State.S.selectedCompany ,10073).find( sourceDocument => State.DB.get(sourceDocument, "sourceDocument/sourceDocumentType") === 10309 && State.DB.get(sourceDocument, "entity/accountingYear") === State.S.selectedAccountingYear )
+  let accountingYearSourceDocument = State.DB.get( State.S.selectedCompany ,10073).find( sourceDocument => State.DB.get(sourceDocument, "sourceDocument/sourceDocumentType") === 10309 && State.DB.get(sourceDocument, 7512) === State.S.selectedAccountingYear )
 
   return d([
     h3("Rapporter"),

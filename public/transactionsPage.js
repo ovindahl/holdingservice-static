@@ -34,7 +34,7 @@ let allTransactionsView = State => d([
   ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
   br(),  
   d( State.DB.get(State.S.selectedCompany, 9817)
-      .filter( companyTransaction => State.DB.get(companyTransaction, 10632) >= State.DB.get(State.S.selectedAccountingYear, 'accountingYear/firstDate') && State.DB.get(companyTransaction, 10632) <= State.DB.get(State.S.selectedAccountingYear, 'accountingYear/lastDate')  )
+      .filter( companyTransaction => State.DB.get(companyTransaction, 10632) >= State.DB.get( State.S.selectedAccountingYear, 'accountingYear/firstDate') && State.DB.get(companyTransaction, 10632) <= State.DB.get(State.S.selectedAccountingYear, 'accountingYear/lastDate')  )
       .map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} ),
 ])
 
@@ -60,40 +60,44 @@ let allTransactionsView = State => d([
     ])
   }
   
-  let balanceChangeView = ( State, balanceObject, companyTransaction ) => d([
+  let balanceChangeView = ( State, balanceObject, companyTransaction ) => isDefined( State.DB.get(companyTransaction, 7867) ) 
+  ? d([
     d([
-      entityLabelWithPopup(State, 10045 ),
+      d([
+        nodeLabel(State, balanceObject ),
+      ]),
       d([
         d( formatNumber( State.DB.get( balanceObject, 10045 )( State.DB.get( companyTransaction, 8354 ) - 1 ) ), {class: "redlineText", style: `text-align: right;`} ),
         d( formatNumber( State.DB.get( balanceObject, 10045 )( State.DB.get( companyTransaction, 8354 ) ) ), {style: `text-align: right;`} ),
-      ]),
+      ])
     ], {style: gridColumnsStyle("1fr 1fr")}),
-  ])
+    lockedSingleValueView(State, balanceObject, 8747),
+  ],{class: "feedContainer"}) 
+  
+  : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})
+  
+  
+  
+  
+  
+  
+  
+  
   
   let transactionFlowView = (State, companyTransaction) => d([
-    d([
-      d([ isDefined( State.DB.get(companyTransaction, 7867) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7867) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ]),
-      isDefined( State.DB.get(companyTransaction, 7867) ) 
-        ? balanceChangeView( State, State.DB.get( companyTransaction, 7867 ), companyTransaction ) 
-        : d("")
-    ]),
+    balanceChangeView( State, State.DB.get( companyTransaction, 7867 ), companyTransaction ),
     d([
       d(""),
       d([
-        d( moment( State.DB.get( companyTransaction, 10632, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
-        transactionLabel( State, companyTransaction ),
-        transactionValueView( State, companyTransaction ),
+        d( formatNumber( State.DB.get(companyTransaction, 10047), State.DB.get(companyTransaction, 10047) > 100 ? 0 : 2 ) ),
         d(" --------------> "),
+        transactionLabel( State, companyTransaction ),
+        d( moment( State.DB.get( companyTransaction, 10632, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
       ]),
       d(""),
-    ], {style: gridColumnsStyle("3fr 2fr 3fr")}),
-    d([
-      d([ isDefined( State.DB.get(companyTransaction, 7866) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7866) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}), ]) ,
-      isDefined( State.DB.get(companyTransaction, 7866) ) 
-        ? balanceChangeView( State, State.DB.get( companyTransaction, 7866 ), companyTransaction ) 
-        : d("")
-    ])
-  ], {class: "feedContainer", style: gridColumnsStyle("2fr 3fr 2fr")})
+    ], {style: gridColumnsStyle("2fr 4fr 2fr")}),
+    balanceChangeView( State, State.DB.get( companyTransaction, 7866 ), companyTransaction ),
+  ], {style: gridColumnsStyle("1fr 1fr 1fr")})
   
   // Outgoing transactions
   

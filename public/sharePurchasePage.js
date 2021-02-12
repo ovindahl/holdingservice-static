@@ -100,7 +100,8 @@ const SharePurchasesPage = {
         ])
         : d(""),
     br(),
-    d([
+    recordShareTransactionView(State, State.S.selectedEntity)
+    /* d([
         State.DB.get(State.S.selectedEntity, 10401)
             ? d([
                 d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) ),
@@ -113,10 +114,32 @@ const SharePurchasesPage = {
                 br(),
                 submitButton("Slett", () => State.Actions["SharePurchasesPage/retractSourceDocument"]( State.S.selectedEntity ))
             ]) 
-    ]) 
+    ]) */ 
   ])
 
   
 
 
 
+let recordShareTransactionView = (State, sourceDocument) => d([
+    d([
+        d("Tilknyttede transaksjoner:"),
+        State.DB.get(sourceDocument, 10401)
+            ? d( State.DB.get(sourceDocument, 10402).map( transaction => transactionFlowView( State, transaction) ) )
+            : d("Ingen bokførte transaksjoner")
+        ], {class: "feedContainer"}),
+    State.DB.get(sourceDocument, 11012)
+    ?  State.DB.get(sourceDocument, 10401)
+        ? d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen for å endre bilaget.")
+        : d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen først, eller velg en senere dato.")
+    : State.DB.get(sourceDocument, 10401)
+        ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(sourceDocument, 10402) )  )
+        : d([
+            State.DB.get( State.DB.get( sourceDocument, "sourceDocument/sourceDocumentType"), 7942 ).every( attribute => isDefined( State.DB.get(sourceDocument, attribute) ) )
+                ? State.DB.get(State.S.selectedEntity, "sourceDocument/sourceDocumentType") === 10096
+                    ? submitButton("Bokfør aksjekjøp", () => State.Actions["SharePurchasesPage/recordSharePurchase"]( State.S.selectedEntity )   )
+                    : submitButton("Bokfør aksjesalg", () => State.Actions["SharePurchasesPage/recordShareSale"]( State.S.selectedEntity )   )
+                : d("Fyll ut alle felter for å bokføre"),
+            submitButton("Slett", e => State.Actions["SharePurchasesPage/retractSourceDocument"]( sourceDocument ) )
+        ])   
+])
