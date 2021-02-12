@@ -206,7 +206,19 @@ let entityAttributeView = (State, entity, attribute, isLocked ) => d([
       : multipleValuesView( State, entity, attribute ) 
     : isLocked
       ? lockedSingleValueView( State, entity, attribute )
-      : singleValueView( State, entity, attribute ),
+      : State.DB.get(attribute, "attribute/valueType") === 32 
+        ? selectEntityView( State, entity, attribute )
+        : State.DB.get(attribute, "attribute/valueType") === 5824 
+          ? CSVuploadView( State, entity, attribute )
+          : State.DB.get(attribute, "attribute/valueType") === 40 
+            ? selectStaticOptionView( State, entity, attribute )
+            : {
+              "30": textInputView, //Tekst
+              "31": numberInputView, //Tall
+              "34": textAreaViewView, //Funksjonstekst
+              "36": boolView, //Boolean
+              "5721": dateInputView, //Dato
+            }[ State.DB.get(attribute, "attribute/valueType") ]( State, entity, attribute ),
     isLocked ? d(""): entityVersionLabel( State, entity, attribute )
 ], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
 
@@ -243,39 +255,6 @@ let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.D
     : d( State.DB.get( entity, attribute ).map( ent => entityLabelWithPopup(State, ent ) ) )
   : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( State.DB.get( entity, attribute )  ), {style: isNumber(State.DB.get( entity, attribute )) ? `text-align: right;` : ""}  )
 : d("na.")
-
-
-let singleValueView = ( State, entity, attribute  ) => {
-
-  let valueType = State.DB.get(attribute, "attribute/valueType")
-
-  let viewFunction = {
-    "30": textInput, //Tekst
-    "31": numberInput, //Tall
-    "34": textAreaView, //Funksjonstekst
-    "36": boolView, //Boolean
-    "40": optionsViews, //Velg alternativ
-    "5721": dateInput, //Dato
-    "5824": CSVuploadView, //File
-  }[ valueType ]
-
-  let formatFunction = new Function(["storedValue"], State.DB.get(valueType, "valueType/formatFunction") )
-  let storedValue = State.DB.get( entity, attribute )
-  let formattedValue = formatFunction( storedValue  )
-  let options = [32, 40].includes(valueType) ? State.DB.getOptions( attribute ) : []
-  let unFormatFunction = new Function(["submittedValue"], State.DB.get(valueType, "valueType/unformatFunction") ) 
-
-  let updateFunction = valueType === 5824
-    ? async e => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, results.data )} ) }) 
-    :  async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
-
-  return valueType === 32 
-    ? selectEntityView( State, entity, attribute  ) 
-    : viewFunction( State, formattedValue, updateFunction, options )
-
-
-}
-
 
 
 
@@ -408,41 +387,22 @@ let refsView = (State, entity, attribute, index) => {
 
 
 
-
-
-
-
 //Single valueType views
+
+let textInputView = ( State, entity, attribute ) => input( {value: State.DB.get( entity, attribute ), style: isDefined( State.DB.get( entity, attribute ) ) ? "" : "background-color: red;" }, "change", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} )  )
+let dateInputView = ( State, entity, attribute ) => input( {value: moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY'), style: isDefined( State.DB.get( entity, attribute ) ) ? "" : "background-color: red;" }, "change", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( moment( submitInputValue( e ) , 'DD/MM/YYYY').format('x') ) )} )  )
+let numberInputView = ( State, entity, attribute ) => input( {value: formatNumber( State.DB.get( entity, attribute ) ), style: isNumber( Number(State.DB.get( entity, attribute )) ) ? "text-align: right;" : "background-color: red;" }, "change", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number(submitInputValue( e ).replaceAll(' ', ''))  )} )  )
+let textAreaViewView = ( State, entity, attribute ) => textArea( isString(State.DB.get( entity, attribute )) ? State.DB.get( entity, attribute ) : JSON.stringify(State.DB.get( entity, attribute )) , {class:"textArea_code"}, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ).replaceAll(`"`, `'` ) ) } ) )
+let boolView = ( State, entity, attribute ) => input( {value: State.DB.get( entity, attribute ) ? 'Sant' : 'Usant' }, "click", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} ) )
  
-let textInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isDefined( formattedValue ) ? "" : "background-color: red;" }, "change", updateFunction  )
-let dateInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isDefined( formattedValue ) ? "" : "background-color: red;" }, "change", updateFunction  )
-let numberInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isNumber( Number(formattedValue) ) ? "text-align: right;" : "background-color: red;" }, "change", updateFunction  )
-let textAreaView = ( State, formattedValue, updateFunction ) => textArea( isString(formattedValue) ? formattedValue : JSON.stringify(formattedValue) , {class:"textArea_code"}, updateFunction )
-let boolView = ( State, formattedValue, updateFunction ) => input( {value: formattedValue}, "click", updateFunction )
-let optionsViews = ( State, formattedValue, updateFunction, options )  => dropdown( formattedValue, options , updateFunction )
-let entityRefView = ( State, formattedValue, updateFunction, options ) => {
-  let datalistID = getNewElementID()
-  return isDefined(formattedValue)
-    ? d([
-      htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
-      entityLabelWithPopup( State,  formattedValue ), 
-      input({value: formattedValue, list: datalistID, style: `text-align: right;max-width: 50px;`}, "change", updateFunction),
-      ])
-    : d([
-      htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
-      d([d("[tom]", {class: "entityLabel", style: "display: inline-flex;background-color:#7b7b7b70;text-align: center;"})], {style:"display: inline-flex;"}),
-      input({value: "", list: datalistID, style: `text-align: right;max-width: 50px;`}, "change", updateFunction),
-    ])
-}
-
-
+let selectStaticOptionView = ( State, entity, attribute )  => dropdown( State.DB.get( entity, attribute ), State.DB.getOptions( attribute ) , async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} ) )
 
 let selectEntityView = ( State, entity, attribute  ) => {
 
   let valueType = State.DB.get(attribute, "attribute/valueType")
 
   let currentSelection = State.DB.get( entity, attribute )
-  let options = [32, 40].includes(valueType) ? State.DB.getOptions( attribute ) : []
+  let options = State.DB.getOptions( attribute )
 
   let datalistID = getNewElementID()
   return d([
@@ -465,12 +425,20 @@ let selectEntityView = ( State, entity, attribute  ) => {
 
 
 
+let CSVuploadView = ( State, entity, attribute  ) => {
+
+  let valueType = State.DB.get(attribute, "attribute/valueType")
 
 
-let CSVuploadView = ( State, formattedValue, updateFunction ) => d([
-  isArray( formattedValue ) ? d( "[Opplastet fil]" ) : d("Last opp fil"),
-  input({type: "file", style: `text-align: right;`}, "change", updateFunction)
-]) 
+  let updateFunction = async e => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, results.data )} ) }) 
+  
+  
+  
+  return d([
+    isArray( State.DB.get( entity, attribute ) ) ? d( "[Opplastet fil]" ) : d("Last opp fil"),
+    input({type: "file", style: `text-align: right;`}, "change", updateFunction)
+  ]) 
+} 
 
 
 
