@@ -86,8 +86,6 @@ let singleAccountingYearView = State => {
 
   let currentAnnualResultSourceDocument = State.S.selectedEntity
 
-  log({State})
-
 return d([
   submitButton( " <---- Tilbake ", () => State.Actions["AccountingYearPage/selectAccountingYearSourceDocument"]( undefined )  ),
   d([
@@ -112,12 +110,15 @@ return d([
     State.DB.get(currentAnnualResultSourceDocument, 10401)
       ? d([
         d( State.DB.get(currentAnnualResultSourceDocument, 10402).map( transaction => transactionFlowView( State, transaction) ) ),
-        submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(currentAnnualResultSourceDocument, 10402) )  )
-        
+          State.DB.get(currentAnnualResultSourceDocument, 11037)
+            ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(currentAnnualResultSourceDocument, 10402) )  )
+            : d("Åpne senere år for å gjøre endringer")
       ])
-      : d([
-        submitButton("Bokfør skattekostnad og årsresultat, og lås året", () => State.Actions["AccountingYearPage/closeAccountingYear"]( currentAnnualResultSourceDocument ) )
-      ]) 
+      : State.DB.get(currentAnnualResultSourceDocument, 11030)
+        ? d([
+          submitButton("Bokfør skattekostnad og årsresultat, og lås året", () => State.Actions["AccountingYearPage/closeAccountingYear"]( currentAnnualResultSourceDocument ) )
+        ]) 
+        :  d("Tidligere år må avsluttes først")
   
     
     ], {class: "feedContainer"})

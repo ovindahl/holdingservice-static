@@ -135,9 +135,6 @@ let singleTransactionView = State => {
 
     let recordedTransaction = State.DB.get(State.S.selectedCompany, 9817).find( transaction => State.DB.get(transaction, 9104) === sourceDocument )
 
-    log({State})
-
-
     return d([
         submitButton( " <---- Tilbake ", () => State.Actions["BankImportPage/selectSourceDocument"]( undefined )  ),
         br(),
@@ -155,6 +152,11 @@ let singleTransactionView = State => {
         d( State.DB.get( State.DB.get( sourceDocument, "sourceDocument/sourceDocumentType"), 7942 ).filter( e => e!== 10200 ).map( attribute => entityAttributeView(State, sourceDocument, attribute, true ) ) ),
         br(),
         h3("Bokføring"),
+        entityAttributeView(State, sourceDocument, 10200, State.DB.get(sourceDocument, 10401) ),
+        recordBankTransactionView( State, sourceDocument, true ),
+/* 
+
+
         isDefined(recordedTransaction)
             ? d([
                 transactionFlowView( State, recordedTransaction),
@@ -164,7 +166,7 @@ let singleTransactionView = State => {
                 entityAttributeView(State, sourceDocument, 10200 ),
                 submitButton("Splitt i to", () => State.Actions["BankImportPage/splitTransaction"]( sourceDocument )   ),
                 submitButton("Bokfør", () => State.Actions["BankImportPage/recordSourceDocument"]( sourceDocument )   ),
-            ]) 
+            ])  */
     ])
 
 
@@ -188,8 +190,8 @@ let splitTransactionView = State => {
         entityAttributeView(State, sourceDocument, 7463, true),
         entityAttributeView(State, sourceDocument, 1757, true),
         br(),
-        h3("Bokføring"),
-        isDefined(recordedTransaction)
+        recordBankTransactionView( State, sourceDocument, false ),
+        /* isDefined(recordedTransaction)
             ? d([
                 transactionFlowView( State, recordedTransaction),
                 submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( [recordedTransaction] )  )
@@ -199,11 +201,41 @@ let splitTransactionView = State => {
                 entityAttributeView(State, sourceDocument, 10200 ),
                 submitButton("Bokfør", () => State.Actions["BankImportPage/recordSourceDocument"]( sourceDocument )   ),
                 submitButton("Slett", () => State.Actions["BankImportPage/retractSourceDocument"]( sourceDocument )   ),
-            ]) 
+            ])  */
     ])
 
 
 } 
+
+
+
+
+let recordBankTransactionView = (State, sourceDocument, canSplit) => d([
+    d([
+        d("Bokføring:"),
+        State.DB.get(sourceDocument, 10401)
+            ? d( State.DB.get(sourceDocument, 10402).map( transaction => transactionFlowView( State, transaction) ) )
+            : d("Ikke bokført")
+        ], {class: "feedContainer"}),
+        State.DB.get(sourceDocument, 11012)
+            ? d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen for å endre bilaget.")
+            : State.DB.get(sourceDocument, 10401)
+                ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(sourceDocument, 10402) )  )
+                : d([
+                    isDefined( State.DB.get(sourceDocument, 10200) )
+                        ? submitButton("Bokfør", () => State.Actions["BankImportPage/recordSourceDocument"]( sourceDocument )   )
+                        : d("Kategoriser betalingen for å bokføre"),
+                    canSplit ? submitButton("Splitt i to", () => State.Actions["BankImportPage/splitTransaction"]( sourceDocument )   ) : d("")
+                ])   
+])
+
+
+
+
+
+
+
+
 
 
 let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, index, selectedBankAccount, sourceDocument) => {

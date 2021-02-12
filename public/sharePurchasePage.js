@@ -101,20 +101,6 @@ const SharePurchasesPage = {
         : d(""),
     br(),
     recordShareTransactionView(State, State.S.selectedEntity)
-    /* d([
-        State.DB.get(State.S.selectedEntity, 10401)
-            ? d([
-                d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) ),
-                submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S.selectedEntity, 10402) )  )
-            ]) 
-            : d([
-                State.DB.get(State.S.selectedEntity, "sourceDocument/sourceDocumentType") === 10096
-                    ? submitButton("Bokfør aksjekjøp", () => State.Actions["SharePurchasesPage/recordSharePurchase"]( State.S.selectedEntity )   )
-                    : submitButton("Bokfør aksjesalg", () => State.Actions["SharePurchasesPage/recordShareSale"]( State.S.selectedEntity )   ),
-                br(),
-                submitButton("Slett", () => State.Actions["SharePurchasesPage/retractSourceDocument"]( State.S.selectedEntity ))
-            ]) 
-    ]) */ 
   ])
 
   

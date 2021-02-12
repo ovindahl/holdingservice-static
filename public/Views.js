@@ -12,7 +12,7 @@ const ClientApp = {
     selectEntity: entity => updateState( State, {S: {selectedEntity: entity}}),
     selectCompany: company => updateState( State, {
       DB: State.DB,
-      S: {selectedCompany: company, selectedPage: 7882} 
+      S: {selectedCompany: company, selectedPage: 7882, selectedEntity: undefined} 
     } ),
     postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } )
   })
