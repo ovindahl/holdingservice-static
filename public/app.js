@@ -123,7 +123,8 @@ let init = async () => {
       DB: initialDatabase,
       S: {
         selectedCompany: 6829,
-        selectedPage: 7882
+        selectedPage: 7882,
+        selectedAccountingYear: 7407
       }
       } )
     

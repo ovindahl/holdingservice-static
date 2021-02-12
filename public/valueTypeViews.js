@@ -125,6 +125,34 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 //----------------------------------------------------------------------
 
 
+//---
+  
+let sourceDocumentLabelText = (State, sourceDocument, onclick) => d([d(
+  "Bilag: " + State.DB.get(sourceDocument, 6), 
+  {class: "entityLabel", style: `background-color:#ffc10785;`}, 
+  "click", 
+  isDefined(onclick) 
+    ? onclick 
+    : () => State.Actions.selectSourceDocument( sourceDocument ) 
+  )], {style:"display: flex;"})
+  
+let sourceDocumentLabel = (State, sourceDocument, onclick) => d([
+  d([
+    sourceDocumentLabelText( State, sourceDocument, onclick ),
+    sourceDocumentPopUp( State, sourceDocument ),
+  ], {class: "popupContainer", style:"display: inline-flex;"})
+  ], {style:"display: inline-flex;"} )
+
+let sourceDocumentPopUp = (State, sourceDocument) => d([
+  sourceDocumentLabelText( State, sourceDocument ),
+  entityLabelWithPopup( State, State.DB.get(sourceDocument, 10070) ),
+  br(),
+  d(`Entitet: ${sourceDocument}`)
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;width: 400px;"})
+
+//--------
+
+
 let entityLabel = (State, entity, onClick ) => State.DB.isEntity(entity)
   ?  d([d( 
         getEntityLabel(State.DB, entity), 
@@ -144,6 +172,7 @@ let entityLabelWithPopup = ( State, entity, onClick ) => {
     "7948": transactionLabel,
     "7979": actorLabel,
     "7932": nodeLabel,
+    "10062": sourceDocumentLabel
   }
 
   return isDefined( entityTypeLabelController[ State.DB.get(entity  , "entity/entityType") ])

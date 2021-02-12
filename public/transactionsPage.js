@@ -3,7 +3,7 @@
 
 const TransactionsPage = {
     entity: 7882,
-    onLoad: State => returnObject({selectedAccountingYear: State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0], selectedEntity: undefined}),
+    onLoad: State => returnObject({selectedAccountingYear: 7407, selectedEntity: undefined}),
     Actions: State => returnObject({
       "TransactionsPage/selectAccountingYear": accountingYear => updateState( State, {S: {selectedAccountingYear: accountingYear}}),
       "TransactionsPage/selectTransaction": transaction => updateState( State, {S: {selectedPage: 7882, selectedEntity: transaction}}),
@@ -33,9 +33,10 @@ let allTransactionsView = State => d([
     d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
   ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
   br(),  
-  d( State.DB.get(State.S.selectedCompany, 9817)
-      .filter( companyTransaction => State.DB.get(companyTransaction, 10632) >= State.DB.get( State.S.selectedAccountingYear, 'accountingYear/firstDate') && State.DB.get(companyTransaction, 10632) <= State.DB.get(State.S.selectedAccountingYear, 'accountingYear/lastDate')  )
-      .map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} ),
+  State.DB.get(State.S.selectedCompany, 11092)( State.S.selectedAccountingYear ).length > 0 
+    ? d( State.DB.get(State.S.selectedCompany, 11092)( State.S.selectedAccountingYear )
+      .map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} )
+    : d("Ingen transaksjoner i valgt regnskapsår"),
 ])
 
   
@@ -75,12 +76,6 @@ let allTransactionsView = State => d([
   ],{class: "feedContainer"}) 
   
   : d([d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})])
-  
-  
-  
-  
-  
-  
   
   
   
