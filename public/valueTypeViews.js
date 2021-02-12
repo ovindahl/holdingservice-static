@@ -215,6 +215,7 @@ let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.D
   : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( State.DB.get( entity, attribute )  ), {style: isNumber(State.DB.get( entity, attribute )) ? `text-align: right;` : ""}  )
 : d("na.")
 
+
 let singleValueView = ( State, entity, attribute  ) => {
 
   let valueType = State.DB.get(attribute, "attribute/valueType")
@@ -225,7 +226,6 @@ let singleValueView = ( State, entity, attribute  ) => {
     "34": textAreaView, //Funksjonstekst
     "36": boolView, //Boolean
     "40": optionsViews, //Velg alternativ
-    "32": entityRefView,
     "5721": dateInput, //Dato
     "5824": CSVuploadView, //File
   }[ valueType ]
@@ -233,17 +233,22 @@ let singleValueView = ( State, entity, attribute  ) => {
   let formatFunction = new Function(["storedValue"], State.DB.get(valueType, "valueType/formatFunction") )
   let storedValue = State.DB.get( entity, attribute )
   let formattedValue = formatFunction( storedValue  )
+  let options = [32, 40].includes(valueType) ? State.DB.getOptions( attribute ) : []
   let unFormatFunction = new Function(["submittedValue"], State.DB.get(valueType, "valueType/unformatFunction") ) 
+
   let updateFunction = valueType === 5824
     ? async e => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, results.data )} ) }) 
-    : async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
+    :  async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, unFormatFunction( submitInputValue( e ) ) )} )
 
-  let options = [32, 40].includes(valueType) ? State.DB.getOptions( attribute ) : []
-  let valueView = viewFunction( State, formattedValue, updateFunction, options )
-  return valueView
+  return valueType === 32 
+    ? selectEntityView( State, entity, attribute  ) 
+    : viewFunction( State, formattedValue, updateFunction, options )
 
 
 }
+
+
+
 
 let multipleValuesView = (State, entity, attribute) => {
 
@@ -365,6 +370,19 @@ let refsView = (State, entity, attribute, index) => {
 
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 //Single valueType views
  
 let textInput = ( State, formattedValue, updateFunction ) => input( {value: formattedValue, style: isDefined( formattedValue ) ? "" : "background-color: red;" }, "change", updateFunction  )
@@ -375,12 +393,51 @@ let boolView = ( State, formattedValue, updateFunction ) => input( {value: forma
 let optionsViews = ( State, formattedValue, updateFunction, options )  => dropdown( formattedValue, options , updateFunction )
 let entityRefView = ( State, formattedValue, updateFunction, options ) => {
   let datalistID = getNewElementID()
-  return d([
-    htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
-    entityLabelWithPopup( State,  formattedValue ), 
-    input({value: formattedValue, list: datalistID, style: `text-align: right;max-width: 50px;`}, "change", updateFunction),
+  return isDefined(formattedValue)
+    ? d([
+      htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
+      entityLabelWithPopup( State,  formattedValue ), 
+      input({value: formattedValue, list: datalistID, style: `text-align: right;max-width: 50px;`}, "change", updateFunction),
+      ])
+    : d([
+      htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
+      d([d("[tom]", {class: "entityLabel", style: "display: inline-flex;background-color:#7b7b7b70;text-align: center;"})], {style:"display: inline-flex;"}),
+      input({value: "", list: datalistID, style: `text-align: right;max-width: 50px;`}, "change", updateFunction),
     ])
 }
+
+
+
+let selectEntityView = ( State, entity, attribute  ) => {
+
+  let valueType = State.DB.get(attribute, "attribute/valueType")
+
+  let currentSelection = State.DB.get( entity, attribute )
+  let options = [32, 40].includes(valueType) ? State.DB.getOptions( attribute ) : []
+
+  let datalistID = getNewElementID()
+  return d([
+    htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
+    isDefined(currentSelection) 
+      ? entityLabelWithPopup( State,  currentSelection ) 
+      : d([d("[tom]", {class: "entityLabel", style: "display: inline-flex;background-color:#7b7b7b70;text-align: center;"})], {style:"display: inline-flex;"}),
+    options.length > 0 
+      ? input(
+        {value: "", list: datalistID, style: `text-align: right;max-width: 50px;`}
+        , "change", 
+        async e => options.map( opt => opt.value ).includes( Number( e.srcElement.value ) ) 
+          ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( e.srcElement.value ) )} ) 
+          : null 
+        ) 
+      : d("Ingen tilgjengelige alternativer"),
+  ])
+}
+
+
+
+
+
+
 let CSVuploadView = ( State, formattedValue, updateFunction ) => d([
   isArray( formattedValue ) ? d( "[Opplastet fil]" ) : d("Last opp fil"),
   input({type: "file", style: `text-align: right;`}, "change", updateFunction)

@@ -74,7 +74,7 @@ let allTransactionsView = State => d([
     lockedSingleValueView(State, balanceObject, 8747),
   ],{class: "feedContainer"}) 
   
-  : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})
+  : d([d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})])
   
   
   
