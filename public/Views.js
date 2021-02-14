@@ -43,8 +43,10 @@ let clientPage = State => {
     "9338": graphView,
     "10025": adminPage,
     "10041": sharePurchaseView,
+    "10039": operatingCostView,
     "10042": manualTransactionsView,
-    "10464": reportView
+    "10464": reportView,
+    
   }
   
   return d([
