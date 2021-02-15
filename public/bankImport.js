@@ -17,33 +17,75 @@ const BankImportPage = {
             let existingIDs = State.DB.get(State.S.selectedCompany, 9817).map( transaction =>  State.DB.get(transaction, 1080)  ).filter( id => isDefined(id) )
             let unImportedRows = importedFile.filter( row => row.length > 1 ).slice(5).filter( row => !existingIDs.includes(row[7])  )
             let bankAccount = State.DB.get( sourceDocument, 7463 )
-
             let newDatoms = unImportedRows.map( (transactionRow, index) => constructBankTransactionSourceDocumentDatoms(State, transactionRow, index, bankAccount, sourceDocument)  ).flat()
-
             State.Actions.postDatoms( newDatoms )
-
 
         },
         "BankImportPage/splitTransaction": sourceDocument => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-            newDatom( 'newEntity' , "sourceDocument/sourceDocumentType", 10465 ), 
-            newDatom( 'newEntity' , 9084, State.DB.get(sourceDocument, 9084) ), 
+            newDatom( 'newEntity' , "sourceDocument/sourceDocumentType", 10132 ), 
+            newDatom( 'newEntity' , "transaction/paymentType", State.DB.get(sourceDocument, 9084) ), 
             newDatom( 'newEntity' , 9011, sourceDocument ), 
             newDatom( 'newEntity' , 7463, State.DB.get(sourceDocument, 7463) ), 
             newDatom( 'newEntity' , 1757, State.DB.get(sourceDocument, 1757) ), 
             newDatom( 'newEntity' , 1083, 0 ), 
+            newDatom( 'newEntity', 8831, State.DB.get(sourceDocument, 8831)  ),
+            newDatom( 'newEntity', "bankTransaction/referenceNumber", State.DB.get(sourceDocument, 1080)  ),
+            newDatom( 'newEntity', "entity/sourceDocument", State.DB.get(sourceDocument, 9104) ),
             newDatom( 'newEntity' , "entity/label", "Splittet banktransaksjon" ), 
         ] ),
-        "BankImportPage/recordSourceDocument": sourceDocument => State.Actions.postDatoms( [
-            newDatom( "newEntity" , 'entity/entityType', 7948 ),
-            newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity" , "transaction/transactionType", State.DB.get( sourceDocument, 9084) === 9086 ? 8955 : 8975 ), 
-            newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity" , "transaction/originNode", State.DB.get( sourceDocument, 9084) === 9086 ? State.DB.get( sourceDocument, 7463) : State.DB.get( sourceDocument, 10200) ),
-            newDatom( "newEntity" , "transaction/destinationNode", State.DB.get( sourceDocument, 9084) === 9086 ? State.DB.get( sourceDocument, 10200) : State.DB.get( sourceDocument, 7463) ),
-            newDatom( "newEntity" , "eventAttribute/1139", "Bankbetaling" )
-          ])
+        "BankImportPage/createSecurityPurchase": sourceDocument => State.Actions.postDatoms([
+            newDatom( "newEntity", "entity/entityType", 10062 ),
+            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10096 ),
+            newDatom( "newEntity", "sourceDocument/securityTransactionType", 11170 ),
+            newDatom( "newEntity", 1757, State.DB.get(sourceDocument, 1757) ),
+            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+            newDatom( 'newEntity' , "entity/label", "Verdipapirkjøp" ), 
+            newDatom( 'newEntity' , "eventAttribute/1139", "Nytt aksjekjøp" ), 
+            newDatom( 'newEntity' , 11177, false ), 
+            newDatom( 'newEntity' , 11180, sourceDocument ), 
+        ] ),
+        "BankImportPage/createSecuritySale": sourceDocument => State.Actions.postDatoms([
+            newDatom( "newEntity", "entity/entityType", 10062 ),
+            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10111 ),
+            newDatom( "newEntity", "sourceDocument/securityTransactionType", 11171 ),
+            newDatom( "newEntity", 1757, State.DB.get(sourceDocument, 1757) ),
+            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+            newDatom( 'newEntity' , "entity/label", "Verdipapirsalg" ), 
+            newDatom( 'newEntity' , "eventAttribute/1139", "Nytt aksjesalg" ), 
+            newDatom( 'newEntity' , 11177, false ), 
+            newDatom( 'newEntity' , 11180, sourceDocument ), 
+        ] ),
+        "BankImportPage/createOperatingCost": sourceDocument => State.Actions.postDatoms([
+            newDatom( "newEntity", "entity/entityType", 10062 ),
+            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10165 ),
+            newDatom( "newEntity", 1757, State.DB.get(sourceDocument, 1757) ),
+            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+            newDatom( 'newEntity' , "entity/label", "Driftskostnad" ), 
+            newDatom( 'newEntity' , "eventAttribute/1139", "Ny driftskostnad" ), 
+            newDatom( 'newEntity' , 11177, false ), 
+            newDatom( 'newEntity' , 11180, sourceDocument ), 
+        ] ),
+        "BankImportPage/createInterestIncome": sourceDocument => State.Actions.postDatoms([
+            newDatom( "newEntity", "entity/entityType", 10062 ),
+            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 11395 ),
+            newDatom( "newEntity", 1757, State.DB.get(sourceDocument, 1757) ),
+            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+            newDatom( 'newEntity' , "eventAttribute/1139", "Ny renteinntekt" ), 
+            newDatom( 'newEntity' , "entity/label", "Renteinntekt" ), 
+            newDatom( 'newEntity' , 11396, false ), 
+            newDatom( 'newEntity' , 11180, sourceDocument ), 
+            
+        ] ),
+        "BankImportPage/createPayment": sourceDocument => State.Actions.postDatoms([
+            newDatom( "newEntity", "entity/entityType", 10062 ),
+            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 11350 ),
+            newDatom( "newEntity", 1757, State.DB.get(sourceDocument, 1757) ),
+            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+            newDatom( 'newEntity' , "entity/label", "Betaling mot gjeld/fordring" ), 
+            newDatom( 'newEntity' , 11180, sourceDocument ), 
+        ] ),
     })
   }
 
@@ -51,9 +93,7 @@ const BankImportPage = {
 let bankImportView = State => isDefined( State.S.selectedEntity) 
     ? State.DB.get(State.S.selectedEntity, 10070) === 10064
         ? singleBankImportView( State )
-        : State.DB.get(State.S.selectedEntity, "sourceDocument/sourceDocumentType") === 10465
-            ? splitTransactionView( State )
-            : singleTransactionView( State )
+        : singleTransactionView( State )
     : allBankImportsView( State )
 
 let allBankImportsView = State => d([
@@ -79,23 +119,21 @@ let allBankImportsView = State => d([
 
 let importedTransactionsTableView = (State, transactions) => d([
     d([
-        entityLabelWithPopup( State, 7463 ),
-        entityLabelWithPopup( State, 9084 ),
         entityLabelWithPopup( State, 1757 ),
         entityLabelWithPopup( State, 8831 ),
         entityLabelWithPopup( State, 10107 ),
         entityLabelWithPopup( State, 11201 ),
         d("")
-    ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr 1fr 1fr 1fr")}),
+    ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")}),
     d( transactions .map( sourceDocument => d([
-        lockedSingleValueView( State, sourceDocument, 7463, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
-        lockedSingleValueView( State, sourceDocument, 9084, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
         lockedSingleValueView( State, sourceDocument, 1757 ),
         lockedSingleValueView( State, sourceDocument, 8831 ),
         d( formatNumber( State.DB.get(sourceDocument, 10107) ), {style: `text-align: right;color:${State.DB.get(sourceDocument, 9084) === 9086 ? "red" : "black"} ;`} ),
-        d(State.DB.get(sourceDocument, 11201) ? "✅" : "🚧"),
+        isDefined( State.DB.get(sourceDocument, 11201) )
+            ? entityLabelWithPopup( State, State.DB.get(sourceDocument, 11201) )
+            : d([d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})], {style:"display: inline-flex;"}) ,
         submitButton( "Vis", () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ))
-    ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr 1fr 1fr 1fr")}) ))
+    ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")}) ))
 ]) 
   
 let singleBankImportView = State => {
@@ -127,137 +165,79 @@ return d([
 } 
 
 
+let splitView_parent = (State, sourceDocument)  => d([
+    h3("Splitting"),
+    State.DB.get( sourceDocument, 9030 ).length > 0
+        ? d([
+            entityAttributeView(State, sourceDocument, 9030, true ),
+            entityAttributeView(State, sourceDocument, 10470, true ),
+            ])
+        : d("Transaksjonen er ikke splittet"),
+        State.DB.get( sourceDocument, 11201 )
+            ? d("Kan ikke splitte matchet transaksjon")
+            : submitButton("Splitt transaksjonen", () => State.Actions["BankImportPage/splitTransaction"]( sourceDocument )   )
+    ], {class: "feedContainer"})
+
+let splitView_child = (State, sourceDocument)  => d([
+    h3("Splitting"),
+    entityAttributeView(State, sourceDocument, 9011, true),
+    entityAttributeView(State, sourceDocument, 1083, isDefined( State.DB.get( sourceDocument, 11201 ) ) ),
+    isDefined( State.DB.get( sourceDocument, 11201 ) )
+        ? d("")
+        : submitButton("Slett", () => State.Actions["BankImportPage/retractSourceDocument"](sourceDocument) )
+], {class: "feedContainer"})
+
 let singleTransactionView = State => {
 
-    let sourceDocument = State.S.selectedEntity
-
-
     return d([
         submitButton( " <---- Tilbake ", () => State.Actions["BankImportPage/selectSourceDocument"]( undefined )  ),
         br(),
-        h3("Importert banktransaksjon"),
-        entityAttributeView(State, sourceDocument, 10070, true),
-        entityAttributeView(State, sourceDocument, 9104, true),
+        entityAttributeView(State, State.S.selectedEntity, 10070, true),
         br(),
-        State.DB.get( sourceDocument, 9030).length > 0
-            ? d([
-                entityAttributeView(State, sourceDocument, 9030, true ),
-                entityAttributeView(State, sourceDocument, 10470, true ),
-                br()
-                ])
-            : d(""),
-        d( State.DB.get( State.DB.get( sourceDocument, "sourceDocument/sourceDocumentType"), 7942 ).filter( e => e!== 10200 ).map( attribute => entityAttributeView(State, sourceDocument, attribute, true ) ) ),
+        isDefined( State.DB.get(State.S.selectedEntity, 9011) )
+            ? splitView_child( State, State.S.selectedEntity )
+            : d([
+                d([
+                    h3("Importerte transaksjonsdata"),
+                    d( State.DB.get( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType"), 7942 ).filter( e => e!== 10200 ).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, true ) ) ),
+                ], {class: "feedContainer"}),
+                splitView_parent( State, State.S.selectedEntity )
+            ]),
         br(),
-        h3("Bokføring"),
-
-        isDefined( State.DB.get( sourceDocument, 11201 ) )
-                ? d([
-                    entityAttributeView(State, sourceDocument, 11201, true),
-                    d( State.DB.get(State.DB.get( sourceDocument, 11201 ), 10402).map( transaction => transactionFlowView( State, transaction) ) )
-                ])
-                : d([
-                    entityAttributeView(State, sourceDocument, 10200, State.DB.get(sourceDocument, 10401) ),
-                    recordBankTransactionView( State, sourceDocument, true ),
-                ])
-        
-        
-    ])
-
+        matchingView( State, State.S.selectedEntity ),
+        isDefined( State.DB.get( State.S.selectedEntity, 11201 ) )
+            ? d("")
+            : actionsView( State, State.S.selectedEntity )
+    ])  
 
 } 
 
+let actionsView = (State, sourceDocument) => d([
+    h3("Snarveier:"),
+    State.DB.get(sourceDocument, 9084) === 9086 
+        ? submitButton("Opprett og match med verdipapirkjøp", () => State.Actions["BankImportPage/createSecurityPurchase"]( sourceDocument )  ) 
+        : d("[na.] Opprett og match med verdipapirkjøp" , {style: "background-color: #80808054;"}),
+    State.DB.get(sourceDocument, 9084) === 9087 
+    ? submitButton("Opprett og match med verdipapirsalg", () => State.Actions["BankImportPage/createSecuritySale"]( sourceDocument )  ) 
+    : d("[na.] Opprett og match med verdipapirsalg" , {style: "background-color: #80808054;"}),
+    State.DB.get(sourceDocument, 9084) === 9086 
+    ? submitButton("Opprett og match med driftskostnad", () => State.Actions["BankImportPage/createOperatingCost"]( sourceDocument )  ) 
+    : d("[na.] Opprett og match med driftskostnad" , {style: "background-color: #80808054;"}),
+    State.DB.get(sourceDocument, 9084) === 9087 
+    ? submitButton("Opprett og match med renteinntekt", () => State.Actions["BankImportPage/createInterestIncome"]( sourceDocument )  )
+    : d("[na.] Opprett og match med renteinntekt" , {style: "background-color: #80808054;"}),
+    submitButton("Opprett og match med betaling mot gjeld/fordring", () => State.Actions["BankImportPage/createPayment"]( sourceDocument ) )
+], {class: "feedContainer"})
 
 
-let splitTransactionView = State => {
-
-    let sourceDocument = State.S.selectedEntity
-
-    let recordedTransaction = State.DB.get(State.S.selectedCompany, 9817).find( transaction => State.DB.get(transaction, 9104) === sourceDocument )
-
-
-    return d([
-        submitButton( " <---- Tilbake ", () => State.Actions["BankImportPage/selectSourceDocument"]( undefined )  ),
-        br(),
-        h3("Splittet banktransaksjon"),
-        entityAttributeView(State, sourceDocument, 10070, true),
-        entityAttributeView(State, sourceDocument, 9011, true),
-        entityAttributeView(State, sourceDocument, 7463, true),
-        entityAttributeView(State, sourceDocument, 1757, true),
-        br(),
-        entityAttributeView(State, sourceDocument, 1083, isDefined(recordedTransaction) ),
-        entityAttributeView(State, sourceDocument, 10200, isDefined(recordedTransaction) ),
-        recordBankTransactionView( State, sourceDocument, false ),
-        isDefined(recordedTransaction) ? d("") : submitButton("Slett", () => State.Actions["BankImportPage/retractSourceDocument"](sourceDocument) )
+let matchingView = (State, sourceDocument) => d([
+    h3("Matching av banktransaksjon"),
+    isDefined( State.DB.get( sourceDocument, 11201 ) )
+    ? d([
+        entityAttributeView(State, sourceDocument, 11201, true),
     ])
-
-
-} 
-
-
-
-
-let recordBankTransactionView = (State, sourceDocument, canSplit) => d([
-    d([
-        d("Bokføring:"),
-        State.DB.get(sourceDocument, 10401)
-            ? d( State.DB.get(sourceDocument, 10402).map( transaction => transactionFlowView( State, transaction) ) )
-            : d("Ikke bokført")
-        ], {class: "feedContainer"}),
-        State.DB.get(sourceDocument, 11012)
-            ? d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen for å endre bilaget.")
-            : State.DB.get(sourceDocument, 10401)
-                ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(sourceDocument, 10402) )  )
-                : d([
-                    isDefined( State.DB.get(sourceDocument, 10200) )
-                        ? submitButton("Bokfør", () => State.Actions["BankImportPage/recordSourceDocument"]( sourceDocument )   )
-                        : d("Kategoriser betalingen for å bokføre"),
-                    canSplit ? submitButton("Splitt i to", () => State.Actions["BankImportPage/splitTransaction"]( sourceDocument )   ) : d(""),
-
-                    State.DB.get(sourceDocument, 9084) === 9086 
-                        ? d([
-                            submitButton("Bruk til å opprette verdipapirkjøp", () => State.Actions.postDatoms([
-                                newDatom( "newEntity", "entity/entityType", 10062 ),
-                                newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10096 ),
-                                newDatom( "newEntity", "sourceDocument/securityTransactionType", 11170 ),
-                                newDatom( "newEntity", 1757, State.DB.get(sourceDocument, 1757) ),
-                                newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-                                newDatom( 'newEntity' , "eventAttribute/1139", "Nytt aksjekjøp" ), 
-                                newDatom( 'newEntity' , 11177, false ), 
-                                newDatom( 'newEntity' , 11180, sourceDocument ), 
-                            ] )  ),
-                            submitButton("Bruk til å opprette driftskostnad", () => State.Actions.postDatoms([
-                                newDatom( "newEntity", "entity/entityType", 10062 ),
-                                newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10165 ),
-                                newDatom( "newEntity", 1757, State.DB.get(sourceDocument, 1757) ),
-                                newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-                                newDatom( 'newEntity' , "eventAttribute/1139", "Ny driftskostnad" ), 
-                                newDatom( 'newEntity' , 11177, false ), 
-                                newDatom( 'newEntity' , 11180, sourceDocument ), 
-                            ] )  )
-                        ])
-                        : d([
-                            submitButton("Bruk til å opprette verdipapirsalg", () => State.Actions.postDatoms([
-                                newDatom( "newEntity", "entity/entityType", 10062 ),
-                                newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10111 ),
-                                newDatom( "newEntity", "sourceDocument/securityTransactionType", 11171 ),
-                                newDatom( "newEntity", 1757, State.DB.get(sourceDocument, 1757) ),
-                                newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-                                newDatom( 'newEntity' , "eventAttribute/1139", "Nytt aksjesalg" ), 
-                                newDatom( 'newEntity' , 11177, false ), 
-                                newDatom( 'newEntity' , 11180, sourceDocument ), 
-                            ] )  )
-                        ])
-
-                    
-                ])   
-])
-
-
-
-
-
-
-
+    : d("Banktransaksjonen er ikke matchet")
+], {class: "feedContainer"}) 
 
 
 
@@ -283,7 +263,7 @@ let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, inde
     let Datoms = [
       newDatom( "newDatom_"+ index, "entity/entityType", 10062  ),
       newDatom( "newDatom_"+ index, "entity/company", State.S.selectedCompany  ),
-      newDatom( "newDatom_"+ index, 10070, 10132 ),
+      newDatom( "newDatom_"+ index, "sourceDocument/sourceDocumentType", 10132 ),
       newDatom( "newDatom_"+ index, "transaction/paymentType", isPayment ? 9086 : 9087 ),
       newDatom( "newDatom_"+ index, 1757, date  ),
       newDatom( "newDatom_"+ index, 7463, selectedBankAccount),

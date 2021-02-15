@@ -128,8 +128,10 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 //---
   
 let sourceDocumentLabelText = (State, sourceDocument, onclick) => d([d(
-  "Bilag: " + State.DB.get(sourceDocument, 6), 
-  {class: "entityLabel", style: `background-color:#ffc10785;`}, 
+  State.DB.get(sourceDocument, 10070) === 10132
+    ? `[${ moment( State.DB.get(sourceDocument, 1757) ).format('DD/MM/YYYY')}] Banktransaksjon: ${formatNumber( State.DB.get(sourceDocument, 10107) ) } `
+    : `${State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"} ${State.DB.get(State.DB.get(sourceDocument, 10070), 6)}`,
+  {class: "entityLabel", style: `background-color: ${State.DB.get(sourceDocument, 10070) === 10132 ? "#75c6bf" : "#ffc10785"} ;`}, 
   "click", 
   isDefined(onclick) 
     ? onclick 

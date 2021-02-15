@@ -44,6 +44,8 @@ let clientPage = State => {
     "10025": adminPage,
     "10041": sharePurchaseView,
     "10039": operatingCostView,
+    "11349": paymentsView,
+    "10040": interestView,
     "10042": manualTransactionsView,
     "10464": reportView,
     
