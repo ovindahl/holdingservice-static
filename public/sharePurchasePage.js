@@ -88,6 +88,7 @@ const SharePurchasesPage = {
     br(),
     entityAttributeView(State, State.S.selectedEntity, 10070, true ),
     entityAttributeView(State, State.S.selectedEntity, 11174, true ),
+    entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 10401) ),
     br(),
     entityAttributeView(State, State.S.selectedEntity, 1757, State.DB.get(State.S.selectedEntity, 10401) ),
     entityAttributeView(State, State.S.selectedEntity, 7048, State.DB.get(State.S.selectedEntity, 10401) ),

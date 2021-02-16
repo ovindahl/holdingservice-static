@@ -58,7 +58,7 @@ const ManualTransactionsPage = {
         submitButton( " <---- Tilbake ", () => State.Actions["ManualTransactionsPage/selectSourceDocument"]( undefined )  ),
         br(),
         entityAttributeView(State, State.S.selectedEntity, 10070, true),
-        entityAttributeView(State, State.S.selectedEntity, 11477, false),
+        entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 10401) ),
         br(),
         isDefined( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType") ) 
             ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 10401) ) ) ) 
