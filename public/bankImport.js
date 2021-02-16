@@ -91,7 +91,7 @@ const BankImportPage = {
 let bankImportView = State => isDefined( State.S.selectedEntity) 
     ? State.DB.get(State.S.selectedEntity, 10070) === 10064
         ? singleBankImportView( State )
-        : singleTransactionView( State )
+        : singleBankTransactionView( State )
     : allBankImportsView( State )
 
 let allBankImportsView = State => d([
@@ -185,7 +185,7 @@ let splitView_child = (State, sourceDocument)  => d([
         : submitButton("Slett", () => State.Actions.retractEntity( sourceDocument ) )
 ], {class: "feedContainer"})
 
-let singleTransactionView = State => {
+let singleBankTransactionView = State => {
 
     return d([
         submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, BankImportPage.entity )  ),
