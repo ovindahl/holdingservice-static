@@ -120,7 +120,7 @@ let stateView = State => {
           let file = e.srcElement.files[0]
 
           const formData = new FormData();
-          formData.append("file", file, "filename");
+          formData.append("file", file);
 
           log({file, formData, test: formData.get("file") })
 
