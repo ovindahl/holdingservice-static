@@ -2,7 +2,6 @@ const AdminPage = {
     entity: 10025,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-      "adminPage/selectEntity": entity => updateState( State, {S: {selectedEntity: entity}}),
       createEntity: async (entityType, entityDatoms) => updateState( State, {DB: await Transactor.createEntity( State.DB, entityType, entityDatoms )  } ),
       retractEntities: async entities => updateState( State, {DB: await Transactor.retractEntities(State.DB, entities)} ),
       duplicateEntity: async entity => {
@@ -38,8 +37,8 @@ let prevNextEntityButtonsView = State => {
   let nextEntity = entities[ entities.findIndex( t => t === State.S.selectedEntity ) + 1 ]
 
   return d([
-    isDefined( prevEntity ) >= 1 ? submitButton("<", () => State.Actions["adminPage/selectEntity"]( prevEntity ) ) : d(""),
-    isDefined( nextEntity ) < entities.length ? submitButton(">", () => State.Actions["adminPage/selectEntity"]( nextEntity ) ) : d(""),
+    isDefined( prevEntity ) >= 1 ? submitButton("<", () => State.Actions.selectEntity( prevEntity, AdminPage.entity ) ) : d(""),
+    isDefined( nextEntity ) < entities.length ? submitButton(">", () => State.Actions.selectEntity( nextEntity, AdminPage.entity ) ) : d(""),
   ], {style: gridColumnsStyle("3fr 1fr")})
 }
 
@@ -48,7 +47,7 @@ let entityView = (State, entity) => isDefined(entity)
     ? d([
       d([
         d([span( `Entitet`, ``, {class: "entityLabel", style: `background-color: #7463ec7a;`})], {style:"display: inline-flex;"}),
-        entityLabelWithPopup( State, entity, () => State.Actions["adminPage/selectEntity"]( entity )),
+        entityLabelWithPopup( State, entity, () => State.Actions.selectEntity( entity, AdminPage.entity ) ),
         prevNextEntityButtonsView( State )
       ], {class: "columns_1_1_1"}),
       d( State.DB.get( State.DB.get(entity, "entity/entityType"), "entityType/attributes" ).map( attribute => entityAttributeView(State, entity, attribute) ) ),
@@ -91,10 +90,10 @@ let entityVersionPopup = (State, entity, attribute) => {
 
 let adminPage = State => d([
     d([
-      entityLabelWithPopup( State,  47, () => State.Actions["adminPage/selectEntity"]( 47 ) ),
+      entityLabelWithPopup( State,  47, () => State.Actions.selectEntity( 47, AdminPage.entity ) ),
       span(" / "  ),
       isDefined(State.S.selectedEntity)
-        ? entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity, "entity/entityType"), () => State.Actions["adminPage/selectEntity"]( State.DB.get(State.S.selectedEntity, "entity/entityType") )   )
+        ? entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity, "entity/entityType"), () => State.Actions.selectEntity( State.DB.get(State.S.selectedEntity, "entity/entityType"), AdminPage.entity )   )
         : span(" ... "),
       span(" / "  ),
       isDefined(State.S.selectedEntity)
@@ -116,12 +115,12 @@ let adminPage = State => d([
   ])
   
   let multipleEntitiesView = (State, entityType) => d([
-    entityLabelWithPopup( State, entityType, () => State.Actions["adminPage/selectEntity"]( entityType )),
+    entityLabelWithPopup( State, entityType, () => State.Actions.selectEntity( entityType, AdminPage.entity )),
     d(State.DB.getAll( entityType   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
       h3(category),
-      d(State.DB.getAll(entityType).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( entity => entityLabelWithPopup( State, entity, () => State.Actions["adminPage/selectEntity"]( entity ) ) ) ),
+      d(State.DB.getAll(entityType).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( entity => entityLabelWithPopup( State, entity, () => State.Actions.selectEntity( entity, AdminPage.entity ) ) ) ),
     ])  ) ),
     br(),
     h3("Mangler type"),
-    d( State.DB.getAll(undefined).map( entity => entityLabelWithPopup( State, entity, () => State.Actions["adminPage/selectEntity"]( entity ) ) ) )
+    d( State.DB.getAll(undefined).map( entity => entityLabelWithPopup( State, entity, () => State.Actions.selectEntity( entity, AdminPage.entity ) ) ) )
   ],{class: "feedContainer"})

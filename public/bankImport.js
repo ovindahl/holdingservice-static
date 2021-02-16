@@ -237,8 +237,6 @@ let matchingView = (State, sourceDocument) => d([
     : d("Banktransaksjonen er ikke matchet")
 ], {class: "feedContainer"}) 
 
-
-
 let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, index, selectedBankAccount, sourceDocument) => {
 
     let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 

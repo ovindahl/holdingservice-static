@@ -24,12 +24,11 @@ const OperatingCostPage = {
   }
 
 
-  
-  let operatingCostView = State => isDefined( State.S.selectedEntity ) 
+let operatingCostView = State => isDefined( State.S.selectedEntity ) 
     ? singleOperatingCostView( State )
     : allOperatingCostsView( State )
   
-  let allOperatingCostsView = State => d([
+let allOperatingCostsView = State => d([
     h3("Alle driftskostnader"),
     d([
         entityLabelWithPopup( State, 1757 ),

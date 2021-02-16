@@ -32,6 +32,7 @@ app.get("/", (req,res)=>{res.send(`
         <script src="https://momentjs.com/downloads/moment-with-locales.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.18.0/dist/cytoscape.min.js"></script>
         <script src="/static/valueTypeViews.js"></script>
+        <script src="/static/entityLabel.js"></script>
         <script src="/static/Views.js"></script>
         <script src="/static/adminPage.js"></script>
         <script src="/static/balanceNodesPage.js"></script>

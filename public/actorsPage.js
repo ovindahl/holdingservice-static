@@ -10,22 +10,6 @@ const ActorsPage = {
 
 
   
-  let actorLabelText = (State, actor, onclick) => d([d( State.DB.get(actor, 8668) === 8666 ? State.DB.get(actor, 1001) : State.DB.get(actor, 1113) , {class: "entityLabel", style: `background-color:#bfd1077a;`}, "click", isDefined(onclick) ? onclick : () => State.Actions["ActorsPage/selectActor"](actor) )], {style:"display: flex;"})
-  
-  let actorLabel = (State, actor, onclick) => d([
-    d([
-      actorLabelText( State, actor, onclick ),
-      actorPopUp( State, actor ),
-    ], {class: "popupContainer", style:"display: inline-flex;"})
-    ], {style:"display: inline-flex;"} )
-  
-  let actorPopUp = (State, actor) => d([
-    actorLabelText( State, actor ),
-    br(),
-    entityAttributeView(State, actor, 8668, true ),
-    d(`Entitet: ${actor}`)
-  ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;width: 400px;"})
-  
   
   let actorsView = State => isDefined( State.S.selectedEntity) ? singleActorView( State ) : allActorsView( State )
   
@@ -35,7 +19,7 @@ const ActorsPage = {
       entityLabelWithPopup( State, 8668 ),
     ], {style: gridColumnsStyle("1fr 1fr 3fr")}),
     d( State.DB.get( State.S.selectedCompany, 10065 ).map( actor => d([
-      actorLabel( State, actor ),
+      entityLabelWithPopup( State, actor ),
       entityLabelWithPopup( State, State.DB.get(actor, 8668) ),
     ], {style: gridColumnsStyle("1fr 1fr 3fr")}) )),
   br(),

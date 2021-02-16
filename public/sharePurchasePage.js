@@ -49,7 +49,7 @@ const SharePurchasesPage = {
 
 
   
-  let sharePurchaseView = State => isDefined( State.S.selectedEntity) 
+let sharePurchaseView = State => isDefined( State.S.selectedEntity) 
     ? singleShareTransactionView( State )
     : allSharePurchasesView( State )
   

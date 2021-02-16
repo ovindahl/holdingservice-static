@@ -13,12 +13,12 @@ const TransactionsPage = {
 let transactionValueView = (State, companyTransaction) => d( formatNumber( State.DB.get(companyTransaction, 10047) ), {style: `text-align: right;`} )
 
 let transactionRowView = (State, companyTransaction) => d([
-    transactionLabel( State, companyTransaction ),
+    entityLabelWithPopup( State, companyTransaction ),
     d( moment( State.DB.get( companyTransaction, 10632 ) ).format("DD.MM.YYYY") , {style: `text-align: right;`}),
     d([
-      isDefined( State.DB.get(companyTransaction, 7867) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7867) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}),
+      isDefined( State.DB.get(companyTransaction, 7867) ) ? entityLabelWithPopup(State, State.DB.get(companyTransaction, 7867) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}),
       d(" --> "),
-      isDefined( State.DB.get(companyTransaction, 7866) ) ? nodeLabel(State, State.DB.get(companyTransaction, 7866) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ,
+      isDefined( State.DB.get(companyTransaction, 7866) ) ? entityLabelWithPopup(State, State.DB.get(companyTransaction, 7866) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ,
     ], {style: gridColumnsStyle("3fr 1fr 3fr") + "padding-left: 3em;"} ),
     transactionValueView( State, companyTransaction )
   ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr ")})
@@ -39,7 +39,7 @@ let allTransactionsView = State => d([
 
   
   let transactionsView = State => isDefined( State.S.selectedEntity ) 
-    ? transactionView2( State ) 
+    ? singleTransactionView( State ) 
     : allTransactionsView( State )
   
   let prevNextTransactionView = State => {
@@ -63,7 +63,7 @@ let allTransactionsView = State => d([
   ? d([
     d([
       d([
-        nodeLabel(State, balanceObject ),
+        entityLabelWithPopup(State, balanceObject ),
       ]),
       d([
         d( formatNumber( State.DB.get( balanceObject, 10045 )( State.DB.get( companyTransaction, 8354 ) - 1 ) ), {class: "redlineText", style: `text-align: right;`} ),
@@ -84,7 +84,7 @@ let allTransactionsView = State => d([
       d([
         d( formatNumber( State.DB.get(companyTransaction, 10047), State.DB.get(companyTransaction, 10047) > 100 ? 0 : 2 ) ),
         d(" --------------> "),
-        transactionLabel( State, companyTransaction ),
+        entityLabelWithPopup( State, companyTransaction ),
         d( moment( State.DB.get( companyTransaction, 10632, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
       ]),
       d(""),
@@ -95,31 +95,7 @@ let allTransactionsView = State => d([
   // Outgoing transactions
   
   
-  let transactionLabelText = (State, companyTransaction) => d([d(`Transaksjon ${ State.DB.get(companyTransaction, 8354) }`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(companyTransaction, "transaction/transactionType"), 20  )};`}, "click", () => State.Actions.selectEntity(  companyTransaction, TransactionsPage.entity ) )], {style:"display: flex;"})
-  
-  let transactionLabel = (State, companyTransaction) => d([
-    d([
-      transactionLabelText( State, companyTransaction ),
-      transactionPopUp( State, companyTransaction ),
-    ], {class: "popupContainer", style:"display: inline-flex;"})
-    ], {style:"display: inline-flex;"} )
-  
-    let transactionPopUp = (State, companyTransaction) => d([
-      d([
-        transactionLabelText( State, companyTransaction ),
-        d( moment( State.DB.get( companyTransaction, 10632, State.S.selectedCompanyEventIndex ) ).format("DD.MM.YYYY") ),
-      ], {style: gridColumnsStyle("1fr 1fr")}),
-      br(),
-      d([
-        entityLabelWithPopup( State, 10047 ),
-        transactionValueView( State, companyTransaction ),
-      ], {style: gridColumnsStyle("1fr 1fr")}),
-      d(`Entitet: ${companyTransaction}`)
-      
-    ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;width: 400px;"})
-  
-  
-  let transactionView2 = State => d([
+  let singleTransactionView = State => d([
     prevNextTransactionView( State ),
     br(),
     transactionFlowView( State, State.S.selectedEntity ),

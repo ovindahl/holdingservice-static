@@ -2,7 +2,6 @@ const BalancePage = {
     entity: 7860,
     onLoad: State => returnObject({selectedEntity: undefined, selectedTransactionIndex: State.DB.get( State.S.selectedCompany, 10069 ) }),
     Actions: State => returnObject({
-        "BalancePage/selectNode": entity => updateState( State, {S: {selectedPage: 7860, selectedEntity: entity, selectedTransactionIndex: State.DB.get( State.S.selectedCompany, 10069 ) }}),
         "BalancePage/selectTransactionIndex": transactionIndex => updateState( State, {S: {selectedTransactionIndex: transactionIndex}}),
         "BalancePage/createNode": balanceObjectType => State.Actions.postDatoms([
           newDatom( "newEntity", "entity/entityType", 7932 ),
@@ -13,32 +12,7 @@ const BalancePage = {
     })
   }
 
-let calculatedValueViewWithLabel = (State, entity, calculatedField, transactionIndex) => d([
-  entityLabelWithPopup( State, calculatedField ),
-  calculatedValueView( State, entity, calculatedField, transactionIndex )
-], {style: gridColumnsStyle("1fr 1fr")})
 
-
-let calculatedValueView = (State, entity, calculatedField, transactionIndex) => d( formatNumber( State.DB.get(entity, calculatedField)( transactionIndex ) ), {style: `text-align: right;`} )
-
-  
-  //---
-  
-  let nodeLabelText = (State, node, onclick) => d([d(State.DB.get(node, 6), {class: "entityLabel", style: `background-color:${ State.DB.get(node, "entity/entityType") === 10617 ? "#79554852" : State.DB.get(State.DB.get(node, "balanceObject/balanceObjectType") , 20)};`}, "click", isDefined(onclick) ? onclick : () => State.Actions["BalancePage/selectNode"](node) )], {style:"display: flex;"})
-  
-  let nodeLabel = (State, node, onclick) => d([
-    d([
-      nodeLabelText( State, node, onclick ),
-      nodePopUp( State, node ),
-    ], {class: "popupContainer", style:"display: inline-flex;"})
-    ], {style:"display: inline-flex;"} )
-  
-  let nodePopUp = (State, node) => d([
-    nodeLabelText( State, node ),
-    br(),
-    d(`Entitet: ${node}`)
-  ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;width: 400px;"})
-  
   
   
   let undefinedNodeView = State => d([
@@ -75,7 +49,7 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
   
   
     return d([
-      submitButton( " <---- Tilbake ", () => State.Actions["BalancePage/selectNode"]( undefined )  ),
+      submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, BalancePage.entity )  ),
         br(),
         transactionIndexSelectionView( State ),
         br(),
@@ -108,7 +82,7 @@ let sharedNodeView = State => {
   let balanceObject = State.S.selectedEntity
 
   return d([
-      submitButton( " <---- Tilbake ", () => State.Actions["BalancePage/selectNode"]( undefined )  ),
+      submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, BalancePage.entity )  ),
       br(),
       transactionIndexSelectionView( State ),
       br(),
@@ -156,7 +130,7 @@ let sharedNodeView = State => {
                 submitButton("+", () => State.Actions["BalancePage/createNode"]( 9906 ) ),
             ], {style: "display: flex;"}),
             d( State.DB.get(State.S.selectedCompany, 10052)( balanceSection ).map( balanceObject => d([
-                nodeLabel(State, balanceObject),
+                entityLabelWithPopup(State, balanceObject),
                 calculatedValueView(State, balanceObject, 10045, State.S.selectedTransactionIndex )
             ], {style: gridColumnsStyle("repeat(4, 1fr)") + "padding-left: 1em;"}))),
             br(),
