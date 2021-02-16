@@ -4,7 +4,6 @@ const BalancePage = {
     Actions: State => returnObject({
         "BalancePage/selectNode": entity => updateState( State, {S: {selectedPage: 7860, selectedEntity: entity, selectedTransactionIndex: State.DB.get( State.S.selectedCompany, 10069 ) }}),
         "BalancePage/selectTransactionIndex": transactionIndex => updateState( State, {S: {selectedTransactionIndex: transactionIndex}}),
-        "BalancePage/retractNode": async node => updateState( State, { DB: await Transactor.retractEntity(State.DB, node), S: {selectedEntity: undefined } } ),
         "BalancePage/createNode": balanceObjectType => State.Actions.postDatoms([
           newDatom( "newEntity", "entity/entityType", 7932 ),
           newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
@@ -57,7 +56,7 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
         ),
       br()
     ])), {class: "feedContainer"} ),
-    submitButton("Slett", e => State.Actions["BalancePage/retractNode"]( State.S.selectedEntity ) )
+    submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) )
   ], {class: "feedContainer"})
   
   

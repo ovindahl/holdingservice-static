@@ -2,8 +2,6 @@ const SharePurchasesPage = {
     entity: 10041,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "SharePurchasesPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: SharePurchasesPage.entity, selectedEntity: entity}}),
-        "SharePurchasesPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedPage: 10041, selectedEntity: undefined } } ),
         "SharePurchasesPage/newSharePurchase": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10096 ),
@@ -75,7 +73,7 @@ const SharePurchasesPage = {
         lockedSingleValueView( State, sourceDocument, 1100 ),
         lockedSingleValueView( State, sourceDocument, 10107 ),
         d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
-        submitButton( "Vis", () => State.Actions["SharePurchasesPage/selectSourceDocument"]( sourceDocument ))
+        submitButton( "Vis", () => State.Actions.selectEntity( sourceDocument, SharePurchasesPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
   submitButton( "Registrer nytt aksjekjøp", () => State.Actions["SharePurchasesPage/newSharePurchase"]( )),
@@ -84,7 +82,7 @@ const SharePurchasesPage = {
 
   
   let singleShareTransactionView = State => d([
-    submitButton( " <---- Tilbake ", () => State.Actions["SharePurchasesPage/selectSourceDocument"]( undefined )  ),
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, SharePurchasesPage.entity )  ),
     br(),
     entityAttributeView(State, State.S.selectedEntity, 10070, true ),
     entityAttributeView(State, State.S.selectedEntity, 11174, true ),
@@ -138,6 +136,6 @@ let recordShareTransactionView = (State, sourceDocument) => d([
                     ? submitButton("Bokfør aksjekjøp", () => State.Actions["SharePurchasesPage/recordSharePurchase"]( State.S.selectedEntity )   )
                     : submitButton("Bokfør aksjesalg", () => State.Actions["SharePurchasesPage/recordShareSale"]( State.S.selectedEntity )   )
                 : d("Fyll ut alle felter for å bokføre"),
-            submitButton("Slett", e => State.Actions["SharePurchasesPage/retractSourceDocument"]( sourceDocument ) )
+            submitButton("Slett", e => State.Actions.retractEntity( sourceDocument ) )
         ])   
 ])

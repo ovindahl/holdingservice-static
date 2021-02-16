@@ -3,8 +3,6 @@ const InterestPage = {
     entity: 10040,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "InterestPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: InterestPage.entity, selectedEntity: entity}}),
-        "InterestPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedPage: InterestPage.entity, selectedEntity: undefined } } ),
         "InterestPage/newInterestIncome": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 11395 ),
@@ -46,7 +44,7 @@ const InterestPage = {
         lockedSingleValueView( State, sourceDocument, 10070 ),
         lockedSingleValueView( State, sourceDocument, 10107 ),
         d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
-        submitButton( "Vis", () => State.Actions["InterestPage/selectSourceDocument"]( sourceDocument ))
+        submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, InterestPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
   submitButton( "Registrer ny renteinntekt", () => State.Actions["InterestPage/newInterestIncome"]( )),
@@ -54,7 +52,7 @@ const InterestPage = {
 
   
   let singleInterestSourceDocumentView = State => d([
-    submitButton( " <---- Tilbake ", () => State.Actions["InterestPage/selectSourceDocument"]( undefined )  ),
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, InterestPage.entity )  ),
     br(),
     entityAttributeView(State, State.S.selectedEntity, 10070, true ),
     entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 10401) ),
@@ -88,7 +86,7 @@ const InterestPage = {
                 [1757, 11396].every( attribute => isDefined( State.DB.get(State.S.selectedEntity, attribute) ) ) && ( isDefined( State.DB.get(State.S.selectedEntity, 11396) ) || isDefined( State.DB.get(State.S.selectedEntity, 1083) ) )
                     ? submitButton("Bokfør", () => State.Actions["InterestPage/recordInterestIncome"]( State.S.selectedEntity )   )
                     : d("Fyll ut alle felter for å bokføre"),
-                submitButton("Slett", e => State.Actions["InterestPage/retractSourceDocument"]( State.S.selectedEntity ) )
+                submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) )
             ])   
     ])
   ])

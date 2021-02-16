@@ -3,8 +3,6 @@ const SourceDocumentsPage = {
     entity: 11474,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "SourceDocumentsPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: SourceDocumentsPage.entity, selectedEntity: entity}}),
-        "SourceDocumentsPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedPage: SourceDocumentsPage.entity, selectedEntity: undefined } } ),
         "SourceDocumentsPage/newSourceDocument": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 11472 ),
             newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
@@ -29,7 +27,7 @@ const SourceDocumentsPage = {
     d( State.DB.get( State.S.selectedCompany, 11475 )
         .map( sourceDocument => d([
         entityLabelWithPopup( State, sourceDocument ),
-        submitButton( "Vis", () => State.Actions["SourceDocumentsPage/selectSourceDocument"]( sourceDocument ))
+        submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, SourceDocumentsPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 3fr")}) )),
   br(),
   submitButton( "Opprett nytt bilagsdokument", () => State.Actions["SourceDocumentsPage/newSourceDocument"]( )),
@@ -37,14 +35,14 @@ const SourceDocumentsPage = {
 
   
   let singleSourceDocumentView = State => d([
-    submitButton( " <---- Tilbake ", () => State.Actions["SourceDocumentsPage/selectSourceDocument"]( undefined )  ),
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, SourceDocumentsPage.entity )  ),
     br(),
     d( State.DB.get( 11472, 17  ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute ) )   ),
     br(),
     entityAttributeView( State, State.S.selectedEntity, 11479, true),
     br(),
     State.DB.get( State.S.selectedEntity, 11479  ).length === 0
-        ? submitButton( "Slett bilagsdokument", () => State.Actions["SourceDocumentsPage/retractSourceDocument"]( State.S.selectedEntity ) )
+        ? submitButton( "Slett bilagsdokument", () => State.Actions.retractEntity( State.S.selectedEntity ) )
         : d("Fjern alle koblinger mot bilagsdokumentet for å slette")
   ])
 

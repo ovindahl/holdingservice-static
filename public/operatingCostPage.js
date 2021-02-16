@@ -3,8 +3,6 @@ const OperatingCostPage = {
     entity: 10039,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "OperatingCostPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: OperatingCostPage.entity, selectedEntity: entity}}),
-        "OperatingCostPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedPage: OperatingCostPage.entity, selectedEntity: undefined } } ),
         "OperatingCostPage/newOperatingCost": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10165 ),
@@ -47,7 +45,7 @@ const OperatingCostPage = {
         lockedSingleValueView( State, sourceDocument, 10070 ),
         lockedSingleValueView( State, sourceDocument, 10107 ),
         d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
-        submitButton( "Vis", () => State.Actions["OperatingCostPage/selectSourceDocument"]( sourceDocument ))
+        submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, OperatingCostPage.entity ) )
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
   submitButton( "Registrer ny driftskostnad", () => State.Actions["OperatingCostPage/newOperatingCost"]( )),
@@ -55,7 +53,7 @@ const OperatingCostPage = {
 
   
   let singleOperatingCostView = State => d([
-    submitButton( " <---- Tilbake ", () => State.Actions["OperatingCostPage/selectSourceDocument"]( undefined )  ),
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, OperatingCostPage.entity )  ),
     br(),
     entityAttributeView(State, State.S.selectedEntity, 10070, true ),
     entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 10401) ),
@@ -89,7 +87,7 @@ const OperatingCostPage = {
                 [1757, 11177].every( attribute => isDefined( State.DB.get(State.S.selectedEntity, attribute) ) ) && ( isDefined( State.DB.get(State.S.selectedEntity, 11180) ) || isDefined( State.DB.get(State.S.selectedEntity, 1083) ) )
                     ? submitButton("Bokfør driftskostnad", () => State.Actions["OperatingCostPage/recordOperatingCost"]( State.S.selectedEntity )   )
                     : d("Fyll ut alle felter for å bokføre"),
-                submitButton("Slett", e => State.Actions["OperatingCostPage/retractSourceDocument"]( State.S.selectedEntity ) )
+                submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) )
             ])   
     ])
   ])

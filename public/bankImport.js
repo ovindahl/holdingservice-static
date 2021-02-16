@@ -2,8 +2,6 @@ const BankImportPage = {
     entity: 10038,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "BankImportPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: 10038, selectedEntity: entity}}),
-        "BankImportPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
         "BankImportPage/createBankImport": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
@@ -105,7 +103,7 @@ let allBankImportsView = State => d([
     d( State.DB.get( State.S.selectedCompany, 10073 )
         .filter( sourceDocument => State.DB.get(sourceDocument, 10070 ) === 10064 )
         .map( sourceDocument => d([
-            entityLabelWithPopup( State, sourceDocument, () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ) ),
+            entityLabelWithPopup( State, sourceDocument, () => State.Actions.selectEntity(  sourceDocument, BankImportPage.entity ) ),
             entityLabelWithPopup( State, State.DB.get(sourceDocument, 10070) ),
             lockedSingleValueView( State, sourceDocument, 1757 )
         ], {style: gridColumnsStyle("1fr 1fr 1fr 3fr")}) )),
@@ -132,14 +130,14 @@ let importedTransactionsTableView = (State, transactions) => d([
         isDefined( State.DB.get(sourceDocument, 11201) )
             ? entityLabelWithPopup( State, State.DB.get(sourceDocument, 11201) )
             : d([d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})], {style:"display: inline-flex;"}) ,
-        submitButton( "Vis", () => State.Actions["BankImportPage/selectSourceDocument"]( sourceDocument ))
+        submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, BankImportPage.entity ) )
     ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")}) ))
 ]) 
   
 let singleBankImportView = State => {
 
 return d([
-    submitButton( " <---- Tilbake ", () => State.Actions["BankImportPage/selectSourceDocument"]( undefined )  ),
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, BankImportPage.entity )  ),
     br(),
     entityAttributeView(State, State.S.selectedEntity, 10070),
     br(),
@@ -184,13 +182,13 @@ let splitView_child = (State, sourceDocument)  => d([
     entityAttributeView(State, sourceDocument, 1083, isDefined( State.DB.get( sourceDocument, 11201 ) ) ),
     isDefined( State.DB.get( sourceDocument, 11201 ) )
         ? d("")
-        : submitButton("Slett", () => State.Actions["BankImportPage/retractSourceDocument"](sourceDocument) )
+        : submitButton("Slett", () => State.Actions.retractEntity( sourceDocument ) )
 ], {class: "feedContainer"})
 
 let singleTransactionView = State => {
 
     return d([
-        submitButton( " <---- Tilbake ", () => State.Actions["BankImportPage/selectSourceDocument"]( undefined )  ),
+        submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, BankImportPage.entity )  ),
         br(),
         entityAttributeView(State, State.S.selectedEntity, 10070, true),
         br(),

@@ -3,7 +3,6 @@ const ManualTransactionsPage = {
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
         "ManualTransactionsPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: 10042, selectedEntity: entity}}),
-        "ManualTransactionsPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
         "ManualTransactionsPage/new": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10317 ),
@@ -45,7 +44,7 @@ const ManualTransactionsPage = {
         lockedSingleValueView( State, sourceDocument, 7866 ),
         lockedSingleValueView( State, sourceDocument, 10107 ),
         d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
-        submitButton( "Vis", () => State.Actions["ManualTransactionsPage/selectSourceDocument"]( sourceDocument ))
+        submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, ManualTransactionsPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr  1fr 1fr")}) )),
   br(),
   submitButton( "Ny fri postering", () => State.Actions["ManualTransactionsPage/new"]( ))
@@ -55,7 +54,7 @@ const ManualTransactionsPage = {
   let singleManualTransactionView = State => {
 
     return d([
-        submitButton( " <---- Tilbake ", () => State.Actions["ManualTransactionsPage/selectSourceDocument"]( undefined )  ),
+        submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, ManualTransactionsPage.entity )  ),
         br(),
         entityAttributeView(State, State.S.selectedEntity, 10070, true),
         entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 10401) ),
@@ -87,6 +86,6 @@ let recordManualTransactionView = (State, sourceDocument) => d([
             State.DB.get( State.DB.get( sourceDocument, "sourceDocument/sourceDocumentType"), 7942 ).every( attribute => isDefined( State.DB.get(sourceDocument, attribute) ) )
                 ? submitButton("Bokfør", () => State.Actions["ManualTransactionsPage/recordTransaction"]( sourceDocument )   )
                 : d("Fyll ut alle felter for å bokføre"),
-            submitButton("Slett", e => State.Actions["ManualTransactionsPage/retractSourceDocument"]( sourceDocument ) )
+            submitButton("Slett", e => State.Actions.retractEntity( sourceDocument ) )
         ])   
 ])

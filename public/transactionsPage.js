@@ -6,8 +6,6 @@ const TransactionsPage = {
     onLoad: State => returnObject({selectedAccountingYear: 7407, selectedEntity: undefined}),
     Actions: State => returnObject({
       "TransactionsPage/selectAccountingYear": accountingYear => updateState( State, {S: {selectedAccountingYear: accountingYear}}),
-      "TransactionsPage/selectTransaction": transaction => updateState( State, {S: {selectedPage: 7882, selectedEntity: transaction}}),
-      "TransactionsPage/retractTransaction": async transaction => updateState( State, { DB: await Transactor.retractEntity(State.DB, transaction), S: {selectedEntity: undefined } } ),
     })
   }
 
@@ -50,12 +48,12 @@ let allTransactionsView = State => d([
     let nextTransaction = State.DB.get( State.S.selectedEntity, 10055 )
   
     return d([
-      submitButton( " <---- Tilbake ", () => State.Actions["TransactionsPage/selectTransaction"]( undefined )  ),
+      submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, TransactionsPage.entity )  ),
       br(),
       d([
         d([
-          isDefined( prevTransaction ) ? submitButton("<", () => State.Actions["TransactionsPage/selectTransaction"](prevTransaction) ) : d(""),
-          isDefined( nextTransaction ) ? submitButton(">", () => State.Actions["TransactionsPage/selectTransaction"](nextTransaction) ) : d(""),
+          isDefined( prevTransaction ) ? submitButton("<", () => State.Actions.selectEntity(  prevTransaction, TransactionsPage.entity ) ) : d(""),
+          isDefined( nextTransaction ) ? submitButton(">", () => State.Actions.selectEntity(  nextTransaction, TransactionsPage.entity ) ) : d(""),
         ], {style: gridColumnsStyle("3fr 1fr")})
       ], {style: gridColumnsStyle("3fr 1fr")}),
     ])
@@ -97,7 +95,7 @@ let allTransactionsView = State => d([
   // Outgoing transactions
   
   
-  let transactionLabelText = (State, companyTransaction) => d([d(`Transaksjon ${ State.DB.get(companyTransaction, 8354) }`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(companyTransaction, "transaction/transactionType"), 20  )};`}, "click", () => State.Actions["TransactionsPage/selectTransaction"](companyTransaction) )], {style:"display: flex;"})
+  let transactionLabelText = (State, companyTransaction) => d([d(`Transaksjon ${ State.DB.get(companyTransaction, 8354) }`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(companyTransaction, "transaction/transactionType"), 20  )};`}, "click", () => State.Actions.selectEntity(  companyTransaction, TransactionsPage.entity ) )], {style:"display: flex;"})
   
   let transactionLabel = (State, companyTransaction) => d([
     d([

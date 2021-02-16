@@ -3,8 +3,6 @@ const PaymentsPage = {
     entity: 11349,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "PaymentsPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: PaymentsPage.entity, selectedEntity: entity}}),
-        "PaymentsPage/retractSourceDocument": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedPage: PaymentsPage.entity, selectedEntity: undefined } } ),
         "PaymentsPage/newPayment": () => State.Actions.postDatoms([
             newDatom( "newEntity", "entity/entityType", 10062 ),
             newDatom( "newEntity", "sourceDocument/sourceDocumentType", 11350 ),
@@ -46,7 +44,7 @@ const PaymentsPage = {
         lockedSingleValueView( State, sourceDocument, 10070 ),
         lockedSingleValueView( State, sourceDocument, 10107 ),
         d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
-        submitButton( "Vis", () => State.Actions["PaymentsPage/selectSourceDocument"]( sourceDocument ))
+        submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, PaymentsPage.entity ) )
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
   submitButton( "Registrer ny betaling", () => State.Actions["PaymentsPage/newPayment"]( )),
@@ -54,7 +52,7 @@ const PaymentsPage = {
 
   
   let singlePaymentView = State => d([
-    submitButton( " <---- Tilbake ", () => State.Actions["PaymentsPage/selectSourceDocument"]( undefined )  ),
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, PaymentsPage.entity )  ),
     br(),
     entityAttributeView(State, State.S.selectedEntity, 10070, true ),
     entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 10401) ),
@@ -83,7 +81,7 @@ const PaymentsPage = {
                 [11180, 11417].every( attribute => isDefined( State.DB.get(State.S.selectedEntity, attribute) ) )
                     ? submitButton("Bokfør betaling", () => State.Actions["PaymentsPage/recordPayment"]( State.S.selectedEntity )   )
                     : d("Fyll ut alle felter for å bokføre"),
-                submitButton("Slett", e => State.Actions["PaymentsPage/retractSourceDocument"]( State.S.selectedEntity ) )
+                submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) )
             ])   
     ])
   ])

@@ -2,8 +2,6 @@ const AccountingYearPage = {
     entity: 7509,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-       "AccountingYearPage/selectAccountingYearSourceDocument": sourceDocument => updateState( State, {S: {selectedPage: 7509, selectedEntity: sourceDocument}}),
-        "AccountingYearPage/retractAccountingYearSourceDocument": async sourceDocument => updateState( State, { DB: await Transactor.retractEntity(State.DB, sourceDocument), S: {selectedEntity: undefined } } ),
         "AccountingYearPage/createAnnualResultSourceDocument": async () => {
 
           let Datoms = [
@@ -87,7 +85,7 @@ let singleAccountingYearView = State => {
   let currentAnnualResultSourceDocument = State.S.selectedEntity
 
 return d([
-  submitButton( " <---- Tilbake ", () => State.Actions["AccountingYearPage/selectAccountingYearSourceDocument"]( undefined )  ),
+  submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, AccountingYearPage.entity )  ),
   d([
     h3("Årsavslutning"),
     d([
@@ -133,12 +131,12 @@ let allAccountingYearsView = State => d([
   d( State.DB.get( State.S.selectedCompany, 10073 )
       .filter( sourceDocument => [10309].includes( State.DB.get(sourceDocument, 10070 ) )   )
       .map( sourceDocument => d([
-      entityLabelWithPopup( State,State.DB.get(sourceDocument, 7512 ), () => State.Actions["AccountingYearPage/selectAccountingYearSourceDocument"]( sourceDocument ) ),
+      entityLabelWithPopup( State,State.DB.get(sourceDocument, 7512 ), () => State.Actions.selectEntity( sourceDocument, AccountingYearPage.entity ) ),
       d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
-      submitButton( "Vis", () => State.Actions["AccountingYearPage/selectAccountingYearSourceDocument"]( sourceDocument ))
+      submitButton( "Vis", () => State.Actions.selectEntity( sourceDocument, AccountingYearPage.entity ) )
   ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr")}) )),
-br(),
-submitButton( "Ny årsavslutning", () => State.Actions["AccountingYearPage/createAnnualResultSourceDocument"]( ))
+  br(),
+  submitButton( "Ny årsavslutning", () => State.Actions["AccountingYearPage/createAnnualResultSourceDocument"]( ))
 ]) 
 
 

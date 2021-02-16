@@ -4,7 +4,6 @@ const AdminPage = {
     Actions: State => returnObject({
       "adminPage/selectEntity": entity => updateState( State, {S: {selectedEntity: entity}}),
       createEntity: async (entityType, entityDatoms) => updateState( State, {DB: await Transactor.createEntity( State.DB, entityType, entityDatoms )  } ),
-      retractEntity: async entity => updateState( State, {DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined }} ),
       retractEntities: async entities => updateState( State, {DB: await Transactor.retractEntities(State.DB, entities)} ),
       duplicateEntity: async entity => {
         let entityType = State.DB.get( entity, "entity/entityType")

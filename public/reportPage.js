@@ -3,7 +3,6 @@ const ReportPage = {
     entity: 10464,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "ReportPage/selectReportType": entity => updateState( State, {S: {selectedPage: 10464, selectedEntity: entity}}),
         "ReportPage/selectAccountingYear": accountingYear => updateState( State, {S: {selectedPage: 10464, selectedAccountingYear: accountingYear}}),
     })
   }
@@ -24,7 +23,7 @@ let reportView = State => {
       ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
     d([
     entityLabelWithPopup( State, 7976 ),
-    d( State.DB.getAll(7976).map( reportType => entityLabelWithPopup(State, reportType, () => State.Actions["ReportPage/selectReportType"]( reportType )) ), {display: "flex"} )
+    d( State.DB.getAll(7976).map( reportType => entityLabelWithPopup(State, reportType, () => State.Actions.selectEntity(  reportType, ReportPage.entity )) ), {display: "flex"} )
     ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
     br(),
     isNumber( State.S.selectedEntity ) && isNumber( accountingYearSourceDocument )
