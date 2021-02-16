@@ -120,9 +120,9 @@ let stateView = State => {
           let file = e.srcElement.files[0]
 
           const formData = new FormData();
-          formData.append("file", file);
+          formData.append("file", file, "filename");
 
-          log({file, formData})
+          log({file, formData, test: formData.get("file") })
 
           let APIendpoint = `https://holdingservice.appspot.com/upload`
           let authToken = await sideEffects.auth0.getTokenSilently()
