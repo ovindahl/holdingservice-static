@@ -437,31 +437,23 @@ let sourceDocumentFileuploadView = ( State, entity, attribute  ) => {
 
   log({entity, attribute, value})
 
-  return isDefined(value)
-    ? d( JSON.stringify(value) )
-    : d([
-    d("Test av filopplasting:"),
-    input({type: "file", name:"upload-test"}, "change", async e => {
-
+  return isDefined(value) && value !== ""
+    ? d([
+        d( `<a href="${value}" target="_blank"> ${value.slice( 57)} </a> `),
+        submitButton( "Slett", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, "" )} ) )
+    ]) 
+    : input({type: "file", name:"upload-test"}, "change", async e => {
       let file = e.srcElement.files[0]
-
       const formData = new FormData();
       formData.append("file", file);
-
-      log({file, formData, test: formData.get("file") })
-
       let APIendpoint = `https://holdingservice.appspot.com/api/upload`
       let authToken = await sideEffects.auth0.getTokenSilently()
       let headers = {'Authorization': 'Bearer ' + authToken}
       let response = await fetch(APIendpoint, {method: "POST", headers, body: formData })
-      let jsonResponse = JSON.parse(response)
-      console.log(`Executed upload request`, {response, jsonResponse})
-
-
-
-      
+      let parsedResponse = await response.json()
+      console.log(`Uploaded file. Adding link to entity..`, {parsedResponse})
+      updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, parsedResponse.url )} )
     })
-  ])
 
 }
 

@@ -40,6 +40,7 @@ app.get("/", (req,res)=>{res.send(`
         <script src="/static/operatingCostPage.js"></script>
         <script src="/static/paymentsPage.js"></script>
         <script src="/static/interestPage.js"></script>
+        <script src="/static/sourceDocumentsPage.js"></script>
         <script src="/static/manualTransactionsPage.js"></script>
         <script src="/static/bankImport.js"></script>
         <script src="/static/accountingYearPage.js"></script>

@@ -38,6 +38,7 @@ let clientPage = State => {
     "7509": accountingYearsView,
     "7860": balanceObjectsView,
     "7882": transactionsView,
+    "11474": sourceDocumentsView,
     "10038": bankImportView,
     "7977": actorsView,
     "9338": graphView,
@@ -113,29 +114,6 @@ let stateView = State => {
         isDefined( State.S.selectedAccountingYear ) ? entityLabelWithPopup( State, State.S.selectedAccountingYear ) : d(" - "),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
       br(),
-      d([
-        d("Test av filopplasting:"),
-        input({type: "file", name:"upload-test"}, "change", async e => {
-
-          let file = e.srcElement.files[0]
-
-          const formData = new FormData();
-          formData.append("file", file);
-
-          log({file, formData, test: formData.get("file") })
-
-          let APIendpoint = `https://holdingservice.appspot.com/upload`
-          let authToken = await sideEffects.auth0.getTokenSilently()
-          let headers = {'Authorization': 'Bearer ' + authToken}
-          let response = await fetch(APIendpoint, {method: "POST", headers, body: formData })
-          let jsonResponse = JSON.parse(response)
-          console.log(`Executed upload request`, {response, jsonResponse})
-      
-
-
-          
-        })
-      ])
     ])
   ], {class: "feedContainer"})
 } 

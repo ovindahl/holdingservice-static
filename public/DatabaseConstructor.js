@@ -57,7 +57,7 @@ const Transactor = {
       }
     },
     createEntity: async (DB, entityType, newEntityDatoms) => Transactor.postDatoms(DB, [newDatom("newEntity", "entity/entityType", entityType )].concat( Array.isArray(newEntityDatoms)  ? newEntityDatoms : [] ) ),
-    updateEntity: async (DB, entity, attribute, value, isAddition) => Transactor.postDatoms(DB, [newDatom(entity, attribute, value, isAddition)]),
+    updateEntity: async (DB, entity, attribute, value, isAddition) => Transactor.postDatoms(DB, log([newDatom(entity, attribute, value, isAddition)])),
     addValueEntry: async (DB, entity, attribute, newValue) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).concat( newValue ) ),
     removeValueEntry: async (DB, entity, attribute, index) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).filter( (Value, i) => i !== index  ) ),
     replaceValueEntry: async (DB, entity, attribute, index, newValue) => {
