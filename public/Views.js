@@ -126,11 +126,9 @@ let stateView = State => {
 
           let APIendpoint = `https://holdingservice.appspot.com/upload`
           let authToken = await sideEffects.auth0.getTokenSilently()
-          let headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken}
-          let response = await fetch(APIendpoint, {method: "POST", headers: headers, body: formData })
-          let parsedResponse = await response.json()
-
-          console.log(`Executed upload request`, {parsedResponse})
+          let headers = {'Authorization': 'Bearer ' + authToken}
+          let response = await fetch(APIendpoint, {method: "POST", headers, body: formData })
+          console.log(`Executed upload request`, {response})
       
 
 
