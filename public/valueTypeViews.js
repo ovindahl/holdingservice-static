@@ -450,7 +450,7 @@ let sourceDocumentFileuploadView = ( State, entity, attribute  ) => {
 
       log({file, formData, test: formData.get("file") })
 
-      let APIendpoint = `https://holdingservice.appspot.com/upload`
+      let APIendpoint = `https://holdingservice.appspot.com/api/upload`
       let authToken = await sideEffects.auth0.getTokenSilently()
       let headers = {'Authorization': 'Bearer ' + authToken}
       let response = await fetch(APIendpoint, {method: "POST", headers, body: formData })
