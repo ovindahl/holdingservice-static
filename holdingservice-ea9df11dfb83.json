@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "holdingservice",
+  "private_key_id": "ea9df11dfb8340da9d9c5f4d91c645798241a231",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDfrHxOO4JAwOu9\nEEtHRDnx+64JMo3D+66MROk749uyVAFCemfdoWC1XaxPeT2AwKxbz7BpvvETe6ep\njtMZVbWvnEd+weZEkm2nZxtqS6IxOVtuydhWpCyV8DFK8Crw23UDUN+JW7JLDPfM\n02EjhOTO3BiA3vWMuBWFuFjkYNKzsddseNEyc4lWeW3JOlGj/xvLMiUC1llJlItZ\nD6oJDu3rmXYYlGaGU2Kd4UQUR0naVRazw8sG0ukzDNasBw02bjot6I7hg2u88fqz\nVHNBimxcIxHfUiAI22qEAk0nc8LlVByJoIgUP+GzVOeuHSgqYaXSsf33JC5eKFae\nNXWSxldBAgMBAAECgf90NChgfIovGgtfLhft7oQsM5U3Mgx0xUzpkuOZOcfp3brJ\nzs4nVq/nicL7hwFs4qypBj2gspKMjLGOZaVGhEDf+1EpiZMYDPrq/aZAkwqwiBv4\ncuTyHlkLjL4PMLceauVf06ROuFToqNQUlbzhtykoTzBrw2nOsdR8pEmKXMMal1Fg\nU6pfeUaCpJx5psNpcB+fTyLOJ1pdxKMPS/Itzf3iZmW00GvN7qXm590rSEymL3zU\nomGiiRyMfjc6ReAqSA800Ed3rSjFSv+qflhKU5vtCSsR4KH7mTmPAxuN+KESJ4D5\nefVooV5gsQ1Kr8q8Qf2t5pTc3qbQqmIgFerv/MECgYEA+5qnOc6QlmglcMIHKfgv\nNwK6cu54IDy/JyHdOM7adv+NIo5dxlP2jjM3s8Tj52ImbeUsvc834Ahcx2nql+oR\ni15Cto+vHV9i83bx/F+d9l/77BnnydXD1RlPJupsytOfKi/vA1QqQCYWm/yPYSdQ\n+ZDOaYssDBQkzEG1Q/xzZykCgYEA45Tom9FVMI4+lNxZMSxjEtzOxwhC+IfJ1hxg\noG6nn/ERjwElDqUr1qkdgMSFIShU5HH24lppepF2xLpvBr2fnnlGmEKELrU6x8vM\nTuChljiBbrXty+HOCocdqAjn0X3pvDUo/E9Pzc6SKRQ47LIgmSFgMMlqoe7v6RRh\nUFb86lkCgYEAk94MMZkIuJx0hJRDiZLmjLn5wdoMl0WcQe9RCDXphs4hsBFjY0+t\nM10+e1RXbIDufN+XL+Y8vFmtzTSePrG9pd677nb7P5Pzn4pkJSI8v7MhZ1zCMIiF\nExRQxFo5nepJPI33Nkmcmx7HYt1Hlp14pXNJHBZCyMZ96d0kHtSbLiECgYEA4nP9\nsW5u0k34P6+yoJeGTfKhXrL90MdtMzwxefIhoakCy8Vb1mLMaGEHFmZ2AjRbpKUy\nALHuWyP7hm3spExzVAFhGYi2drOmtcA4oBQtNYksYblt0X3yw88G13llErOzrK9J\nBSb2RdfS4EVbD0t/3F+1k1YYYOGcn9TDsGmeaKECgYArU4KOL/Q4HaOrCAAfd1bv\n+MAbm9FOJgKOi/VQyPKLqY04RW929+MMj0XIVNBVfS0iS6JPZxkBK5GZHlP30tTo\n926YHtLvyXD5mp/7GoqzLplyTEZPLucAcXaZY/rJyWVP7S+eCFVsqYNszx9Mht+2\nWDiLylRfSsjvlQV34190lA==\n-----END PRIVATE KEY-----\n",
+  "client_email": "holdingservice-cloud-storage@holdingservice.iam.gserviceaccount.com",
+  "client_id": "117103833837794128002",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/holdingservice-cloud-storage%40holdingservice.iam.gserviceaccount.com"
+}

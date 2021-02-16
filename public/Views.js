@@ -113,6 +113,16 @@ let stateView = State => {
         isDefined( State.S.selectedAccountingYear ) ? entityLabelWithPopup( State, State.S.selectedAccountingYear ) : d(" - "),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
       br(),
+      d([
+        d("Test av filopplasting:"),
+        htmlElementObject("form", 
+        {method: "post", enctype:"multipart/form-data", action:"/upload"},
+        [
+          input({type: "file", name:"upload-test"}),
+          input({type: "submit"}),
+        ]
+        )
+      ])
     ])
   ], {class: "feedContainer"})
 } 

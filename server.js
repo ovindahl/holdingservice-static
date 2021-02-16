@@ -15,8 +15,6 @@ app.use("/static", express.static(__dirname + "/public"));
 
 //SERVE STATIC HTML
 
-
-
 app.get("/", (req,res)=>{res.send(`
 <!doctype html>
   <html>
