@@ -115,13 +115,27 @@ let stateView = State => {
       br(),
       d([
         d("Test av filopplasting:"),
-        htmlElementObject("form", 
-        {method: "post", enctype:"multipart/form-data", action:"/upload"},
-        [
-          input({type: "file", name:"upload-test"}),
-          input({type: "submit"}),
-        ]
-        )
+        input({type: "file", name:"upload-test"}, "change", async e => {
+
+          let file = e.srcElement.files[0]
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          log({file, formData})
+
+          let APIendpoint = `https://holdingservice.appspot.com/upload`
+          let authToken = await sideEffects.auth0.getTokenSilently()
+          let headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken}
+          let response = await fetch(APIendpoint, {method: "POST", headers: headers, body: formData })
+          let parsedResponse = await response.json()
+
+          console.log(`Executed upload request`, {parsedResponse})
+      
+
+
+          
+        })
       ])
     ])
   ], {class: "feedContainer"})
