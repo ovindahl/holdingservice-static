@@ -212,15 +212,19 @@ let entityAttributeView = (State, entity, attribute, isLocked ) => d([
         ? selectEntityView( State, entity, attribute )
         : State.DB.get(attribute, "attribute/valueType") === 5824 
           ? CSVuploadView( State, entity, attribute )
-          : State.DB.get(attribute, "attribute/valueType") === 40 
-            ? selectStaticOptionView( State, entity, attribute )
-            : {
-              "30": textInputView, //Tekst
-              "31": numberInputView, //Tall
-              "34": textAreaViewView, //Funksjonstekst
-              "36": boolView, //Boolean
-              "5721": dateInputView, //Dato
-            }[ State.DB.get(attribute, "attribute/valueType") ]( State, entity, attribute ),
+          : State.DB.get(attribute, "attribute/valueType") === 11469 
+            ? sourceDocumentFileuploadView( State, entity, attribute )
+            : State.DB.get(attribute, "attribute/valueType") === 40 
+              ? selectStaticOptionView( State, entity, attribute )
+              : {
+                "30": textInputView, //Tekst
+                "31": numberInputView, //Tall
+                "34": textAreaViewView, //Funksjonstekst
+                "36": boolView, //Boolean
+                "5721": dateInputView, //Dato
+              }[ State.DB.get(attribute, "attribute/valueType") ]( State, entity, attribute ),
+
+          
     isLocked ? d(""): entityVersionLabel( State, entity, attribute )
 ], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
 
@@ -425,6 +429,41 @@ let selectEntityView = ( State, entity, attribute  ) => {
 }
 
 
+let sourceDocumentFileuploadView = ( State, entity, attribute  ) => {
+
+  let value = State.DB.get(entity, attribute)
+
+  let valueType = State.DB.get(attribute, "attribute/valueType")
+
+  log({entity, attribute, value})
+
+  return isDefined(value)
+    ? d( JSON.stringify(value) )
+    : d([
+    d("Test av filopplasting:"),
+    input({type: "file", name:"upload-test"}, "change", async e => {
+
+      let file = e.srcElement.files[0]
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      log({file, formData, test: formData.get("file") })
+
+      let APIendpoint = `https://holdingservice.appspot.com/upload`
+      let authToken = await sideEffects.auth0.getTokenSilently()
+      let headers = {'Authorization': 'Bearer ' + authToken}
+      let response = await fetch(APIendpoint, {method: "POST", headers, body: formData })
+      let jsonResponse = JSON.parse(response)
+      console.log(`Executed upload request`, {response, jsonResponse})
+
+
+
+      
+    })
+  ])
+
+}
 
 
 let CSVuploadView = ( State, entity, attribute  ) => {

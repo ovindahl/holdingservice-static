@@ -128,7 +128,8 @@ let stateView = State => {
           let authToken = await sideEffects.auth0.getTokenSilently()
           let headers = {'Authorization': 'Bearer ' + authToken}
           let response = await fetch(APIendpoint, {method: "POST", headers, body: formData })
-          console.log(`Executed upload request`, {response})
+          let jsonResponse = JSON.parse(response)
+          console.log(`Executed upload request`, {response, jsonResponse})
       
 
 
