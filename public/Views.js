@@ -17,9 +17,11 @@ const ClientApp = {
       DB: State.DB,
       S: {selectedCompany: company, selectedPage: 7882, selectedEntity: undefined} 
     } ),
-    postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } )
+    postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } ),
   })
 }
+
+
 
 // CLIENT PAGE VIEWS
 
@@ -54,6 +56,7 @@ let activeUserPage = State => {
     "10040": interestView,
     "10042": manualTransactionsView,
     "10464": reportView,
+    "10036": dividendsView,
     
   }
   

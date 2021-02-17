@@ -39,6 +39,7 @@ app.get("/", (req,res)=>{res.send(`
         <script src="/static/transactionsPage.js"></script>
         <script src="/static/sharePurchasePage.js"></script>
         <script src="/static/operatingCostPage.js"></script>
+        <script src="/static/dividendPage.js"></script>
         <script src="/static/paymentsPage.js"></script>
         <script src="/static/interestPage.js"></script>
         <script src="/static/sourceDocumentsPage.js"></script>

@@ -19,7 +19,7 @@ const ActorsPage = {
       entityLabelWithPopup( State, State.DB.get(actor, 8668) ),
     ], {style: gridColumnsStyle("1fr 1fr 3fr")}) )),
   br(),
-  submitButton("Legg til", () => State.Actions.postDatoms( State.DB.get( State.S.selectedCompany, 11504) ) ),
+  actionButton( State, State.S.selectedCompany, 11522 ),
   br(),
   ]) 
   
@@ -27,9 +27,10 @@ const ActorsPage = {
     submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, ActorsPage.entity )  ),
     br(),
     entityAttributeView(State, State.S.selectedEntity, 8668),
+    entityAttributeView(State, State.S.selectedEntity, 6),
     br(),
-    isDefined( State.DB.get( State.S.selectedEntity, "actor/actorType") )
+    /* isDefined( State.DB.get( State.S.selectedEntity, "actor/actorType") )
         ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "actor/actorType"), 7942 ).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute ) ) )
-        : d(""),
+        : d(""), */
     submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) ),  
   ])

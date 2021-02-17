@@ -32,6 +32,8 @@ let allOperatingCostsView = State => d([
 
   //entityLabelWithPopup( State, 11490, () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11490)  )),
   submitButton( "Registrer ny driftskostnad", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11490) )),
+  br(),
+  //allEventsView( State ) 
   ]) 
 
   
@@ -77,3 +79,21 @@ let allOperatingCostsView = State => d([
 
   
 
+  let allEventsView = State => d([
+    h3("Alle hendelser"),
+    d([
+        entityLabelWithPopup( State, 10062 ),
+        entityLabelWithPopup( State, 1757 ),
+        entityLabelWithPopup( State, 10070 ),
+        entityLabelWithPopup( State, 10401 ),
+        d("")
+    ], {style: gridColumnsStyle("1fr 3fr 1fr 1fr 1fr" )}),
+    d( State.DB.get( State.S.selectedCompany, 10073 )
+        .map( sourceDocument => d([
+        lockedSingleValueView( State, sourceDocument, 1757 ),
+        entityLabelWithPopup( State, sourceDocument ),
+        lockedSingleValueView( State, sourceDocument, 10070 ),
+        d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
+        submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, OperatingCostPage.entity ) )
+    ], {style: gridColumnsStyle("1fr 3fr 1fr 1fr 1fr")}) )),
+  ]) 

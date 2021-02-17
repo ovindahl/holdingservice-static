@@ -1,4 +1,30 @@
 
+
+
+let actionButton = (State, contextEntity, action) => button( State.DB.get(action, 6), () => State.Actions.postDatoms( State.DB.get(contextEntity, State.DB.get(action, 11523) ) ) )
+
+//-------------
+
+
+let getEntityLabelText = (State, entity) => {
+
+  let entityType = State.DB.get(entity, 19)
+
+  let entityTypeLabelController = {
+    "7948": (State, entity) => `Transaksjon ${ State.DB.get(entity, 8354) }`,
+    "7979": (State, entity) => State.DB.get(entity, 6),
+    "7932": (State, entity) => State.DB.get(entity, 6),
+    "10062": (State, entity) =>  `[${ moment( State.DB.get(entity, 1757) ).format('DD/MM/YYYY')}] Banktransaksjon: ${formatNumber( State.DB.get(entity, 10107) ) } `
+  }
+
+  return isDefined( entityTypeLabelController[ entityType ])
+    ? entityTypeLabelController[entityType](State, entity)
+    : getEntityLabel(State.DB, entity)
+
+
+}
+
+
 let entityLabelWithPopup = ( State, entity, onClick ) => {
 
     let entityTypeLabelController = {
@@ -20,7 +46,7 @@ let entityLabelWithPopup = ( State, entity, onClick ) => {
 
 let entityLabel = (State, entity, onClick ) => State.DB.isEntity(entity)
 ?  d([d( 
-      getEntityLabel(State.DB, entity), 
+    getEntityLabelText(State, entity), 
       {
         class: "entityLabel", 
         style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${( State.S.selectedEntity === entity || State.S.selectedAccountingYear === entity) ? "border: 2px solid black;" : ""}`
@@ -92,7 +118,7 @@ let sourceDocumentLabel = (State, sourceDocument, onclick) => d([
 //--------
 
 
-let actorLabelText = (State, actor, onclick) => d([d( State.DB.get(actor, 8668) === 8666 ? State.DB.get(actor, 1001) : State.DB.get(actor, 1113) , {class: "entityLabel", style: `background-color:#bfd1077a;`}, "click", isDefined(onclick) ? onclick : () => State.Actions["ActorsPage/selectActor"](actor) )], {style:"display: flex;"})
+let actorLabelText = (State, actor, onclick) => d([d( State.DB.get(actor, 6), {class: "entityLabel", style: `background-color:#bfd1077a;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity( actor, ActorsPage.entity ) )], {style:"display: flex;"})
   
 let actorLabel = (State, actor, onclick) => d([
   d([

@@ -104,6 +104,9 @@ let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("sele
   updateFunction(e)
 }   )
 
+let button = (label, action) => htmlElementObject("button", {}, label , "click", action )
+
+
 let optionsElement = optionObjects => optionObjects.map( o => `<option value="${o.value}">${o.label}</option>` ).join('')
 
 let checkBox = (isChecked, onClick) => input( mergerino( {type: "checkbox"},  isChecked ? {checked: "checked"} : {}) , "click", onClick)
