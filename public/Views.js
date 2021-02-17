@@ -23,20 +23,23 @@ const ClientApp = {
 
 // CLIENT PAGE VIEWS
 
-let navBarView = (State) => d([
-      entityLabelWithPopup( State, 9951, () => State.Actions.selectPage( 9951 ) ),
-      State.S.selectedPage === 9951 ? d("") : span( " / " ),
-      State.S.selectedPage === 9951 ? d("") : entityLabelWithPopup( State, State.S.selectedPage, () => State.Actions.selectEntity( undefined ) ),
-], {class: "feedContainer"})
 
-let clientPage = State => {
+let clientPage = State => State.S.isError
+  ? d(State.S.error)
+  : isUndefined(State.DB)
+    ? d("Laster..")
+    : isDefined( State.S.selectedUser )
+      ? activeUserPage( State )
+      : notActivatedUserPage( State )
 
-  if(State.S.isError){return d(State.S.error) }
-  if(isUndefined(State.DB)){return d("Laster..") }
+
+
+
+let activeUserPage = State => {
 
 
   let pageRouter = {
-    "9951": homeView,
+    "9951": overviewPageView,
     "7509": accountingYearsView,
     "7860": balanceObjectsView,
     "7882": transactionsView,
@@ -59,7 +62,9 @@ let clientPage = State => {
     d([
       d(""),
       d([
-        stateView( State ),
+        State.DB.get(State.S.selectedUser, "user/isAdmin")
+          ? adminPanelView( State )
+          : d(""),
         d([
           navBarView( State ),
           br(),
@@ -72,10 +77,51 @@ let clientPage = State => {
       ])
     ], {class: "pageContainer"})
     
+    
   ])
 }
 
-let homeView = State => d([
+let navBarView = (State) => d([
+  d([
+    d([
+      d([entityLabelWithPopup( State, 9951, () => State.Actions.selectPage( 9951 ) )]),
+        State.S.selectedPage === 9951 
+          ? d("") 
+          : d([
+              span( " / " ),
+              entityLabelWithPopup( State, State.S.selectedPage, () => State.Actions.selectEntity( undefined ) )
+            ]),
+        isUndefined( State.S.selectedEntity ) 
+          ? d("") 
+          : d([
+              span( " / " ),
+              entityLabelWithPopup( State, State.S.selectedEntity )
+            ]),
+    ], {style: "display: inline-flex;"}),
+    d([
+      d([dropdown(State.S.selectedCompany, State.DB.get(State.S.selectedUser, "user/companies").map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
+      d([
+        entityLabelWithPopup( State, State.S.selectedUser ),
+        submitButton("Logg ut", () => sideEffects.auth0.logout() )
+      ])
+    ], {style: "display: inline-flex;"})
+
+  ], {style: gridColumnsStyle("3fr 1fr")})
+  
+], {class: "feedContainer"})
+
+let notActivatedUserPage = State => d([
+  d([d('<header><h1>Holdingservice Beta</h1></header>')], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
+  d([
+    d(`Logget inn som: ${State.S.userProfile.name}`),
+    br(),
+    d("Din brukerkonto er ikke aktivert."),
+    br(),
+    submitButton("Logg ut", () => sideEffects.auth0.logout() )
+  ], {class: "feedContainer"})
+])
+
+let overviewPageView = State => d([
   h3("Sider i applikasjonen"),
   d(State.DB.getAll( 7487  ).filter( page => ![9951, 9338, 10025].includes(page) ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
     h3(category),
@@ -87,16 +133,20 @@ let homeView = State => d([
 ])
 
 
-let stateView = State => {
+let adminPanelView = State => {
 
   
   return d([
     d([
       h3("Adminpanel"),
       d([
+        entityLabelWithPopup( State, 5612),
+        isDefined( State.S.selectedUser ) ? entityLabelWithPopup( State, State.S.selectedUser ) : d(" MANGLER ")
+      ], {style: gridColumnsStyle("repeat(3, 1fr)")} ),,
+      d([
         entityLabelWithPopup( State, 5722),
         isDefined( State.S.selectedCompany ) ? entityLabelWithPopup( State, State.S.selectedCompany ) : d(" MANGLER "),
-        d([dropdown(State.S.selectedCompany, State.DB.getAll( 5722 ).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
+        d([dropdown(State.S.selectedCompany, State.DB.get(State.S.selectedUser, "user/companies").map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")} ),,
       d([
         entityLabelWithPopup( State, 7927),

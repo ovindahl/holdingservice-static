@@ -2,25 +2,7 @@
 const OperatingCostPage = {
     entity: 10039,
     onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({
-        "OperatingCostPage/newOperatingCost": () => State.Actions.postDatoms([
-            newDatom( "newEntity", "entity/entityType", 10062 ),
-            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10165 ),
-            newDatom( "newEntity", 1757, Date.now() ),
-            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-            newDatom( 'newEntity' , "eventAttribute/1139", "Ny driftskostnad" ), 
-            newDatom( 'newEntity' , 11177, false ), 
-        ] ),
-        "OperatingCostPage/recordOperatingCost": sourceDocument => State.Actions.postDatoms( [
-            newDatom( "newEntity" , 'entity/entityType', 7948 ),
-            newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity" , "transaction/transactionType", 11244 ), 
-            newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity" , "transaction/originNode", State.DB.get( sourceDocument, 11177) ? 10706 : State.DB.get( State.DB.get( sourceDocument, 11180), 7463) ),
-            newDatom( "newEntity" , "transaction/destinationNode", 10618 ),
-            newDatom( "newEntity" , "eventAttribute/1139",  "Driftskostnad" )
-        ]),
-        })
+    Actions: State => returnObject({})
   }
 
 
@@ -47,7 +29,9 @@ let allOperatingCostsView = State => d([
         submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, OperatingCostPage.entity ) )
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
-  submitButton( "Registrer ny driftskostnad", () => State.Actions["OperatingCostPage/newOperatingCost"]( )),
+
+  //entityLabelWithPopup( State, 11490, () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11490)  )),
+  submitButton( "Registrer ny driftskostnad", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11490) )),
   ]) 
 
   
@@ -84,7 +68,7 @@ let allOperatingCostsView = State => d([
             ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S.selectedEntity, 10402) )  )
             : d([
                 [1757, 11177].every( attribute => isDefined( State.DB.get(State.S.selectedEntity, attribute) ) ) && ( isDefined( State.DB.get(State.S.selectedEntity, 11180) ) || isDefined( State.DB.get(State.S.selectedEntity, 1083) ) )
-                    ? submitButton("Bokfør driftskostnad", () => State.Actions["OperatingCostPage/recordOperatingCost"]( State.S.selectedEntity )   )
+                    ? submitButton("Bokfør driftskostnad", () => State.Actions.postDatoms( State.DB.get( State.S.selectedEntity, 11494) )   )
                     : d("Fyll ut alle felter for å bokføre"),
                 submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) )
             ])   

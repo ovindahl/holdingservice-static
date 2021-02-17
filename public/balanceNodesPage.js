@@ -3,12 +3,6 @@ const BalancePage = {
     onLoad: State => returnObject({selectedEntity: undefined, selectedTransactionIndex: State.DB.get( State.S.selectedCompany, 10069 ) }),
     Actions: State => returnObject({
         "BalancePage/selectTransactionIndex": transactionIndex => updateState( State, {S: {selectedTransactionIndex: transactionIndex}}),
-        "BalancePage/createNode": balanceObjectType => State.Actions.postDatoms([
-          newDatom( "newEntity", "entity/entityType", 7932 ),
-          newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-          newDatom( 'newEntity' , "balanceObject/balanceObjectType", balanceObjectType ), 
-          newDatom( 'newEntity' , "entity/label", State.DB.get( balanceObjectType, 6 ) + " uten navn" ), 
-      ] ),
     })
   }
 
@@ -127,7 +121,7 @@ let sharedNodeView = State => {
             d( [7537, 7539, 7538, 8788].map( balanceSection =>  d([
             d([
                 entityLabelWithPopup( State, balanceSection ),
-                submitButton("+", () => State.Actions["BalancePage/createNode"]( 9906 ) ),
+                submitButton("+", () => State.Actions.postDatoms( State.DB.get( State.S.selectedCompany, 11505) ) ),
             ], {style: "display: flex;"}),
             d( State.DB.get(State.S.selectedCompany, 10052)( balanceSection ).map( balanceObject => d([
                 entityLabelWithPopup(State, balanceObject),

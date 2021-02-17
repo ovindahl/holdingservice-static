@@ -3,13 +3,6 @@ const PaymentsPage = {
     entity: 11349,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "PaymentsPage/newPayment": () => State.Actions.postDatoms([
-            newDatom( "newEntity", "entity/entityType", 10062 ),
-            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 11350 ),
-            newDatom( "newEntity", 1757, Date.now() ),
-            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-            newDatom( 'newEntity' , "eventAttribute/1139", "Ny betaling" ), 
-        ] ),
         "PaymentsPage/recordPayment": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity" , 'entity/entityType', 7948 ),
             newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
@@ -47,7 +40,7 @@ const PaymentsPage = {
         submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, PaymentsPage.entity ) )
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
-  submitButton( "Registrer ny betaling", () => State.Actions["PaymentsPage/newPayment"]( )),
+  submitButton( "Registrer ny betaling", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11508) )),
   ]) 
 
   

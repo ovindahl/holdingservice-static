@@ -3,13 +3,6 @@ const InterestPage = {
     entity: 10040,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "InterestPage/newInterestIncome": () => State.Actions.postDatoms([
-            newDatom( "newEntity", "entity/entityType", 10062 ),
-            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 11395 ),
-            newDatom( "newEntity", 1757, Date.now() ),
-            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-            newDatom( 'newEntity' , "eventAttribute/1139", "Ny renteinntekt" ), 
-        ] ),
         "InterestPage/recordInterestIncome": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity" , 'entity/entityType', 7948 ),
             newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
@@ -47,7 +40,7 @@ const InterestPage = {
         submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, InterestPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
-  submitButton( "Registrer ny renteinntekt", () => State.Actions["InterestPage/newInterestIncome"]( )),
+  submitButton( "Registrer ny renteinntekt", () => State.Actions.postDatoms( State.DB.get( State.S.selectedCompany, 11506) ) ),
   ]) 
 
   

@@ -2,20 +2,6 @@ const AccountingYearPage = {
     entity: 7509,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "AccountingYearPage/createAnnualResultSourceDocument": async () => {
-
-          let Datoms = [
-            newDatom( "newDatom_annualResult", "entity/entityType", 10062  ),
-            newDatom( "newDatom_annualResult", "entity/company", State.S.selectedCompany  ),
-            newDatom( "newDatom_annualResult", "sourceDocument/sourceDocumentType", 10309 ),
-            newDatom( "newDatom_annualResult", "entity/label", `Bilag for årsavslutning`  ),
-            newDatom( "newDatom_annualResult", 1757, State.DB.get( State.DB.get(State.S.selectedCompany, 10061).slice(-1)[0], 'accountingYear/lastDate' ) ),
-            newDatom( "newDatom_annualResult", 8750, false  ),
-            newDatom( "newDatom_annualResult", 8751, false  ),
-          ]
-
-          State.Actions.postDatoms( Datoms )
-          },
         "AccountingYearPage/closeAccountingYear": async sourceDocument => {
 
           let taxDatoms = [
@@ -136,7 +122,7 @@ let allAccountingYearsView = State => d([
       submitButton( "Vis", () => State.Actions.selectEntity( sourceDocument, AccountingYearPage.entity ) )
   ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
-  submitButton( "Ny årsavslutning", () => State.Actions["AccountingYearPage/createAnnualResultSourceDocument"]( ))
+  submitButton( "Ny årsavslutning", () => State.Actions.postDatoms( State.DB.get( State.S.selectedCompany, 11502) ))
 ]) 
 
 

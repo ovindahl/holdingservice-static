@@ -2,14 +2,6 @@ const ManualTransactionsPage = {
     entity: 10042,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "ManualTransactionsPage/selectSourceDocument": entity => updateState( State, {S: {selectedPage: 10042, selectedEntity: entity}}),
-        "ManualTransactionsPage/new": () => State.Actions.postDatoms([
-            newDatom( "newEntity", "entity/entityType", 10062 ),
-            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10317 ),
-            newDatom( "newEntity", 1757, Date.now() ),
-            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-            newDatom( 'newEntity' , "eventAttribute/1139", "Fri postering" ), 
-        ] ),
         "ManualTransactionsPage/recordTransaction": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity" , 'entity/entityType', 7948 ),
             newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
@@ -47,7 +39,7 @@ const ManualTransactionsPage = {
         submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, ManualTransactionsPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr  1fr 1fr")}) )),
   br(),
-  submitButton( "Ny fri postering", () => State.Actions["ManualTransactionsPage/new"]( ))
+  submitButton( "Ny fri postering", () => State.Actions.postDatoms( State.DB.get( State.S.selectedCompany, 11507) ))
   ]) 
 
   

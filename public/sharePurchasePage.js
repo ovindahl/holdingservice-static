@@ -2,22 +2,6 @@ const SharePurchasesPage = {
     entity: 10041,
     onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({
-        "SharePurchasesPage/newSharePurchase": () => State.Actions.postDatoms([
-            newDatom( "newEntity", "entity/entityType", 10062 ),
-            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10096 ),
-            newDatom( "newEntity", "sourceDocument/securityTransactionType", 11170 ),
-            newDatom( "newEntity", 1757, Date.now() ),
-            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-            newDatom( 'newEntity' , "eventAttribute/1139", "Nytt aksjekjøp" ), 
-        ] ),
-        "SharePurchasesPage/newShareSale": () => State.Actions.postDatoms([
-            newDatom( "newEntity", "entity/entityType", 10062 ),
-            newDatom( "newEntity", "sourceDocument/sourceDocumentType", 10111 ),
-            newDatom( "newEntity", "sourceDocument/securityTransactionType", 11171 ),
-            newDatom( "newEntity", 1757, Date.now() ),
-            newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-            newDatom( 'newEntity' , "eventAttribute/1139", "Nytt aksjesalg" ), 
-        ] ),
         "SharePurchasesPage/recordSharePurchase": sourceDocument => State.Actions.postDatoms( [
             newDatom( "newEntity" , 'entity/entityType', 7948 ),
             newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
@@ -76,8 +60,8 @@ let sharePurchaseView = State => isDefined( State.S.selectedEntity)
         submitButton( "Vis", () => State.Actions.selectEntity( sourceDocument, SharePurchasesPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
-  submitButton( "Registrer nytt aksjekjøp", () => State.Actions["SharePurchasesPage/newSharePurchase"]( )),
-  submitButton( "Registrer nytt aksjesalg", () => State.Actions["SharePurchasesPage/newShareSale"]( )),
+  submitButton( "Registrer nytt aksjekjøp", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11509) ) ),
+  submitButton( "Registrer nytt aksjesalg", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11510) )),
   ]) 
 
   

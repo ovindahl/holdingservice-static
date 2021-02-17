@@ -119,9 +119,15 @@ let init = async () => {
 
     let initialDatabase = constructDatabase( Entities )
 
+    let userProfile = await sideEffects.auth0.getUser()
+    let userEntity = initialDatabase.getAll( 5612 ).find( e => initialDatabase.get(e, 11501) === userProfile.name )
+
+
     updateState( {}, {
       DB: initialDatabase,
       S: {
+        userProfile,
+        selectedUser: userEntity,
         selectedCompany: 6829,
         selectedPage: 7882,
         selectedAccountingYear: 7407
