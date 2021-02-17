@@ -334,8 +334,25 @@ let refsView = (State, entity, attribute, index) => {
 //Single valueType views
 
 let textInputView = ( State, entity, attribute ) => input( {value: State.DB.get( entity, attribute ), style: isDefined( State.DB.get( entity, attribute ) ) ? "" : "background-color: red;" }, "change", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} )  )
-let dateInputView = ( State, entity, attribute ) => input( {value: moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY'), style: isDefined( State.DB.get( entity, attribute ) ) ? "" : "background-color: red;" }, "change", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( moment( submitInputValue( e ) , 'DD/MM/YYYY').format('x') ) )} )  )
-let numberInputView = ( State, entity, attribute ) => input( {value: formatNumber( State.DB.get( entity, attribute ) ), style: isNumber( Number(State.DB.get( entity, attribute )) ) ? "text-align: right;" : "background-color: red;" }, "change", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number(submitInputValue( e ).replaceAll(' ', ''))  )} )  )
+let dateInputView = ( State, entity, attribute ) => input( {
+    value: moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY'), 
+    style: moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY') === "Invalid date" ? "border: 1px solid red;"  : "text-align: right;"
+  }, 
+  "change", 
+  async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( moment( submitInputValue( e ) , 'DD/MM/YYYY').format('x') ) )} )  
+  )
+
+let numberInputView = ( State, entity, attribute ) => input( {
+    value: isNumber(State.DB.get( entity, attribute )) 
+      ? formatNumber( State.DB.get( entity, attribute ) )
+      : "", 
+    style: isNumber( State.DB.get( entity, attribute ) ) ? "text-align: right;" : "border: 1px solid red;" 
+  }, 
+  "change", 
+  async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number(submitInputValue( e ).replaceAll(' ', ''))  )} )  
+  )
+
+
 let textAreaViewView = ( State, entity, attribute ) => textArea( isString(State.DB.get( entity, attribute )) ? State.DB.get( entity, attribute ) : JSON.stringify(State.DB.get( entity, attribute )) , {class:"textArea_code"}, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ).replaceAll(`"`, `'` ) ) } ) )
 let boolView = ( State, entity, attribute ) => input( {value: State.DB.get( entity, attribute ) ? 'Sant' : 'Usant' }, "click", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} ) )
  
