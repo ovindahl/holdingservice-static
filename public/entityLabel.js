@@ -1,7 +1,34 @@
 
 
 
-let actionButton = (State, contextEntity, action) => button( State.DB.get(action, 6), () => State.Actions.postDatoms( State.DB.get(contextEntity, State.DB.get(action, 11523) ) ) )
+
+let criteriumIsValid = (State, entity, criterium) => new Function( [`Database`, `Entity`] , State.DB.get(criterium, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( State.DB, {entity, get: attr => State.DB.get(entity, attr)} )
+
+
+let actionButton = (State, entity, action) => {
+
+  let actionCriteria = State.DB.get(action, 11561)
+
+  let errorMessages = actionCriteria.filter( criterium => !criteriumIsValid(State, entity, criterium) ).map( criterium => State.DB.get(criterium, 11568)  )
+
+  let isValid = errorMessages.length === 0
+
+  let selectedEntity =  action === 11572 ? undefined : State.S.selectedEntity
+
+  return isValid
+    ? button( State.DB.get(action, 6), {}, async () =>  updateState( State, {
+        DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ),
+        S: {selectedEntity} 
+      }))
+      
+      
+      
+    : d([
+      d( errorMessages.map( errorMessage => d(errorMessage) ) ),
+      button( State.DB.get(action, 6), {disabled: "disabled"} )
+    ], {style: "max-width: 1200px;padding: 1em;margin-left: 1em;margin-bottom: 1em;background-color: white;border: solid 1px #f44336;"})
+
+} 
 
 //-------------
 

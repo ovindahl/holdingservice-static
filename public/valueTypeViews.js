@@ -104,7 +104,7 @@ let dropdown = (value, optionObjects, updateFunction) => htmlElementObject("sele
   updateFunction(e)
 }   )
 
-let button = (label, action) => htmlElementObject("button", {}, label , "click", action )
+let button = (label, attributesObject ,action) => htmlElementObject("button", attributesObject, label , "click", action )
 
 
 let optionsElement = optionObjects => optionObjects.map( o => `<option value="${o.value}">${o.label}</option>` ).join('')

@@ -31,7 +31,7 @@ let allOperatingCostsView = State => d([
   br(),
 
   //entityLabelWithPopup( State, 11490, () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11490)  )),
-  submitButton( "Registrer ny driftskostnad", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11490) )),
+  actionButton( State, State.S.selectedCompany, 11571 ),
   br(),
   //allEventsView( State ) 
   ]) 
@@ -69,12 +69,11 @@ let allOperatingCostsView = State => d([
         : State.DB.get(State.S.selectedEntity, 10401)
             ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S.selectedEntity, 10402) )  )
             : d([
-                [1757, 11177].every( attribute => isDefined( State.DB.get(State.S.selectedEntity, attribute) ) ) && ( isDefined( State.DB.get(State.S.selectedEntity, 11180) ) || isDefined( State.DB.get(State.S.selectedEntity, 1083) ) )
-                    ? submitButton("Bokfør driftskostnad", () => State.Actions.postDatoms( State.DB.get( State.S.selectedEntity, 11494) )   )
-                    : d("Fyll ut alle felter for å bokføre"),
-                submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) )
-            ])   
-    ])
+                actionButton( State, State.S.selectedEntity, 11565 ),
+                actionButton( State, State.S.selectedEntity, 11572 )
+            ])
+    ]),
+    
   ])
 
   
