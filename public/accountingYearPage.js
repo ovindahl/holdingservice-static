@@ -1,66 +1,7 @@
 const AccountingYearPage = {
     entity: 7509,
     onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({
-        "AccountingYearPage/closeAccountingYear": async sourceDocument => {
-
-          let taxDatoms = [
-            newDatom( "newEntity_tax" , 'entity/entityType', 7948 ),
-            newDatom( "newEntity_tax" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity_tax" , "transaction/transactionType", 9286 ), 
-            newDatom( "newEntity_tax" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity_tax" , "transaction/originNode", 10708),
-            newDatom( "newEntity_tax" , "transaction/destinationNode", 10688 ),
-            newDatom( "newEntity_tax" , "eventAttribute/1139", "Årets skattekostnad"  )
-          ]
-
-          let resetNodesDatoms = State.DB.get(State.S.selectedCompany, 10052)([8788])
-            .filter( PnLnode => State.DB.get(PnLnode, 10045)( State.DB.get(sourceDocument , 10499) ) !== 0 )
-            .map( PnLnode => {
-
-            let nodeBalance =  State.DB.get(PnLnode, 10045)( State.DB.get(sourceDocument , 10499) )
-
-            let originNode = nodeBalance < 0 ? 10698 : PnLnode
-            let destinationNode = nodeBalance < 0 ? PnLnode : 10698
-
-            let nodeDatoms = [
-              newDatom( "newEntity_node_" + PnLnode , 'entity/entityType', 7948 ),
-              newDatom( "newEntity_node_" + PnLnode , 'entity/company', State.S.selectedCompany ), 
-              newDatom( "newEntity_node_" + PnLnode , "transaction/transactionType", 9716 ), 
-              newDatom( "newEntity_node_" + PnLnode , "entity/sourceDocument", sourceDocument ), 
-              newDatom( "newEntity_node_" + PnLnode , "transaction/originNode", originNode ),
-              newDatom( "newEntity_node_" + PnLnode , "transaction/destinationNode", destinationNode ),
-              newDatom( "newEntity_node_" + PnLnode , "eventAttribute/1139", "Tilbakestilling av kostnads- og inntektskonto"  ),
-              newDatom( "newEntity_node_" + PnLnode , 1083, Math.abs( nodeBalance )   ),
-            ]
-
-            return nodeDatoms
-          }   ).flat()
-
-          let annualResultOriginNode = State.DB.get(sourceDocument, 10439) < 0 ? 10767 : 10698
-          let annualResultDestinationNode = State.DB.get(sourceDocument, 10439) >= 0 ? 10767 : 10698
-
-
-          let annualResultDatoms = [
-            newDatom( "newEntity_annualResult" , 'entity/entityType', 7948 ),
-            newDatom( "newEntity_annualResult" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity_annualResult" , "transaction/transactionType", 9384 ), 
-            newDatom( "newEntity_annualResult" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity_annualResult" , "transaction/originNode", annualResultOriginNode ),
-            newDatom( "newEntity_annualResult" , "transaction/destinationNode", annualResultDestinationNode ),
-            newDatom( "newEntity_annualResult" , "eventAttribute/1139", "Årets resultat"  ),
-          ]
-
-          let yearEndDatoms = [
-            taxDatoms,
-            annualResultDatoms,
-            resetNodesDatoms
-          ].flat()
-
-          
-          State.Actions.postDatoms( yearEndDatoms )
-          },
-    })
+    Actions: State => returnObject({})
   }
 
 
@@ -89,20 +30,13 @@ return d([
     ]),
     br(),
     h3("Bokføring"),
-    State.DB.get(currentAnnualResultSourceDocument, 10401)
-      ? d([
-        d( State.DB.get(currentAnnualResultSourceDocument, 10402).map( transaction => transactionFlowView( State, transaction) ) ),
-          State.DB.get(currentAnnualResultSourceDocument, 11037)
-            ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(currentAnnualResultSourceDocument, 10402) )  )
-            : d("Åpne senere år for å gjøre endringer")
-      ])
-      : State.DB.get(currentAnnualResultSourceDocument, 11030)
-        ? d([
-          submitButton("Bokfør skattekostnad og årsresultat, og lås året", () => State.Actions["AccountingYearPage/closeAccountingYear"]( currentAnnualResultSourceDocument ) )
-        ]) 
-        :  d("Tidligere år må avsluttes først")
-  
-    
+    d([
+      d("Tilknyttede transaksjoner:"),
+      State.DB.get(State.S.selectedEntity, 10401)
+          ? d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) )
+          : d("Ingen bokførte transaksjoner")
+  ], {class: "feedContainer"}),
+    eventActionsView( State, State.S.selectedEntity ),
     ], {class: "feedContainer"})
   ]) 
 } 
@@ -122,28 +56,5 @@ let allAccountingYearsView = State => d([
       submitButton( "Vis", () => State.Actions.selectEntity( sourceDocument, AccountingYearPage.entity ) )
   ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
-  submitButton( "Ny årsavslutning", () => State.Actions.postDatoms( State.DB.get( State.S.selectedCompany, 11502) ))
+  eventActionButton( State, State.S.selectedCompany, 11582),
 ]) 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

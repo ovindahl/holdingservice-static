@@ -15,7 +15,6 @@ const PaymentsPage = {
         })
   }
 
-
   
   let paymentsView = State => isDefined( State.S.selectedEntity ) 
     ? singlePaymentView( State )
@@ -40,7 +39,7 @@ const PaymentsPage = {
         submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, PaymentsPage.entity ) )
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
-  submitButton( "Registrer ny betaling", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11508) )),
+  eventActionButton( State, State.S.selectedCompany, 11645)
   ]) 
 
   
@@ -58,25 +57,12 @@ const PaymentsPage = {
     entityAttributeView(State, State.S.selectedEntity, 10107, true ),
     br(),
     d([
-        d([
-            d("Tilknyttede transaksjoner:"),
-            State.DB.get(State.S.selectedEntity, 10401)
-                ? d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) )
-                : d("Ingen bokførte transaksjoner")
-            ], {class: "feedContainer"}),
-        State.DB.get(State.S.selectedEntity, 11012)
-        ?  State.DB.get(State.S.selectedEntity, 10401)
-            ? d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen for å endre bilaget.")
-            : d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen først, eller velg en senere dato.")
-        : State.DB.get(State.S.selectedEntity, 10401)
-            ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(State.S.selectedEntity, 10402) )  )
-            : d([
-                [11180, 11417].every( attribute => isDefined( State.DB.get(State.S.selectedEntity, attribute) ) )
-                    ? submitButton("Bokfør betaling", () => State.Actions["PaymentsPage/recordPayment"]( State.S.selectedEntity )   )
-                    : d("Fyll ut alle felter for å bokføre"),
-                submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) )
-            ])   
-    ])
+        d("Tilknyttede transaksjoner:"),
+        State.DB.get(State.S.selectedEntity, 10401)
+            ? d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) )
+            : d("Ingen bokførte transaksjoner")
+    ], {class: "feedContainer"}),
+    eventActionsView( State, State.S.selectedEntity ),
   ])
 
   

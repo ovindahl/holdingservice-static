@@ -1,34 +1,7 @@
 const SharePurchasesPage = {
     entity: 10041,
     onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({
-        "SharePurchasesPage/recordSharePurchase": sourceDocument => State.Actions.postDatoms( [
-            newDatom( "newEntity" , 'entity/entityType', 7948 ),
-            newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity" , "transaction/transactionType", 10105 ), 
-            newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity" , "transaction/originNode", State.DB.get( sourceDocument, 11177) ? 10709 : State.DB.get( State.DB.get( sourceDocument, 11180), 7463) ),
-            newDatom( "newEntity" , "transaction/destinationNode", State.DB.get( sourceDocument, 7048) ),
-            newDatom( "newEntity" , "eventAttribute/1139",  "Aksjekjøp" )
-        ]),
-        "SharePurchasesPage/recordShareSale": sourceDocument => State.Actions.postDatoms( [
-            newDatom( "newEntity1" , 'entity/entityType', 7948 ),
-            newDatom( "newEntity1" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity1" , "transaction/transactionType", 8976 ), 
-            newDatom( "newEntity1" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity1" , "transaction/originNode", State.DB.get( sourceDocument, 7048)),
-            newDatom( "newEntity1" , "transaction/destinationNode", State.DB.get( sourceDocument, 11177) ? 10747 : State.DB.get( State.DB.get( sourceDocument, 11180), 7463) ),
-            newDatom( "newEntity1" , "eventAttribute/1139",  "Salgsvederlag" ),
-
-            newDatom( "newEntity2" , 'entity/entityType', 7948 ),
-            newDatom( "newEntity2" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity2" , "transaction/transactionType", 9035 ), 
-            newDatom( "newEntity2" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity2" , "transaction/originNode", 10686),
-            newDatom( "newEntity2" , "transaction/destinationNode", State.DB.get( sourceDocument, 7048) ),
-            newDatom( "newEntity2" , "eventAttribute/1139",  "Gevinst ved salg av verdipapir" )
-        ])
-        })
+    Actions: State => returnObject({})
   }
 
 
@@ -60,8 +33,8 @@ let sharePurchaseView = State => isDefined( State.S.selectedEntity)
         submitButton( "Vis", () => State.Actions.selectEntity( sourceDocument, SharePurchasesPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
-  submitButton( "Registrer nytt aksjekjøp", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11509) ) ),
-  submitButton( "Registrer nytt aksjesalg", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11510) )),
+  eventActionButton( State, State.S.selectedCompany, 11596),
+  eventActionButton( State, State.S.selectedCompany, 11597),
   ]) 
 
   
@@ -94,32 +67,11 @@ let sharePurchaseView = State => isDefined( State.S.selectedEntity)
         ])
         : d(""),
     br(),
-    recordShareTransactionView(State, State.S.selectedEntity)
-  ])
-
-  
-
-
-
-let recordShareTransactionView = (State, sourceDocument) => d([
     d([
         d("Tilknyttede transaksjoner:"),
-        State.DB.get(sourceDocument, 10401)
-            ? d( State.DB.get(sourceDocument, 10402).map( transaction => transactionFlowView( State, transaction) ) )
+        State.DB.get(State.S.selectedEntity, 10401)
+            ? d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) )
             : d("Ingen bokførte transaksjoner")
-        ], {class: "feedContainer"}),
-    State.DB.get(sourceDocument, 11012)
-    ?  State.DB.get(sourceDocument, 10401)
-        ? d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen for å endre bilaget.")
-        : d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen først, eller velg en senere dato.")
-    : State.DB.get(sourceDocument, 10401)
-        ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(sourceDocument, 10402) )  )
-        : d([
-            [1757, 7048, 1100, 11177].every( attribute => isDefined( State.DB.get(sourceDocument, attribute) ) ) && ( isDefined( State.DB.get(sourceDocument, 11180) ) || isDefined( State.DB.get(sourceDocument, 10103) ) )
-                ? State.DB.get(State.S.selectedEntity, "sourceDocument/sourceDocumentType") === 10096
-                    ? submitButton("Bokfør aksjekjøp", () => State.Actions["SharePurchasesPage/recordSharePurchase"]( State.S.selectedEntity )   )
-                    : submitButton("Bokfør aksjesalg", () => State.Actions["SharePurchasesPage/recordShareSale"]( State.S.selectedEntity )   )
-                : d("Fyll ut alle felter for å bokføre"),
-            submitButton("Slett", e => State.Actions.retractEntity( sourceDocument ) )
-        ])   
-])
+    ], {class: "feedContainer"}),
+    eventActionsView( State, State.S.selectedEntity ),
+  ])

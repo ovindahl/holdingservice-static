@@ -1,34 +1,38 @@
 
-
-
-
 let criteriumIsValid = (State, entity, criterium) => new Function( [`Database`, `Entity`] , State.DB.get(criterium, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( State.DB, {entity, get: attr => State.DB.get(entity, attr)} )
 
+let buttonLabel = (State, entity, action, isActive) => d([d( 
+  State.DB.get(action, 6), 
+    {class: isActive ? "activeButtonLabel" : "disabledButtonLabel" }, 
+    "click", 
+    isActive ? async () =>  updateState( State, {DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ), S: {selectedEntity: [11572, 11657].includes(action) ? undefined : State.S.selectedEntity} }) : null
+  )], {style:"display: inline-flex;"})
 
-let actionButton = (State, entity, action) => {
 
-  let actionCriteria = State.DB.get(action, 11561)
+let eventActionButton = (State, entity, action) => d([
+  d([
+    buttonLabel( State, entity , action, State.DB.get(action, 11561).every( criterium => criteriumIsValid(State, entity, criterium) ) ),
+    eventActionPopup( State, entity, action ),
+  ], {class: "popupContainer", style:"display: inline-flex;"})
+], {style:"display: inline-flex;"} )
 
-  let errorMessages = actionCriteria.filter( criterium => !criteriumIsValid(State, entity, criterium) ).map( criterium => State.DB.get(criterium, 11568)  )
 
-  let isValid = errorMessages.length === 0
+let eventActionPopup = (State, entity, action) => d([
+  h3( getEntityLabel( State.DB, action ) ),
+  entityLabelWithPopup( State, entity),
+  br(),
+  d( State.DB.get(action, 11561)
+    .filter( criterium => !criteriumIsValid(State, entity, criterium) )
+    .map( criterium => d([
+      d("❌"),
+      d(State.DB.get(criterium, 11568))
+  ], {style: gridColumnsStyle("1fr 3fr")})  ) ),
+  br(),
+  span(`Entitet: ${ action}`),
+], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-  let selectedEntity =  action === 11572 ? undefined : State.S.selectedEntity
 
-  return isValid
-    ? button( State.DB.get(action, 6), {}, async () =>  updateState( State, {
-        DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ),
-        S: {selectedEntity} 
-      }))
-      
-      
-      
-    : d([
-      d( errorMessages.map( errorMessage => d(errorMessage) ) ),
-      button( State.DB.get(action, 6), {disabled: "disabled"} )
-    ], {style: "max-width: 1200px;padding: 1em;margin-left: 1em;margin-bottom: 1em;background-color: white;border: solid 1px #f44336;"})
-
-} 
+let eventActionsView = (State, entity) => d( State.DB.get( State.DB.get(entity, 10070), 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) ), {style: "max-width: 1200px;padding: 1em;margin-left: 1em;margin-bottom: 1em;background-color: white;"}  ) 
 
 //-------------
 

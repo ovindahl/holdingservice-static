@@ -50,8 +50,7 @@ const BalancePage = {
         d([
           h3( State.DB.get(balanceObject, 6) ),
           d([
-            entityAttributeView( State, balanceObject, 7934, true ),
-            State.DB.get(balanceObject, 11045) ? submitButton("X", () => State.Actions.updateEntity(State.S.selectedEntity, "balanceObject/balanceObjectType", 9906) ) : d("")
+            entityAttributeView( State, balanceObject, 7934, true )
           ], {style: gridColumnsStyle("7fr 1fr")}),
           entityAttributeView(State, balanceObject, 6),
           br(),
@@ -65,7 +64,9 @@ const BalancePage = {
               calculatedValueViewWithLabel(State, balanceObject, 10049, State.S.selectedTransactionIndex ),
             ])
             : d("")
-      ], {class: "feedContainer"})
+      ], {class: "feedContainer"}),
+      br(),
+      eventActionButton( State, balanceObject, 11657),
   
     ]) 
   } 
@@ -118,10 +119,14 @@ let sharedNodeView = State => {
         transactionIndexSelectionView( State ),
         br(),
         d([
+          eventActionButton( State, State.S.selectedCompany, 11653),
+          eventActionButton( State, State.S.selectedCompany, 11655),
+        ], {class: "feedContainer"}),
+        br(),
+        d([
             d( [7537, 7539, 7538, 8788].map( balanceSection =>  d([
             d([
-                entityLabelWithPopup( State, balanceSection ),
-                submitButton("+", () => State.Actions.postDatoms( State.DB.get( State.S.selectedCompany, 11505) ) ),
+                entityLabelWithPopup( State, balanceSection )
             ], {style: "display: flex;"}),
             d( State.DB.get(State.S.selectedCompany, 10052)( balanceSection ).map( balanceObject => d([
                 entityLabelWithPopup(State, balanceObject),
@@ -141,6 +146,6 @@ let sharedNodeView = State => {
               : d(""),
             br(),
             ]),  ) ),
-        ], {class: "feedContainer"})
+        ], {class: "feedContainer"}),
         ])
   } 

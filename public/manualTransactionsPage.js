@@ -1,18 +1,7 @@
 const ManualTransactionsPage = {
     entity: 10042,
     onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({
-        "ManualTransactionsPage/recordTransaction": sourceDocument => State.Actions.postDatoms( [
-            newDatom( "newEntity" , 'entity/entityType', 7948 ),
-            newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity" , "transaction/transactionType", 8019 ), 
-            newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity" , "transaction/originNode", State.DB.get( sourceDocument, 7867) ),
-            newDatom( "newEntity" , "transaction/destinationNode", State.DB.get( sourceDocument, 7866) ),
-            newDatom( "newEntity" , "eventAttribute/1139",  State.DB.get( sourceDocument, 1139) )
-        ])
-            
-    })
+    Actions: State => returnObject({ })
   }
 
 
@@ -39,7 +28,7 @@ const ManualTransactionsPage = {
         submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, ManualTransactionsPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr  1fr 1fr")}) )),
   br(),
-  submitButton( "Ny fri postering", () => State.Actions.postDatoms( State.DB.get( State.S.selectedCompany, 11507) ))
+  eventActionButton( State, State.S.selectedCompany, 11620),
   ]) 
 
   
@@ -55,29 +44,12 @@ const ManualTransactionsPage = {
             ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType"), 7942 ).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 10401) ) ) ) 
             : d(""),
         br(),
-        recordManualTransactionView( State, State.S.selectedEntity )
+        d([
+            d("Tilknyttede transaksjoner:"),
+            State.DB.get(State.S.selectedEntity, 10401)
+                ? d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) )
+                : d("Ingen bokførte transaksjoner")
+        ], {class: "feedContainer"}),
+        eventActionsView( State, State.S.selectedEntity )
       ])
   } 
-
-
-
-let recordManualTransactionView = (State, sourceDocument) => d([
-    d([
-        d("Tilknyttede transaksjoner:"),
-        State.DB.get(sourceDocument, 10401)
-            ? d( State.DB.get(sourceDocument, 10402).map( transaction => transactionFlowView( State, transaction) ) )
-            : d("Ingen bokførte transaksjoner")
-        ], {class: "feedContainer"}),
-    State.DB.get(sourceDocument, 11012)
-    ? State.DB.get(sourceDocument, 10401)
-        ? d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen for å endre bilaget.")
-        : d("Regnskapsåret for angitt dato er avsluttet. Tilbakestill årsavslutningen først, eller velg en senere dato.")
-    : State.DB.get(sourceDocument, 10401)
-        ? submitButton("Tilbakestill bokføring", () => State.Actions.retractEntities( State.DB.get(sourceDocument, 10402) )  )
-        : d([
-            State.DB.get( State.DB.get( sourceDocument, "sourceDocument/sourceDocumentType"), 7942 ).every( attribute => isDefined( State.DB.get(sourceDocument, attribute) ) )
-                ? submitButton("Bokfør", () => State.Actions["ManualTransactionsPage/recordTransaction"]( sourceDocument )   )
-                : d("Fyll ut alle felter for å bokføre"),
-            submitButton("Slett", e => State.Actions.retractEntity( sourceDocument ) )
-        ])   
-])
