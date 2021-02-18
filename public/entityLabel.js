@@ -5,7 +5,7 @@ let buttonLabel = (State, entity, action, isActive) => d([d(
   State.DB.get(action, 6), 
     {class: isActive ? "activeButtonLabel" : "disabledButtonLabel" }, 
     "click", 
-    isActive ? async () =>  updateState( State, {DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ), S: {selectedEntity: [11572, 11657, 11678].includes(action) ? undefined : State.S.selectedEntity} }) : null
+    isActive ? async () =>  updateState( State, {DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ), S: {selectedEntity: [11572, 11657, 11678, 11736].includes(action) ? undefined : State.S.selectedEntity} }) : null
   )], {style:"display: inline-flex;"})
 
 
@@ -45,7 +45,7 @@ let getEntityLabelText = (State, entity) => {
     "7948": (State, entity) => `Transaksjon ${ State.DB.get(entity, 8354) }`,
     "7979": (State, entity) => State.DB.get(entity, 6),
     "7932": (State, entity) => State.DB.get(entity, 6),
-    "10062": (State, entity) =>  `[${ moment( State.DB.get(entity, 1757) ).format('DD/MM/YYYY')}] Banktransaksjon: ${formatNumber( State.DB.get(entity, 10107) ) } `
+    "10062": (State, entity) =>  `[${ moment( State.DB.get(entity, 1757) ).format('DD/MM/YYYY')}] ${formatNumber( State.DB.get(entity, 10107) ) } ${State.DB.get(entity, 9084) === 9086 ? "💸" : "💰"} `
   }
 
   return isDefined( entityTypeLabelController[ entityType ])
@@ -130,7 +130,7 @@ let transactionLabel = (State, companyTransaction) => d([
   
 let sourceDocumentLabelText = (State, sourceDocument, onclick) => d([d(
   State.DB.get(sourceDocument, 10070) === 10132
-    ? `[${ moment( State.DB.get(sourceDocument, 1757) ).format('DD/MM/YYYY')}] Banktransaksjon: ${formatNumber( State.DB.get(sourceDocument, 10107) ) } `
+    ? `${State.DB.get(sourceDocument, 9084) === 9086 ? "💸" : "💰"} NOK ${formatNumber( State.DB.get(sourceDocument, 10107), 2 ) } (${ moment( State.DB.get(sourceDocument, 1757) ).format('DD/MM/YYYY')}) `
     : `${State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"} ${State.DB.get(State.DB.get(sourceDocument, 10070), 6)}`,
   {class: "entityLabel", style: `background-color: ${State.DB.get(sourceDocument, 10070) === 10132 ? "#75c6bf" : "#ffc10785"} ;`}, 
   "click", 
