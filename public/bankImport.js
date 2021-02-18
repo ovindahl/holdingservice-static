@@ -16,6 +16,7 @@ const BankImportPage = {
             let unImportedRows = importedFile.filter( row => row.length > 1 ).slice(5).filter( row => !existingIDs.includes(row[7])  )
             let bankAccount = State.DB.get( sourceDocument, 7463 )
             let newDatoms = unImportedRows.map( (transactionRow, index) => constructBankTransactionSourceDocumentDatoms(State, transactionRow, index, bankAccount, sourceDocument)  ).flat()
+
             State.Actions.postDatoms( newDatoms )
 
         },
@@ -239,6 +240,8 @@ let matchingView = (State, sourceDocument) => d([
 
 let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, index, selectedBankAccount, sourceDocument) => {
 
+    //NB: Denne brukes av entitet 11693: Datomer for import av banktransaksjoner
+
     let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
             
     let date = Number( moment( transactionRow[0], "DD.MM.YYYY" ).format("x") )
@@ -266,7 +269,7 @@ let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, inde
       newDatom( "newDatom_"+ index, 1083, isPayment ? paidAmount : receivedAmount  ),
       newDatom( "newDatom_"+ index, 8831, description  ),
       newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
-      newDatom( "newDatom_"+ index, "entity/sourceDocument", sourceDocument ),
+      newDatom( "newDatom_"+ index, "entity/selectSourceDocument", sourceDocument ),
       newDatom( "newDatom_"+ index, "entity/label", `[${transactionRow[0]}] Banktransaksjon: ${isPayment ? paidAmount : receivedAmount} `  ),
     ]
   

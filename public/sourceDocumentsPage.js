@@ -43,7 +43,10 @@ const SourceDocumentsPage = {
     br(),
     State.DB.get( State.S.selectedEntity, 11479  ).length === 0
         ? submitButton( "Slett bilagsdokument", () => State.Actions.retractEntity( State.S.selectedEntity ) )
-        : d("Fjern alle koblinger mot bilagsdokumentet for å slette")
+        : d("Fjern alle koblinger mot bilagsdokumentet for å slette"),
+    br(),
+    State.DB.get( State.S.selectedEntity, 11688  ) === 11689 ? eventActionButton( State, State.S.selectedEntity, 11695) : d(""),
+    
   ])
 
   
