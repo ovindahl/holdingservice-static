@@ -15,12 +15,16 @@ const SourceDocumentsPage = {
     h3("Alle bilagsdokumenter"),
     d([
         entityLabelWithPopup( State, 6 ),
-    ], {style: gridColumnsStyle("1fr 1fr 3fr")}),
+        entityLabelWithPopup( State, 11688 ),
+        entityLabelWithPopup( State, 1757 ),
+    ], {style: gridColumnsStyle("2fr 2fr 1fr 1fr 1fr")}),
     d( State.DB.get( State.S.selectedCompany, 11475 )
         .map( sourceDocument => d([
         entityLabelWithPopup( State, sourceDocument ),
+        lockedSingleValueView( State, sourceDocument, 11688 ),
+        lockedSingleValueView( State, sourceDocument, 1757 ),
         submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, SourceDocumentsPage.entity ))
-    ], {style: gridColumnsStyle("1fr 1fr 3fr")}) )),
+    ], {style: gridColumnsStyle("2fr 2fr 1fr 1fr 1fr")}) )),
   br(),
   submitButton( "Opprett nytt bilagsdokument", () => State.Actions.postDatoms( State.DB.get(State.S.selectedCompany, 11511) )),
   ]) 
@@ -30,6 +34,10 @@ const SourceDocumentsPage = {
     submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, SourceDocumentsPage.entity )  ),
     br(),
     d( State.DB.get( 11472, 17  ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute ) )   ),
+    br(),
+    isDefined(State.DB.get( State.S.selectedEntity, 11688  )) 
+      ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 7942 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute ) )   )
+      : d(""),
     br(),
     entityAttributeView( State, State.S.selectedEntity, 11479, true),
     br(),

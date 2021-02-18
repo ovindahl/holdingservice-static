@@ -19,7 +19,7 @@ const ActorsPage = {
       entityLabelWithPopup( State, State.DB.get(actor, 8668) ),
     ], {style: gridColumnsStyle("1fr 1fr 3fr")}) )),
   br(),
-  actionButton( State, State.S.selectedCompany, 11522 ),
+  eventActionButton( State, State.S.selectedCompany, 11522),
   br(),
   ]) 
   
@@ -29,8 +29,5 @@ const ActorsPage = {
     entityAttributeView(State, State.S.selectedEntity, 8668),
     entityAttributeView(State, State.S.selectedEntity, 6),
     br(),
-    /* isDefined( State.DB.get( State.S.selectedEntity, "actor/actorType") )
-        ? d( State.DB.get( State.DB.get( State.S.selectedEntity, "actor/actorType"), 7942 ).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute ) ) )
-        : d(""), */
-    submitButton("Slett", e => State.Actions.retractEntity( State.S.selectedEntity ) ),  
+    eventActionButton( State, State.S.selectedEntity, 11678),
   ])

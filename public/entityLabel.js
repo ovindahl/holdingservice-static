@@ -5,7 +5,7 @@ let buttonLabel = (State, entity, action, isActive) => d([d(
   State.DB.get(action, 6), 
     {class: isActive ? "activeButtonLabel" : "disabledButtonLabel" }, 
     "click", 
-    isActive ? async () =>  updateState( State, {DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ), S: {selectedEntity: [11572, 11657].includes(action) ? undefined : State.S.selectedEntity} }) : null
+    isActive ? async () =>  updateState( State, {DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ), S: {selectedEntity: [11572, 11657, 11678].includes(action) ? undefined : State.S.selectedEntity} }) : null
   )], {style:"display: inline-flex;"})
 
 

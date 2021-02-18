@@ -2,17 +2,7 @@
 const PaymentsPage = {
     entity: 11349,
     onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({
-        "PaymentsPage/recordPayment": sourceDocument => State.Actions.postDatoms( [
-            newDatom( "newEntity" , 'entity/entityType', 7948 ),
-            newDatom( "newEntity" , 'entity/company', State.S.selectedCompany ), 
-            newDatom( "newEntity" , "transaction/transactionType", 11353 ), 
-            newDatom( "newEntity" , "entity/sourceDocument", sourceDocument ), 
-            newDatom( "newEntity" , "transaction/originNode", State.DB.get( State.DB.get( sourceDocument, 11180), 9084) === 9086 ? State.DB.get( State.DB.get( sourceDocument, 11180), 7463) : State.DB.get( sourceDocument, 11417) ),
-            newDatom( "newEntity" , "transaction/destinationNode", State.DB.get( State.DB.get( sourceDocument, 11180), 9084) === 9086 ? State.DB.get( sourceDocument, 11417) : State.DB.get( State.DB.get( sourceDocument, 11180), 7463) ),
-            newDatom( "newEntity" , "eventAttribute/1139",  "Betaling mot gjeld/fordring" )
-        ]),
-        })
+    Actions: State => returnObject({})
   }
 
   
