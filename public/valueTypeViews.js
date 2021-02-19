@@ -177,15 +177,7 @@ let lockedValueView = (State, entity, attribute ) => State.DB.get(attribute, "at
   
 let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
   ? State.DB.get(attribute, "attribute/valueType") === 32
-    ? State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 7948
-      ? transactionLabel( State, State.DB.get( entity, attribute ) )
-      : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 7979
-        ? actorLabel( State, State.DB.get( entity, attribute ) )
-        : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 7932
-          ? nodeLabel( State, State.DB.get( entity, attribute ) )
-          : State.DB.get( State.DB.get( entity, attribute ) , "entity/entityType") === 10062
-            ? sourceDocumentLabel( State, State.DB.get( entity, attribute ) )
-            : entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
+    ? entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
 
 
           

@@ -7,7 +7,7 @@ const OperatingCostPage = {
 
 
 let operatingCostView = State => isDefined( State.S.selectedEntity ) 
-    ? singleOperatingCostView( State )
+    ? singleEventView( State )
     : allOperatingCostsView( State )
   
 let allOperatingCostsView = State => d([
@@ -15,21 +15,22 @@ let allOperatingCostsView = State => d([
     d([
         entityLabelWithPopup( State, 1757 ),
         entityLabelWithPopup( State, 10070 ),
-        entityLabelWithPopup( State, 10107 ),
+        entityLabelWithPopup( State, 1083 ),
         entityLabelWithPopup( State, 10401 ),
         d("")
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr")}),
     d( State.DB.get( State.S.selectedCompany, 10073 )
-        .filter( sourceDocument => [10165].includes( State.DB.get(sourceDocument, 10070 ) )   )
+        .filter( sourceDocument => [10165, 11833].includes( State.DB.get(sourceDocument, 10070 ) )   )
         .map( sourceDocument => d([
         lockedSingleValueView( State, sourceDocument, 1757 ),
         lockedSingleValueView( State, sourceDocument, 10070 ),
-        lockedSingleValueView( State, sourceDocument, 10107 ),
+        lockedSingleValueView( State, sourceDocument, 1083 ),
         d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
         submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, OperatingCostPage.entity ) )
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
   br(),
-    eventActionButton( State, State.S.selectedCompany, 11571)
+    eventActionButton( State, State.S.selectedCompany, 11571),
+    eventActionButton( State, State.S.selectedCompany, 11836),
   ]) 
 
   

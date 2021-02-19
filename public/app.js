@@ -112,6 +112,8 @@ let updateView = State => {
 
 let init = async () => {
 
+  updateState( {}, {} )
+
   let Entities = await sideEffects.APIRequest("GET", "Entities", null)
 
   if( Entities.length > 0 ){
@@ -138,6 +140,27 @@ let init = async () => {
 }
 
 sideEffects.configureClient();
+
+
+
+
+
+
+
+
+
+
+
+
+
+let newDBconstructor = Datoms => {
+
+  let DB = {Datoms}
+
+  return DB
+}
+
+
 
 
 

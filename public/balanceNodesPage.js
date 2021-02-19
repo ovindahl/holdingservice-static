@@ -56,6 +56,7 @@ const BalancePage = {
           br(),
           d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView( State, balanceObject, attribute, !State.DB.get(balanceObject, 11045) ) ) ),
           br(),
+          calculatedValueViewWithLabel(State, balanceObject, 10045, State.S.selectedTransactionIndex ),
           entityAttributeView(State, balanceObject, 8768, true),
           entityAttributeView(State, balanceObject, 8747, true),
           State.DB.get( balanceObject, "balanceObject/balanceObjectType" ) === 8738

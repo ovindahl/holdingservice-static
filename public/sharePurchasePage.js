@@ -7,7 +7,7 @@ const SharePurchasesPage = {
 
   
 let sharePurchaseView = State => isDefined( State.S.selectedEntity) 
-    ? singleShareTransactionView( State )
+    ? singleEventView( State )
     : allSharePurchasesView( State )
   
   let allSharePurchasesView = State => d([
@@ -17,7 +17,7 @@ let sharePurchaseView = State => isDefined( State.S.selectedEntity)
         entityLabelWithPopup( State, 10070 ),
         entityLabelWithPopup( State, 7048 ),
         entityLabelWithPopup( State, 1100 ),
-        entityLabelWithPopup( State, 10107 ),
+        entityLabelWithPopup( State, 1083 ),
         entityLabelWithPopup( State, 10401 ),
         d("")
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr")}),
@@ -28,7 +28,7 @@ let sharePurchaseView = State => isDefined( State.S.selectedEntity)
         lockedSingleValueView( State, sourceDocument, 10070 ),
         lockedSingleValueView( State, sourceDocument, 7048 ),
         lockedSingleValueView( State, sourceDocument, 1100 ),
-        lockedSingleValueView( State, sourceDocument, 10107 ),
+        lockedSingleValueView( State, sourceDocument, 1083 ),
         d(State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"),
         submitButton( "Vis", () => State.Actions.selectEntity( sourceDocument, SharePurchasesPage.entity ))
     ], {style: gridColumnsStyle("1fr 1fr 1fr 1fr 1fr 1fr 1fr")}) )),
