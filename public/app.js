@@ -51,7 +51,9 @@ const sideEffects = {
               sideEffects.configureClient()
             } catch (error) {
               console.log("Not logged in.");
-              sideEffects.auth0.loginWithRedirect({redirect_uri: window.location.origin})
+              sideEffects.updateDOM( [ publicPage(  ) ] )
+
+              
             }
       }
       return true
@@ -110,9 +112,6 @@ let updateView = State => {
 
 let init = async () => {
 
-
-  //let nextState = Components.slice(1).reduce( (State, Component) => Object.assign( State, Component.initial( State.DB ) ), await DB.initial() )
-
   let Entities = await sideEffects.APIRequest("GET", "Entities", null)
 
   if( Entities.length > 0 ){
@@ -139,6 +138,9 @@ let init = async () => {
 }
 
 sideEffects.configureClient();
+
+
+
 
 /* 
 var Stream = {

@@ -25,6 +25,18 @@ const ClientApp = {
 
 // CLIENT PAGE VIEWS
 
+let publicPage = () => d([
+  d([d('<header><h1>Holdingservice Beta</h1></header>')], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
+  d([
+    d(""),
+    d([
+      d("Ikke logget inn eller registrer ny bruker"),
+      br(),
+      submitButton("Logg inn", () => sideEffects.auth0.loginWithRedirect({redirect_uri: window.location.origin}) )
+    ], {class: "feedContainer"})
+  ], {class: "pageContainer"})
+]) 
+
 
 let clientPage = State => State.S.isError
   ? d(State.S.error)
@@ -105,7 +117,7 @@ let navBarView = (State) => d([
       d([dropdown(State.S.selectedCompany, State.DB.get(State.S.selectedUser, "user/companies").map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
       d([
         entityLabelWithPopup( State, State.S.selectedUser ),
-        submitButton("Logg ut", () => sideEffects.auth0.logout() )
+        submitButton("Logg ut", () => sideEffects.auth0.logout({redirect_uri: window.location.origin}) )
       ])
     ], {style: "display: inline-flex;"})
 
