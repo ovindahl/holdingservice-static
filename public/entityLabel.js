@@ -2,7 +2,7 @@
 let criteriumIsValid = (State, entity, criterium) => new Function( [`Database`, `Entity`] , State.DB.get(criterium, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( State.DB, {entity, get: attr => State.DB.get(entity, attr)} )
 
 let buttonLabel = (State, entity, action, isActive) => d([d( 
-    `➕ ${State.DB.get(action, 6)}`, 
+    `${State.DB.get(action, 6)}`, 
     {class: isActive ? "activeButtonLabel" : "disabledButtonLabel" }, 
     "click", 
     isActive ? async () =>  updateState( State, {DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ), S: {selectedEntity: [11572, 11657, 11678, 11736].includes(action) ? undefined : State.S.selectedEntity} }) : null
@@ -14,7 +14,7 @@ let eventActionButton = (State, entity, action) => d([
     buttonLabel( State, entity , action, State.DB.get(action, 11561).every( criterium => criteriumIsValid(State, entity, criterium) ) ),
     eventActionPopup( State, entity, action ),
   ], {class: "popupContainer", style:"display: inline-flex;"})
-], {style:"display: inline-flex;"} )
+] )
 
 
 let eventActionPopup = (State, entity, action) => d([
@@ -114,7 +114,7 @@ let entityPopUp = (State, entity) => d([
 
 
   
-let transactionLabelText = (State, companyTransaction) => d([d(`Transaksjon ${ State.DB.get(companyTransaction, 8354) }`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(companyTransaction, "transaction/transactionType"), 20  )};`}, "click", () => State.Actions.selectEntity(  companyTransaction, TransactionsPage.entity ) )], {style:"display: flex;"})
+let transactionLabelText = (State, companyTransaction) => d([d(`📝 Transaksjon ${ State.DB.get(companyTransaction, 8354) }`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(companyTransaction, "transaction/transactionType"), 20  )};`}, "click", () => State.Actions.selectEntity(  companyTransaction, TransactionsPage.entity ) )], {style:"display: inline;"})
   
 let transactionLabel = (State, companyTransaction) => d([
   d([
@@ -129,7 +129,7 @@ let transactionLabel = (State, companyTransaction) => d([
   
   //---
   
-  let nodeLabelText = (State, node, onclick) => d([d(State.DB.get(node, 6), {class: "entityLabel", style: `background-color:${ State.DB.get(node, "entity/entityType") === 10617 ? "#79554852" : State.DB.get(State.DB.get(node, "balanceObject/balanceObjectType") , 20)};`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(node, BalancePage.entity) )], {style:"display: flex;"})
+  let nodeLabelText = (State, node, onclick) => d([d(State.DB.get(node, 6), {class: "entityLabel", style: `background-color:${ State.DB.get(node, "entity/entityType") === 10617 ? "#79554852" : State.DB.get(State.DB.get(node, "balanceObject/balanceObjectType") , 20)};`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(node, BalancePage.entity) )], {style:"display: inline;"})
   
   let nodeLabel = (State, node, onclick) => d([
     d([
@@ -141,16 +141,7 @@ let transactionLabel = (State, companyTransaction) => d([
   
 //---
   
-let eventLabelText = (State, sourceDocument, onclick) => d([d(
-  State.DB.get(sourceDocument, 10070) === 10132
-    ? `${State.DB.get(sourceDocument, 9084) === 9086 ? "💸" : "💰"} NOK ${formatNumber( State.DB.get(sourceDocument, 10470), 2 ) } (${ moment( State.DB.get(sourceDocument, 1757) ).format('DD/MM/YYYY')}) `
-    : `${State.DB.get(sourceDocument, 10401) ? "✅" : "🚧"} ${State.DB.get(State.DB.get(sourceDocument, 10070), 6)}`,
-  {class: "entityLabel", style: `background-color: ${State.DB.get(sourceDocument, 10070) === 10132 ? "#75c6bf" : "#ffc10785"} ;`}, 
-  "click", 
-  isDefined(onclick) 
-    ? onclick 
-    : () => State.Actions.selectSourceDocument( sourceDocument ) 
-  )], {style:"display: flex;"})
+let eventLabelText = (State, event, onclick) => d([d(`📅 Hendelse ${ State.DB.get(event, 11975) }: ${State.DB.get( State.DB.get(event, 10070), 6 )}`, {class: "entityLabel", style: `background-color:#bade90;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(  event ) )], {style:"display: inline;"})
   
 let eventLabel = (State, sourceDocument, onclick) => d([
   d([
@@ -168,7 +159,7 @@ let sourceDocumentLabelText = (State, sourceDocument, onclick) => d([d(
   isDefined(onclick) 
     ? onclick 
     : () => State.Actions.selectEntity( sourceDocument, SourceDocumentsPage.entity ) 
-  )], {style:"display: flex;"})
+  )], {style:"display: inline;"})
   
 let sourceDocumentLabel = (State, sourceDocument, onclick) => d([
   d([
@@ -181,7 +172,7 @@ let sourceDocumentLabel = (State, sourceDocument, onclick) => d([
 //--------
 
 
-let actorLabelText = (State, actor, onclick) => d([d( State.DB.get(actor, 6), {class: "entityLabel", style: `background-color:#8bc34a7d;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity( actor, ActorsPage.entity ) )], {style:"display: flex;"})
+let actorLabelText = (State, actor, onclick) => d([d( `${State.DB.get(actor, 8668) === 8667 ? "👨‍💼" : "🏢"} ${State.DB.get(actor, 6)}` , {class: "entityLabel", style: `background-color:#8bc34a7d;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity( actor, ActorsPage.entity ) )], {style:"display: inline;"})
   
 let actorLabel = (State, actor, onclick) => d([
   d([

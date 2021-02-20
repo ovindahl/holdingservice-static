@@ -342,3 +342,10 @@ body {background-color: #F2F3F5;}
     z-index: 10;
     width: auto;
 }
+
+
+
+
+.eventRow {
+    background-color: white;
+}

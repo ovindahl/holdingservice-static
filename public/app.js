@@ -74,7 +74,7 @@ const DB = {
 } 
 
 
-const Components = [DB, ClientApp, AdminPage, TransactionsPage, BalancePage, SourceDocumentsPage, SharePurchasesPage, OperatingCostPage, DividendsPage, PaymentsPage, InterestPage, ManualTransactionsPage, AccountingYearPage, ReportPage, ActorsPage, BankImportPage]
+const Components = [DB, ClientApp, AdminPage, TransactionsPage, BalancePage, SourceDocumentsPage, EventPage, ReportPage, ActorsPage, BankImportPage]
 
 var States = []
 var Patches = []
@@ -130,7 +130,7 @@ let init = async () => {
         userProfile,
         selectedUser: userEntity,
         selectedCompany: 6829,
-        selectedPage: 7882,
+        selectedPage: 11974,
         selectedAccountingYear: 7407
       }
       } )
