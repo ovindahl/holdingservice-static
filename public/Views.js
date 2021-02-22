@@ -70,7 +70,7 @@ let activeUserPage = State => {
     "7977": actorsView,
     "10464": reportView,
 
-    "10038": bankImportView,
+    "10038": eventPageView,
 
     "7509": eventPageView,
     "10041": eventPageView,

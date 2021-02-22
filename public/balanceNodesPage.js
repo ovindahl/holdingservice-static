@@ -54,7 +54,7 @@ const BalancePage = {
           ], {style: gridColumnsStyle("7fr 1fr")}),
           entityAttributeView(State, balanceObject, 6),
           br(),
-          d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView( State, balanceObject, attribute, !State.DB.get(balanceObject, 11045) ) ) ),
+          d( State.DB.get( balanceObjectType, "companyEntityType/attributes" ).map( attribute => entityAttributeView( State, balanceObject, attribute, State.DB.get(balanceObject, 11045) ) ) ),
           br(),
           calculatedValueViewWithLabel(State, balanceObject, 10045, State.S.selectedTransactionIndex ),
           entityAttributeView(State, balanceObject, 8768, true),

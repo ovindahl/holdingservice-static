@@ -10,8 +10,25 @@ let eventPageView = State => isDefined( State.S.selectedEntity)
 ? singleEventView( State )
 : allEventsView( State )
 
+let prevNextEventView = State => {
+  
+    let prev = State.DB.get( State.S.selectedEntity, 12100 )
+    let next = State.DB.get( State.S.selectedEntity, 12101 )
+  
+    return d([
+      submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined )  ),
+      br(),
+      d([
+        d([
+          isDefined( prev ) ? submitButton("<", () => State.Actions.selectEntity(  prev ) ) : d(""),
+          isDefined( next ) ? submitButton(">", () => State.Actions.selectEntity(  next ) ) : d(""),
+        ], {style: gridColumnsStyle("3fr 1fr")})
+      ], {style: gridColumnsStyle("3fr 1fr")}),
+    ])
+  }
+
 let singleEventView = State => d([
-    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined )  ),
+    prevNextEventView( State ),
     br(),
     d([
         entityLabelWithPopup( State, State.S.selectedEntity ),
@@ -34,7 +51,8 @@ let eventRowView = (State, event) => d([
     entityLabelWithPopup( State, event ),
     isDefined( State.DB.get(event, 1083) ) ? lockedSingleValueView( State, event, 1083 ) : d(" - "),
     d([ isDefined( State.DB.get(event, 11477) ) ? entityLabelWithPopup(State, State.DB.get(event, 11477) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})], {style: "padding-left: 2em;"} ),
-], {style: gridColumnsStyle("1fr 3fr 1fr 3fr")})
+    d( ( State.DB.get(event, 10070) === 10132 && isNumber( State.DB.get(event, 11201) ) || State.DB.get(event, 10402).length > 0) ? "✔️" : "✏️", {style: `text-align: right;`} ),
+], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")})
 
 let allEventsView = State => d([
     h3("Alle hendelser"),
@@ -49,7 +67,8 @@ let allEventsView = State => d([
         d( "Hendelse" ),
         d( "Beløp", {style: `text-align: right;`} ),
         d( "Bilagsdokument", {style: "padding-left: 2em;"} ),
-    ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr")}),
+        d( "Status", {style: `text-align: right;`} ),
+    ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")}),
     ], {class: "feedContainer"}),
     d([
     State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear ).length > 0 

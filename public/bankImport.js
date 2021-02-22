@@ -29,7 +29,8 @@ let allBankImportsView = State => d([
                 ? entityLabelWithPopup( State, State.DB.get(sourceDocument, 11201) )
                 : d([d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})], {style:"display: inline-flex;"}) ,
             submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, BankImportPage.entity ) )
-        ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")}) ))
+        ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")}) )),
+        eventActionButton( State, State.S.selectedCompany, 11988 )
 ])
 
 

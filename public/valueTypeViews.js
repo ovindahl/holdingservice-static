@@ -341,7 +341,7 @@ let numberInputView = ( State, entity, attribute ) => input( {
     style: isNumber( State.DB.get( entity, attribute ) ) ? "text-align: right;" : "border: 1px solid red;" 
   }, 
   "change", 
-  async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number(submitInputValue( e ).replaceAll(' ', ''))  )} )  
+  async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number(submitInputValue( e ).replaceAll(' ', '').replaceAll(',', '.')  )  )} )  
   )
 
 
