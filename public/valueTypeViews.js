@@ -346,7 +346,9 @@ let numberInputView = ( State, entity, attribute ) => input( {
 
 
 let textAreaViewView = ( State, entity, attribute ) => textArea( isString(State.DB.get( entity, attribute )) ? State.DB.get( entity, attribute ) : JSON.stringify(State.DB.get( entity, attribute )) , {class:"textArea_code"}, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ).replaceAll(`"`, `'` ) ) } ) )
-let boolView = ( State, entity, attribute ) => input( {value: State.DB.get( entity, attribute ) ? 'Sant' : 'Usant' }, "click", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} ) )
+let boolView = ( State, entity, attribute ) => checkBox( State.DB.get( entity, attribute ) === true, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} )   )
+
+//input( {value: State.DB.get( entity, attribute ) ? 'Sant' : 'Usant' }, "click", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} ) )
  
 let selectStaticOptionView = ( State, entity, attribute )  => dropdown( State.DB.get( entity, attribute ), State.DB.getOptions( attribute ) , async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} ) )
 

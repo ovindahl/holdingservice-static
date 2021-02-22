@@ -5,26 +5,22 @@ const SourceDocumentsPage = {
     Actions: State => returnObject({}),
   }
 
-
-  
+ 
   let sourceDocumentsView = State => isDefined( State.S.selectedEntity ) 
     ? singleSourceDocumentView( State )
     : allSourceDocumentsView( State )
   
   let allSourceDocumentsView = State => d([
     h3("Alle bilagsdokumenter"),
-    d([
-      entityLabelWithPopup( State, 7403 ),
-      d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
-      ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
-      br(),
+    accountingYearFilter( State ),
+    br(),
     d([
         entityLabelWithPopup( State, 6 ),
         entityLabelWithPopup( State, 11688 ),
         entityLabelWithPopup( State, 1757 ),
     ], {style: gridColumnsStyle("2fr 2fr 1fr 1fr 1fr")}),
     d( State.DB.get( State.S.selectedCompany, 11475 )
-        .filter( sourceDocument => State.DB.get(sourceDocument, 7512 ) === State.S.selectedAccountingYear   )
+        .filter( sourceDocument => isDefined(State.S.selectedAccountingYear) ? State.DB.get(sourceDocument, 7512 ) === State.S.selectedAccountingYear : true  )
         .map( sourceDocument => d([
         entityLabelWithPopup( State, sourceDocument ),
         lockedSingleValueView( State, sourceDocument, 11688 ),

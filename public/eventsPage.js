@@ -56,10 +56,7 @@ let eventRowView = (State, event) => d([
 
 let allEventsView = State => d([
     h3("Alle hendelser"),
-    d([
-    entityLabelWithPopup( State, 7403 ),
-    d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
-    ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
+    accountingYearFilter( State ),
     br(),
     d([
     d([

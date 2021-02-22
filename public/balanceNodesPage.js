@@ -140,7 +140,6 @@ let sharedNodeView = State => {
             ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
             balanceSection === 7538 
               ? d([
-                  br(),
                   d( `Egenkapital og gjeld, sum` ),
                   d( formatNumber( State.DB.get(State.S.selectedCompany, 10053)( [7539, 7538], State.S.selectedTransactionIndex ) ), {style: `text-align: right;`} )
               ], {style: gridColumnsStyle("repeat(4, 1fr)")})

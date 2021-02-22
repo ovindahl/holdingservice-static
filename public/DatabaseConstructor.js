@@ -14,17 +14,12 @@ let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.every( Datom => {
       : false
 
     let valueInArray = attributeIsArray ? Datom.value : [Datom.value]
-
     let valueTypeValidatorFunction = new Function("inputValue",  DB.get( valueType, "valueType/validatorFunctionString") )
-
-
     let isValid_entity = isNumber(Datom.entity) || isString(Datom.entity)
     let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
     let isValid_attribute = true
     let isValid_notNaN = valueInArray.every( arrayValue => !Number.isNaN(arrayValue) )
     let isValid = ( isValid_entity && isValid_valueType && isValid_attribute && isValid_notNaN  )
-
-    //log({isValid, Datom})
 
     return isValid
 
@@ -256,3 +251,49 @@ let getReportFieldValue = ( DB, company, reportField, sourceDocument ) => DB.get
   : DB.get( reportField, 8361 ) === 5030
     ? DB.get(company, 10053)( DB.get(reportField, 7829), State.DB.get(sourceDocument, 10502) )
     : null
+
+
+
+
+
+
+
+
+
+    //Server boot function:
+
+    
+let S_addDatoms = newDatoms => {
+
+  let S = {} // global server state
+
+  let entityIDs = newDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
+  
+  let updatedEntities = entityIDs.reduce( (updatedEntities, entity) => {
+
+      let entityDatoms = newDatoms.filter( Datom => Datom.entity === entity )
+
+      let Entity = S.Entities.filter( Entity => Entity.entity === entity ).length > 0 
+          ? updateEntity( S.Entities.filter( Entity => Entity.entity === entity )[0], entityDatoms )
+          : createEntity( entityDatoms )
+
+      Entity.get = attribute => Entity.current[S.attrName(attribute)] 
+          ? Entity.current[S.attrName(attribute)] 
+          : `Entity does not have attribute [${S.attrName(attribute)} ] `
+
+      
+      return updatedEntities.concat( Entity )
+
+  }   , [] )
+
+  S.Entities = S.Entities.filter( Entity =>  !entityIDs.includes(Entity.entity) ).concat(updatedEntities)
+  S.getEntity = entity => S.Entities.filter( Entity => Entity.entity === entity )[0]
+  S.findEntities = filterFunction => S.Entities.filter( filterFunction )
+
+  S.latestEntityID = Math.max.apply(null, [S.latestEntityID].concat( newDatoms.map( Datom => Number( Datom.entity ) )  ) )
+
+  S.attrName = attribute => (typeof attribute === "string") ? attribute : S.getEntity(attribute).get("attr/name")
+  S.attrEntity = attrName => (typeof attrName === "number") ? attrName : S.findEntities( Entity => Entity.get("attr/name") === attrName )[0].get("entity")
+
+  return updatedEntities
+}

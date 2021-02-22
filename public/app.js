@@ -131,7 +131,6 @@ let init = async () => {
         selectedUser: userEntity,
         selectedCompany: 6829,
         selectedPage: 11974,
-        selectedAccountingYear: 7407
       }
       } )
     
@@ -140,26 +139,6 @@ let init = async () => {
 }
 
 sideEffects.configureClient();
-
-
-
-
-
-
-
-
-
-
-
-
-
-let newDBconstructor = Datoms => {
-
-  let DB = {Datoms}
-
-  return DB
-}
-
 
 
 

@@ -30,9 +30,9 @@ let publicPage = () => d([
   d([
     d(""),
     d([
-      d("Ikke logget inn eller registrer ny bruker"),
+      d("Ikke logget inn. "),
       br(),
-      submitButton("Logg inn", () => sideEffects.auth0.loginWithRedirect({redirect_uri: window.location.origin}) )
+      submitButton("Logg inn eller registrer ny bruker.", () => sideEffects.auth0.loginWithRedirect({redirect_uri: window.location.origin}) )
     ], {class: "feedContainer"})
   ], {class: "pageContainer"})
 ]) 
@@ -91,9 +91,11 @@ let activeUserPage = State => {
     d([
       d(""),
       d([
+        userTasksView( State ),
+        br(),
         State.DB.get(State.S.selectedUser, "user/isAdmin")
           ? adminPanelView( State )
-          : d(""),
+          : userTasksView( State ),
         d([
           navBarView( State ),
           br(),
@@ -109,6 +111,16 @@ let activeUserPage = State => {
     
   ])
 }
+
+let accountingYearFilter = State => d([
+  entityLabelWithPopup( State, 7403 ),
+  d( [
+    d( State.DB.get(State.S.selectedCompany, 10061)
+      .filter( accountingYear => State.DB.get( State.S.selectedCompany, 11976 )( accountingYear ).length > 0  )
+      .map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e) ) ), {display: "flex"}),
+    submitButton("Vis alle", () => State.Actions["TransactionsPage/selectAccountingYear"]( undefined ) )
+  ]  )
+  ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")})
 
 
 
@@ -162,6 +174,28 @@ let overviewPageView = State => d([
     ], {style: gridColumnsStyle("1fr 3fr")})  ) ),
   ])  ) )
 ])
+
+
+let userTasksView = State => d([
+  d([
+    h3("Oppgaver"),
+  d([
+    d([
+      d( "Oppgave" ),
+      d( "Status?" ),
+      d( "Tilknyttet bilag" ),
+      d( "Kommentar" ),
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+  ], {class: "feedContainer"}),
+    d( State.DB.get( State.S.selectedCompany  , 12158).map(  task => d([
+      d( State.DB.get( task, 6 ) ),
+      boolView( State, task, 12155 ),
+      entityLabelWithPopup( State, State.DB.get(task, 12156 ) ),
+      textInputView( State, task, 1139  )
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}) ), {class: "feedContainer"} )
+  ])
+], {class: "feedContainer"})
+
 
 
 let adminPanelView = State => {
