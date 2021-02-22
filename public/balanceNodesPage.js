@@ -34,7 +34,7 @@ const BalancePage = {
       : State.DB.get( State.S.selectedEntity , "balanceObject/balanceObjectType" ) === 9906
         ? undefinedNodeView( State ) 
         : singleBalanceObjectView( State ) 
-    : allBalanceObjectsView( State )
+    :  trialBalanceView( State ) //allBalanceObjectsView( State )
   
   let singleBalanceObjectView = State => {
   
@@ -149,3 +149,78 @@ let sharedNodeView = State => {
         ], {class: "feedContainer"}),
         ])
   } 
+
+
+
+
+
+
+
+
+  let trialBalanceView = State => d([
+    transactionIndexSelectionView( State ),
+    br(),
+    entityLabelWithPopup( State, 7537 ),
+    d( State.DB.get( State.S.selectedCompany, 12176 )
+        .filter( e => State.DB.get(State.DB.get(e, 8747), 7540) === 7537 )
+        .sort( (a,b) => Number( State.DB.get( State.DB.get(a, 8747), 6).slice(0,4) ) - Number( State.DB.get( State.DB.get(b, 8747), 6).slice(0,4) )  )
+        .map( activeNode => d([
+      entityLabelWithPopup( State, State.DB.get(activeNode, 8747) ),
+      entityLabelWithPopup( State, activeNode ),
+      calculatedValueView(State, activeNode, 10045, State.S.selectedTransactionIndex )
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}) )   ),
+    d([
+      entityLabelWithPopup( State, 7537 ),
+      d(""),
+      d( formatNumber( State.DB.get(State.S.selectedCompany, 10053)( 7537, State.S.selectedTransactionIndex ) ), {style: `text-align: right;`} )
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+    br(),
+    br(),
+    entityLabelWithPopup( State, 7539 ),
+    d( State.DB.get( State.S.selectedCompany, 12176 )
+        .filter( e => State.DB.get(State.DB.get(e, 8747), 7540) === 7539 )
+        .sort( (a,b) => Number( State.DB.get( State.DB.get(a, 8747), 6).slice(0,4) ) - Number( State.DB.get( State.DB.get(b, 8747), 6).slice(0,4) )  )
+        .map( activeNode => d([
+      entityLabelWithPopup( State, State.DB.get(activeNode, 8747) ),
+      entityLabelWithPopup( State, activeNode ),
+      calculatedValueView(State, activeNode, 10045, State.S.selectedTransactionIndex )
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}) )   ),
+    d([
+      entityLabelWithPopup( State, 7539 ),
+      d(""),
+      d( formatNumber( State.DB.get(State.S.selectedCompany, 10053)( 7539, State.S.selectedTransactionIndex ) ), {style: `text-align: right;`} )
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+    br(),
+    br(),
+    entityLabelWithPopup( State, 7538 ),
+    d( State.DB.get( State.S.selectedCompany, 12176 )
+        .filter( e => State.DB.get(State.DB.get(e, 8747), 7540) === 7538 )
+        .sort( (a,b) => Number( State.DB.get( State.DB.get(a, 8747), 6).slice(0,4) ) - Number( State.DB.get( State.DB.get(b, 8747), 6).slice(0,4) )  )
+        .map( activeNode => d([
+      entityLabelWithPopup( State, State.DB.get(activeNode, 8747) ),
+      entityLabelWithPopup( State, activeNode ),
+      calculatedValueView(State, activeNode, 10045, State.S.selectedTransactionIndex )
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}) )   ),
+    d([
+      entityLabelWithPopup( State, 7538 ),
+      d(""),
+      d( formatNumber( State.DB.get(State.S.selectedCompany, 10053)( 7538, State.S.selectedTransactionIndex ) ), {style: `text-align: right;`} )
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+    br(),
+    br(),
+    entityLabelWithPopup( State, 8788 ),
+    d( State.DB.get( State.S.selectedCompany, 12176 )
+        .filter( e => State.DB.get(State.DB.get(e, 8747), 7540) === 8788 )
+        .sort( (a,b) => Number( State.DB.get( State.DB.get(a, 8747), 6).slice(0,4) ) - Number( State.DB.get( State.DB.get(b, 8747), 6).slice(0,4) )  )
+        .map( activeNode => d([
+      entityLabelWithPopup( State, State.DB.get(activeNode, 8747) ),
+      entityLabelWithPopup( State, activeNode ),
+      calculatedValueView(State, activeNode, 10045, State.S.selectedTransactionIndex )
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}) )   ),
+    d([
+      entityLabelWithPopup( State, 8788 ),
+      d(""),
+      d( formatNumber( State.DB.get(State.S.selectedCompany, 10053)( 8788, State.S.selectedTransactionIndex ) ), {style: `text-align: right;`} )
+    ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+    br(),
+  ]  ) 
