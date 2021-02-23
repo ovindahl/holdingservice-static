@@ -10,6 +10,30 @@ const TransactionsPage = {
   }
 
 
+
+let transactionsView = State => newAllTransasctionsVew( State )
+
+let newAllTransasctionsVew = State => d([
+  h3("Bokførte transaksjoner"),
+  d([
+    entityLabelWithPopup( State, 7403 ),
+    d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
+  ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
+  br(),  
+  d( State.DB.get( State.S.selectedCompany, 12351)().map( Transaction => d([
+    entityLabelWithPopup(State, Transaction.event, () => State.Actions.selectEntity(Transaction.event, 11974 ) ),
+    d( moment( State.DB.get( Transaction.event, 1757 ) ).format("DD.MM.YYYY") , {style: `text-align: right;`}),
+    d([
+      isDefined( Transaction.originNode ) ? entityLabelWithPopup(State, Transaction.originNode ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}),
+      d(" --> "),
+      isDefined( Transaction.destinationNode ) ? entityLabelWithPopup(State, Transaction.destinationNode ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"}) ,
+    ], {style: gridColumnsStyle("3fr 1fr 3fr") + "padding-left: 3em;"} ),
+    d( `NOK ${formatNumber( Transaction.amount, 2 )}`, {style: "text-align: right;"} ),
+  ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr ")}) ) ) 
+]) 
+
+  
+  
 let transactionValueView = (State, companyTransaction) => d( formatNumber( State.DB.get(companyTransaction, 10047) ), {style: `text-align: right;`} )
 
 let transactionRowView = (State, companyTransaction) => d([
@@ -36,11 +60,6 @@ let allTransactionsView = State => d([
       .map( companyTransaction => transactionRowView(State, companyTransaction)  ), {class: "feedContainer"} )
     : d("Ingen transaksjoner i valgt regnskapsår"),
 ])
-
-  
-  let transactionsView = State => isDefined( State.S.selectedEntity ) 
-    ? singleTransactionView( State ) 
-    : allTransactionsView( State )
   
   let prevNextTransactionView = State => {
   

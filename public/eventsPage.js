@@ -33,17 +33,60 @@ let singleEventView = State => d([
     d([
         entityLabelWithPopup( State, State.S.selectedEntity ),
         entityAttributeView(State, State.S.selectedEntity, 10070, true ),
-        entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 10401) ),
-        entityAttributeView(State, State.S.selectedEntity, 1757, State.DB.get(State.S.selectedEntity, 10401) ),
+        entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
+        entityAttributeView(State, State.S.selectedEntity, 1757, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
         br(),
-        d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 7942).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 10401) ) ) ),
+        d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 7942).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ) ) ),
         br(),
         d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 10433).map( calculatedField => entityAttributeView(State, State.S.selectedEntity, calculatedField, true ) ) ),
     ], {class: "feedContainer"}),
     br(),
-    d( State.DB.get(State.S.selectedEntity, 10402).map( transaction => transactionFlowView( State, transaction) ) ),
+    d([
+      h3("Hendelsens status: " ),
+      State.DB.get( State.S.selectedEntity, 12382 )
+      ? d("✔️ Ferdig og låst")
+      : State.DB.get( State.S.selectedEntity, 12377 )
+        ? d("⌛ Ferdig, men ikke låst. Låses når alle forutgående hendelser er låst.")
+        : d("✏️ Ikke ferdig."),
+    ], {class: "feedContainer"}),
+    br(),
+    State.DB.get(State.S.selectedEntity, 12377 ) === true 
+      ? calculatedTransactionView( State )
+      : d(""),
+    br(),
     eventActionsView( State, State.S.selectedEntity ),
 ])
+
+let calculatedTransactionView = State => d( State.DB.get(State.S.selectedEntity, State.DB.get( State.DB.get(State.S.selectedEntity, 10070), 12355)).map( transaction => d([
+  d([
+    d([
+      entityLabelWithPopup(State, transaction.originNode ),
+    ]),
+    d([
+      d( formatNumber( State.DB.get( transaction.originNode, 12352 )( State.DB.get( transaction.event, 11975 ) - 1 ) ), {class: "redlineText", style: `text-align: right;`} ),
+      d( formatNumber( State.DB.get( transaction.originNode, 12352 )( State.DB.get( transaction.event, 11975 )  ) ), {style: `text-align: right;`} ),
+    ])
+  ],{class: "feedContainer", style: gridColumnsStyle("1fr 1fr")}),
+  d([
+    d(""),
+    d([
+      d( `NOK ${formatNumber( transaction.amount, 2 )}` ),
+      isNumber( transaction.count) ? d( `${formatNumber( transaction.count, 0 )} stk`) : d(""),
+      d(" --------------> "),
+      d( moment( State.DB.get( transaction.event, 1757) ).format("DD.MM.YYYY") ),
+    ]),
+    d(""),
+  ], {style: gridColumnsStyle("2fr 4fr 2fr")}),
+  d([
+    d([
+      entityLabelWithPopup(State, transaction.destinationNode ),
+    ]),
+    d([
+      d( formatNumber( State.DB.get( transaction.destinationNode, 12352 )( State.DB.get( transaction.event, 11975 ) - 1 ) ), {class: "redlineText", style: `text-align: right;`} ),
+      d( formatNumber( State.DB.get( transaction.destinationNode, 12352 )( State.DB.get( transaction.event, 11975 )  ) ), {style: `text-align: right;`} ),
+    ])
+  ],{class: "feedContainer", style: gridColumnsStyle("1fr 1fr")}),
+], {class: "feedContainer", style: gridColumnsStyle("1fr 1fr 1fr")}) ) )
 
 
 let eventRowView = (State, event) => d([
@@ -51,7 +94,12 @@ let eventRowView = (State, event) => d([
     entityLabelWithPopup( State, event ),
     isDefined( State.DB.get(event, 1083) ) ? lockedSingleValueView( State, event, 1083 ) : d(" - "),
     d([ isDefined( State.DB.get(event, 11477) ) ? entityLabelWithPopup(State, State.DB.get(event, 11477) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})], {style: "padding-left: 2em;"} ),
-    d( ( State.DB.get(event, 10070) === 10132 && isNumber( State.DB.get(event, 11201) ) || State.DB.get(event, 10402).length > 0) ? "✔️" : "✏️", {style: `text-align: right;`} ),
+    State.DB.get( event, 12382 )
+      ? d("✔️", {style: `text-align: right;`})
+      : State.DB.get( event, 12377 )
+        ? d("⌛", {style: `text-align: right;`})
+        : d("✏️", {style: `text-align: right;`}),
+    //d( ( State.DB.get(event, 10070) === 10132 && isNumber( State.DB.get(event, 11201) ) || State.DB.get(event, 10402).length > 0) ? "✔️" : "✏️", {style: `text-align: right;`} ),
 ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")})
 
 let allEventsView = State => d([
@@ -81,3 +129,6 @@ let allEventsView = State => d([
     ], {class: "feedContainer"}) 
 
 ])
+
+
+let newTransaction = (event, originNode, destinationNode, amount, count) => returnObject({event, originNode, destinationNode, amount, count})

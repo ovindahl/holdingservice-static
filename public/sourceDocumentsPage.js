@@ -41,7 +41,12 @@ const SourceDocumentsPage = {
       ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 7942 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute ) )   )
       : d(""),
     br(),
-    entityAttributeView( State, State.S.selectedEntity, 11479, true),
+    d([
+      h3("Importerte transaksjoner fra dette bilaget:"),
+      State.DB.get(State.S.selectedEntity, 11479).length > 0
+        ? d( State.DB.get(State.S.selectedEntity, 11479).map( event => entityLabelWithPopup(State, event, () => State.Actions.selectEntity(event, EventPage.entity)) ) )
+        : d("Ingen importerte transaksjoner."),
+    ]),
     br(),
     State.DB.get( State.S.selectedEntity, 11479  ).length === 0
         ? submitButton( "Slett bilagsdokument", () => State.Actions.retractEntity( State.S.selectedEntity ) )

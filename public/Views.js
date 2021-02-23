@@ -10,8 +10,8 @@ const ClientApp = {
   Actions: State => returnObject({
     selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectedEntity: undefined}, isDefined( Components.find( Component => Component.entity === pageEntity ) ) ? Components.find( Component => Component.entity === pageEntity ).onLoad( State ) : {}) }),
     selectEntity: (entity, pageEntity) => updateState( State, {S: mergerino({selectedEntity: entity}, isDefined(pageEntity) ? {selectedPage: pageEntity} : {}) }),
+    selectEventIndex: eventIndex => updateState( State, {S: {selectedEventIndex: eventIndex} }),
     retractEntity: async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
-
     selectSourceDocument: sourceDocument => updateState( State, {S: {selectedEntity: sourceDocument, selectedPage: State.DB.get( State.DB.get(sourceDocument, 10070), 7930) }}), 
     selectCompany: company => updateState( State, {
       DB: State.DB,
@@ -91,10 +91,12 @@ let activeUserPage = State => {
     d([
       d(""),
       d([
-        userTasksView( State ),
-        br(),
         State.DB.get(State.S.selectedUser, "user/isAdmin")
-          ? adminPanelView( State )
+          ? d([
+            adminPanelView( State ),
+            br(),
+            userTasksView( State )
+          ]) 
           : userTasksView( State ),
         d([
           navBarView( State ),
@@ -183,14 +185,14 @@ let userTasksView = State => d([
     d([
       d( "Oppgave" ),
       d( "Status?" ),
-      d( "Tilknyttet bilag" ),
+      d( "Tilknyttet side" ),
       d( "Kommentar" ),
     ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
   ], {class: "feedContainer"}),
     d( State.DB.get( State.S.selectedCompany  , 12158).map(  task => d([
       d( State.DB.get( task, 6 ) ),
       boolView( State, task, 12155 ),
-      entityLabelWithPopup( State, State.DB.get(task, 12156 ) ),
+      entityLabelWithPopup( State, 11474, () => State.Actions.selectEntity( undefined, 11474 ) ),
       textInputView( State, task, 1139  )
     ], {style: gridColumnsStyle("repeat(4, 1fr)")}) ), {class: "feedContainer"} )
   ])

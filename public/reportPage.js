@@ -33,16 +33,16 @@ let reportView = State => {
 } 
 
 
-let singleReportView = ( State, reportType, sourceDocument ) => d([
+let singleReportView = ( State, reportType, yearEndEvent ) => d([
     entityLabelWithPopup( State, reportType ),
     d(  State.DB.getAll( 8359 )
       .filter( reportField => State.DB.get(reportField, 8363) === reportType )
       .sort( (a,b) => a-b )
-      .map( reportField => reportFieldView( State, reportField, sourceDocument ) )
+      .map( reportField => reportFieldView( State, reportField, yearEndEvent ) )
     )
     ])
 
-let reportFieldView = ( State, reportField, sourceDocument ) => d([
+let reportFieldView = ( State, reportField, yearEndEvent ) => d([
 entityLabelWithPopup( State, reportField ),
-d( new Function(["storedValue"], State.DB.get(State.DB.get(reportField, "attribute/valueType"), "valueType/formatFunction") )( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, sourceDocument ) ), {style: State.DB.get(reportField, "attribute/valueType") === 31 ? `text-align: right;` : ""}  )
+d( new Function(["storedValue"], State.DB.get(State.DB.get(reportField, "attribute/valueType"), "valueType/formatFunction") )( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) ), {style: State.DB.get(reportField, "attribute/valueType") === 31 ? `text-align: right;` : ""}  )
 ], {style: gridColumnsStyle("3fr 1fr")})

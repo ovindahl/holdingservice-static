@@ -112,6 +112,7 @@ let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, inde
       newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
       newDatom( "newDatom_"+ index, "entity/selectSourceDocument", sourceDocument ),
       newDatom( "newDatom_"+ index, "entity/label", `[${transactionRow[0]}] Banktransaksjon: ${isPayment ? paidAmount : receivedAmount} `  ),
+      newDatom( "newDatom_"+ index, 12377, true ),
     ]
   
     return Datoms
