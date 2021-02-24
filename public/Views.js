@@ -79,6 +79,7 @@ let activeUserPage = State => {
     "10040": eventPageView,
     "10042": eventPageView,
     "10036": eventPageView,
+    "12470": eventPageView,
     
     "11974": eventPageView,
 
