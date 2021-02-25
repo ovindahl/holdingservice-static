@@ -129,8 +129,9 @@ let init = async () => {
       S: {
         userProfile,
         selectedUser: userEntity,
-        selectedCompany: 6829,
-        selectedPage: 11974,
+        selectedPage: 11474,
+        selectedCompany: initialDatabase.get(userEntity, "user/companies")[0],
+        selectedAccountingYear: 7407
       }
       } )
     

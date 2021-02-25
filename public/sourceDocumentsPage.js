@@ -12,47 +12,52 @@ const SourceDocumentsPage = {
   
   let allSourceDocumentsView = State => d([
     h3("Alle bilagsdokumenter"),
-    accountingYearFilter( State ),
     br(),
     d([
-        entityLabelWithPopup( State, 6 ),
-        entityLabelWithPopup( State, 11688 ),
-        entityLabelWithPopup( State, 1757 ),
-    ], {style: gridColumnsStyle("2fr 2fr 1fr 1fr 1fr")}),
+      d([
+        d( "#" ),
+        d( "Bilag" ),
+        d( "Bilagstype" ),
+      ], {style: gridColumnsStyle("1fr 3fr 2fr")}), 
+    ], {class: "feedContainer"}),
     d( State.DB.get( State.S.selectedCompany, 11475 )
         .filter( sourceDocument => isDefined(State.S.selectedAccountingYear) ? State.DB.get(sourceDocument, 7512 ) === State.S.selectedAccountingYear : true  )
         .map( sourceDocument => d([
-        entityLabelWithPopup( State, sourceDocument ),
-        lockedSingleValueView( State, sourceDocument, 11688 ),
-        lockedSingleValueView( State, sourceDocument, 1757 ),
-        submitButton( "Vis", () => State.Actions.selectEntity(  sourceDocument, SourceDocumentsPage.entity ))
-    ], {style: gridColumnsStyle("2fr 2fr 1fr 1fr 1fr")}) )),
+          d( `${State.DB.get(sourceDocument, 12509 )}` ),
+          entityLabelWithPopup( State, sourceDocument, () => State.Actions.selectEntity(  sourceDocument, SourceDocumentsPage.entity  ) ),
+          lockedSingleValueView( State, sourceDocument, 11688 ),
+        ], {style: gridColumnsStyle("1fr 3fr 2fr") } ) ), {class: "feedContainer"} ),
   br(),
-  eventActionButton( State, State.S.selectedCompany, 12062 )
+  d([
+    h3("Last opp nytt bilag"),
+    d( State.DB.getAll( 11686 ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createAndSelectEntity( [
+      newDatom( 'newEntity', 'entity/entityType', 11472 ),
+      newDatom( 'newEntity', "sourceDocument/sourceDocumentType", sourceDocumentType ),
+      newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+      newDatom( 'newEntity' , 6, 'Bilagsdokument uten navn' ), 
+      newDatom( 'newEntity' , 1139, '' ), 
+      newDatom( 'newEntity' , 7512, 7407), 
+      ] ) )  ) )
+  ], {class: "feedContainer"})
   ]) 
 
   
   let singleSourceDocumentView = State => d([
     submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, SourceDocumentsPage.entity )  ),
     br(),
-    d( State.DB.get( 11472, 17  ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute ) )   ),
+    entityAttributeView( State, State.S.selectedEntity, 11688, true ),
+    entityAttributeView( State, State.DB.get( State.S.selectedEntity, 11688  ), 12556, true ),
+    entityAttributeView( State, State.S.selectedEntity, 7512, false ),
+    entityAttributeView( State, State.S.selectedEntity, 6, false ),
+    entityAttributeView( State, State.S.selectedEntity, 1139, false ),
     br(),
     isDefined(State.DB.get( State.S.selectedEntity, 11688  )) 
       ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 7942 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute ) )   )
       : d(""),
     br(),
-    d([
-      h3("Importerte transaksjoner fra dette bilaget:"),
-      State.DB.get(State.S.selectedEntity, 11479).length > 0
-        ? d( State.DB.get(State.S.selectedEntity, 11479).map( event => entityLabelWithPopup(State, event, () => State.Actions.selectEntity(event, EventPage.entity)) ) )
-        : d("Ingen importerte transaksjoner."),
-    ]),
+    entityAttributeView( State, State.S.selectedEntity, 11479, true ),
     br(),
-    State.DB.get( State.S.selectedEntity, 11479  ).length === 0
-        ? submitButton( "Slett bilagsdokument", () => State.Actions.retractEntity( State.S.selectedEntity ) )
-        : d("Fjern alle koblinger mot bilagsdokumentet for å slette"),
-    br(),
-    State.DB.get( State.S.selectedEntity, 11688  ) === 11689 ? eventActionButton( State, State.S.selectedEntity, 11695) : d(""),
+    eventActionsView( State, State.S.selectedEntity ),
     
   ])
 

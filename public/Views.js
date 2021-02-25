@@ -11,13 +11,21 @@ const ClientApp = {
     selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectedEntity: undefined}, isDefined( Components.find( Component => Component.entity === pageEntity ) ) ? Components.find( Component => Component.entity === pageEntity ).onLoad( State ) : {}) }),
     selectEntity: (entity, pageEntity) => updateState( State, {S: mergerino({selectedEntity: entity}, isDefined(pageEntity) ? {selectedPage: pageEntity} : {}) }),
     selectEventIndex: eventIndex => updateState( State, {S: {selectedEventIndex: eventIndex} }),
+    selectAccountingYear: accountingYear => updateState( State, {S: {selectedAccountingYear: accountingYear} }),
     retractEntity: async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
     selectSourceDocument: sourceDocument => updateState( State, {S: {selectedEntity: sourceDocument, selectedPage: State.DB.get( State.DB.get(sourceDocument, 10070), 7930) }}), 
-    selectCompany: company => updateState( State, {
-      DB: State.DB,
-      S: {selectedCompany: company, selectedPage: 7882, selectedEntity: undefined} 
-    } ),
+    selectCompany: company => updateState( State, { S: {selectedCompany: company, selectedPage: 11474, selectedEntity: undefined} } ),
     postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } ),
+    createAndSelectEntity: async newDatoms => {
+
+      if( newDatoms.every( Datom => Datom.entity === newDatoms[0].entity ) ){
+        let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
+        let newEntity = updatedDB.Entities.slice( -1 )[0].entity
+        updateState( State, {DB: updatedDB, S: { selectedEntity: newEntity } } )
+      }else{ log({ERROR: "createAndSelectEntity: Received datoms refer to > 1 entity"}) }
+
+      
+    }
   })
 }
 
@@ -118,8 +126,7 @@ let activeUserPage = State => {
 let accountingYearFilter = State => d([
   entityLabelWithPopup( State, 7403 ),
   d( [
-    d( State.DB.get(State.S.selectedCompany, 10061)
-      .filter( accountingYear => State.DB.get( State.S.selectedCompany, 11976 )( accountingYear ).length > 0  )
+    d( State.DB.get(State.S.selectedCompany, 12553)
       .map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e) ) ), {display: "flex"}),
     submitButton("Vis alle", () => State.Actions["TransactionsPage/selectAccountingYear"]( undefined ) )
   ]  )
@@ -145,14 +152,23 @@ let navBarView = (State) => d([
             ]),
     ], {style: "display: inline-flex;"}),
     d([
-      d([dropdown(State.S.selectedCompany, State.DB.get(State.S.selectedUser, "user/companies").map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
+      d([
+        d("Valgt selskap:"),
+        d([dropdown(State.S.selectedCompany, State.DB.get(State.S.selectedUser, "user/companies").map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
+      ]),
+      d([
+        d("Valgt år:"),
+        d([dropdown(State.S.selectedAccountingYear, State.DB.get(State.S.selectedCompany, 12553).map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
+      ])
+    ], {style: gridColumnsStyle("1fr 1fr")}),
+    d([
       d([
         entityLabelWithPopup( State, State.S.selectedUser ),
         submitButton("Logg ut", () => sideEffects.auth0.logout({redirect_uri: window.location.origin}) )
       ])
     ], {style: "display: inline-flex;"})
 
-  ], {style: gridColumnsStyle("3fr 1fr")})
+  ], {style: gridColumnsStyle("4fr 2fr 1fr")})
   
 ], {class: "feedContainer"})
 
@@ -169,9 +185,15 @@ let notActivatedUserPage = State => d([
 
 let overviewPageView = State => d([
   h3("Sider i applikasjonen"),
-  d(State.DB.getAll( 7487  ).filter( page => ![9951, 9338, 10025].includes(page) ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+  d( State.DB.getAll( 7487  )
+      .filter( page => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get(page, 12506) )
+      .filter( page => ![9951, 9338, 10025].includes(page) )
+      .map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
     h3(category),
-    d(State.DB.getAll(7487).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( entity => d([
+    d(State.DB.getAll(7487)
+      .filter( page => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get(page, 12506) )
+      .filter( page => ![9951, 9338, 10025].includes(page) )
+      .filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( entity => d([
       entityLabelWithPopup( State, entity, () => State.Actions.selectPage(entity) ),
       d( State.DB.get(entity, 7) )
     ], {style: gridColumnsStyle("1fr 3fr")})  ) ),
@@ -187,15 +209,13 @@ let userTasksView = State => d([
       d( "Oppgave" ),
       d( "Status?" ),
       d( "Tilknyttet side" ),
-      d( "Kommentar" ),
-    ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+    ], {style: gridColumnsStyle("3fr 1fr 1fr")}),
   ], {class: "feedContainer"}),
     d( State.DB.get( State.S.selectedCompany  , 12158).map(  task => d([
       d( State.DB.get( task, 6 ) ),
       boolView( State, task, 12155 ),
-      entityLabelWithPopup( State, 11474, () => State.Actions.selectEntity( undefined, 11474 ) ),
-      textInputView( State, task, 1139  )
-    ], {style: gridColumnsStyle("repeat(4, 1fr)")}) ), {class: "feedContainer"} )
+      entityLabelWithPopup( State, 11474, () => State.Actions.selectEntity( undefined, 11474 ) )
+    ], {style: gridColumnsStyle("3fr 1fr 1fr")}) ), {class: "feedContainer"} )
   ])
 ], {class: "feedContainer"})
 

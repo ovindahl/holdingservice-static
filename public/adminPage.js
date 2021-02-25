@@ -13,7 +13,7 @@ const AdminPage = {
         updateState( State, {DB: updatedDB, S: {selectedEntity: updatedDB.Entities.slice(-1)[0].entity}} )
       },
       updateEntity: async (entity, attribute, newValue, isAddition) => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, newValue, isAddition )  } ),
-      postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms)  } ),
+      "adminpage/retractEntity": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: State.DB.get(entity, 19) } } )
     })
   }
 
@@ -52,7 +52,7 @@ let entityView = (State, entity) => isDefined(entity)
       ], {class: "columns_1_1_1"}),
       d( State.DB.get( State.DB.get(entity, "entity/entityType"), "entityType/attributes" ).map( attribute => entityAttributeView(State, entity, attribute) ) ),
       d([
-        submitButton( "Slett", e => State.Actions.retractEntity(entity) ),
+        submitButton( "Slett", () => State.Actions["adminpage/retractEntity"](entity) ),
         submitButton( `Opprett ny ${h3( `${ State.DB.get( State.DB.get(entity, "entity/entityType"), "entity/label") ? State.DB.get( State.DB.get(entity, "entity/entityType"), "entity/label") : "Mangler visningsnavn."}` ) } `, e => State.Actions.createEntity( State.DB.get(entity, "entity/entityType") ) ),
         submitButton( "Lag kopi", e => State.Actions.duplicateEntity( entity ) ),
       ])
@@ -62,7 +62,7 @@ let entityView = (State, entity) => isDefined(entity)
         prevNextEntityButtonsView( State ),
         d( JSON.stringify(State.DB.get(entity)) ),
         entityAttributeView(State, entity, 19),
-        submitButton( "Slett", e => State.Actions.retractEntity(entity) ),
+        submitButton( "Slett", () => State.Actions["adminpage/retractEntity"](entity) ),
       ])
   : d("Ingen entitet valgt", {class: "feedContainer"})
 

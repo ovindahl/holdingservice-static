@@ -186,9 +186,7 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
 
 let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
 ? State.DB.get(attribute, "attribute/valueType") === 32
-  ? State.DB.get( entity, attribute ).every( entry => State.DB.get(entry, 19) === 7948 )
-    ?  d( State.DB.get( entity, attribute ).map( ent => transactionLabel( State, ent ) ) )
-    : d( State.DB.get( entity, attribute ).map( ent => entityLabelWithPopup(State, ent ) ) )
+  ? d( State.DB.get( entity, attribute ).map( ent => entityLabelWithPopup(State, ent ) ) )
   : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( State.DB.get( entity, attribute )  ), {style: isNumber(State.DB.get( entity, attribute )) ? `text-align: right;` : ""}  )
 : d("na.")
 
@@ -350,7 +348,7 @@ let boolView = ( State, entity, attribute ) => checkBox( State.DB.get( entity, a
 
 //input( {value: State.DB.get( entity, attribute ) ? 'Sant' : 'Usant' }, "click", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} ) )
  
-let selectStaticOptionView = ( State, entity, attribute )  => dropdown( State.DB.get( entity, attribute ), State.DB.getOptions( attribute ) , async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} ) )
+let selectStaticOptionView = ( State, entity, attribute )  => dropdown( State.DB.get( entity, attribute ), State.DB.getOptions( attribute ) , async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) )
 
 let selectEntityView = ( State, entity, attribute  ) => {
 

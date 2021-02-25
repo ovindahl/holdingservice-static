@@ -97,7 +97,7 @@ let constructDatabase = Entities => {
   
     DB.isEntity = entity => DB.entities.includes(entity)
   
-    DB.isCalculatedField = calculatedField => DB.getAll(9815).includes( calculatedField )
+    DB.isCalculatedField = calculatedField => DB.getAll(9815).includes( calculatedField ) || DB.getAll(12551).includes( calculatedField )
   
     DB.getDatom = (entity, attribute, version) => {
 

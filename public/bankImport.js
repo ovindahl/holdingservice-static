@@ -79,7 +79,7 @@ let singleBankTransactionView = State => {
 
 //I bruk
 
-let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, index, selectedBankAccount, sourceDocument) => {
+let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, index, selectedBank, sourceDocument) => {
 
     //NB: Denne brukes av entitet 11693: Datomer for import av banktransaksjoner
 
@@ -106,13 +106,13 @@ let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, inde
       newDatom( "newDatom_"+ index, "sourceDocument/sourceDocumentType", 10132 ),
       newDatom( "newDatom_"+ index, "transaction/paymentType", isPayment ? 9086 : 9087 ),
       newDatom( "newDatom_"+ index, 1757, date  ),
-      newDatom( "newDatom_"+ index, 7463, selectedBankAccount),
+      newDatom( "newDatom_"+ index, 12507, selectedBank),
       newDatom( "newDatom_"+ index, 1083, isPayment ? paidAmount : receivedAmount  ),
       newDatom( "newDatom_"+ index, 8831, description  ),
       newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
       newDatom( "newDatom_"+ index, "entity/selectSourceDocument", sourceDocument ),
       newDatom( "newDatom_"+ index, "entity/label", `[${transactionRow[0]}] Banktransaksjon: ${isPayment ? paidAmount : receivedAmount} `  ),
-      newDatom( "newDatom_"+ index, 12377, true ),
+      newDatom( "newDatom_"+ index, 12377, false ),
     ]
   
     return Datoms

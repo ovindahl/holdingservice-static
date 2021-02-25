@@ -6,7 +6,7 @@ const EventPage = {
   }
 
   
-let eventPageView = State => isDefined( State.S.selectedEntity) 
+let eventPageView = State => isDefined( State.S.selectedEntity ) 
 ? singleEventView( State )
 : allEventsView( State )
 
@@ -47,12 +47,21 @@ let singleEventView = State => d([
       ? d("✔️ Ferdig og låst")
       : State.DB.get( State.S.selectedEntity, 12377 )
         ? d("⌛ Ferdig, men ikke låst. Låses når alle forutgående hendelser er låst.")
-        : d("✏️ Ikke ferdig."),
+        : d( State.DB.get(State.DB.get(State.S.selectedEntity, 10070), 12547)
+            .map( criterium => d([
+              criteriumIsValid(State, State.S.selectedEntity, criterium) ? d("✔️") : d("❌"),
+              d(State.DB.get(criterium, 11568))
+          ], {style: gridColumnsStyle("1fr 3fr")})  ) ),
     ], {class: "feedContainer"}),
     br(),
-    State.DB.get(State.S.selectedEntity, 12377 ) === true 
-      ? calculatedTransactionView( State )
-      : d(""),
+    d([
+      h3("Bokføring"),
+      State.DB.get(State.S.selectedEntity, 12382 ) === true 
+      ? State.DB.get(State.S.selectedEntity, State.DB.get( State.DB.get(State.S.selectedEntity, 10070), 12355)).length > 0
+        ? calculatedTransactionView( State )
+        : d("Bokføres ikke.")
+      : d("Ikke bokført."),
+    ], {class: "feedContainer"}),
     br(),
     eventActionsView( State, State.S.selectedEntity ),
 ])
@@ -86,7 +95,7 @@ let calculatedTransactionView = State => d( State.DB.get(State.S.selectedEntity,
       d( formatNumber( State.DB.get( transaction.destinationNode, 12352 )( State.DB.get( transaction.event, 11975 )  ) ), {style: `text-align: right;`} ),
     ])
   ],{class: "feedContainer", style: gridColumnsStyle("1fr 1fr")}),
-], {class: "feedContainer", style: gridColumnsStyle("1fr 1fr 1fr")}) ) )
+], {style: gridColumnsStyle("1fr 1fr 1fr")}) ) )
 
 
 let eventRowView = (State, event) => d([
@@ -104,8 +113,6 @@ let eventRowView = (State, event) => d([
 
 let allEventsView = State => d([
     h3("Alle hendelser"),
-    accountingYearFilter( State ),
-    br(),
     d([
     d([
         d( "Hendelsesdato" ),

@@ -1,11 +1,11 @@
-
+//NB: Brukes av kalkulerte verdier 
 let criteriumIsValid = (State, entity, criterium) => new Function( [`Database`, `Entity`] , State.DB.get(criterium, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( State.DB, {entity, get: attr => State.DB.get(entity, attr)} )
 
 let buttonLabel = (State, entity, action, isActive) => d([d( 
     `${State.DB.get(action, 6)}`, 
     {class: isActive ? "activeButtonLabel" : "disabledButtonLabel" }, 
     "click", 
-    isActive ? async () =>  updateState( State, {DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ), S: {selectedEntity: [11572, 11657, 11678, 11736].includes(action) ? undefined : State.S.selectedEntity} }) : null
+    isActive ? async () =>  updateState( State, {DB: await Transactor.postDatoms( State.DB, State.DB.get(entity, State.DB.get(action, 11523) ) ), S: {selectedEntity: [11572, 11657, 11678, 11736, 12532].includes(action) ? undefined : State.S.selectedEntity} }) : null
   )], {style:"display: inline-flex;"})
 
 
@@ -141,7 +141,7 @@ let transactionLabel = (State, companyTransaction) => d([
   
 //---
   
-let eventLabelText = (State, event, onclick) => d([d(`📅 Hendelse ${ State.DB.get(event, 11975) }: ${State.DB.get( State.DB.get(event, 10070), 6 )}`, {class: "entityLabel", style: `background-color:#bade90;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(  event ) )], {style:"display: inline;"})
+let eventLabelText = (State, event, onclick) => d([d(`📅 Hendelse ${ State.DB.get(event, 11975) }: ${State.DB.get( State.DB.get(event, 10070), 6 )}`, {class: "entityLabel", style: `background-color:#bade90;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(  event, EventPage.entity ) )], {style:"display: inline;"})
   
 let eventLabel = (State, sourceDocument, onclick) => d([
   d([

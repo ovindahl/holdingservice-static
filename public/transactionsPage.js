@@ -15,10 +15,6 @@ let transactionsView = State => newAllTransasctionsVew( State )
 
 let newAllTransasctionsVew = State => d([
   h3("Bokførte transaksjoner"),
-  d([
-    entityLabelWithPopup( State, 7403 ),
-    d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
-  ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
   br(),  
   d( State.DB.get( State.S.selectedCompany, 12351)().map( Transaction => d([
     entityLabelWithPopup(State, Transaction.event, () => State.Actions.selectEntity(Transaction.event, 11974 ) ),
@@ -50,10 +46,6 @@ let transactionRowView = (State, companyTransaction) => d([
 
 let allTransactionsView = State => d([
   h3("Bokførte transaksjoner"),
-  d([
-    entityLabelWithPopup( State, 7403 ),
-    d( State.DB.get(State.S.selectedCompany, 10061).map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e)) ), {display: "flex"} )
-  ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
   br(),  
   State.DB.get(State.S.selectedCompany, 11092)( State.S.selectedAccountingYear ).length > 0 
     ? d( State.DB.get(State.S.selectedCompany, 11092)( State.S.selectedAccountingYear )
