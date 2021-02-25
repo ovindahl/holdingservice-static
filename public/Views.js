@@ -123,17 +123,6 @@ let activeUserPage = State => {
   ])
 }
 
-let accountingYearFilter = State => d([
-  entityLabelWithPopup( State, 7403 ),
-  d( [
-    d( State.DB.get(State.S.selectedCompany, 12553)
-      .map( e => entityLabelWithPopup(State, e, () => State.Actions["TransactionsPage/selectAccountingYear"](e) ) ), {display: "flex"}),
-    submitButton("Vis alle", () => State.Actions["TransactionsPage/selectAccountingYear"]( undefined ) )
-  ]  )
-  ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")})
-
-
-
 let navBarView = (State) => d([
   d([
     d([

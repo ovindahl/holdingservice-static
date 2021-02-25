@@ -108,7 +108,6 @@ let eventRowView = (State, event) => d([
       : State.DB.get( event, 12377 )
         ? d("⌛", {style: `text-align: right;`})
         : d("✏️", {style: `text-align: right;`}),
-    //d( ( State.DB.get(event, 10070) === 10132 && isNumber( State.DB.get(event, 11201) ) || State.DB.get(event, 10402).length > 0) ? "✔️" : "✏️", {style: `text-align: right;`} ),
 ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")})
 
 let allEventsView = State => d([
