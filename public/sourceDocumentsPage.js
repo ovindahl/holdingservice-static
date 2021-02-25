@@ -5,10 +5,7 @@ const SourceDocumentsPage = {
     Actions: State => returnObject({}),
   }
 
- 
-  let sourceDocumentsView = State => isDefined( State.S.selectedEntity ) 
-    ? singleSourceDocumentView( State )
-    : allSourceDocumentsView( State )
+let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEntity ) ? singleSourceDocumentView( State ) : allSourceDocumentsView( State ) } catch (error) { return entityErrorView( State, error ) } }
   
   let allSourceDocumentsView = State => d([
     h3("Alle bilagsdokumenter"),
@@ -26,7 +23,8 @@ const SourceDocumentsPage = {
           d( `${State.DB.get(sourceDocument, 12509 )}` ),
           entityLabelWithPopup( State, sourceDocument, () => State.Actions.selectEntity(  sourceDocument, SourceDocumentsPage.entity  ) ),
           lockedSingleValueView( State, sourceDocument, 11688 ),
-        ], {style: gridColumnsStyle("1fr 3fr 2fr") } ) ), {class: "feedContainer"} ),
+        ], {style: gridColumnsStyle("1fr 3fr 2fr") } ) ), 
+      {class: "feedContainer"} ),
   br(),
   d([
     h3("Last opp nytt bilag"),
@@ -54,8 +52,9 @@ const SourceDocumentsPage = {
     isDefined(State.DB.get( State.S.selectedEntity, 11688  )) 
       ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 7942 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute ) )   )
       : d(""),
-    br(),
-    entityAttributeView( State, State.S.selectedEntity, 11479, true ),
+    isDefined(State.DB.get( State.S.selectedEntity, 11688  )) 
+      ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 10433 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute, true ) )   )
+      : d(""),
     br(),
     eventActionsView( State, State.S.selectedEntity ),
     

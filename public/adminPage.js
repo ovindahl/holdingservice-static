@@ -51,6 +51,15 @@ let entityView = (State, entity) => isDefined(entity)
         prevNextEntityButtonsView( State )
       ], {class: "columns_1_1_1"}),
       d( State.DB.get( State.DB.get(entity, "entity/entityType"), "entityType/attributes" ).map( attribute => entityAttributeView(State, entity, attribute) ) ),
+      br(),
+      State.DB.get(entity, "entity/entityType") === 47
+        ? d([
+          entityLabelWithPopup( State, 12622 ),
+          d( State.DB.get(entity, 12622).map( calculatedField => entityLabelWithPopup( State, calculatedField, () => State.Actions.selectEntity( calculatedField, AdminPage.entity ) ), ) ),
+        ], {class: "feedContainer"})
+        : d("")
+      ,
+      br(),
       d([
         submitButton( "Slett", () => State.Actions["adminpage/retractEntity"](entity) ),
         submitButton( `Opprett ny ${h3( `${ State.DB.get( State.DB.get(entity, "entity/entityType"), "entity/label") ? State.DB.get( State.DB.get(entity, "entity/entityType"), "entity/label") : "Mangler visningsnavn."}` ) } `, e => State.Actions.createEntity( State.DB.get(entity, "entity/entityType") ) ),

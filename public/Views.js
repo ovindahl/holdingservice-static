@@ -65,6 +65,16 @@ let clientPage = State => isUndefined(State.DB)
 
 
 
+  let entityErrorView = (State, error) => d([
+    h3("Oops!"),
+    d("Det har skjedd en feil."),
+    br(),
+    d("Entitet: " + State.S.selectedEntity),
+    br(),
+    d( String(error) )
+  ])
+      
+
 
 let activeUserPage = State => {
 
@@ -272,19 +282,9 @@ let renderGraph = State => {
   let nodes = State.DB.get( State.S.selectedCompany , 10052)().map( e => returnObject({data: {
     id: String(e), 
     label: State.DB.get(e, 6),
-    col: State.DB.get(e, 8768) === 7538
-      ? 1
-      : State.DB.get(e, 8768) === 7539
-        ? 2
-        : State.DB.get(e, 7934) === 8744 || State.DB.get(e, 7934) === 8745
-          ? 3
-          : State.DB.get(e, 7934) === 8737
-            ? 4
-            : State.DB.get(e, 8768) === 7537
-              ? 5
-              : 6,
-      weight: 50,
-      color: "black"
+    col: 1,
+    weight: 50,
+    color: "black"
   } }  ) )
   let edges = allTransactions
     .filter( t => isNumber( State.DB.get(t, "transaction/originNode") ) && isNumber( State.DB.get(t, "transaction/destinationNode") )   )

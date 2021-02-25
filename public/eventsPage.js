@@ -6,9 +6,10 @@ const EventPage = {
   }
 
   
-let eventPageView = State => isDefined( State.S.selectedEntity ) 
-? singleEventView( State )
-: allEventsView( State )
+let eventPageView = State => { try {return isDefined( State.S.selectedEntity ) ? singleEventView( State ) : allEventsView( State ) } catch (error) { return entityErrorView( State, error ) } }
+
+
+
 
 let prevNextEventView = State => {
   

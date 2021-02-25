@@ -97,7 +97,8 @@ let constructDatabase = Entities => {
   
     DB.isEntity = entity => DB.entities.includes(entity)
   
-    DB.isCalculatedField = calculatedField => DB.getAll(9815).includes( calculatedField ) || DB.getAll(12551).includes( calculatedField )
+    DB.isEntityCalculatedField = calculatedField => DB.getAll(9815).includes( calculatedField )
+    DB.isGlobalCalculatedField = calculatedField => DB.getAll(12551).includes( calculatedField )
   
     DB.getDatom = (entity, attribute, version) => {
 
@@ -140,34 +141,32 @@ let constructDatabase = Entities => {
       return EntityAttribute
     }
 
-    DB.getCalculatedDatom = ( entity, calculatedField ) => {
+    DB.getGlobalCalculatedDatom = calculatedField => DB.calculatedDatoms.find( calculatedDatom => isUndefined(calculatedDatom.entity) && calculatedDatom.calculatedField === calculatedField )
 
-
-      let calculatedDatom = DB.calculatedDatoms.find( calculatedDatom => calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField )
-
-        return calculatedDatom
-
-    }
-
-    DB.getGlobalCalculatedValue = (entity, calculatedField) => {
-
-      let cachedCalculatedDatom = DB.getCalculatedDatom( entity, calculatedField )
-
+    DB.getGlobalCalculatedValue = calculatedField => {
+      let cachedCalculatedDatom = DB.getGlobalCalculatedDatom( calculatedField )
       if(isDefined(cachedCalculatedDatom)){
-        //log("Returning cached version")
         return cachedCalculatedDatom.value
       }else{
-        //log("Returning calculated version")
-        let value = calculateGlobalCalculatedValue( DB, entity, calculatedField )
-        let calculatedDatom = { entity, calculatedField, value }
-        DB.calculatedDatoms = DB.calculatedDatoms.filter( calculatedDatom => !(calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField) ).concat( calculatedDatom )
-
+        let value = calculateGlobalCalculatedValue( DB, calculatedField )
+        let calculatedDatom = { calculatedField, value }
+        DB.calculatedDatoms = DB.calculatedDatoms.filter( calculatedDatom => !( isUndefined( calculatedDatom.entity )  && calculatedDatom.calculatedField === calculatedField) ).concat( calculatedDatom )
         return value
       }
+    } 
 
+    DB.getEntityCalculatedDatom = ( entity, calculatedField ) => DB.calculatedDatoms.find( calculatedDatom => calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField )
 
-
-      
+    DB.getEntityCalculatedValue = (entity, calculatedField) => {
+      let cachedCalculatedDatom = DB.getEntityCalculatedDatom( entity, calculatedField )
+      if(isDefined(cachedCalculatedDatom)){
+        return cachedCalculatedDatom.value
+      }else{
+        let value = calculateEntityCalculatedValue( DB, entity, calculatedField )
+        let calculatedDatom = { entity, calculatedField, value }
+        DB.calculatedDatoms = DB.calculatedDatoms.filter( calculatedDatom => !(calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField) ).concat( calculatedDatom )
+        return value
+      }
     } 
   
     DB.getAll = entityType => DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity) //Kan bli sirkulær med isAttribute
@@ -175,15 +174,21 @@ let constructDatabase = Entities => {
     DB.getOptions = (attribute, tx ) => tryFunction( () => new Function( ["Database"] , DB.get( attribute, "attribute/selectableEntitiesFilterFunction", tx) )( DB ) );
   
     DB.get = (entity, attribute, version) => {
-      if(DB.isEntity(entity)){
-        if( isDefined(attribute) ){
-          if( DB.isAttribute(attribute) ){
-            let Datom = DB.getDatom(entity, attribute, version)
-            if( isUndefined(Datom) || Datom.isAddition === false ){return undefined}
-            else{ return Datom.value}
-          }else if( DB.isCalculatedField(attribute) ){return DB.getGlobalCalculatedValue( entity, attribute ) } //returns calculatedField
-        }else{return DB.getEntity(entity)}
-      }else{return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`)}
+      if( isNull(entity) && DB.isGlobalCalculatedField(attribute) ){ return DB.getGlobalCalculatedValue( attribute )
+      }else if( DB.isEntity(entity) ){
+          if( isDefined(attribute) ){
+            if( DB.isAttribute(attribute) ){
+              let Datom = DB.getDatom(entity, attribute, version)
+              if( isUndefined(Datom) || Datom.isAddition === false ){ return undefined}
+              else{ return Datom.value}
+            }else if ( DB.isEntityCalculatedField(attribute) ){ 
+              if( DB.get(entity, "entity/entityType") === DB.get(attribute, 8357) ) { return DB.getEntityCalculatedValue( entity, attribute ) }  
+              else{ return log(undefined, `DB.getEntityCalculatedValue ERROR: ${entity} does not have the type required by ${attribute}.`) }
+            }
+            }else { return DB.getEntity(entity) }
+        }else{ return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`) }
+      
+      
     }
   
     
@@ -242,7 +247,9 @@ getBalanceObjectLabel = (DB, balanceObject) => {
 
 getEntityLabel = (DB, entity) => `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
 
-let calculateGlobalCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
+
+let calculateGlobalCalculatedValue = ( DB, calculatedField ) => tryFunction( () => new Function( [`Database`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB ) )
+let calculateEntityCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
 
 
 

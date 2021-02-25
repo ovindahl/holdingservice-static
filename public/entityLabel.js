@@ -59,21 +59,10 @@ let getEntityLabelText = (State, entity) => {
 }
 
 
-
-
-
-
-
-
-
-
 let entityLabelWithPopup = ( State, entity, onClick ) => {
 
     let entityTypeLabelController = {
-      "7948": transactionLabel,
       "7979": actorLabel,
-      "7932": nodeLabel,
-      "10617": nodeLabel, //sharedNode
       "10062": eventLabel,
       "11472": sourceDocumentLabel
     }
@@ -108,36 +97,6 @@ let entityPopUp = (State, entity) => d([
   span(`Entitet: ${ entity}`),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-
-
-//---
-
-
-  
-let transactionLabelText = (State, companyTransaction) => d([d(`📝 Transaksjon ${ State.DB.get(companyTransaction, 8354) }`, {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get(companyTransaction, "transaction/transactionType"), 20  )};`}, "click", () => State.Actions.selectEntity(  companyTransaction, TransactionsPage.entity ) )], {style:"display: inline;"})
-  
-let transactionLabel = (State, companyTransaction) => d([
-  d([
-    transactionLabelText( State, companyTransaction ),
-    entityPopUp( State, companyTransaction ),
-  ], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-
-
-  //__
-
-  
-  //---
-  
-  let nodeLabelText = (State, node, onclick) => d([d(State.DB.get(node, 6), {class: "entityLabel", style: `background-color:${ State.DB.get(node, "entity/entityType") === 10617 ? "#79554852" : State.DB.get(State.DB.get(node, "balanceObject/balanceObjectType") , 20)};`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(node, BalancePage.entity) )], {style:"display: inline;"})
-  
-  let nodeLabel = (State, node, onclick) => d([
-    d([
-      nodeLabelText( State, node, onclick ),
-      entityPopUp( State, node ),
-    ], {class: "popupContainer", style:"display: inline-flex;"})
-    ], {style:"display: inline-flex;"} )
-  
   
 //---
   

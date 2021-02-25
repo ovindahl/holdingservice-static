@@ -178,16 +178,19 @@ let lockedValueView = (State, entity, attribute ) => State.DB.get(attribute, "at
 let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
   ? State.DB.get(attribute, "attribute/valueType") === 32
     ? entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
-
-
-          
-    : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( State.DB.get( entity, attribute )  ) , {style: isNumber(State.DB.get( entity, attribute )) ? `text-align: right;` : ""}  )
+    : State.DB.get(attribute, "attribute/valueType") === 31
+      ? d( formatNumber( State.DB.get( entity, attribute )  ) , {style: `text-align: right;`}  )
+      : State.DB.get(attribute, "attribute/valueType") === 40
+        ? d( State.DB.getOptions(attribute).find( option => option.value === State.DB.get( entity, attribute ) ).label  )
+        : State.DB.get(attribute, "attribute/valueType") === 36
+          ? input( mergerino( {type: "checkbox", disabled: "disabled"}, State.DB.get(entity, attribute) === true ? {checked: "checked"} : {} ))
+          : d( String( State.DB.get( entity, attribute ) )  )
   : d("na.")
 
 let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
 ? State.DB.get(attribute, "attribute/valueType") === 32
   ? d( State.DB.get( entity, attribute ).map( ent => entityLabelWithPopup(State, ent ) ) )
-  : d( new Function(["storedValue"], State.DB.get(State.DB.get(attribute, "attribute/valueType"), "valueType/formatFunction") )( State.DB.get( entity, attribute )  ), {style: isNumber(State.DB.get( entity, attribute )) ? `text-align: right;` : ""}  )
+  : d( State.DB.get( entity, attribute ).map( entry => d( JSON.stringify(entry) ) )  )
 : d("na.")
 
 
