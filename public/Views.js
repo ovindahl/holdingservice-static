@@ -243,7 +243,7 @@ let adminPanelView = State => {
       d([
         entityLabelWithPopup( State, 5722),
         isDefined( State.S.selectedCompany ) ? entityLabelWithPopup( State, State.S.selectedCompany ) : d(" MANGLER "),
-        d([dropdown(State.S.selectedCompany, State.DB.get(State.S.selectedUser, "user/companies").map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
+        d([dropdown(State.S.selectedCompany, State.DB.getAll(5722).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
       ], {style: gridColumnsStyle("repeat(3, 1fr)")} ),,
       d([
         entityLabelWithPopup( State, 7927),

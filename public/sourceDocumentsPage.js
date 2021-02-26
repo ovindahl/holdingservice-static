@@ -34,8 +34,14 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
       newDatom( 'newEntity' , 6, 'Bilagsdokument uten navn' ), 
       newDatom( 'newEntity' , 1139, '' ), 
       newDatom( 'newEntity' , 7512, 7407), 
-      ] ) )  ) )
-  ], {class: "feedContainer"})
+      ] ) )  ) ),
+      
+  ], {class: "feedContainer"}),
+  br(),
+  d([
+      h3("Systemgenererte bilag"),
+      d( State.DB.get( State.S.selectedPage, 11956).map( action =>  eventActionButton( State, State.S.selectedCompany, action ) )  )
+  ], {class: "feedContainer"}) 
   ]) 
 
   
@@ -44,12 +50,12 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
     br(),
     entityAttributeView( State, State.S.selectedEntity, 11688, true ),
     entityAttributeView( State, State.DB.get( State.S.selectedEntity, 11688  ), 12556, true ),
-    entityAttributeView( State, State.S.selectedEntity, 7512, false ),
-    entityAttributeView( State, State.S.selectedEntity, 6, false ),
-    entityAttributeView( State, State.S.selectedEntity, 1139, false ),
+    entityAttributeView( State, State.S.selectedEntity, 7512, false, State.DB.get( State.S.selectedEntity, 12712 ) ),
+    entityAttributeView( State, State.S.selectedEntity, 6, false, State.DB.get( State.S.selectedEntity, 12712 ) ),
+    entityAttributeView( State, State.S.selectedEntity, 1139, false, State.DB.get( State.S.selectedEntity, 12712 ) ),
     br(),
     isDefined(State.DB.get( State.S.selectedEntity, 11688  )) 
-      ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 7942 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute ) )   )
+      ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 7942 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute, State.DB.get( State.S.selectedEntity, 12712 ) ) )   )
       : d(""),
     isDefined(State.DB.get( State.S.selectedEntity, 11688  )) 
       ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 10433 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute, true ) )   )
@@ -58,12 +64,3 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
     eventActionsView( State, State.S.selectedEntity ),
     
   ])
-
-  
-
-
-
-
-
-
-
