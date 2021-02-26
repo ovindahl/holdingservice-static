@@ -179,7 +179,7 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
   ? State.DB.get(attribute, "attribute/valueType") === 32
     ? entityLabelWithPopup(State, State.DB.get( entity, attribute ) )
     : State.DB.get(attribute, "attribute/valueType") === 31
-      ? d( formatNumber( State.DB.get( entity, attribute )  ) , {style: `text-align: right;`}  )
+      ? d( formatNumber( State.DB.get( entity, attribute ), 2 ) , {style: `text-align: right;`}  )
       : State.DB.get(attribute, "attribute/valueType") === 40
         ? d( State.DB.getOptions(attribute).find( option => option.value === State.DB.get( entity, attribute ) ).label  )
         : State.DB.get(attribute, "attribute/valueType") === 36
@@ -318,40 +318,35 @@ let refsView = (State, entity, attribute, index) => {
 
 
 
+//Html elements
 
-
-
-
+let textInput = (value, styleString, updateFunction) => input( {value, style: styleString}, "change", updateFunction )
+let numberInput = (value, updateFunction) => input( {value: isNumber(value) ? formatNumber( value ) : "", style: isNumber( value ) ? "text-align: right;" : "border: 1px solid red;"}, "change", updateFunction )
+let dateInput = (value, updateFunction) => input( {value: moment( value ).format('DD/MM/YYYY'), style: moment( value ).format('DD/MM/YYYY') === "Invalid date" ? "border: 1px solid red;"  : "text-align: right;"}, "change", updateFunction )
 
 
 //Single valueType views
 
-let textInputView = ( State, entity, attribute ) => input( {value: State.DB.get( entity, attribute ), style: isDefined( State.DB.get( entity, attribute ) ) ? "" : "background-color: red;" }, "change", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} )  )
-let dateInputView = ( State, entity, attribute ) => input( {
-    value: moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY'), 
-    style: moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY') === "Invalid date" ? "border: 1px solid red;"  : "text-align: right;"
-  }, 
-  "change", 
-  async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( moment( submitInputValue( e ) , 'DD/MM/YYYY').format('x') ) )} )  
-  )
+let textInputView = ( State, entity, attribute ) => textInput( State.DB.get( entity, attribute ), isDefined( State.DB.get( entity, attribute ) ) ? "" : "background-color: red;", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} ) )
 
-let numberInputView = ( State, entity, attribute ) => input( {
-    value: isNumber(State.DB.get( entity, attribute )) 
-      ? formatNumber( State.DB.get( entity, attribute ) )
-      : "", 
-    style: isNumber( State.DB.get( entity, attribute ) ) ? "text-align: right;" : "border: 1px solid red;" 
-  }, 
-  "change", 
-  async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number(submitInputValue( e ).replaceAll(' ', '').replaceAll(',', '.')  )  )} )  
-  )
+let dateInputView = ( State, entity, attribute ) => dateInput( State.DB.get( entity, attribute ), async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( moment( submitInputValue( e ) , 'DD/MM/YYYY').format('x') ) )} ) )
 
+let numberInputView = ( State, entity, attribute ) => numberInput( State.DB.get( entity, attribute ), async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number(submitInputValue( e ).replaceAll(' ', '').replaceAll(',', '.')  )  )} )   )
 
 let textAreaViewView = ( State, entity, attribute ) => textArea( isString(State.DB.get( entity, attribute )) ? State.DB.get( entity, attribute ) : JSON.stringify(State.DB.get( entity, attribute )) , {class:"textArea_code"}, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ).replaceAll(`"`, `'` ) ) } ) )
 let boolView = ( State, entity, attribute ) => checkBox( State.DB.get( entity, attribute ) === true, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} )   )
-
-//input( {value: State.DB.get( entity, attribute ) ? 'Sant' : 'Usant' }, "click", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} ) )
  
-let selectStaticOptionView = ( State, entity, attribute )  => dropdown( State.DB.get( entity, attribute ), State.DB.getOptions( attribute ) , async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) )
+let selectStaticOptionView = ( State, entity, attribute )  => dropdown( 
+  isDefined( State.DB.get( entity, attribute ) ) 
+    ? State.DB.get( entity, attribute ) 
+    : 0 , 
+  isDefined( State.DB.get( entity, attribute ) ) 
+    ? State.DB.getOptions( attribute )
+    : [{value: 0, label:"Velg alternativ"}].concat( State.DB.getOptions( attribute ) ), 
+  async e => State.DB.getOptions( attribute ).map( optionObject => optionObject.value ).includes( Number( e.srcElement.value )  ) 
+    ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) 
+    : log({ERROR: "Selected option not is list of allowed options"}) 
+  )
 
 let selectEntityView = ( State, entity, attribute  ) => {
 

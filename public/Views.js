@@ -15,7 +15,17 @@ const ClientApp = {
     retractEntity: async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
     selectSourceDocument: sourceDocument => updateState( State, {S: {selectedEntity: sourceDocument, selectedPage: State.DB.get( State.DB.get(sourceDocument, 10070), 7930) }}), 
     selectCompany: company => updateState( State, { S: {selectedCompany: company, selectedPage: 11474, selectedEntity: undefined} } ),
-    postDatoms: async newDatoms => updateState( State, {DB: await Transactor.postDatoms( State.DB, newDatoms) } ),
+    postDatoms: async newDatoms => {
+
+      let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
+
+      if( updatedDB !== null ){ updateState( State, {DB: updatedDB } ) }else{ log({ERROR: updatedDB}) }
+
+      
+
+
+      
+    },
     createAndSelectEntity: async newDatoms => {
 
       if( newDatoms.every( Datom => Datom.entity === newDatoms[0].entity ) ){

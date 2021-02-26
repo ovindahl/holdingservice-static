@@ -17,18 +17,13 @@ let reportView = State => {
   return d([
     h3("Rapporter"),
     d([
-        entityLabelWithPopup( State, 10309 ),
-        d( State.DB.get( State.S.selectedCompany, 10061 )
-          .map( accountingYear => entityLabelWithPopup(State, accountingYear, () => State.Actions["ReportPage/selectAccountingYear"]( accountingYear  )) ), {display: "flex"} )
-      ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
-    d([
     entityLabelWithPopup( State, 7976 ),
     d( State.DB.getAll(7976).map( reportType => entityLabelWithPopup(State, reportType, () => State.Actions.selectEntity(  reportType, ReportPage.entity )) ), {display: "flex"} )
     ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
     br(),
     isNumber( State.S.selectedEntity ) && isNumber( accountingYearSourceDocument )
         ? singleReportView( State, State.S.selectedEntity, accountingYearSourceDocument )
-        : d("Velg rapport og regnskapsår")
+        : d("Velg rapport.")
 ])
 } 
 
@@ -44,5 +39,12 @@ let singleReportView = ( State, reportType, yearEndEvent ) => d([
 
 let reportFieldView = ( State, reportField, yearEndEvent ) => d([
 entityLabelWithPopup( State, reportField ),
-d( new Function(["storedValue"], State.DB.get(State.DB.get(reportField, "attribute/valueType"), "valueType/formatFunction") )( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) ), {style: State.DB.get(reportField, "attribute/valueType") === 31 ? `text-align: right;` : ""}  )
+State.DB.get(reportField, "attribute/valueType") === 31
+  ? d( formatNumber(  getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) ), {style: `text-align: right;`}  )
+  : State.DB.get(reportField, "attribute/valueType") === 30
+    ? d( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ), {style: ""}  )
+    : State.DB.get(reportField, "attribute/valueType") === 36
+      ? input( mergerino( {type: "checkbox", disabled: "disabled"}, getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) === true ? {checked: "checked"} : {} ))
+      : d( JSON.stringify( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) )  )
+
 ], {style: gridColumnsStyle("3fr 1fr")})
