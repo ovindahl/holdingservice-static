@@ -2,7 +2,16 @@
 const SourceDocumentsPage = {
     entity: 11474,
     onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({}),
+    Actions: State => returnObject({
+      createSourceDocument: sourceDocumentType => State.Actions.createAndSelectEntity( [
+        newDatom( 'newEntity', 'entity/entityType', 11472 ),
+        newDatom( 'newEntity', "sourceDocument/sourceDocumentType", sourceDocumentType ),
+        newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+        newDatom( 'newEntity' , 6, 'Bilagsdokument uten navn' ), 
+        newDatom( 'newEntity' , 1139, '' ), 
+        newDatom( 'newEntity' , 7512, 7407), 
+      ] ),
+    }),
   }
 
 let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEntity ) ? singleSourceDocumentView( State ) : allSourceDocumentsView( State ) } catch (error) { return entityErrorView( State, error ) } }
@@ -26,22 +35,9 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
     : d("Ingen bilag i valgt regnskapsår.", {class: "feedContainer"}),
   br(),
   d([
-    h3("Last opp nytt bilag"),
-    d( State.DB.getAll( 11686 ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createAndSelectEntity( [
-      newDatom( 'newEntity', 'entity/entityType', 11472 ),
-      newDatom( 'newEntity', "sourceDocument/sourceDocumentType", sourceDocumentType ),
-      newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-      newDatom( 'newEntity' , 6, 'Bilagsdokument uten navn' ), 
-      newDatom( 'newEntity' , 1139, '' ), 
-      newDatom( 'newEntity' , 7512, 7407), 
-      ] ) )  ) ),
-      
+    h3("Legg til bilag"),
+    d( State.DB.getAll( 11686 ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createSourceDocument( sourceDocumentType ) )  ) ),
   ], {class: "feedContainer"}),
-  br(),
-  d([
-      h3("Systemgenererte bilag"),
-      d( State.DB.get( State.S.selectedPage, 11956).map( action =>  eventActionButton( State, State.S.selectedCompany, action ) )  )
-  ], {class: "feedContainer"}) 
   ]) 
 
   
@@ -61,6 +57,5 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
       ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 10433 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute, true ) )   )
       : d(""),
     br(),
-    eventActionsView( State, State.S.selectedEntity ),
-    
+    entityActionsView( State, State.S.selectedEntity ),
   ])

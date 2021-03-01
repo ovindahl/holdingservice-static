@@ -70,7 +70,7 @@ let singleBankTransactionView = State => {
             : d("Banktransaksjonen er ikke matchet")
         ], {class: "feedContainer"}),
         br(),
-        eventActionsView( State, State.S.selectedEntity ),
+        entityActionsView( State, State.S.selectedEntity ),
     ])  
 
 } 

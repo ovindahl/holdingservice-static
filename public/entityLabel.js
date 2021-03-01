@@ -39,9 +39,17 @@ let eventActionPopup = (State, entity, action) => d([
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 
-let eventActionsView = (State, entity) => d([
+
+let subTypeAttribute = entityType => returnObject({
+  "7979": 8668, //actor
+  "10062": 10070, //event
+  "11472": 11688, //sourceDocment
+})[ entityType ]
+
+
+let entityActionsView = (State, entity) => d([
   h3("Handlinger"),
-  d( State.DB.get( State.DB.get(entity, 10070), 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
+  d( State.DB.get( State.DB.get(entity, subTypeAttribute( State.DB.get(entity, 19) ) )  , 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
 ], {class: "feedContainer"}) 
 
 //-------------

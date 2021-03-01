@@ -16,21 +16,34 @@ const ActorsPage = {
   
   
   let actorsView = State => isDefined( State.S.selectedEntity) ? singleActorView( State ) : allActorsView( State )
-  
-  let allActorsView = State => d([
+
+
+
+
+  let actorRowView = (State, actor) => d([
+    entityLabelWithPopup( State, actor ),
+    entityLabelWithPopup( State, State.DB.get( actor, 8668 ) ),
+    d( State.DB.get( actor, 12496 )( State.S.selectedEventIndex   ).map( actorRole => entityLabelWithPopup(State, actorRole) ) )
+], {style: gridColumnsStyle("2fr 1fr 3fr")})
+
+let allActorsView = State => d([
+    h3("Alle aktører"),
     d([
-      entityLabelWithPopup( State, 1113 ),
-      entityLabelWithPopup( State, 8668 ),
-    ], {style: gridColumnsStyle("1fr 1fr 3fr")}),
-    d( State.DB.get( State.S.selectedCompany, 10065 ).map( actor => d([
-      entityLabelWithPopup( State, actor ),
-      entityLabelWithPopup( State, State.DB.get(actor, 8668) ),
-    ], {style: gridColumnsStyle("1fr 1fr 3fr")}) )),
-  br(),
-  submitButton( "Legg til person", () => State.Actions.createActor(8667) ),
-  submitButton( "Legg til selskap", () => State.Actions.createActor(8666) ),
-  br(),
-  ])
+    d([
+        d( "Navn" ),
+        d( "Type" ),
+        d( "Roller" ),
+    ], {style: gridColumnsStyle("2fr 1fr 3fr")}),
+    ], {class: "feedContainer"}),
+    d( State.DB.get( State.S.selectedCompany, 10065 ).map( actor => actorRowView(State, actor)  ), {class: "feedContainer"}),
+    br(),
+    d([
+      h3("Opprett aktør:"),
+      d( State.DB.getAll(8665).map( actorType => entityLabelWithPopup( State, actorType, () => State.Actions.createEvent( actorType ) )  )  ),
+  ], {class: "feedContainer"})
+])
+
+
   
   let singleActorView = State => {
 
@@ -46,7 +59,7 @@ const ActorsPage = {
       br(),
       transactionIndexSelectionView( State ),
       br(),
-      entityAttributeView(State, State.S.selectedEntity, 8668),
+      entityAttributeView(State, State.S.selectedEntity, 8668, true),
       entityAttributeView(State, State.S.selectedEntity, 6),
       br(),
       d([
@@ -84,6 +97,6 @@ const ActorsPage = {
         d( formatNumber( State.DB.get( State.S.selectedEntity, 12457 )( State.S.selectedEventIndex   ) ), {style: `text-align: right;`} ),
       ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
       br(),
-      submitButton( "Slett aktør", () => State.Actions.retractActor(State.S.selectedEntity) ),
+      entityActionsView( State, State.S.selectedEntity ),
     ])
-  } 
+  }

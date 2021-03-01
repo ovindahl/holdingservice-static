@@ -71,7 +71,7 @@ let singleEventView = State => d([
       : d("Ikke bokført."),
     ], {class: "feedContainer"}),
     br(),
-    eventActionsView( State, State.S.selectedEntity ),
+    entityActionsView( State, State.S.selectedEntity ),
 ])
 
 let calculatedTransactionView = State => d( State.DB.get(State.S.selectedEntity, State.DB.get( State.DB.get(State.S.selectedEntity, 10070), 12355)).map( transaction => d([
