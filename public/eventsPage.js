@@ -2,7 +2,14 @@
 const EventPage = {
     entity: 11974,
     onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({})
+    Actions: State => returnObject({
+      createEvent: eventType => State.Actions.createAndSelectEntity( [
+        newDatom( 'newEntity', 'entity/entityType', 10062 ),
+        newDatom( 'newEntity', "sourceDocument/date", Date.now() ),
+        newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+        newDatom( 'newEntity', 'sourceDocument/sourceDocumentType', eventType ),
+    ] )
+    })
   }
 
   
@@ -131,11 +138,18 @@ let allEventsView = State => d([
     ], {class: "feedContainer"}),
     br(),
     d([
-        h3("Handlinger"),
-        d( State.DB.get( State.S.selectedPage, 11956).map( action =>  eventActionButton( State, State.S.selectedCompany, action ) )  )
+        h3("Opprett hendelse:"),
+        d( State.DB.getAll(10063)
+            .filter( eventType => State.S.selectedPage === 11974 ? true : State.DB.get( eventType, 7930) === State.S.selectedPage  )  
+            .map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent(eventType) )  )  
+          ),
     ], {class: "feedContainer"}) 
 
 ])
+
+
+
+
 
 
 let newTransaction = (event, originNode, destinationNode, amount, count) => returnObject({event, originNode, destinationNode, amount, count})

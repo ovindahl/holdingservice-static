@@ -1,7 +1,15 @@
 const ActorsPage = {
     entity: 7977,
     onLoad: State => returnObject({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.S.selectedCompany, 12385 ) }),
-    Actions: State => returnObject({})
+    Actions: State => returnObject({
+      createActor: actorType => State.Actions.createAndSelectEntity( [
+        newDatom( 'newEntity', 'entity/entityType', 7979 ),
+        newDatom( 'newEntity' , "actor/actorType", actorType ),  
+        newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ),  
+        newDatom( 'newEntity' , 6, 'Aktør uten navn' )
+      ] ),
+      retractActor: actor =>  State.Actions.retractEntity( actor )
+    })
   }
 
 
@@ -19,7 +27,8 @@ const ActorsPage = {
       entityLabelWithPopup( State, State.DB.get(actor, 8668) ),
     ], {style: gridColumnsStyle("1fr 1fr 3fr")}) )),
   br(),
-  eventActionButton( State, State.S.selectedCompany, 11522),
+  submitButton( "Legg til person", () => State.Actions.createActor(8667) ),
+  submitButton( "Legg til selskap", () => State.Actions.createActor(8666) ),
   br(),
   ])
   
@@ -75,6 +84,6 @@ const ActorsPage = {
         d( formatNumber( State.DB.get( State.S.selectedEntity, 12457 )( State.S.selectedEventIndex   ) ), {style: `text-align: right;`} ),
       ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
       br(),
-      eventActionButton( State, State.S.selectedEntity, 11678),
+      submitButton( "Slett aktør", () => State.Actions.retractActor(State.S.selectedEntity) ),
     ])
   } 

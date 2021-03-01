@@ -1,5 +1,5 @@
 //UTILITIES
-let createObject = (keyName, value) => Object.assign({}, {[keyName]: value} ) 
+//let createObject = (keyName, value) => Object.assign({}, {[keyName]: value} ) 
 let returnObject = (something) => something // a -> a
 let log = (something, label) => {
 console.log( (label) ? label : "Logging this: ", something )
@@ -184,7 +184,9 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
         ? d( State.DB.getOptions(attribute).find( option => option.value === State.DB.get( entity, attribute ) ).label  )
         : State.DB.get(attribute, "attribute/valueType") === 36
           ? input( mergerino( {type: "checkbox", disabled: "disabled"}, State.DB.get(entity, attribute) === true ? {checked: "checked"} : {} ))
-          : d( String( State.DB.get( entity, attribute ) )  )
+          : State.DB.get(attribute, "attribute/valueType") === 5721
+            ? d( moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY') , {style: `text-align: right;`}  )
+            : d( String( State.DB.get( entity, attribute ) )  )
   : d("na.")
 
 let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
@@ -322,7 +324,7 @@ let refsView = (State, entity, attribute, index) => {
 
 let textInput = (value, styleString, updateFunction) => input( {value, style: styleString}, "change", updateFunction )
 let numberInput = (value, updateFunction) => input( {value: isNumber(value) ? formatNumber( value ) : "", style: isNumber( value ) ? "text-align: right;" : "border: 1px solid red;"}, "change", updateFunction )
-let dateInput = (value, updateFunction) => input( {value: moment( value ).format('DD/MM/YYYY'), style: moment( value ).format('DD/MM/YYYY') === "Invalid date" ? "border: 1px solid red;"  : "text-align: right;"}, "change", updateFunction )
+let dateInput = (value, updateFunction) => input( {value: isNumber(value) ? moment( value ).format('DD/MM/YYYY') : "", style:isNumber(value) ? "text-align: right;" : "text-align: right;border: 1px solid red;" }, "change", updateFunction )
 
 
 //Single valueType views

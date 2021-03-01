@@ -167,7 +167,7 @@ let navBarView = (State) => d([
       ]),
       d([
         d("Valgt år:"),
-        d([dropdown(State.S.selectedAccountingYear, State.DB.get(State.S.selectedCompany, 12553).map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
+        d([dropdown(State.S.selectedAccountingYear, State.DB.get(null, 10061).map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
       ])
     ], {style: gridColumnsStyle("1fr 1fr")}),
     d([
