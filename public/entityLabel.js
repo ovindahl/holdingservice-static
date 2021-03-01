@@ -113,9 +113,9 @@ let entityPopUp = (State, entity) => d([
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
   
-//---
+//--- 
   
-let eventLabelText = (State, event, onclick) => d([d(`📅 Hendelse ${ State.DB.get(event, 11975) }: ${State.DB.get( State.DB.get(event, 10070), 6 )}`, {class: "entityLabel", style: `background-color:#bade90;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(  event, EventPage.entity ) )], {style:"display: inline;"})
+let eventLabelText = (State, event, onclick) => d([d(`📅 Hendelse ${ State.DB.get(event, 11975) }: ${State.DB.get( State.DB.get(event, 10070), 6 )} ${State.DB.get( event, 12382 ) ? "✔️" : "✏️"  }  `, {class: "entityLabel", style: `background-color:#bade90;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(  event, EventPage.entity ) )], {style:"display: inline;"})
   
 let eventLabel = (State, sourceDocument, onclick) => d([
   d([
@@ -127,7 +127,7 @@ let eventLabel = (State, sourceDocument, onclick) => d([
 //---
   
 let sourceDocumentLabelText = (State, sourceDocument, onclick) => d([d(
-  ` 🗃️ ${State.DB.get(sourceDocument, 6)}`,
+  ` 🗃️ ${State.DB.get(sourceDocument, 6)} ${State.DB.get( sourceDocument, 12712 ) ? "✔️" : "✏️"  }   `,
   {class: "entityLabel", style: `background-color: #03a9f44f;`}, 
   "click", 
   isDefined(onclick) 
