@@ -37,8 +37,9 @@ let trialBalanceView = State => d([
           .sort( (a,b) => Number( State.DB.get( a, 6).slice(0,4) ) - Number( State.DB.get( b, 6).slice(0,4) )  )
           .map( activeNode => d([
             entityLabelWithPopup( State, activeNode ),
-            d( formatNumber( State.DB.get( activeNode, 12352 )( State.S.selectedEventIndex   ) ), {style: `text-align: right;`} ),
-          ], {style: gridColumnsStyle("repeat(4, 1fr)")}) )   ),
+            temporalValueView( State, activeNode, 12352, State.S.selectedEventIndex )
+          ], {style: gridColumnsStyle("repeat(4, 1fr)")}) 
+          )   ),
       d([
         d([
           d("Sum"),

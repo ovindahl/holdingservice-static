@@ -67,6 +67,8 @@ var D = {} //Consle access to DB
 var Database = {} //Consle access to DB
 var Entity = {}
 var E = {}
+var Company = {}
+var C = {}
 var A = {} //Consle access to Actions
 
 //COMPONENTS
@@ -95,6 +97,10 @@ let updateState = (prevState, patch) => {
   S = newState.S
   D = newState.DB
   Database = newState.DB
+  if( isDefined(newState.DB) && isDefined(State.S.selectedCompany) ){ 
+    Company = newState.DB.get( State.S.selectedCompany ) 
+    C = Company
+  }
   if( isDefined(newState.DB) && isDefined(State.S.selectedEntity) ){ 
     Entity = newState.DB.get( State.S.selectedEntity ) 
     Entity.retract = () => newState.Actions.retractEntity( State.S.selectedEntity  )

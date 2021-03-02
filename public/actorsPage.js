@@ -62,41 +62,40 @@ let allActorsView = State => d([
       entityAttributeView(State, State.S.selectedEntity, 8668, true),
       entityAttributeView(State, State.S.selectedEntity, 6),
       br(),
-      d([
-        entityLabelWithPopup( State, 12496 ),
-        d( State.DB.get( State.S.selectedEntity, 12496 )( State.S.selectedEventIndex   ).map( event => entityLabelWithPopup(State, event) ) )
-      ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+      temporalEntityAttributeView( State, State.S.selectedEntity, 12496, State.S.selectedEventIndex ),
       br(),
       d( activeRoles.map( actorRole => d([
         entityLabelWithPopup( State, actorRole ),
-        d( State.DB.get(actorRole, 10433).map( calculatedField => d([
-          entityLabelWithPopup( State, calculatedField ),
-          State.DB.get(calculatedField, 18) === 31
-            ? d( formatNumber( State.DB.get( State.S.selectedEntity, calculatedField )( State.S.selectedEventIndex   ) ), {style: `text-align: right;`} )
-            : d( State.DB.get( State.S.selectedEntity, calculatedField )( State.S.selectedEventIndex   ).map( event => entityLabelWithPopup(State, event) ) )
-        ], {style: gridColumnsStyle("repeat(4, 1fr)")} )  ) )
+        d( State.DB.get(actorRole, 10433).map( calculatedField => temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField, State.S.selectedEventIndex ) ) )
       ])  ) ),
       br(),
       br(),
       h3("Alle inn- og utbetalinger mot aktør"),
-      d([
-        entityLabelWithPopup( State, 12462 ),
-        d( State.DB.get( State.S.selectedEntity, 12462 )( State.S.selectedEventIndex   ).map( event => entityLabelWithPopup(State, event) ) )
-      ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
-      d([
-        entityLabelWithPopup( State, 12463 ),
-        d( State.DB.get( State.S.selectedEntity, 12463 )( State.S.selectedEventIndex   ).map( event => entityLabelWithPopup(State, event) ) )
-      ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
-      br(),
-      d([
-        entityLabelWithPopup( State, 12456 ),
-        d( formatNumber( State.DB.get( State.S.selectedEntity, 12456 )( State.S.selectedEventIndex   ) ), {style: `text-align: right;`} ),
-      ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
-      d([
-        entityLabelWithPopup( State, 12457 ),
-        d( formatNumber( State.DB.get( State.S.selectedEntity, 12457 )( State.S.selectedEventIndex   ) ), {style: `text-align: right;`} ),
-      ], {style: gridColumnsStyle("repeat(4, 1fr)")}),
+      temporalEntityAttributeView( State, State.S.selectedEntity, 12462, State.S.selectedEventIndex ),
+      temporalEntityAttributeView( State, State.S.selectedEntity, 12463, State.S.selectedEventIndex ),
+      temporalEntityAttributeView( State, State.S.selectedEntity, 12456, State.S.selectedEventIndex ),
+      temporalEntityAttributeView( State, State.S.selectedEntity, 12457, State.S.selectedEventIndex ),
       br(),
       entityActionsView( State, State.S.selectedEntity ),
     ])
   }
+
+
+
+
+
+
+  let temporalEntityAttributeView = (State, entity, calculatedField, eventIndex ) => d([
+    entityLabelWithPopup( State, calculatedField ),
+    temporalValueView( State, entity, calculatedField, eventIndex )
+  ], {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
+
+
+  let temporalValueView = (State, entity, calculatedField, eventIndex ) => d([
+    State.DB.get( calculatedField, 18 ) === 32
+    ? d( State.DB.get( entity, calculatedField )( eventIndex   ).map( event => entityLabelWithPopup(State, event) ) )
+    : State.DB.get( calculatedField, 18 ) === 31
+      ? d( formatNumber( State.DB.get( entity, calculatedField )( eventIndex   ) ), {style: `text-align: right;`} )
+      : d( State.DB.get( entity, calculatedField )( eventIndex   ) ),
+    tinyEventLabel( State, State.DB.get( State.S.selectedCompany, 12783 )( eventIndex ) )
+  ], {style: "display: contents;"})

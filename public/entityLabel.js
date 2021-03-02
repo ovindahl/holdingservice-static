@@ -117,12 +117,14 @@ let entityPopUp = (State, entity) => d([
   
 let eventLabelText = (State, event, onclick) => d([d(`📅 Hendelse ${ State.DB.get(event, 11975) }: ${State.DB.get( State.DB.get(event, 10070), 6 )} ${State.DB.get( event, 12382 ) ? "✔️" : "✏️"  }  `, {class: "entityLabel", style: `background-color:#bade90;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(  event, EventPage.entity ) )], {style:"display: inline;"})
   
-let eventLabel = (State, sourceDocument, onclick) => d([
+let eventLabel = (State, event, onclick) => d([
   d([
-    eventLabelText( State, sourceDocument, onclick ),
-    entityPopUp( State, sourceDocument ),
+    eventLabelText( State, event, onclick ),
+    entityPopUp( State, event ),
   ], {class: "popupContainer", style:"display: inline-flex;"})
   ], {style:"display: inline-flex;"} )
+
+let tinyEventLabel = (State, event ) => d([d(`📅 H${State.DB.get(event, 11975)} `, {class: "entityLabel", style: `display: inline-flex;background-color:#bade90;`}, "click", () => State.Actions.selectEntity(  event, EventPage.entity ) )], {style:"display: inline;padding-left: 1em;"})
 
 //---
   
