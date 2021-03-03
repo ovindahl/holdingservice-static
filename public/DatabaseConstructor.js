@@ -1,6 +1,6 @@
 let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
-let changeToStringAttributes = (DB, Datoms) => Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value ) : Datom )
+let changeToStringAttributes = (DB, Datoms) => Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value, Datom.isAddition ) : Datom )
 
 let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.every( Datom => {
 
@@ -41,12 +41,8 @@ const Transactor = {
       let datomsWithStringAttributes = changeToStringAttributes( DB, Datoms )
       let isValid = validateDatomAttributeValues( DB, datomsWithStringAttributes )
 
-      if( isValid ){
-
-        let updatedDB = await Transactor.postValidDatoms(DB, datomsWithStringAttributes)
-        return updatedDB
-  
-      }else{
+      if( isValid ){  return await Transactor.postValidDatoms(DB, datomsWithStringAttributes)  }
+      else{
         console.log("DB.postDatoms did not pass validation.", {Datoms, datomsWithStringAttributes})
         return null;
       }
@@ -118,10 +114,6 @@ let constructDatabase = Entities => {
 
       Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
       Entity.get = (attr, version) => DB.get(entity, attr, version)
-      
-      Entity.label = () => Entity.get("entity/label") ? Entity.get("entity/label") : "Mangler visningsnavn."
-      
-      Entity.getOptions = attr => DB.getOptions(attr)
     
       return Entity
     }
@@ -170,8 +162,7 @@ let constructDatabase = Entities => {
     } 
   
     DB.getAll = entityType => DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity) //Kan bli sirkulær med isAttribute
-  
-    DB.getOptions = (attribute, tx ) => tryFunction( () => new Function( ["Database"] , DB.get( attribute, "attribute/selectableEntitiesFilterFunction", tx) )( DB ) );
+
   
     DB.get = (entity, attribute, version) => {
       if( isNull(entity) && DB.isGlobalCalculatedField(attribute) ){ return DB.getGlobalCalculatedValue( attribute )
@@ -245,7 +236,6 @@ getBalanceObjectLabel = (DB, balanceObject) => {
 
 }
 
-getEntityLabel = (DB, entity) => `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
 
 
 let calculateGlobalCalculatedValue = ( DB, calculatedField ) => tryFunction( () => new Function( [`Database`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB ) )
