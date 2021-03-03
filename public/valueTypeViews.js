@@ -147,7 +147,9 @@ let entityAttributeView = (State, entity, attribute, isLocked ) => d([
     : isLocked
       ? lockedSingleValueView( State, entity, attribute )
       : State.DB.get(attribute, "attribute/valueType") === 32 
-        ? selectEntityView( State, entity, attribute )
+        ? State.S.selectedPage === 10025 
+          ? selectEntityView( State, entity, attribute )
+          : selectEntityWithDropdownView( State, entity, attribute )
         : State.DB.get(attribute, "attribute/valueType") === 5824 
           ? CSVuploadView( State, entity, attribute )
           : State.DB.get(attribute, "attribute/valueType") === 11469 
@@ -181,7 +183,7 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
     : State.DB.get(attribute, "attribute/valueType") === 31
       ? d( formatNumber( State.DB.get( entity, attribute ), 2 ) , {style: `text-align: right;`}  )
       : State.DB.get(attribute, "attribute/valueType") === 40
-        ? d( State.DB.getOptions(attribute).find( option => option.value === State.DB.get( entity, attribute ) ).label  )
+        ? d( String(State.DB.get( entity, attribute )) ) 
         : State.DB.get(attribute, "attribute/valueType") === 36
           ? input( mergerino( {type: "checkbox", disabled: "disabled"}, State.DB.get(entity, attribute) === true ? {checked: "checked"} : {} ))
           : State.DB.get(attribute, "attribute/valueType") === 5721
@@ -306,11 +308,13 @@ let refsView = (State, entity, attribute, index) => {
   
   let storedValues = State.DB.get(entity,attribute)
   let storedValue = storedValues[index]
-  let options = State.DB.getOptions( attribute )
+
+  let options = State.DB.get( State.DB.get( State.DB.get( attribute, 12833 ), 19 ) === 9815 ? entity : null, State.DB.get( attribute, 12833 ) )
+  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
 
   let datalistID = getNewElementID()
   return d([
-    htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
+    htmlElementObject("datalist", {id:datalistID}, optionsElement( optionObjects ) ),
     input({value: storedValue, list: datalistID, style: `text-align: right;`}, "change", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, storedValues.slice(0, index ).concat( Number( submitInputValue( e ) ) ).concat( storedValues.slice(index + 1, storedValues.length ) ) ) }  ) ),
     entityLabelWithPopup( State,  storedValue ), 
     ])
@@ -338,42 +342,72 @@ let numberInputView = ( State, entity, attribute ) => numberInput( State.DB.get(
 let textAreaViewView = ( State, entity, attribute ) => textArea( isString(State.DB.get( entity, attribute )) ? State.DB.get( entity, attribute ) : JSON.stringify(State.DB.get( entity, attribute )) , {class:"textArea_code"}, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ).replaceAll(`"`, `'` ) ) } ) )
 let boolView = ( State, entity, attribute ) => checkBox( State.DB.get( entity, attribute ) === true, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} )   )
  
-let selectStaticOptionView = ( State, entity, attribute )  => dropdown( 
-  isDefined( State.DB.get( entity, attribute ) ) 
-    ? State.DB.get( entity, attribute ) 
-    : 0 , 
-  isDefined( State.DB.get( entity, attribute ) ) 
-    ? State.DB.getOptions( attribute )
-    : [{value: 0, label:"Velg alternativ"}].concat( State.DB.getOptions( attribute ) ), 
-  async e => State.DB.getOptions( attribute ).map( optionObject => optionObject.value ).includes( Number( e.srcElement.value )  ) 
-    ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) 
-    : log({ERROR: "Selected option not is list of allowed options"}) 
-  )
+let selectStaticOptionView = ( State, entity, attribute )  => {
+
+  let options = State.DB.get( State.DB.get( State.DB.get( attribute, 12833 ), 19 ) === 9815 ? entity : null, State.DB.get( attribute, 12833 ) )
+  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
+
+  return dropdown( 
+    isDefined( State.DB.get( entity, attribute ) ) 
+      ? State.DB.get( entity, attribute ) 
+      : 0 , 
+    isDefined( State.DB.get( entity, attribute ) ) 
+      ? optionObjects
+      : [{value: 0, label:"Velg alternativ"}].concat( optionObjects ), 
+    async e => optionObjects.map( optionObject => optionObject.value ).includes( Number( e.srcElement.value )  ) 
+      ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) 
+      : log({ERROR: "Selected option not is list of allowed options"}) 
+    )
+} 
 
 let selectEntityView = ( State, entity, attribute  ) => {
 
-  let valueType = State.DB.get(attribute, "attribute/valueType")
 
   let currentSelection = State.DB.get( entity, attribute )
-  let options = State.DB.getOptions( attribute )
+
+  
+
+  let options = State.DB.get( State.DB.get( State.DB.get( attribute, 12833 ), 19 ) === 9815 ? entity : null, State.DB.get( attribute, 12833 ) )
+  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
 
   let datalistID = getNewElementID()
   return d([
-    htmlElementObject("datalist", {id:datalistID}, optionsElement( options ) ),
+    htmlElementObject("datalist", {id:datalistID}, optionsElement( optionObjects ) ),
     isDefined(currentSelection) 
       ? entityLabelWithPopup( State,  currentSelection ) 
       : d([d("[tom]", {class: "entityLabel", style: "display: inline-flex;background-color:#7b7b7b70;text-align: center;"})], {style:"display: inline-flex;"}),
-    options.length > 0 
+      optionObjects.length > 0 
       ? input(
         {value: "", list: datalistID, style: `text-align: right;max-width: 50px;`}
         , "change", 
-        async e => options.map( opt => opt.value ).includes( Number( e.srcElement.value ) ) 
+        async e => optionObjects.map( opt => opt.value ).includes( Number( e.srcElement.value ) ) 
           ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( e.srcElement.value ) )} ) 
           : null 
         ) 
       : d("Ingen tilgjengelige alternativer"),
   ])
 }
+
+let selectEntityWithDropdownView = ( State, entity, attribute  ) => {
+
+  let options = State.DB.get( State.DB.get( State.DB.get( attribute, 12833 ), 19 ) === 9815 ? entity : null, State.DB.get( attribute, 12833 ) )
+  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
+
+  return State.DB.isEntity( State.DB.get( entity, attribute ) ) 
+  ? d([
+    entityLabelWithPopup( State, State.DB.get( entity, attribute ) ),
+    submitButton("X", async () => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get( entity, attribute ), false ) } ) )
+  ], {style: gridColumnsStyle("5fr 1fr") })
+  : dropdown( 
+    State.DB.get( entity, attribute ) , 
+    optionObjects,
+    async e => optionObjects.map( optionObject => optionObject.value ).includes( Number( e.srcElement.value )  ) 
+      ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) 
+      : log({ERROR: "Selected option not is list of allowed options"}) 
+    )
+} 
+
+
 
 
 let sourceDocumentFileuploadView = ( State, entity, attribute  ) => {

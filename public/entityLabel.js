@@ -55,52 +55,29 @@ let entityActionsView = (State, entity) => d([
 //-------------
 
 
-let getEntityLabelText = (State, entity) => {
-
-  let entityType = State.DB.get(entity, 19)
-
-  let entityTypeLabelController = {
-    "7948": (State, entity) => `Transaksjon ${ State.DB.get(entity, 8354) }`,
-    "7979": (State, entity) => State.DB.get(entity, 6),
-    "7932": (State, entity) => State.DB.get(entity, 6),
-    "10062": (State, entity) =>  `[${ moment( State.DB.get(entity, 1757) ).format('DD/MM/YYYY')}] ${formatNumber( State.DB.get(entity, 10470) ) } ${State.DB.get(entity, 9084) === 9086 ? "💸" : "💰"} `
-  }
-
-  return isDefined( entityTypeLabelController[ entityType ])
-    ? entityTypeLabelController[entityType](State, entity)
-    : getEntityLabel(State.DB, entity)
+let getEntityLabel = (DB, entity) => DB.get(entity, 19) === 7979
+  ? `${State.DB.get(entity, 8668) === 8667 ? "👨‍💼" : "🏢"} ${State.DB.get(entity, 6)}`
+  : DB.get(entity, 19) === 10062
+    ? `📅 Hendelse ${ State.DB.get(entity, 11975) }: ${State.DB.get( State.DB.get(entity, 10070), 6 )} ${State.DB.get( entity, 12382 ) ? "✔️" : "✏️"  }  `
+    : DB.get(entity, 19) === 11472
+      ? `🗃️ ${State.DB.get(entity, 6)} ${State.DB.get( entity, 12712 ) ? "✔️" : "✏️"  }   `
+      : `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
 
 
-}
 
-
-let entityLabelWithPopup = ( State, entity, onClick ) => {
-
-    let entityTypeLabelController = {
-      "7979": actorLabel,
-      "10062": eventLabel,
-      "11472": sourceDocumentLabel
-    }
-    
-    return isDefined( entityTypeLabelController[ State.DB.get(entity  , "entity/entityType") ])
-    ? entityTypeLabelController[ State.DB.get( entity , "entity/entityType") ]( State, entity, onClick )
-    : d([
-        d([
-          entityLabel( State, entity, onClick ),
-          entityPopUp( State, entity ),
-        ], {class: "popupContainer", style:"display: inline-flex;"})
-      ], {style:"display: inline-flex;"} )
-    } 
+let entityLabelWithPopup = ( State, entity, onClick ) => d([
+  d([
+    entityLabel( State, entity, onClick ),
+    entityPopUp( State, entity ),
+  ], {class: "popupContainer", style:"display: inline-flex;"})
+], {style:"display: inline-flex;"} )
 
 let entityLabel = (State, entity, onClick ) => State.DB.isEntity(entity)
-?  d([d( 
-    getEntityLabelText(State, entity), 
-      {
-        class: "entityLabel", 
-        style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${( State.S.selectedEntity === entity || State.S.selectedAccountingYear === entity) ? "border: 2px solid black;" : ""}`
-      }, 
+?  d([d( getEntityLabel(State.DB, entity), {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${( State.S.selectedEntity === entity || State.S.selectedAccountingYear === entity) ? "border: 2px solid black;" : ""}`}, 
       "click", 
-      isDefined(onClick) ? onClick : null
+      isDefined(onClick) 
+        ? onClick 
+        : () => State.Actions.selectEntity(  entity, State.DB.get( State.DB.get( entity, "entity/entityType"), 7930) )
     )], {style:"display: inline-flex;"})
 : d(`[${ entity}] na.`, {class: "entityLabel", style: `background-color:gray;`})
 
@@ -112,54 +89,4 @@ let entityPopUp = (State, entity) => d([
   span(`Entitet: ${ entity}`),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
-  
-//--- 
-  
-let eventLabelText = (State, event, onclick) => d([d(`📅 Hendelse ${ State.DB.get(event, 11975) }: ${State.DB.get( State.DB.get(event, 10070), 6 )} ${State.DB.get( event, 12382 ) ? "✔️" : "✏️"  }  `, {class: "entityLabel", style: `background-color:#bade90;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity(  event, EventPage.entity ) )], {style:"display: inline;"})
-  
-let eventLabel = (State, event, onclick) => d([
-  d([
-    eventLabelText( State, event, onclick ),
-    entityPopUp( State, event ),
-  ], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-
 let tinyEventLabel = (State, event ) => d([d(`📅 H${State.DB.get(event, 11975)} `, {class: "entityLabel", style: `display: inline-flex;background-color:#bade90;`}, "click", () => State.Actions.selectEntity(  event, EventPage.entity ) )], {style:"display: inline;padding-left: 1em;"})
-
-//---
-  
-let sourceDocumentLabelText = (State, sourceDocument, onclick) => d([d(
-  ` 🗃️ ${State.DB.get(sourceDocument, 6)} ${State.DB.get( sourceDocument, 12712 ) ? "✔️" : "✏️"  }   `,
-  {class: "entityLabel", style: `background-color: #03a9f44f;`}, 
-  "click", 
-  isDefined(onclick) 
-    ? onclick 
-    : () => State.Actions.selectEntity( sourceDocument, SourceDocumentsPage.entity ) 
-  )], {style:"display: inline;"})
-  
-let sourceDocumentLabel = (State, sourceDocument, onclick) => d([
-  d([
-    sourceDocumentLabelText( State, sourceDocument, onclick ),
-    entityPopUp( State, sourceDocument ),
-  ], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-
-
-//--------
-
-
-let actorLabelText = (State, actor, onclick) => d([d( `${State.DB.get(actor, 8668) === 8667 ? "👨‍💼" : "🏢"} ${State.DB.get(actor, 6)}` , {class: "entityLabel", style: `background-color:#8bc34a7d;`}, "click", isDefined(onclick) ? onclick : () => State.Actions.selectEntity( actor, ActorsPage.entity ) )], {style:"display: inline;"})
-  
-let actorLabel = (State, actor, onclick) => d([
-  d([
-    actorLabelText( State, actor, onclick ),
-    actorPopUp( State, actor ),
-  ], {class: "popupContainer", style:"display: inline-flex;"})
-  ], {style:"display: inline-flex;"} )
-
-let actorPopUp = (State, actor) => d([
-  actorLabelText( State, actor ),
-  br(),
-  entityAttributeView(State, actor, 8668, true ),
-  d(`Entitet: ${actor}`)
-], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;width: 400px;"})

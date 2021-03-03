@@ -107,27 +107,27 @@ let calculatedTransactionView = State => d( State.DB.get(State.S.selectedEntity,
 
 
 let eventRowView = (State, event) => d([
+    d( `${State.DB.get(event, 11975 )}` ),
     d( moment( State.DB.get( event, 1757 ) ).format("DD.MM.YYYY") ),
     entityLabelWithPopup( State, event ),
-    isDefined( State.DB.get(event, 1083) ) ? lockedSingleValueView( State, event, 1083 ) : d(" - "),
-    d([ isDefined( State.DB.get(event, 11477) ) ? entityLabelWithPopup(State, State.DB.get(event, 11477) ) : d("[tom]", {class: "entityLabel", style: "background-color:#7b7b7b70;text-align: center;"})], {style: "padding-left: 2em;"} ),
+    isDefined( State.DB.get(event, 1083) ) ? lockedSingleValueView( State, event, 1083 ) : d(" - ", {style: `text-align: right;`} ),
     State.DB.get( event, 12382 )
       ? d("✔️", {style: `text-align: right;`})
       : State.DB.get( event, 12377 )
         ? d("⌛", {style: `text-align: right;`})
         : d("✏️", {style: `text-align: right;`}),
-], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")})
+], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")})
 
 let allEventsView = State => d([
     h3("Alle hendelser"),
     d([
     d([
+        d( "#" ),
         d( "Hendelsesdato" ),
         d( "Hendelse" ),
         d( "Beløp", {style: `text-align: right;`} ),
-        d( "Bilagsdokument", {style: "padding-left: 2em;"} ),
         d( "Status", {style: `text-align: right;`} ),
-    ], {style: gridColumnsStyle("1fr 3fr 1fr 3fr 1fr")}),
+    ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")}),
     ], {class: "feedContainer"}),
     d([
     State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear ).length > 0 

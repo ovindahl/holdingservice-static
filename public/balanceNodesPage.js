@@ -6,7 +6,7 @@ const BalancePage = {
 
 
   
-let balanceObjectsView = State => trialBalanceView( State )
+let balanceObjectsView = State => isDefined( State.S.selectedEntity ) ? singleAccountView( State ) : trialBalanceView( State )
 
 
 
@@ -53,4 +53,24 @@ let trialBalanceView = State => d([
 ]  ) 
 
 
-  
+let singleAccountView = State => {
+
+
+
+
+
+
+  return d([
+    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, BalancePage.entity )  ),
+    br(),
+    transactionIndexSelectionView( State ),
+    br(),
+    d([
+      entityLabelWithPopup( State, State.S.selectedEntity ),
+      br(),
+      temporalEntityAttributeView( State, State.S.selectedEntity, 12352, State.S.selectedEventIndex ),
+      temporalEntityAttributeView( State, State.S.selectedEntity, 12829, State.S.selectedEventIndex ),
+  ], {class: "feedContainer"}),
+    
+  ])
+}
