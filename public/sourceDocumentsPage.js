@@ -55,7 +55,7 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
     entityAttributeView( State, State.S.selectedEntity, 1139, State.DB.get( State.S.selectedEntity, 12712 ) ),
     br(),
     isDefined(State.DB.get( State.S.selectedEntity, 11688  )) 
-      ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 7942 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute, State.DB.get( State.S.selectedEntity, 12712 ) ) )   )
+      ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 7942 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, log( attribute ), State.DB.get( State.S.selectedEntity, 12712 ) ) )   )
       : d(""),
     isDefined(State.DB.get( State.S.selectedEntity, 11688  )) 
       ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 10433 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute, true ) )   )

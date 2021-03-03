@@ -47,7 +47,7 @@ let singleEventView = State => d([
         d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 7942).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ) ) ),
         br(),
         d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 10433).map( calculatedField => State.DB.get( calculatedField, 12805 ) === true
-            ? temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField, State.S.selectedEventIndex )
+            ? temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField,  State.DB.get( State.S.selectedEntity, 11975 ) )
             : entityAttributeView(State, State.S.selectedEntity, calculatedField, true ) 
             ) ),
     ], {class: "feedContainer"}),

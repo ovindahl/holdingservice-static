@@ -137,6 +137,11 @@ let init = async () => {
     let userProfile = await sideEffects.auth0.getUser()
     let userEntity = initialDatabase.getAll( 5612 ).find( e => initialDatabase.get(e, 11501) === userProfile.name )
 
+    let initialCompany = initialDatabase.get(userEntity, "user/companies")[0]
+
+    //let initialEventIndex = initialDatabase.get(initialCompany, 12786)
+
+    //log({initialDatabase, initialCompany, initialEventIndex})
 
     updateState( {}, {
       DB: initialDatabase,
@@ -144,8 +149,9 @@ let init = async () => {
         userProfile,
         selectedUser: userEntity,
         selectedPage: 11974,
-        selectedCompany: initialDatabase.get(userEntity, "user/companies")[0],
-        selectedAccountingYear: 7407
+        selectedCompany: initialCompany,
+        selectedAccountingYear: 7407,
+        selectedEventIndex: 0,
       }
       } )
     

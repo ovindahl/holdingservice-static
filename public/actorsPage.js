@@ -67,13 +67,6 @@ let allActorsView = State => d([
         d( State.DB.get(actorRole, 10433).map( calculatedField => temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField, State.S.selectedEventIndex ) ) )
       ])  ) ),
       br(),
-      br(),
-      h3("Alle inn- og utbetalinger mot aktør"),
-      temporalEntityAttributeView( State, State.S.selectedEntity, 12462, State.S.selectedEventIndex ),
-      temporalEntityAttributeView( State, State.S.selectedEntity, 12463, State.S.selectedEventIndex ),
-      temporalEntityAttributeView( State, State.S.selectedEntity, 12456, State.S.selectedEventIndex ),
-      temporalEntityAttributeView( State, State.S.selectedEntity, 12457, State.S.selectedEventIndex ),
-      br(),
       entityActionsView( State, State.S.selectedEntity ),
     ])
   }
