@@ -86,6 +86,9 @@ let entityLabel = (State, entity, onClick ) => State.DB.isEntity(entity)
 let entityPopUp = (State, entity) => d([
   h3( getEntityLabel( State.DB, entity ) ),
   d( getEntityLabel( State.DB, State.DB.get(entity, "entity/entityType") )  ),
+  /* State.DB.get(entity, 19) === 7979
+    ? temporalEntityAttributeView( State, entity, 12496, State.S.selectedEventIndex )
+    : d(""), */
   span(`Entitet: ${ entity}`),
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 

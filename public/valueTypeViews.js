@@ -191,7 +191,9 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
             ? d( moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY') , {style: `text-align: right;`}  )
             : State.DB.get(attribute, "attribute/valueType") === 12865 //HTML
               ? d( State.DB.get( entity, attribute ) )
-              : d( String( State.DB.get( entity, attribute ) )  )
+              : State.DB.get(attribute, "attribute/valueType") === 11469 //HTML
+                ? d( `<a href="${State.DB.get(entity, attribute)}" target="_blank"> Last ned fil </a> `)
+                : d( String( State.DB.get( entity, attribute ) )  )
   : d("na.")
 
 let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
@@ -415,11 +417,10 @@ let selectEntityWithDropdownView = ( State, entity, attribute  ) => {
 
 let sourceDocumentFileuploadView = ( State, entity, attribute  ) => {
 
-  let value = State.DB.get(entity, attribute)
 
-  return isDefined(value) && value !== ""
+  return isDefined(State.DB.get(entity, attribute)) && State.DB.get(entity, attribute) !== ""
     ? d([
-        d( `<a href="${value}" target="_blank"> Last ned fil </a> `),
+        d( `<a href="${State.DB.get(entity, attribute)}" target="_blank"> Last ned fil </a> `),
         submitButton( "Slett", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, "" )} ) )
     ]) 
     : input({type: "file", name:"upload-test"}, "change", async e => {
