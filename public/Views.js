@@ -11,7 +11,7 @@ const ClientApp = {
     selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectedEntity: undefined}, isDefined( Components.find( Component => Component.entity === pageEntity ) ) ? Components.find( Component => Component.entity === pageEntity ).onLoad( State ) : {}) }),
     selectEntity: (entity, pageEntity) => updateState( State, {S: mergerino({selectedEntity: entity}, isDefined(pageEntity) ? {selectedPage: pageEntity} : {}) }),
     selectEventIndex: eventIndex => updateState( State, {S:  {selectedEventIndex: eventIndex, selectedAccountingYear: Database.get( Database.get(State.S.selectedCompany, 12783)(eventIndex), 10542)} }),
-    selectAccountingYear: accountingYear => updateState( State, {S: {selectedAccountingYear: accountingYear, selectedEventIndex: Database.get( State.DB.get( State.S.selectedCompany, 11976 )( accountingYear ).slice(-1)[0], 11975 )  } }),
+    selectAccountingYear: accountingYear => updateState( State, {S: {selectedAccountingYear: accountingYear, selectedEventIndex: Database.get( State.DB.get( State.S.selectedCompany, 11976 )( accountingYear ).filter( event => State.DB.get( event, 11975 ) <= State.DB.get( State.S.selectedCompany, 12385 ) ).slice(-1)[0], 11975 )  } }),
     retractEntity: async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
     selectSourceDocument: sourceDocument => updateState( State, {S: {selectedEntity: sourceDocument, selectedPage: State.DB.get( State.DB.get(sourceDocument, 10070), 7930) }}), 
     selectCompany: company => updateState( State, { S: {selectedCompany: company, selectedPage: 11474, selectedEntity: undefined} } ),
@@ -64,6 +64,7 @@ let loadingPage = () => d([
     ], {class: "feedContainer"})
   ], {class: "pageContainer"})
 ]) 
+
 
 
 
@@ -175,6 +176,7 @@ let navBarView = (State) => d([
           [{value: 0, label:"Velg hendelse"}].concat(
           State.DB.get( State.S.selectedCompany, 12383 )
             .map( entity => State.DB.get(entity, 11975)  )
+            .filter( eventIndex => eventIndex <= State.DB.get( State.S.selectedCompany, 12385 ) )
             .map( eventIndex => returnObject({value: eventIndex, label: eventIndex  })  )
           )
             , e => State.Actions.selectEventIndex( Number( submitInputValue(e) ) ))]),

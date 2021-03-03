@@ -63,47 +63,17 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
     br(),
     entityActionsView( State, State.S.selectedEntity ),
     br(),
-    State.DB.get(State.S.selectedEntity, 11688) === 12699
-      ? loanAgreementHTML( State, State.S.selectedEntity )
-      : d(""),
-    br(),
+    State.DB.get( State.S.selectedEntity, 11688  ) === 12699
+      ? d("🖨️ Eksporter utskriftsvennlig versjon av avtalen", {}, "click", () => printContractInNewTab( State, State.DB.get(State.S.selectedEntity, 12866) ) )
+      : d("")
   ])
 
+ 
 
+  
+let printContractInNewTab = (State, html) => {
 
+  var newWindow = window.open();
+  newWindow.document.write( html );
 
-
-
-
-
-  let loanAgreementHTML = (State, sourceDocument) => d([
-    h3(`Avtale om lån`),
-    d(`Långiver: ${ State.DB.get( State.DB.get( sourceDocument, 10103 ), 6) }`),
-    d(`Låntaker: ${ State.DB.get( State.DB.get( sourceDocument, 'entity/company' ), 6) }`),
-    br(),
-    h3(`1. Lånebeløp og utbetaling`),
-    d(`Långiver stiller til disposisjon for Låntaker for beløp pålydende NOK ${ formatNumber( State.DB.get( sourceDocument, 1083 ) ) } på de vilkår som fremgår av denne låneavtalen `),
-    br(),
-    h3(`2. Løpetid`),
-    d(`Lånet forfaller i sin helhet ${ moment( State.DB.get( sourceDocument, 1757) ).add( 5, "years").format('DD/MM/YYYY') }. Låntaker har rett til å kunne tilbakebetale hele eller deler av lånet (avdrag) før hovedforfall. `),
-    br(),
-    h3(`3. Renter`),
-    d(`Lånet belastes den til enhver tid gjeldende skjermingsrente fastsatt av Skattedirektoratet. Lånet kapitaliseres månedlig.Renten løper fra dato for utbetaling og frem ti lånet betales tilbake til Långiver. Rentebeløpet skal nedbetales på samme tidspunkt(er) som tilbakebetaling av hovedstol finner sted.`),
-    br(),
-    h3(`4. Mislighold av lånet`),
-    d(`I tilfelle av vesentlig mislighold, kan lånet straks forlanges tilbakebetalt i sin helhet, selv om forfallsdagen ikke er kommet. Dette gjelder også dersom Låntaker innstiller betalingene, søker gjeldsforhandling eller akkord, går konkurs, blir satt under tvangsforfølgning, vesentlig forringer sin formuesstilling ved gaver, eller avgår ved døden. Ved mislighold kan lånet med tillegg av renter og omkostninger, herunder eventuelle inndrivningskostnader, inndrives uten søksmål i henhold til tvangsfullbyrdelseslovens § 7-2.`),
-    br(),
-    h3(`Signatur`),
-    br(),
-    d([
-      d([
-        d("_____________________"),
-        d(`Låntaker: ${ State.DB.get( State.DB.get( sourceDocument, 'entity/company' ), 6) }`),
-      ]),
-      d([
-        d("_____________________"),
-        d(`Långiver: ${ State.DB.get( State.DB.get( sourceDocument, 10103 ), 6) }`),
-      ]),
-    ], {style: gridColumnsStyle("1fr 1fr") })
-    
-  ]) 
+} 

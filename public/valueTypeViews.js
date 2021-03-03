@@ -159,6 +159,7 @@ let entityAttributeView = (State, entity, attribute, isLocked ) => d([
               : {
                 "30": textInputView, //Tekst
                 "31": numberInputView, //Tall
+                "12865": textAreaViewView, //HTML
                 "34": textAreaViewView, //Funksjonstekst
                 "36": boolView, //Boolean
                 "5721": dateInputView, //Dato
@@ -188,7 +189,9 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
           ? input( mergerino( {type: "checkbox", disabled: "disabled"}, State.DB.get(entity, attribute) === true ? {checked: "checked"} : {} ))
           : State.DB.get(attribute, "attribute/valueType") === 5721
             ? d( moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY') , {style: `text-align: right;`}  )
-            : d( String( State.DB.get( entity, attribute ) )  )
+            : State.DB.get(attribute, "attribute/valueType") === 12865 //HTML
+              ? d( State.DB.get( entity, attribute ) )
+              : d( String( State.DB.get( entity, attribute ) )  )
   : d("na.")
 
 let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
