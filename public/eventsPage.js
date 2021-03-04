@@ -53,16 +53,14 @@ let singleEventView = State => d([
     ], {class: "feedContainer"}),
     br(),
     d([
-      h3("Hendelsens status: " ),
-      State.DB.get( State.S.selectedEntity, 12382 )
-      ? d("✔️ Ferdig og låst")
-      : State.DB.get( State.S.selectedEntity, 12377 )
-        ? d("⌛ Ferdig, men ikke låst. Låses når alle forutgående hendelser er låst.")
-        : d( State.DB.get(State.DB.get(State.S.selectedEntity, 10070), 12547)
+      h3(`Hendelsens gyldighet: ${State.DB.get( State.S.selectedEntity, 12548 ) === true ? "✔️" : "❌" } ` ),
+      State.DB.get( State.S.selectedEntity, 12548 ) === false
+        ? d( State.DB.get(State.DB.get(State.S.selectedEntity, 10070), 12547)
             .map( criterium => d([
               criteriumIsValid(State, State.S.selectedEntity, criterium) ? d("✔️") : d("❌"),
               d(State.DB.get(criterium, 11568))
-          ], {style: gridColumnsStyle("1fr 3fr")})  ) ),
+            ], {style: gridColumnsStyle("1fr 3fr")})  ) )
+        : d("")
     ], {class: "feedContainer"}),
     br(),
     d([

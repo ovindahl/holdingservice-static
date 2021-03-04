@@ -140,41 +140,54 @@ let calculatedValueView = (State, entity, calculatedField, transactionIndex) => 
 
 
 
+let entityAttributeView = ( State, entity, attribute, isLocked ) => { try {return validEntityAttributeView( State, entity, attribute, isLocked ) } catch (error) { return entityAttributeErrorView( State,  entity, attribute, error ) } } 
+
+
+let validEntityAttributeView = (State, entity, attribute, isLocked ) => d([
+  entityLabelWithPopup( State, attribute),
+  State.DB.get(attribute, "attribute/isArray") 
+    ? isLocked
+      ? lockedMultipleValuesView( State, entity, attribute )
+      : multipleValuesView( State, entity, attribute ) 
+    : isLocked
+      ? lockedSingleValueView( State, entity, attribute )
+      : State.DB.get(attribute, "attribute/valueType") === 32 
+        ? State.S.selectedPage === 10025 
+          ? selectEntityView( State, entity, attribute )
+          : selectEntityWithDropdownView( State, entity, attribute )
+        : State.DB.get(attribute, "attribute/valueType") === 5824 
+          ? CSVuploadView( State, entity, attribute )
+          : State.DB.get(attribute, "attribute/valueType") === 11469 
+            ? sourceDocumentFileuploadView( State, entity, attribute )
+            : State.DB.get(attribute, "attribute/valueType") === 40 
+              ? selectStaticOptionView( State, entity, attribute )
+              : {
+                "30": textInputView, //Tekst
+                "31": numberInputView, //Tall
+                "12865": textAreaViewView, //HTML
+                "34": textAreaViewView, //Funksjonstekst
+                "36": boolView, //Boolean
+                "5721": dateInputView, //Dato
+              }[ State.DB.get(attribute, "attribute/valueType") ]( State, entity, attribute ),
+
+          
+    isLocked ? d(""): entityVersionLabel( State, entity, attribute )
+], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
 
 
 
-let entityAttributeView = (State, entity, attribute, isLocked ) => { try {
-  return d([
-      entityLabelWithPopup( State, attribute),
-      State.DB.get(attribute, "attribute/isArray") 
-        ? isLocked
-          ? lockedMultipleValuesView( State, entity, attribute )
-          : multipleValuesView( State, entity, attribute ) 
-        : isLocked
-          ? lockedSingleValueView( State, entity, attribute )
-          : State.DB.get(attribute, "attribute/valueType") === 32 
-            ? State.S.selectedPage === 10025 
-              ? selectEntityView( State, entity, attribute )
-              : selectEntityWithDropdownView( State, entity, attribute )
-            : State.DB.get(attribute, "attribute/valueType") === 5824 
-              ? CSVuploadView( State, entity, attribute )
-              : State.DB.get(attribute, "attribute/valueType") === 11469 
-                ? sourceDocumentFileuploadView( State, entity, attribute )
-                : State.DB.get(attribute, "attribute/valueType") === 40 
-                  ? selectStaticOptionView( State, entity, attribute )
-                  : {
-                    "30": textInputView, //Tekst
-                    "31": numberInputView, //Tall
-                    "12865": textAreaViewView, //HTML
-                    "34": textAreaViewView, //Funksjonstekst
-                    "36": boolView, //Boolean
-                    "5721": dateInputView, //Dato
-                  }[ State.DB.get(attribute, "attribute/valueType") ]( State, entity, attribute ),
 
-              
-        isLocked ? d(""): entityVersionLabel( State, entity, attribute )
-    ], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} ) } 
-  catch (error) { return d( error ) } } 
+
+let entityAttributeErrorView = (State, entity, attribute, error ) => d([
+  entityLabelWithPopup( State, attribute),
+  d(`ERROR: entity: ${entity}, attribute: ${attribute} `),
+  d(error)
+], {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
+
+
+
+
+
 
 let entityVersionLabel = (State, entity, attribute) => d([
   d([
