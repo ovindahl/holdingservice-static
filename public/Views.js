@@ -8,13 +8,15 @@
 
 const ClientApp = {
   Actions: State => returnObject({
-    selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectedEntity: undefined}, isDefined( Components.find( Component => Component.entity === pageEntity ) ) ? Components.find( Component => Component.entity === pageEntity ).onLoad( State ) : {}) }),
-    selectEntity: (entity, pageEntity) => updateState( State, {S: mergerino({selectedEntity: entity}, isDefined(pageEntity) ? {selectedPage: pageEntity} : {}) }),
+    selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectedEntity: undefined, selectedFilters: [] }, isDefined( Components.find( Component => Component.entity === pageEntity ) ) ? Components.find( Component => Component.entity === pageEntity ).onLoad( State ) : {}) }),
+    selectEntity: (entity, pageEntity) => updateState( State, {S: mergerino({selectedEntity: entity}, isDefined(pageEntity) ? {selectedPage: pageEntity, selectedFilters: []} : {}) }),
     selectEventIndex: eventIndex => updateState( State, {S:  {selectedEventIndex: eventIndex, selectedAccountingYear: Database.get( Database.get(State.S.selectedCompany, 12783)(eventIndex), 10542)} }),
     selectAccountingYear: accountingYear => updateState( State, {S: {selectedAccountingYear: accountingYear, selectedEventIndex: Database.get( State.DB.get( State.S.selectedCompany, 11976 )( accountingYear ).filter( event => State.DB.get( event, 11975 ) <= State.DB.get( State.S.selectedCompany, 12385 ) ).slice(-1)[0], 11975 )  } }),
+    addFilter: newFilter => updateState( State, {S: {selectedFilters: State.S.selectedFilters.concat( newFilter ) } }),
+    removeFilter: removedFilter => updateState( State, {S: {selectedFilters: State.S.selectedFilters.filter( f => f !== removedFilter ) } }),
+    removeFilters: () => updateState( State, {S: {selectedFilters: [] } } ),
     retractEntity: async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
-    selectSourceDocument: sourceDocument => updateState( State, {S: {selectedEntity: sourceDocument, selectedPage: State.DB.get( State.DB.get(sourceDocument, 10070), 7930) }}), 
-    selectCompany: company => updateState( State, { S: {selectedCompany: company, selectedPage: 11474, selectedEntity: undefined} } ),
+    selectCompany: company => updateState( State, { S: {selectedCompany: company, selectedEntity: undefined, selectedFilters: [] } } ),
     postDatoms: async newDatoms => {
 
       let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
@@ -98,18 +100,6 @@ let activeUserPage = State => {
     "11474": sourceDocumentsView,
     "7977": actorsView,
     "10464": reportView,
-
-    "10038": eventPageView,
-
-    "7509": eventPageView,
-    "10041": eventPageView,
-    "10039": eventPageView,
-    "11349": eventPageView,
-    "10040": eventPageView,
-    "10042": eventPageView,
-    "10036": eventPageView,
-    "12470": eventPageView,
-    
     "11974": eventPageView,
 
     "10025": adminPage,
@@ -119,24 +109,15 @@ let activeUserPage = State => {
   return d([
     d([d('<header><h1>Holdingservice Beta</h1></header>')], {style: "padding-left:3em; display:flex; justify-content: space-between;"}),
     d([
-      d(""),
+      leftSidebar( State ),
       d([
-        State.DB.get(State.S.selectedUser, "user/isAdmin")
-          ? d([
-            adminPanelView( State ),
-            br(),
-            userTasksView( State )
-          ]) 
-          : userTasksView( State ),
+        navBarView( State ),
+        br(),
         d([
-          navBarView( State ),
-          br(),
-          d([
-            isDefined(pageRouter[ State.S.selectedPage ])
-            ? pageRouter[ State.S.selectedPage ]( State ) 
-            : WIPpageview( State )
-          ], {class: "feedContainer"} )
-        ])
+          isDefined(pageRouter[ State.S.selectedPage ])
+          ? pageRouter[ State.S.selectedPage ]( State ) 
+          : WIPpageview( State )
+        ], {class: "feedContainer"} )
       ])
     ], {class: "pageContainer"})
     
@@ -144,50 +125,53 @@ let activeUserPage = State => {
   ])
 }
 
+let leftSidebar = State => d([
+  d([
+    d([
+      d("Valgt selskap:"),
+      d([
+        dropdown(State.S.selectedCompany, 
+          State.DB.get(State.S.selectedUser, "user/isAdmin")
+            ? State.DB.getAll(5722).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  )
+            : State.DB.get(State.S.selectedUser, "user/companies").map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), 
+          e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))
+        ]),
+    ], {style: gridColumnsStyle("1fr 1fr")}),
+    d([
+      d("Valgt år:"),
+      d([dropdown(State.S.selectedAccountingYear, State.DB.get(null, 10061).map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
+    ], {style: gridColumnsStyle("1fr 1fr")}),
+  ]),
+  br(),
+  br(),
+  br(),
+  d( [9951, 11974, 11474, 7977, 7860, 7882, 10464, 10035, 10025]
+      .filter( pageEntity => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get( pageEntity, 12506  ) )
+      .map( entity => d([
+          d( State.DB.get(entity, 6), {class: "sidebarButton", style: `${ State.S.selectedPage === entity ? "color: blue;" : "" }` }, "click", () => State.Actions.selectPage( entity ) ),
+          br(),
+  ])  ) ),
+  br(),
+  br(),
+  br(),
+  submitButton("Logg ut", () => sideEffects.auth0.logout({redirect_uri: window.location.origin}) )
+  
+])
+
 let navBarView = (State) => d([
   d([
     d([
-      d([entityLabelWithPopup( State, 9951, () => State.Actions.selectPage( 9951 ) )]),
-        State.S.selectedPage === 9951 
-          ? d("") 
-          : d([
-              span( " / " ),
-              entityLabelWithPopup( State, State.S.selectedPage, () => State.Actions.selectEntity( undefined ) )
-            ]),
+      d([entityLabelWithPopup( State, State.S.selectedPage, () => State.Actions.selectEntity( undefined ) )]),
         isUndefined( State.S.selectedEntity ) 
           ? d("") 
           : d([
               span( " / " ),
-              entityLabelWithPopup( State, State.S.selectedEntity )
+              State.S.selectedPage === 11974
+                ? dropdown( State.S.selectedEntity, State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear ).map( e => returnObject({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEntity( Number( submitInputValue(e) ) )  )
+                : entityLabelWithPopup( State, State.S.selectedEntity )
             ]),
     ], {style: "display: inline-flex;"}),
-    d([
-      d([
-        d("Valgt selskap:"),
-        d([dropdown(State.S.selectedCompany, State.DB.get(State.S.selectedUser, "user/companies").map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
-      ]),
-      d([
-        d("Valgt år:"),
-        d([dropdown(State.S.selectedAccountingYear, State.DB.get(null, 10061).map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
-      ]),
-      d([
-        d("Valgt hendelse:"),
-        d([dropdown( isNumber(State.S.selectedEventIndex) ? State.S.selectedEventIndex : 0, 
-          [{value: 0, label:"Velg hendelse"}].concat(
-          State.DB.get( State.S.selectedCompany, 12383 )
-            .map( entity => State.DB.get(entity, 11975)  )
-            .filter( eventIndex => eventIndex <= State.DB.get( State.S.selectedCompany, 12385 ) )
-            .map( eventIndex => returnObject({value: eventIndex, label: eventIndex  })  )
-          )
-            , e => State.Actions.selectEventIndex( Number( submitInputValue(e) ) ))]),
-      ])
-    ], {style: gridColumnsStyle("1fr 1fr")}),
-    d([
-      d([
-        entityLabelWithPopup( State, State.S.selectedUser ),
-        submitButton("Logg ut", () => sideEffects.auth0.logout({redirect_uri: window.location.origin}) )
-      ])
-    ], {style: "display: inline-flex;"})
+    
 
   ], {style: gridColumnsStyle("4fr 2fr 1fr")})
   
@@ -205,24 +189,6 @@ let notActivatedUserPage = State => d([
 ])
 
 let overviewPageView = State => d([
-  h3("Sider i applikasjonen"),
-  d( State.DB.getAll( 7487  )
-      .filter( page => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get(page, 12506) )
-      .filter( page => ![9951, 9338, 10025].includes(page) )
-      .map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
-    h3(category),
-    d(State.DB.getAll(7487)
-      .filter( page => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get(page, 12506) )
-      .filter( page => ![9951, 9338, 10025].includes(page) )
-      .filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( entity => d([
-      entityLabelWithPopup( State, entity, () => State.Actions.selectPage(entity) ),
-      d( State.DB.get(entity, 7) )
-    ], {style: gridColumnsStyle("1fr 3fr")})  ) ),
-  ])  ) )
-])
-
-
-let userTasksView = State => d([
   d([
     h3("Oppgaver"),
   d([
@@ -237,47 +203,15 @@ let userTasksView = State => d([
       boolView( State, task, 12155 ),
       entityLabelWithPopup( State, 11474, () => State.Actions.selectEntity( undefined, 11474 ) )
     ], {style: gridColumnsStyle("3fr 1fr 1fr")}) ), {class: "feedContainer"} )
-  ])
-], {class: "feedContainer"})
+  ]),
+  br(),
+  h3("Frister"),
+  d("TBD"),
+  br(),
+  h3("Kundeservice"),
+  d("TBD"),
+])
 
-
-
-let adminPanelView = State => {
-
-  
-  return d([
-    d([
-      h3("Adminpanel"),
-      d([
-        entityLabelWithPopup( State, 5612),
-        isDefined( State.S.selectedUser ) ? entityLabelWithPopup( State, State.S.selectedUser ) : d(" MANGLER ")
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")} ),,
-      d([
-        entityLabelWithPopup( State, 5722),
-        isDefined( State.S.selectedCompany ) ? entityLabelWithPopup( State, State.S.selectedCompany ) : d(" MANGLER "),
-        d([dropdown(State.S.selectedCompany, State.DB.getAll(5722).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  ), e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))]),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")} ),,
-      d([
-        entityLabelWithPopup( State, 7927),
-        isDefined( State.S.selectedPage ) ? entityLabelWithPopup( State, State.S.selectedPage ) : d(" MANGLER "),
-        submitButton( "Gå til adminsiden", () => State.Actions.selectPage(10025) )
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")} ),
-      d([
-        entityLabelWithPopup( State, 7928),
-        isDefined( State.S.selectedEntity ) ? entityLabelWithPopup( State, State.S.selectedEntity ) : d(" - "),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-      d([
-        entityLabelWithPopup( State, 7929),
-        isDefined( State.S.selectedTransactionIndex ) ? d( `${State.S.selectedTransactionIndex} / ${State.DB.get( State.S.selectedCompany, 10069 )} `) : d(" - "),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-      d([
-        entityLabelWithPopup( State, 9279),
-        isDefined( State.S.selectedAccountingYear ) ? entityLabelWithPopup( State, State.S.selectedAccountingYear ) : d(" - "),
-      ], {style: gridColumnsStyle("repeat(3, 1fr)")}),
-      br(),
-    ])
-  ], {class: "feedContainer"})
-} 
 
 let WIPpageview = State => d([
   h3( State.DB.get(State.S.selectedPage, 6) ),

@@ -105,6 +105,7 @@ let updateState = (prevState, patch) => {
     Entity = newState.DB.get( State.S.selectedEntity ) 
     Entity.retract = () => newState.Actions.retractEntity( State.S.selectedEntity  )
     E = Entity
+    E.update = (attribute, value, isAddition) => newState.Actions.updateEntity( State.S.selectedEntity, attribute, value, isAddition )
   }
   
   A = newState.Actions
@@ -139,10 +140,6 @@ let init = async () => {
 
     let initialCompany = initialDatabase.get(userEntity, "user/companies")[0]
 
-    //let initialEventIndex = initialDatabase.get(initialCompany, 12786)
-
-    //log({initialDatabase, initialCompany, initialEventIndex})
-
     updateState( {}, {
       DB: initialDatabase,
       S: {
@@ -152,6 +149,7 @@ let init = async () => {
         selectedCompany: initialCompany,
         selectedAccountingYear: 7407,
         selectedEventIndex: 0,
+        selectedFilters: []
       }
       } )
     

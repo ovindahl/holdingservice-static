@@ -55,6 +55,8 @@ let allActorsView = State => d([
 
 
     return d([
+      selectEventIndexView( State ),
+      br(),
       submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, ActorsPage.entity )  ),
       br(),
       entityAttributeView(State, State.S.selectedEntity, 8668, true),

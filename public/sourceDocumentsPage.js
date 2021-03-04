@@ -61,7 +61,10 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
       ? d( State.DB.get( State.DB.get( State.S.selectedEntity, 11688  ), 10433 ).map( attribute => entityAttributeView( State, State.S.selectedEntity, attribute, true ) )   )
       : d(""),
     br(),
-    entityActionsView( State, State.S.selectedEntity ),
+    d([
+      h3("Handlinger"),
+      d( State.DB.get( State.DB.get(State.S.selectedEntity, 11688 )  , 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
+    ], {class: "feedContainer"}),
     br(),
     State.DB.get( State.S.selectedEntity, 11688  ) === 12699
       ? d("🖨️ Eksporter utskriftsvennlig versjon av avtalen", {}, "click", () => printContractInNewTab( State, State.DB.get(State.S.selectedEntity, 12866) ) )

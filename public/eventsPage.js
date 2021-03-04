@@ -24,8 +24,6 @@ let prevNextEventView = State => {
     let next = State.DB.get( State.S.selectedEntity, 12101 )
   
     return d([
-      submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined )  ),
-      br(),
       d([
         d([
           isDefined( prev ) ? submitButton("<", () => State.Actions.selectEntity(  prev ) ) : d(""),
@@ -122,19 +120,27 @@ let eventRowView = (State, event) => d([
 let allEventsView = State => d([
     h3("Alle hendelser"),
     d([
+      d("Filter på hendelsestype:"),
+      d( State.DB.getAll(10063).map( eventType => State.S.selectedFilters.includes( eventType )
+          ? span(  State.DB.get(eventType, 6), "", {style: "padding: .25rem;margin: .25rem;background-color: #289df1b3;" }, "click", () => State.Actions.removeFilter( eventType )  ) 
+          : entityLabelWithPopup( State, eventType, () => State.Actions.addFilter( eventType ) )  ).concat( span( "X", "", {}, "click", () => State.Actions.removeFilters( undefined ) ) )
+        )
+    ], {class: "feedContainer"}),
     d([
-        d( "#" ),
-        d( "Hendelsesdato" ),
-        d( "Hendelse" ),
-        d( "Beløp", {style: `text-align: right;`} ),
-        d( "Status", {style: `text-align: right;`} ),
-    ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")}),
+      d([
+          d( "#" ),
+          d( "Hendelsesdato" ),
+          d( "Hendelse" ),
+          d( "Beløp", {style: `text-align: right;`} ),
+          d( "Status", {style: `text-align: right;`} ),
+      ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")}),
     ], {class: "feedContainer"}),
     d([
     State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear ).length > 0 
         ? d( State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear )
-        .filter( event => State.S.selectedPage === 11974 ? true : State.DB.get( State.DB.get(event, 10070 ), 7930) === State.S.selectedPage   )
-        .map( event => eventRowView(State, event)  ) )
+              .filter( event => State.S.selectedFilters.length > 0 ? State.S.selectedFilters.includes( State.DB.get(event, 10070 ) )  : true )
+              .map( event => eventRowView(State, event)  ) 
+          )
         : d("Ingen hendelser i valgt regnskapsår"),
     ], {class: "feedContainer"}),
     br(),

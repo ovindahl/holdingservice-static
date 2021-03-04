@@ -1,6 +1,6 @@
 const BalancePage = {
     entity: 7860,
-    onLoad: State => returnObject({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.S.selectedCompany, 12385 ) }),
+    onLoad: State => returnObject({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.DB.get( State.S.selectedCompany, 12786 ), 11975) }),
     Actions: State => returnObject({})
   }
 
@@ -8,11 +8,17 @@ const BalancePage = {
   
 let balanceObjectsView = State => isDefined( State.S.selectedEntity ) ? singleAccountView( State ) : trialBalanceView( State )
 
-
+let selectEventIndexView = State => d([
+  d("Viser rapport etter hendelse:"),
+  dropdown( State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ) , State.DB.get( State.S.selectedCompany, 12974 )( State.S.selectedAccountingYear ).map( e => returnObject({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEventIndex( State.DB.get(  Number( submitInputValue(e) ), 11975 ) )  ),
+  lockedSingleValueView( State, State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ), 1757 )
+], {style: gridColumnsStyle("2fr 2fr 1fr 2fr")})
 
 
 let trialBalanceView = State => d([
   h3("Saldobalanse"),
+  selectEventIndexView( State ),
+  br(),
   d([
     d( [7537, 7539, 7538, 8788].map( balanceSection =>  d([
       entityLabelWithPopup( State, balanceSection ),
@@ -46,6 +52,8 @@ let singleAccountView = State => {
 
   return d([
     submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, BalancePage.entity )  ),
+    br(),
+    selectEventIndexView( State ),
     br(),
     d([
       entityLabelWithPopup( State, State.S.selectedEntity ),
