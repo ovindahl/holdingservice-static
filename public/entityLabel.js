@@ -85,7 +85,8 @@ let entityLabel = (State, entity, onClick ) => State.DB.isEntity(entity)
 
 let entityPopUp = (State, entity) => d([
   h3( getEntityLabel( State.DB, entity ) ),
-  d( getEntityLabel( State.DB, State.DB.get(entity, "entity/entityType") )  ),
+  d([ entityLabel( State, State.DB.get(entity, "entity/entityType") ), ]),
+  br(),
   /* State.DB.get(entity, 19) === 7979
     ? temporalEntityAttributeView( State, entity, 12496, State.S.selectedEventIndex )
     : d(""), */
@@ -93,3 +94,5 @@ let entityPopUp = (State, entity) => d([
 ], {class: "entityInspectorPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 let tinyEventLabel = (State, event ) => d([d(`📅 H${State.DB.get(event, 11975)} `, {class: "entityLabel", style: `display: inline-flex;background-color:#bade90;`}, "click", () => State.Actions.selectEntity(  event, EventPage.entity ) )], {style:"display: inline;padding-left: 1em;"})
+
+

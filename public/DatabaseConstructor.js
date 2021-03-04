@@ -9,6 +9,8 @@ let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.every( Datom => {
 
     let valueType = DB.get( attr , "attribute/valueType")
 
+    if( isUndefined(attr) ){ return  log(true, {ERROR: "attr not defined:", Datom, attr}) }
+
     let attributeIsArray = isDefined( isArray )
       ? isArray
       : false
@@ -21,11 +23,17 @@ let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.every( Datom => {
     let isValid_notNaN = valueInArray.every( arrayValue => !Number.isNaN(arrayValue) )
     let isValid = ( isValid_entity && isValid_valueType && isValid_attribute && isValid_notNaN  )
 
+    
+
+    if( !isValid ){ log({ERROR: "validateDatomAttributeValues Did not pass validation", isValid, valueType, isValid_entity, isValid_valueType, isValid_notNaN, attributeIsArray, Datom}) }
+
     return isValid
 
   } )
 
-let getEntityRetractionDatoms = (DB, entity) => DB.get(entity).Datoms.filter( Datom => DB.get(entity).Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  ).map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
+//let getEntityRetractionDatoms_old = (DB, entity) => DB.get(entity).Datoms.filter( Datom => DB.get(entity).Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  ).map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
+
+let getEntityRetractionDatoms = (DB, entity) => Object.keys( DB.get(entity).current ).filter( key => key !== "entity"  ).map( attribute => newDatom(entity, attribute, DB.get(entity).current[ attribute ], false) )
 
 let getEntitiesRetractionDatoms = (DB, entities) => isArray(entities) ? entities.map( entity => getEntityRetractionDatoms( DB, entity ) ).flat() : log([], {ERROR: "getEntitiesRetractionDatoms did not receive array", entities} )
 
@@ -215,28 +223,6 @@ let constructDatabase = Entities => {
     return DB
 }
 
-getBalanceObjectLabel = (DB, balanceObject) => {
-
-
-  let entityTypeLabelController = {
-    "6253": () => `Aksjepost i ${DB.get( DB.get( balanceObject, 5675), 1113)}`,
-    "6248": () => `Bankkonto i ${DB.get( balanceObject, 1809)}`,
-    "7828": () => `Fordring på ${DB.get( DB.get( balanceObject, 5675), 1113)}`,
-    "6237": () => `Aksjekapitalinnskudd`,
-    "6243": () => `Opptjent egenkapital`,
-    "6264": () => `Gjeld til ${DB.get( DB.get( balanceObject, 5675), 1113)}`,
-    "7858": () => `Foreløpig årsresultat`,
-    "7857": () => `Tilleggsutbytte`,
-  }
-
-
-  let balanceObjectType = DB.get( balanceObject, "balanceObject/balanceObjectType" )
-
-  return Object.keys(entityTypeLabelController).includes( String(balanceObjectType) ) ? entityTypeLabelController[ balanceObjectType ]() : `[${balanceObject}] Mangler visningsnavn`
-
-}
-
-
 
 let calculateGlobalCalculatedValue = ( DB, calculatedField ) => tryFunction( () => new Function( [`Database`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB ) )
 let calculateEntityCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
@@ -248,49 +234,3 @@ let getReportFieldValue = ( DB, company, reportField, yearEndEvent ) => DB.get( 
   : DB.get( reportField, 8361 ) === 5030
     ? DB.get(company, 12392)( DB.get(reportField, 7829), State.DB.get(yearEndEvent, 11975) - 1 )
     : null
-
-
-
-
-
-
-
-
-
-    //Server boot function:
-
-    
-let S_addDatoms = newDatoms => {
-
-  let S = {} // global server state
-
-  let entityIDs = newDatoms.map( Datom => Datom.entity ).filter(filterUniqueValues)
-  
-  let updatedEntities = entityIDs.reduce( (updatedEntities, entity) => {
-
-      let entityDatoms = newDatoms.filter( Datom => Datom.entity === entity )
-
-      let Entity = S.Entities.filter( Entity => Entity.entity === entity ).length > 0 
-          ? updateEntity( S.Entities.filter( Entity => Entity.entity === entity )[0], entityDatoms )
-          : createEntity( entityDatoms )
-
-      Entity.get = attribute => Entity.current[S.attrName(attribute)] 
-          ? Entity.current[S.attrName(attribute)] 
-          : `Entity does not have attribute [${S.attrName(attribute)} ] `
-
-      
-      return updatedEntities.concat( Entity )
-
-  }   , [] )
-
-  S.Entities = S.Entities.filter( Entity =>  !entityIDs.includes(Entity.entity) ).concat(updatedEntities)
-  S.getEntity = entity => S.Entities.filter( Entity => Entity.entity === entity )[0]
-  S.findEntities = filterFunction => S.Entities.filter( filterFunction )
-
-  S.latestEntityID = Math.max.apply(null, [S.latestEntityID].concat( newDatoms.map( Datom => Number( Datom.entity ) )  ) )
-
-  S.attrName = attribute => (typeof attribute === "string") ? attribute : S.getEntity(attribute).get("attr/name")
-  S.attrEntity = attrName => (typeof attrName === "number") ? attrName : S.findEntities( Entity => Entity.get("attr/name") === attrName )[0].get("entity")
-
-  return updatedEntities
-}

@@ -39,7 +39,7 @@ let allActorsView = State => d([
     br(),
     d([
       h3("Opprett aktør:"),
-      d( State.DB.getAll(8665).map( actorType => entityLabelWithPopup( State, actorType, () => State.Actions.createEvent( actorType ) )  )  ),
+      d( State.DB.getAll(8665).map( actorType => entityLabelWithPopup( State, actorType, () => State.Actions.createActor( actorType ) )  )  ),
   ], {class: "feedContainer"})
 ])
 
