@@ -199,7 +199,7 @@ let leftSidebar = State => d([
         e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))
       ]),
       d([dropdown(State.S.selectedAccountingYear, State.DB.get(State.S.selectedCompany, 12553).map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity )  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
-  ], {class: "feedContainer"}),
+  ], {style: "padding: 1em;"}),
   d( [9951, 11974, 11474, 7977, 7860, 7882, 10464, 10035, 10025]
       .filter( pageEntity => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get( pageEntity, 12506  ) )
       .map( entity => d([
