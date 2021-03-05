@@ -1,7 +1,7 @@
 const ActorsPage = {
     entity: 7977,
-    onLoad: State => returnObject({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.S.selectedCompany, 12385 ) }),
-    Actions: State => returnObject({})
+    onLoad: State => returnObj({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.S.selectedCompany, 12385 ) }),
+    Actions: State => returnObj({})
   }
 
 
@@ -56,7 +56,10 @@ let allActorsView = State => d([
         d( State.DB.get(actorRole, 10433).map( calculatedField => temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField, State.S.selectedEventIndex ) ) )
       ])  ) ),
       br(),
-      entityActionsView( State, State.S.selectedEntity ),
+      d([
+        h3("Handlinger"),
+        d( State.DB.get( State.DB.get(State.S.selectedEntity, 8668 )  , 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
+      ], {class: "feedContainer"}),
     ])
   }
 

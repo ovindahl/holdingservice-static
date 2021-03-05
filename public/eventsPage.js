@@ -1,8 +1,8 @@
 
 const EventPage = {
     entity: 11974,
-    onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({})
+    onLoad: State => returnObj({selectedEntity: undefined}),
+    Actions: State => returnObj({})
   }
 
   
@@ -66,7 +66,10 @@ let singleEventView = State => d([
       : d("Ikke bokført."),
     ], {class: "feedContainer"}),
     br(),
-    entityActionsView( State, State.S.selectedEntity ),
+    d([
+      h3("Handlinger"),
+      d( State.DB.get( State.DB.get(State.S.selectedEntity, 10070 )  , 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
+    ], {class: "feedContainer"}),
 ])
 
 let calculatedTransactionView = State => d( State.DB.get(State.S.selectedEntity, State.DB.get( State.DB.get(State.S.selectedEntity, 10070), 12355)).map( transaction => d([
@@ -147,4 +150,4 @@ let allEventsView = State => d([
 
 
 
-let newTransaction = (event, originNode, destinationNode, amount, count) => returnObject({event, originNode, destinationNode, amount, count})
+let newTransaction = (event, originNode, destinationNode, amount, count) => returnObj({event, originNode, destinationNode, amount, count})
