@@ -2,16 +2,7 @@
 const SourceDocumentsPage = {
     entity: 11474,
     onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({
-      createSourceDocument: sourceDocumentType => State.Actions.createAndSelectEntity( [
-        newDatom( 'newEntity', 'entity/entityType', 11472 ),
-        newDatom( 'newEntity', "sourceDocument/sourceDocumentType", sourceDocumentType ),
-        newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-        newDatom( 'newEntity' , 6, 'Bilagsdokument uten navn' ), 
-        newDatom( 'newEntity' , 1139, '' ), 
-        newDatom( 'newEntity' , 7512, 7407), 
-      ] ),
-    }),
+    Actions: State => returnObject({}),
   }
 
 let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEntity ) ? singleSourceDocumentView( State ) : allSourceDocumentsView( State ) } catch (error) { return entityErrorView( State, error ) } }
@@ -37,11 +28,6 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
             : d("✏️", {style: `text-align: right;`}),
         ], {style: gridColumnsStyle("1fr 3fr 2fr 1fr") } ) ), {class: "feedContainer"} )
     : d("Ingen bilag i valgt regnskapsår.", {class: "feedContainer"}),
-  br(),
-  d([
-    h3("Legg til bilag"),
-    d( State.DB.getAll( 11686 ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createSourceDocument( sourceDocumentType ) )  ) ),
-  ], {class: "feedContainer"}),
   ]) 
 
   

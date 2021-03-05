@@ -28,12 +28,32 @@ const ClientApp = {
 
       
     },
+    createEvent: eventType => State.Actions.createAndSelectEntity( [
+      newDatom( 'newEntity', 'entity/entityType', 10062 ),
+      newDatom( 'newEntity', "sourceDocument/date", Date.now() ),
+      newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+      newDatom( 'newEntity', 'sourceDocument/sourceDocumentType', eventType ),
+    ] ),
+    createSourceDocument: sourceDocumentType => State.Actions.createAndSelectEntity( [
+      newDatom( 'newEntity', 'entity/entityType', 11472 ),
+      newDatom( 'newEntity', "sourceDocument/sourceDocumentType", sourceDocumentType ),
+      newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+      newDatom( 'newEntity' , 6, 'Bilagsdokument uten navn' ), 
+      newDatom( 'newEntity' , 1139, '' ), 
+      newDatom( 'newEntity' , 7512, 7407), 
+    ] ),
+    createActor: actorType => State.Actions.createAndSelectEntity( [
+      newDatom( 'newEntity', 'entity/entityType', 7979 ),
+      newDatom( 'newEntity' , "actor/actorType", actorType ),  
+      newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ),  
+      newDatom( 'newEntity' , 6, 'Aktør uten navn' )
+    ] ),
     createAndSelectEntity: async newDatoms => {
 
       if( newDatoms.every( Datom => Datom.entity === newDatoms[0].entity ) ){
         let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
         let newEntity = updatedDB.Entities.slice( -1 )[0].entity
-        updateState( State, {DB: updatedDB, S: { selectedEntity: newEntity } } )
+        updateState( State, {DB: updatedDB, S: { selectedEntity: newEntity, selectedPage: updatedDB.get( updatedDB.get(newEntity, 19), 7930) } } )
       }else{ log({ERROR: "createAndSelectEntity: Received datoms refer to > 1 entity"}) }
 
       
@@ -142,9 +162,6 @@ let leftSidebar = State => d([
       d([dropdown(State.S.selectedAccountingYear, State.DB.get(null, 10061).map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
     ], {style: gridColumnsStyle("1fr 1fr")}),
   ]),
-  br(),
-  br(),
-  br(),
   d( [9951, 11974, 11474, 7977, 7860, 7882, 10464, 10035, 10025]
       .filter( pageEntity => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get( pageEntity, 12506  ) )
       .map( entity => d([
@@ -157,6 +174,26 @@ let leftSidebar = State => d([
   submitButton("Logg ut", () => sideEffects.auth0.logout({redirect_uri: window.location.origin}) )
   
 ])
+
+let sidebarCreateButton = State => d([
+  d([
+    d( "Legg til", {style: "padding:1em; margin-left:2em; background-color: red; color: white;"}),
+    d([
+      d([
+        h3("Hendelse:"),
+        d( State.DB.getAll(10063).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent(eventType) )  ) ),
+    ], {class: "feedContainer"}),
+    d([
+      h3("Bilag"),
+      d( State.DB.getAll( 11686 ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createSourceDocument( sourceDocumentType ) )  ) ),
+    ], {class: "feedContainer"}),
+    d([
+      h3("Opprett aktør:"),
+      d( State.DB.getAll(8665).map( actorType => entityLabelWithPopup( State, actorType, () => State.Actions.createActor( actorType ) )  )  ),
+    ], {class: "feedContainer"})
+    ], {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+  ], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
+], {style:"display: inline-flex;"} )
 
 let navBarView = (State) => d([
   d([
@@ -171,9 +208,9 @@ let navBarView = (State) => d([
                 : entityLabelWithPopup( State, State.S.selectedEntity )
             ]),
     ], {style: "display: inline-flex;"}),
-    
+    sidebarCreateButton( State ),
 
-  ], {style: gridColumnsStyle("4fr 2fr 1fr")})
+  ], {style: gridColumnsStyle("7fr 1fr")})
   
 ], {class: "feedContainer"})
 

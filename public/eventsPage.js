@@ -2,14 +2,7 @@
 const EventPage = {
     entity: 11974,
     onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({
-      createEvent: eventType => State.Actions.createAndSelectEntity( [
-        newDatom( 'newEntity', 'entity/entityType', 10062 ),
-        newDatom( 'newEntity', "sourceDocument/date", Date.now() ),
-        newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-        newDatom( 'newEntity', 'sourceDocument/sourceDocumentType', eventType ),
-    ] )
-    })
+    Actions: State => returnObject({})
   }
 
   
@@ -144,14 +137,6 @@ let allEventsView = State => d([
         : d("Ingen hendelser i valgt regnskapsår"),
     ], {class: "feedContainer"}),
     br(),
-    d([
-        h3("Opprett hendelse:"),
-        d( State.DB.getAll(10063)
-            .filter( eventType => State.S.selectedPage === 11974 ? true : State.DB.get( eventType, 7930) === State.S.selectedPage  )  
-            .map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent(eventType) )  )  
-          ),
-    ], {class: "feedContainer"}) 
-
 ])
 
 

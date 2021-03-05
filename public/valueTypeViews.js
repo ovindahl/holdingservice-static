@@ -247,13 +247,13 @@ let multipleValuesView = (State, entity, attribute) => {
       d( "#" ),
       d( "Verdi" ),
       d("")
-    ], {class: "columns_1_8_1"}),
+    ], {style: gridColumnsStyle("1fr 8fr 1fr")}),
     isArray( Value )
       ?  d( State.DB.get(entity, attribute).map( (Value, index) => d([
             positionInArrayView(State, entity, attribute, index),
             valueTypeViews[ valueType ](State, entity, attribute, index),
             submitButton( "[ X ]", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).filter( (Value, i) => i !== index  )  )} ) )
-          ], {class: "columns_1_8_1", style: "margin: 5px;"} )) )
+          ], {style: gridColumnsStyle("1fr 8fr 1fr"), style: "margin: 5px;"} )) )
       : d("Ingen verdier"),
       submitButton( "[ + ]", async e => isArray( State.DB.get( entity, attribute) ) 
         ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).concat(startValue)  )} )
@@ -270,7 +270,7 @@ let positionInArrayView = (State, entity, attribute, index) => d([
   d( String(index) ),
   moveUpButton(State, entity, attribute, index),
   moveDownButton(State, entity, attribute, index)
-], {class: "columns_1_1_1"})
+], {style: gridColumnsStyle("1fr 1fr 1fr") })
 
 let moveUpButton = (State, entity, attribute, index) => index > 0 ? submitButton( "↑", async e => {
   let Values = State.DB.get(entity, attribute)
@@ -307,7 +307,7 @@ let argumentRowView = (State, entity, attribute, index) => {
     input( {value: Value["argument/name"] }, "change", async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/name": submitInputValue(e)}))} ) ),
     dropdown( Value["argument/valueType"], State.DB.getAll(44).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ), async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }))} )
     )
-  ], {class: "columns_1_1"}) 
+  ], {style: gridColumnsStyle("1fr 1fr")}) 
 
 }
 
@@ -325,7 +325,7 @@ let statementRowView = ( State, entity, attribute, index) => {
 
     textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;"} , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }))}) )
 
-  ], {class: "columns_1_9"}) 
+  ], {class: gridColumnsStyle("1fr 9fr")}) 
 
 }
 

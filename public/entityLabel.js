@@ -55,6 +55,12 @@ let entityActionsView = (State, entity) => d([
 //-------------
 
 
+
+
+
+//--------
+
+
 let getEntityLabel = (DB, entity) => DB.get(entity, 19) === 7979
   ? `${State.DB.get(entity, 8668) === 8667 ? "👨‍💼" : "🏢"} ${State.DB.get(entity, 6)}`
   : DB.get(entity, 19) === 10062

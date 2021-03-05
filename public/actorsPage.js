@@ -1,15 +1,7 @@
 const ActorsPage = {
     entity: 7977,
     onLoad: State => returnObject({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.S.selectedCompany, 12385 ) }),
-    Actions: State => returnObject({
-      createActor: actorType => State.Actions.createAndSelectEntity( [
-        newDatom( 'newEntity', 'entity/entityType', 7979 ),
-        newDatom( 'newEntity' , "actor/actorType", actorType ),  
-        newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ),  
-        newDatom( 'newEntity' , 6, 'Aktør uten navn' )
-      ] ),
-      retractActor: actor =>  State.Actions.retractEntity( actor )
-    })
+    Actions: State => returnObject({})
   }
 
 
@@ -36,11 +28,6 @@ let allActorsView = State => d([
     ], {style: gridColumnsStyle("2fr 1fr 3fr")}),
     ], {class: "feedContainer"}),
     d( State.DB.get( State.S.selectedCompany, 10065 ).map( actor => actorRowView(State, actor)  ), {class: "feedContainer"}),
-    br(),
-    d([
-      h3("Opprett aktør:"),
-      d( State.DB.getAll(8665).map( actorType => entityLabelWithPopup( State, actorType, () => State.Actions.createActor( actorType ) )  )  ),
-  ], {class: "feedContainer"})
 ])
 
 
