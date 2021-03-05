@@ -3,8 +3,8 @@
 
 const TransactionsPage = {
     entity: 7882,
-    onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({})
+    onLoad: State => returnObj({selectedEntity: undefined}),
+    Actions: State => returnObj({})
   }
 
 

@@ -74,7 +74,7 @@ var A = {} //Consle access to Actions
 //COMPONENTS
 
 const DB = {
-  Actions: State => returnObject({})
+  Actions: State => returnObj({})
 } 
 
 

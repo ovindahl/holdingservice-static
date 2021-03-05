@@ -1,4 +1,4 @@
-let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
+let newDatom = (entity, attribute, value, isAddition) => returnObj({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
 let changeToStringAttributes = (DB, Datoms) => Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value, Datom.isAddition ) : Datom )
 
@@ -79,7 +79,7 @@ let constructDatabase = Entities => {
   
     DB.entities = DB.Entities.map( serverEntity => serverEntity.entity )
     DB.attributes = DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
-    DB.attrNames = mergeArray(DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => returnObject({[serverEntity.current["attr/name"]]: serverEntity.entity} ) ))
+    DB.attrNames = mergeArray(DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => returnObj({[serverEntity.current["attr/name"]]: serverEntity.entity} ) ))
     DB.tx = DB.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
 
     DB.calculatedDatoms = []

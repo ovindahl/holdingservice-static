@@ -1,6 +1,6 @@
 //UTILITIES
 //let createObject = (keyName, value) => Object.assign({}, {[keyName]: value} ) 
-let returnObject = (something) => something // a -> a
+let returnObj = something => something // a -> a
 let log = (something, label) => {
 console.log( (label) ? label : "Logging this: ", something )
 return something
@@ -305,7 +305,7 @@ let argumentRowView = (State, entity, attribute, index) => {
 
   return d([
     input( {value: Value["argument/name"] }, "change", async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/name": submitInputValue(e)}))} ) ),
-    dropdown( Value["argument/valueType"], State.DB.getAll(44).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ), async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }))} )
+    dropdown( Value["argument/valueType"], State.DB.getAll(44).map( e => returnObj({value: e, label: State.DB.get(e, "entity/label")}) ), async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }))} )
     )
   ], {style: gridColumnsStyle("1fr 1fr")}) 
 
@@ -335,7 +335,7 @@ let refsView = (State, entity, attribute, index) => {
   let storedValue = storedValues[index]
 
   let options = State.DB.get( State.DB.get( State.DB.get( attribute, 12833 ), 19 ) === 9815 ? entity : null, State.DB.get( attribute, 12833 ) )
-  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
+  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObj({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
 
   let datalistID = getNewElementID()
   return d([
@@ -370,7 +370,7 @@ let boolView = ( State, entity, attribute ) => checkBox( State.DB.get( entity, a
 let selectStaticOptionView = ( State, entity, attribute )  => {
 
   let options = State.DB.get( State.DB.get( State.DB.get( attribute, 12833 ), 19 ) === 9815 ? entity : null, State.DB.get( attribute, 12833 ) )
-  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
+  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObj({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
 
   return dropdown( 
     isDefined( State.DB.get( entity, attribute ) ) 
@@ -393,7 +393,7 @@ let selectEntityView = ( State, entity, attribute  ) => {
   
 
   let options = State.DB.get( State.DB.get( State.DB.get( attribute, 12833 ), 19 ) === 9815 ? entity : null, State.DB.get( attribute, 12833 ) )
-  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
+  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObj({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
 
   let datalistID = getNewElementID()
   return d([
@@ -416,7 +416,7 @@ let selectEntityView = ( State, entity, attribute  ) => {
 let selectEntityWithDropdownView = ( State, entity, attribute  ) => {
 
   let options = State.DB.get( State.DB.get( State.DB.get( attribute, 12833 ), 19 ) === 9815 ? entity : null, State.DB.get( attribute, 12833 ) )
-  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
+  let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObj({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
 
   return State.DB.isEntity( State.DB.get( entity, attribute ) ) 
   ? d([

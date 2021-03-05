@@ -2,8 +2,8 @@
 
 const BankImportPage = {
     entity: 10038,
-    onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({})
+    onLoad: State => returnObj({selectedEntity: undefined}),
+    Actions: State => returnObj({})
   }
 
 
@@ -70,7 +70,10 @@ let singleBankTransactionView = State => {
             : d("Banktransaksjonen er ikke matchet")
         ], {class: "feedContainer"}),
         br(),
-        entityActionsView( State, State.S.selectedEntity ),
+        d([
+            h3("Handlinger"),
+            d( State.DB.get( State.DB.get(State.S.selectedEntity, 10070 )  , 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
+        ], {class: "feedContainer"}),
     ])  
 
 } 

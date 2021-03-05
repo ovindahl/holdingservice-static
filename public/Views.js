@@ -7,7 +7,7 @@
 //----------------------------------------------------------------------
 
 const ClientApp = {
-  Actions: State => returnObject({
+  Actions: State => returnObj({
     selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectedEntity: undefined, selectedFilters: [] }) }),
     selectEntity: (entity, pageEntity) => updateState( State, {S: mergerino({selectedEntity: entity}, isDefined(pageEntity) ? {selectedPage: pageEntity, selectedFilters: []} : {}) }),
     selectEventIndex: eventIndex => updateState( State, {S:  {selectedEventIndex: eventIndex, selectedAccountingYear: Database.get( Database.get(State.S.selectedCompany, 12783)(eventIndex), 10542)} }),
@@ -194,11 +194,11 @@ let leftSidebar = State => d([
     d([
       dropdown(State.S.selectedCompany, 
         State.DB.get(State.S.selectedUser, "user/isAdmin")
-          ? State.DB.getAll(5722).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  )
-          : State.DB.get(State.S.selectedUser, "user/companies").map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), 
+          ? State.DB.getAll(5722).map( company => returnObj({value: company, label: State.DB.get(company, "entity/label")  })  )
+          : State.DB.get(State.S.selectedUser, "user/companies").map( entity => returnObj({value: entity, label: State.DB.get(entity, "entity/label")  })  ), 
         e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))
       ]),
-      d([dropdown(State.S.selectedAccountingYear, State.DB.get(State.S.selectedCompany, 12553).map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity )  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
+      d([dropdown(State.S.selectedAccountingYear, State.DB.get(State.S.selectedCompany, 12553).map( entity => returnObj({value: entity, label: getEntityLabel( State.DB, entity )  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
   ], {style: "padding: 1em;"}),
   d( [9951, 11974, 11474, 7977, 7860, 7882, 10464, 10035, 10025]
       .filter( pageEntity => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get( pageEntity, 12506  ) )
@@ -244,7 +244,7 @@ let navBarView = (State) => d([
           : d([
               span( " / " ),
               State.S.selectedPage === 11974
-                ? dropdown( State.S.selectedEntity, State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear ).map( e => returnObject({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEntity( Number( submitInputValue(e) ) )  )
+                ? dropdown( State.S.selectedEntity, State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear ).map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEntity( Number( submitInputValue(e) ) )  )
                 : entityLabelWithPopup( State, State.S.selectedEntity )
             ]),
     ], {style: "display: inline-flex;"}),
@@ -312,7 +312,7 @@ let renderGraph = State => {
 
   let selectedTransaction = allTransactions.find( t => State.DB.get(t, 8354) === State.S.selectedCompanyEventIndex  )
 
-  let nodes = State.DB.get( State.S.selectedCompany , 10052)().map( e => returnObject({data: {
+  let nodes = State.DB.get( State.S.selectedCompany , 10052)().map( e => returnObj({data: {
     id: String(e), 
     label: State.DB.get(e, 6),
     col: 1,
@@ -321,7 +321,7 @@ let renderGraph = State => {
   } }  ) )
   let edges = allTransactions
     .filter( t => isNumber( State.DB.get(t, "transaction/originNode") ) && isNumber( State.DB.get(t, "transaction/destinationNode") )   )
-    .map( t => returnObject({data: {
+    .map( t => returnObj({data: {
       id: String(t), 
       source: String( State.DB.get(t, "transaction/originNode") ), 
       target: String( State.DB.get(t, "transaction/destinationNode") ),
@@ -363,7 +363,7 @@ let renderGraph = State => {
   
     layout: {
       name: 'grid',
-      position: node => returnObject({
+      position: node => returnObj({
         col: node.data('col')
        })
     }

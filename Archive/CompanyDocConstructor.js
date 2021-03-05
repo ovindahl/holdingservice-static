@@ -1,7 +1,7 @@
 
 //--------------
 /* 
-let getCompanyEntityQueryObject = (companyDatoms, entity, eventTime) => returnObject({
+let getCompanyEntityQueryObject = (companyDatoms, entity, eventTime) => returnObj({
   entityDatoms: companyDatoms
     .filter( companyDatom => isDefined(eventTime) ? companyDatom.t <= eventTime : true )
     .filter( companyDatom => companyDatom.entity === entity ),
@@ -35,7 +35,7 @@ let getFromCompany = (companyDatoms, entity, attribute, eventTime) => isDefined(
   ? getCompanyDatomValue(companyDatoms, entity, attribute, eventTime) 
   : getCompanyEntityQueryObject(companyDatoms, entity, eventTime)
 
-let newCompanyDatom = (companyEntity, attribute, value, t) => returnObject({
+let newCompanyDatom = (companyEntity, attribute, value, t) => returnObj({
   entity: companyEntity, 
   attribute,
   value,
