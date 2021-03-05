@@ -6,7 +6,9 @@ const EventPage = {
   }
 
   
-let eventPageView = State => { try {return isDefined( State.S.selectedEntity ) ? singleEventView( State ) : allEventsView( State ) } catch (error) { return entityErrorView( State, error ) } }
+let eventPageView = State => isDefined( State.S.selectedEntity ) ? singleEventView( State ) : allEventsView( State )
+
+//{ try {return isDefined( State.S.selectedEntity ) ? singleEventView( State ) : allEventsView( State ) } catch (error) { return entityErrorView( State, error ) } }
 
 
 
@@ -30,8 +32,9 @@ let singleEventView = State => d([
     prevNextEventView( State ),
     br(),
     d([
-        entityLabelWithPopup( State, State.S.selectedEntity ),
+        h3( getEntityLabel( State.DB, State.S.selectedEntity ) ),
         entityAttributeView(State, State.S.selectedEntity, 10070, true ),
+        entityAttributeView(State, State.S.selectedEntity, 12986, true ),
         entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
         entityAttributeView(State, State.S.selectedEntity, 1757, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
         br(),

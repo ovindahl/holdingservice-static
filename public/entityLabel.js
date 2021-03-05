@@ -67,9 +67,11 @@ let getEntityLabel = (DB, entity) => DB.get(entity, 19) === 7979
     ? `📅 Hendelse ${ State.DB.get(entity, 11975) }: ${State.DB.get( State.DB.get(entity, 10070), 6 )} ${State.DB.get( entity, 12548 ) ? "✔️" : "❌"  } ${State.DB.get( entity, 12382 ) ? "🔒" : "✏️"  }  `   
     : DB.get(entity, 19) === 11472
       ? `🗃️ ${State.DB.get(entity, 6)} ${State.DB.get( entity, 12712 ) ? "✔️" : "✏️"  }   `
-      : `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
+      : DB.get(entity, 19) === 7403
+        ? `${State.DB.get(entity, 6)} ${ State.DB.get(State.S.selectedCompany, 12990)( entity ) ? "🔒" : "✏️" }`
+        : `${ DB.get( entity, "entity/label") ? DB.get( entity, "entity/label") : "Mangler visningsnavn."}`
 
-
+      
 
 let entityLabelWithPopup = ( State, entity, onClick ) => d([
   d([

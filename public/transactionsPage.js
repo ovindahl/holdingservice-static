@@ -3,7 +3,7 @@
 
 const TransactionsPage = {
     entity: 7882,
-    onLoad: State => returnObject({selectedAccountingYear: 7407, selectedEntity: undefined}),
+    onLoad: State => returnObject({selectedEntity: undefined}),
     Actions: State => returnObject({})
   }
 

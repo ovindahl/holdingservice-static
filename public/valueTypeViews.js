@@ -253,7 +253,7 @@ let multipleValuesView = (State, entity, attribute) => {
             positionInArrayView(State, entity, attribute, index),
             valueTypeViews[ valueType ](State, entity, attribute, index),
             submitButton( "[ X ]", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).filter( (Value, i) => i !== index  )  )} ) )
-          ], {style: gridColumnsStyle("1fr 8fr 1fr"), style: "margin: 5px;"} )) )
+          ], {style: gridColumnsStyle("1fr 8fr 1fr") + "margin: 5px;"} )) )
       : d("Ingen verdier"),
       submitButton( "[ + ]", async e => isArray( State.DB.get( entity, attribute) ) 
         ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).concat(startValue)  )} )
@@ -323,7 +323,7 @@ let statementRowView = ( State, entity, attribute, index) => {
     checkBox( Value["statement/isEnabled"] , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/isEnabled": Value["statement/isEnabled"] ? false : true  }))} )),
 
 
-    textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;"} , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }))}) )
+    textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;width: -webkit-fill-available;"} , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }))}) )
 
   ], {class: gridColumnsStyle("1fr 9fr")}) 
 
