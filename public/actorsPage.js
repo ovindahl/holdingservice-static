@@ -66,19 +66,3 @@ let allActorsView = State => d([
 
 
 
-
-
-  let temporalEntityAttributeView = (State, entity, calculatedField, eventIndex ) => d([
-    entityLabelWithPopup( State, calculatedField ),
-    temporalValueView( State, entity, calculatedField, eventIndex )
-  ], {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
-
-
-  let temporalValueView = (State, entity, calculatedField, eventIndex ) => d([
-    State.DB.get( calculatedField, 18 ) === 32
-    ? d( State.DB.get( entity, calculatedField )( eventIndex   ).map( event => entityLabelWithPopup(State, event) ) )
-    : State.DB.get( calculatedField, 18 ) === 31
-      ? d( formatNumber( State.DB.get( entity, calculatedField )( eventIndex   ) ), {style: `text-align: right;`} )
-      : d( State.DB.get( entity, calculatedField )( eventIndex   ) ),
-    tinyEventLabel( State, State.DB.get( State.S.selectedCompany, 12783 )( eventIndex ) )
-  ], {style: "display: contents;"})

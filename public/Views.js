@@ -28,15 +28,23 @@ const ClientApp = {
 
       
     },
-    createEvent: eventType => State.Actions.createAndSelectEntity( [
+    createEvent: ( eventType, sourceEntity ) => State.Actions.createAndSelectEntity( [
       newDatom( 'newEntity', 'entity/entityType', 10062 ),
       newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
       newDatom( 'newEntity', 10070, eventType ),
       newDatom( 'newEntity' , 'event/accountingYear', State.S.selectedAccountingYear ), 
-      newDatom( 'newEntity', 1757, State.DB.get( State.S.selectedAccountingYear, "accountingYear/lastDate" ) ),
-      
-      
-    ] ),
+
+      newDatom( 'newEntity', 1757, isDefined( sourceEntity ) 
+        ? State.DB.get( sourceEntity, 1757 ) 
+        :  State.DB.get( State.S.selectedAccountingYear, "accountingYear/lastDate" ) 
+        ),
+      isDefined( sourceEntity ) && State.DB.get( eventType, 7942 ).includes( 1083 )
+        ? newDatom( 'newEntity' , 1083, State.DB.get( sourceEntity, 1083 )  ) 
+        : null,
+        isDefined( sourceEntity ) && State.DB.get( eventType, 7942 ).includes( 11180 )
+          ? newDatom( 'newEntity' , 11180, sourceEntity  ) 
+          : null,
+    ].filter( Datom => Datom !== null ) ),
     createSourceDocument: sourceDocumentType => State.Actions.createAndSelectEntity( [
       newDatom( 'newEntity', 'entity/entityType', 11472 ),
       newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
@@ -221,7 +229,7 @@ let sidebarCreateButton = State => State.DB.get(State.S.selectedCompany, 12990)(
         d([
           d([
             h3("📅 Hendelse:"),
-            d( State.DB.getAll(10063).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent(eventType) )  ) ),
+            d( State.DB.getAll(10063).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent( eventType, State.DB.get( State.S.selectedEntity, 19 ) === 10062 ? State.S.selectedEntity : undefined ) )  ) ),
         ], {class: "feedContainer"}),
         d([
           h3("🗃️ Bilag"),

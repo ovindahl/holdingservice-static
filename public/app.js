@@ -139,6 +139,8 @@ let init = async () => {
 
   let Entities = await sideEffects.APIRequest("GET", "Entities", null)
 
+  
+
   if( Entities.length > 0 ){
 
     let initialDatabase = constructDatabase( Entities )
@@ -167,6 +169,33 @@ let init = async () => {
 
 sideEffects.configureClient();
 
+
+
+let testInit = async () => {
+
+
+
+  let dbSnapshot = await sideEffects.APIRequest("GET", "systemEntities", null)
+
+  
+
+  let snapshotDB = constructDatabase( dbSnapshot.Entities )
+
+  let systemEntities = snapshotDB.Entities.filter( E => snapshotDB.get( snapshotDB.get( E.entity , 19) , 13013) === true  )
+  let userEntities = snapshotDB.Entities.filter( E => snapshotDB.get( snapshotDB.get( E.entity , 19) , 13013) !== true  )
+
+  let systemEntitiesDB = constructDatabase( systemEntities )
+
+  log({snapshotDB, systemEntitiesDB})
+
+
+
+
+
+
+
+
+}
 
 
 

@@ -130,6 +130,26 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 // VALUE TYPE VIEWS
 
 
+
+let temporalEntityAttributeView = (State, entity, calculatedField, eventIndex ) => d([
+  entityLabelWithPopup( State, calculatedField ),
+  temporalValueView( State, entity, calculatedField, eventIndex )
+], {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
+
+
+let temporalValueView = (State, entity, calculatedField, eventIndex ) => d([
+  State.DB.get( calculatedField, 18 ) === 32
+  ? d( State.DB.get( entity, calculatedField )( eventIndex   ).map( event => State.DB.get(event, 19) === 10062 ? tinyEventLabel( State, event ) : entityLabelWithPopup(State, event) ) )
+  : State.DB.get( calculatedField, 18 ) === 31
+    ? d( formatNumber( State.DB.get( entity, calculatedField )( eventIndex   ) ), {style: `text-align: right;`} )
+    : d( State.DB.get( entity, calculatedField )( eventIndex   ) ),
+  //tinyEventLabel( State, State.DB.get( State.S.selectedCompany, 12783 )( eventIndex ) )
+], {style: "display: contents;"})
+
+
+//-----------
+
+
 let calculatedValueViewWithLabel = (State, entity, calculatedField, transactionIndex) => d([
   entityLabelWithPopup( State, calculatedField ),
   calculatedValueView( State, entity, calculatedField, transactionIndex )
@@ -213,8 +233,16 @@ let lockedSingleValueView = (State, entity, attribute ) => isDefined( State.DB.g
               ? d( State.DB.get( entity, attribute ) )
               : State.DB.get(attribute, "attribute/valueType") === 11469 //HTML
                 ? d( `<a href="${State.DB.get(entity, attribute)}" target="_blank"> Last ned fil </a> `)
-                : d( String( State.DB.get( entity, attribute ) )  )
+                : State.DB.get(attribute, "attribute/valueType") === 5824 //HTML
+                  ? isArray( State.DB.get( entity, attribute ) )
+                    ? d(`📄 CSV-fil med ${ State.DB.get( entity, 12627 ) } transaksjoner.`)
+                    : d("Ingen fil lastet opp.")
+                  : d( String( State.DB.get( entity, attribute ) )  )
   : d("na.")
+
+
+
+  
 
 let lockedMultipleValuesView = (State, entity, attribute ) => isDefined( State.DB.get( entity, attribute ) )
 ? State.DB.get(attribute, "attribute/valueType") === 32
@@ -352,13 +380,13 @@ let refsView = (State, entity, attribute, index) => {
 //Html elements
 
 let textInput = (value, styleString, updateFunction) => input( {value, style: styleString}, "change", updateFunction )
-let numberInput = (value, updateFunction) => input( {value: isNumber(value) ? formatNumber( value ) : "", style: isNumber( value ) ? "text-align: right;" : "border: 1px solid red;"}, "change", updateFunction )
+let numberInput = (value, updateFunction) => input( {value: isNumber(value) ? formatNumber( value, value === Math.round(value) ? 0 : 2 ) : "", style: isNumber( value ) ? "text-align: right;" : "border: 1px solid red;"}, "change", updateFunction )
 let dateInput = (value, updateFunction) => input( {value: isNumber(value) ? moment( value ).format('DD/MM/YYYY') : "", style:isNumber(value) ? "text-align: right;" : "text-align: right;border: 1px solid red;" }, "change", updateFunction )
 
 
 //Single valueType views
 
-let textInputView = ( State, entity, attribute ) => textInput( State.DB.get( entity, attribute ), isDefined( State.DB.get( entity, attribute ) ) ? "" : "background-color: red;", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} ) )
+let textInputView = ( State, entity, attribute ) => textInput( isString( State.DB.get( entity, attribute ) ) ? State.DB.get( entity, attribute ) : ""  , isDefined( State.DB.get( entity, attribute ) ) ? "" : "border: 1px solid red;", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} ) )
 
 let dateInputView = ( State, entity, attribute ) => dateInput( State.DB.get( entity, attribute ), async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( moment( submitInputValue( e ) , 'DD/MM/YYYY').format('x') ) )} ) )
 
@@ -459,21 +487,11 @@ let sourceDocumentFileuploadView = ( State, entity, attribute  ) => {
 }
 
 
-let CSVuploadView = ( State, entity, attribute  ) => {
-
-  let valueType = State.DB.get(attribute, "attribute/valueType")
-
-
-  let updateFunction = async e => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, results.data )} ) }) 
-  
-  
-  
-  return d([
-    isArray( State.DB.get( entity, attribute ) ) ? d( "[Opplastet fil]" ) : d("Last opp fil"),
-    input({type: "file", style: `text-align: right;`}, "change", updateFunction)
-  ]) 
-} 
-
-
+let CSVuploadView = ( State, entity, attribute  ) => isArray( State.DB.get( entity, attribute ) )
+  ? d([
+      d(`📄 CSV-fil med ${ State.DB.get( entity, 12627 ) } transaksjoner.`),
+      submitButton( "X", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ), false )} )  )
+    ], {style: gridColumnsStyle("5fr 1fr")}) 
+  : input({type: "file", style: `text-align: right;`}, "change",  async e => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, results.data )} ) })  )
 
 //--------------
