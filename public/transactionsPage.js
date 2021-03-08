@@ -12,7 +12,7 @@ const TransactionsPage = {
 let transactionsView = State => newAllTransasctionsVew( State )
 
 let newAllTransasctionsVew = State => d([
-  h3("Bokførte transaksjoner"),
+  h3( getEntityLabel( State.DB, State.S.selectedPage) ),
   br(),  
   d([
     d([

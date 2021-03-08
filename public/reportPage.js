@@ -15,7 +15,7 @@ let reportView = State => {
   let accountingYearSourceDocument = State.DB.get( State.S.selectedCompany ,10073).find( sourceDocument => State.DB.get(sourceDocument, "sourceDocument/sourceDocumentType") === 10309 && State.DB.get(sourceDocument, 7512) === State.S.selectedAccountingYear )
 
   return d([
-    h3("Rapporter"),
+    h3( getEntityLabel( State.DB, State.S.selectedPage) ),
     d([
     entityLabelWithPopup( State, 7976 ),
     d( State.DB.getAll(7976).map( reportType => entityLabelWithPopup(State, reportType, () => State.Actions.selectEntity(  reportType, ReportPage.entity )) ), {display: "flex"} )

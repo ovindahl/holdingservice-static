@@ -8,7 +8,7 @@ const SourceDocumentsPage = {
 let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEntity ) ? singleSourceDocumentView( State ) : allSourceDocumentsView( State ) } catch (error) { return entityErrorView( State, error ) } }
   
   let allSourceDocumentsView = State => d([
-    h3("Alle bilagsdokumenter"),
+    h3( getEntityLabel( State.DB, State.S.selectedPage) ),
     br(),
     d([
       d([

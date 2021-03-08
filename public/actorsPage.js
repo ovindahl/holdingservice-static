@@ -19,7 +19,7 @@ const ActorsPage = {
 ], {style: gridColumnsStyle("2fr 1fr 3fr")})
 
 let allActorsView = State => d([
-    h3("Alle aktører"),
+    h3( getEntityLabel( State.DB, State.S.selectedPage) ),
     d([
     d([
         d( "Navn" ),

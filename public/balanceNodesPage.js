@@ -16,7 +16,7 @@ let selectEventIndexView = State => d([
 
 
 let trialBalanceView = State => d([
-  h3("Saldobalanse"),
+  h3( getEntityLabel( State.DB, State.S.selectedPage) ),
   selectEventIndexView( State ),
   br(),
   d([

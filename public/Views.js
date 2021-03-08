@@ -267,7 +267,7 @@ let notActivatedUserPage = State => d([
 
 let overviewPageView = State => d([
   d([
-    h3("Oppgaver"),
+    h3( getEntityLabel( State.DB, State.S.selectedPage) ),
   d([
     d([
       d( "Oppgave" ),

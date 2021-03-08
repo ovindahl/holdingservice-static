@@ -117,7 +117,7 @@ let eventRowView = (State, event) => d([
 ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")})
 
 let allEventsView = State => d([
-    h3("Alle hendelser"),
+    h3( getEntityLabel( State.DB, State.S.selectedPage) ),
     d([
       d("Filter på hendelsestype:"),
       d( State.DB.getAll(10063).map( eventType => State.S.selectedFilters.includes( eventType )
