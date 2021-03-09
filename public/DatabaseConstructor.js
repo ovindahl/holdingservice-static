@@ -39,9 +39,14 @@ let getEntitiesRetractionDatoms = (DB, entities) => isArray(entities) ? entities
 
 const Transactor = {
     postValidDatoms: async (DB, validDatoms) => {
+
       let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( validDatoms ) )
       let changedEntities = serverResponse.map( updatedEntity => updatedEntity.entity )
-      let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !changedEntities.includes(oldEntity.entity)  ).concat(serverResponse) )
+      //let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !changedEntities.includes(oldEntity.entity)  ).concat(serverResponse) )
+      //return updatedDB
+
+      DB.Entities = DB.Entities.filter( oldEntity => !changedEntities.includes(oldEntity.entity)  ).concat( serverResponse )
+      let updatedDB = constructDatabase( DB )
       return updatedDB
     },
     postDatoms: async (DB, Datoms) => {
@@ -49,10 +54,17 @@ const Transactor = {
       let datomsWithStringAttributes = changeToStringAttributes( DB, Datoms )
       let isValid = validateDatomAttributeValues( DB, datomsWithStringAttributes )
 
-      if( isValid ){  return await Transactor.postValidDatoms(DB, datomsWithStringAttributes)  }
+      // TBD
+      let isAuthorized = DB.isAdmin || datomsWithStringAttributes.every( Datom => isNumber( Datom.entity ) 
+        ? DB.get( DB.get( Datom.entity, 19 ), 13013) === false
+        : DB.get( datomsWithStringAttributes.find( dat => dat.entity === Datom.entity && dat.attribute === "entity/entityType" ).value, 13013) === false
+        )
+      // TBD
+
+      if( isValid && isAuthorized ){  return await Transactor.postValidDatoms(DB, datomsWithStringAttributes)  }
       else{
-        console.log("DB.postDatoms did not pass validation.", {Datoms, datomsWithStringAttributes})
-        return null;
+        console.log("DB.postDatoms did not pass validation.", {isValid, isAuthorized, Datoms, datomsWithStringAttributes})
+        return DB;
       }
     },
     createEntity: async (DB, entityType, newEntityDatoms) => Transactor.postDatoms(DB, [newDatom("newEntity", "entity/entityType", entityType )].concat( Array.isArray(newEntityDatoms)  ? newEntityDatoms : [] ) ),
@@ -67,15 +79,20 @@ const Transactor = {
       let retractionDatoms = getEntitiesRetractionDatoms( DB, entities )
       let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( retractionDatoms ) )
       let retractedEntities = serverResponse.map( retractedEntity => retractedEntity.entity )
-      let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !retractedEntities.includes(oldEntity.entity)  ) )
+      //let updatedDB = constructDatabase( DB.Entities.filter( oldEntity => !retractedEntities.includes(oldEntity.entity)  ) )
+      //return updatedDB
+
+      DB.Entities = DB.Entities.filter( oldEntity => !retractedEntities.includes(oldEntity.entity)  )
+      let updatedDB = constructDatabase( DB )
       return updatedDB
+
     },
     retractEntity: async (DB, entity) => Transactor.retractEntities(DB, [entity])
 }
 
-let constructDatabase = Entities => {
+let constructDatabase = dbSnapshot => {
 
-    let DB = {Entities}
+    let DB = dbSnapshot
   
     DB.entities = DB.Entities.map( serverEntity => serverEntity.entity )
     DB.attributes = DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)

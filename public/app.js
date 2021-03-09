@@ -137,13 +137,14 @@ let init = async () => {
 
   updateState( {}, {} )
 
-  let Entities = await sideEffects.APIRequest("GET", "Entities", null)
+  //let Entities = await sideEffects.APIRequest("GET", "Entities", null)
 
+  let dbSnapshot = await sideEffects.APIRequest("GET", "systemEntities", null)
   
 
-  if( Entities.length > 0 ){
+  if( dbSnapshot.Entities.length > 0 ){
 
-    let initialDatabase = constructDatabase( Entities )
+    let initialDatabase = constructDatabase( dbSnapshot )
 
     let userProfile = await sideEffects.auth0.getUser()
     let userEntity = initialDatabase.getAll( 5612 ).find( e => initialDatabase.get(e, 11501) === userProfile.name )
@@ -170,32 +171,6 @@ let init = async () => {
 sideEffects.configureClient();
 
 
-
-let testInit = async () => {
-
-
-
-  let dbSnapshot = await sideEffects.APIRequest("GET", "systemEntities", null)
-
-  
-
-  let snapshotDB = constructDatabase( dbSnapshot.Entities )
-
-  let systemEntities = snapshotDB.Entities.filter( E => snapshotDB.get( snapshotDB.get( E.entity , 19) , 13013) === true  )
-  let userEntities = snapshotDB.Entities.filter( E => snapshotDB.get( snapshotDB.get( E.entity , 19) , 13013) !== true  )
-
-  let systemEntitiesDB = constructDatabase( systemEntities )
-
-  log({snapshotDB, systemEntitiesDB})
-
-
-
-
-
-
-
-
-}
 
 
 
