@@ -33,17 +33,20 @@ const ClientApp = {
       newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
       newDatom( 'newEntity', 10070, eventType ),
       newDatom( 'newEntity' , 'event/accountingYear', State.S.selectedAccountingYear ), 
+      newDatom( 'newEntity' , 'entity/label', State.DB.get( eventType, 6 ) ), 
+      newDatom( 'newEntity' , 1139, "" ), 
+      
 
-      newDatom( 'newEntity', 1757, isDefined( sourceEntity ) 
+      newDatom( 'newEntity', 1757, isDefined( State.DB.get( sourceEntity, 1757 )  ) 
         ? State.DB.get( sourceEntity, 1757 ) 
         :  State.DB.get( State.S.selectedAccountingYear, "accountingYear/lastDate" ) 
         ),
-      isDefined( sourceEntity ) && State.DB.get( eventType, 7942 ).includes( 1083 )
+      isDefined( State.DB.get( sourceEntity, 1083 ) ) && State.DB.get( eventType, 7942 ).includes( 1083 )
         ? newDatom( 'newEntity' , 1083, State.DB.get( sourceEntity, 1083 )  ) 
         : null,
-        isDefined( sourceEntity ) && State.DB.get( eventType, 7942 ).includes( 11180 )
-          ? newDatom( 'newEntity' , 11180, sourceEntity  ) 
-          : null,
+      isDefined( sourceEntity ) && State.DB.get( eventType, 7942 ).includes( 11180 )
+        ? newDatom( 'newEntity' , 11180, sourceEntity  ) 
+        : null,
     ].filter( Datom => Datom !== null ) ),
     createSourceDocument: sourceDocumentType => State.Actions.createAndSelectEntity( [
       newDatom( 'newEntity', 'entity/entityType', 11472 ),

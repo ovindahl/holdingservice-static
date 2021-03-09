@@ -32,11 +32,13 @@ let singleEventView = State => d([
     prevNextEventView( State ),
     br(),
     d([
-        h3( getEntityLabel( State.DB, State.S.selectedEntity ) ),
         entityAttributeView(State, State.S.selectedEntity, 10070, true ),
         entityAttributeView(State, State.S.selectedEntity, 12986, true ),
         entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
+        br(),
         entityAttributeView(State, State.S.selectedEntity, 1757, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
+        entityAttributeView(State, State.S.selectedEntity, 6, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
+        entityAttributeView(State, State.S.selectedEntity, 1139, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
         br(),
         d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 7942).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ) ) ),
         br(),
@@ -109,11 +111,7 @@ let eventRowView = (State, event) => d([
     d( moment( State.DB.get( event, 1757 ) ).format("DD.MM.YYYY") ),
     entityLabelWithPopup( State, event ),
     isDefined( State.DB.get(event, 1083) ) ? lockedSingleValueView( State, event, 1083 ) : d(" - ", {style: `text-align: right;`} ),
-    State.DB.get( event, 12382 )
-      ? d("✔️", {style: `text-align: right;`})
-      : State.DB.get( event, 12377 )
-        ? d("⌛", {style: `text-align: right;`})
-        : d("✏️", {style: `text-align: right;`}),
+    d( State.DB.get( event, 12382 ) ? "🔒" : State.DB.get( event, 12548 ) ? "✏️✔️" : "✏️❌", {style: `text-align: right;`})
 ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")})
 
 let allEventsView = State => d([

@@ -46,7 +46,7 @@ let eventActionPopup = (State, entity, action) => d([
 let getEntityLabel = (DB, entity) => DB.get(entity, 19) === 7979
   ? `${State.DB.get(entity, 8668) === 8667 ? "👨‍💼" : "🏢"} ${State.DB.get(entity, 6)}`
   : DB.get(entity, 19) === 10062
-    ? `📅 Hendelse ${ State.DB.get(entity, 11975) }: ${State.DB.get( State.DB.get(entity, 10070), 6 )} ${State.DB.get( entity, 12382 ) ? "🔒" : State.DB.get( entity, 12548 ) ? "✏️✔️" : "✏️❌"  }  `   
+    ? `📅 ${State.DB.get(entity, 6)} ${State.DB.get( entity, 12382 ) ? "🔒" : State.DB.get( entity, 12548 ) ? "✏️✔️" : "✏️❌"  }  `   
     : DB.get(entity, 19) === 11472
       ? `🗃️ ${State.DB.get(entity, 6)} ${State.DB.get( entity, 12712 ) ? "🔒" : ""  }   `
       : DB.get(entity, 19) === 7403
