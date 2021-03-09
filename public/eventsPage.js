@@ -34,8 +34,8 @@ let singleEventView = State => d([
     d([
         entityAttributeView(State, State.S.selectedEntity, 10070, true ),
         entityAttributeView(State, State.S.selectedEntity, 12986, true ),
-        entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
         br(),
+        entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
         entityAttributeView(State, State.S.selectedEntity, 1757, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
         entityAttributeView(State, State.S.selectedEntity, 6, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
         entityAttributeView(State, State.S.selectedEntity, 1139, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),

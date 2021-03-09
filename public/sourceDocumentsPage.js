@@ -65,4 +65,4 @@ let printContractInNewTab = (State, html) => {
   var newWindow = window.open();
   newWindow.document.write( html );
 
-} 
+}
