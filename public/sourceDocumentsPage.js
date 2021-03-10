@@ -23,9 +23,7 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
           d( `${State.DB.get(sourceDocument, 12509 )}` ),
           entityLabelWithPopup( State, sourceDocument, () => State.Actions.selectEntity(  sourceDocument, SourceDocumentsPage.entity  ) ),
           lockedSingleValueView( State, sourceDocument, 11688 ),
-          State.DB.get( sourceDocument, 12712 )
-            ? d("✔️", {style: `text-align: right;`})
-            : d("✏️", {style: `text-align: right;`}),
+          d([lockedSingleValueView( State, sourceDocument, 13185 )], {style: `text-align: right;`}),
         ], {style: gridColumnsStyle("1fr 3fr 2fr 1fr") } ) ), {class: "feedContainer"} )
     : d("Ingen bilag i valgt regnskapsår.", {class: "feedContainer"}),
   ]) 
@@ -34,6 +32,7 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
   let singleSourceDocumentView = State => d([
     submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, SourceDocumentsPage.entity )  ),
     br(),
+    entityAttributeView( State, State.S.selectedEntity, 13185, true ),
     entityAttributeView( State, State.S.selectedEntity, 11688, true ),
     entityAttributeView( State, State.DB.get( State.S.selectedEntity, 11688  ), 12556, true ),
     entityAttributeView( State, State.S.selectedEntity, 7512, State.DB.get( State.S.selectedEntity, 12712 ) ),
@@ -51,6 +50,8 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
       h3("Handlinger"),
       d( State.DB.get( State.DB.get(State.S.selectedEntity, 11688 )  , 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
     ], {class: "feedContainer"}),
+    br(),
+    createEventFromSourceDocumentButton( State ),
     br(),
     State.DB.get( State.S.selectedEntity, 11688  ) === 12699
       ? d("🖨️ Eksporter utskriftsvennlig versjon av avtalen", {}, "click", () => printContractInNewTab( State, State.DB.get(State.S.selectedEntity, 12866) ) )

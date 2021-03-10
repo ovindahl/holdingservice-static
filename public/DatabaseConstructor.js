@@ -98,7 +98,6 @@ let constructDatabase = dbSnapshot => {
     DB.attributes = DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
     DB.attrNames = mergeArray(DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => returnObj({[serverEntity.current["attr/name"]]: serverEntity.entity} ) ))
     DB.tx = DB.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
-
     DB.calculatedDatoms = []
   
     DB.attrName = attribute => {
@@ -113,11 +112,8 @@ let constructDatabase = dbSnapshot => {
     }
   
     DB.attr = attrName => isDefined(attrName) ? isNumber(attrName) ? attrName : DB.attrNames[attrName] : log(undefined, `[ DB.attr(${attrName}) ]: Proveded attribute name is undefined`)
-  
-    DB.isAttribute = attribute => DB.attributes.includes( DB.attr(attribute) )
-  
     DB.isEntity = entity => DB.entities.includes(entity)
-  
+    DB.isAttribute = attribute => DB.attributes.includes( DB.attr(attribute) )
     DB.isEntityCalculatedField = calculatedField => DB.getAll(9815).includes( calculatedField )
     DB.isGlobalCalculatedField = calculatedField => DB.getAll(12551).includes( calculatedField )
   
@@ -206,37 +202,7 @@ let constructDatabase = dbSnapshot => {
       
       
     }
-  
-    
-  
-    DB.getGlobalAsyncFunction = functionEntity => {
-      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-      let argumentObjects = DB.get(functionEntity, "function/arguments")
-      let arguments = argumentObjects.map( argumentObject => argumentObject["argument/name"] )
-      let statementObjects = DB.get(functionEntity, "function/statements")
-      let statements = statementObjects.filter( statementObject => statementObject["statement/isEnabled"] ).map( statementObject => statementObject["statement/statement"] )
-      let functionString = statements.join(";")
-      let GlobalAsyncFunction = new AsyncFunction( arguments ,functionString  )
-      return GlobalAsyncFunction
-    }
 
-    DB.executeCompanyFunction = (company, entity, functionStatements) => {
-
-      //Not working, TBD.....
-
-      let CompanyEntityQueryObject = { 
-        entity, 
-        get: attr => CompanyQueryObject.get(entity, attr),
-       }
-
-      let functionString = functionStatements.filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";")
-
-      let returnValue = tryFunction( () => new Function( [`Database`, , `Entity`], functionString )( DB, CompanyEntityQueryObject ) )
-
-      return returnValue
-    }
-
-  
     return DB
 }
 
@@ -249,5 +215,5 @@ let calculateEntityCalculatedValue = ( DB, entity, calculatedField ) => tryFunct
 let getReportFieldValue = ( DB, company, reportField, yearEndEvent ) => DB.get( reportField, 8361 ) === 8662
   ? tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, mergerino( DB.get(company), {t: State.DB.get(yearEndEvent, 10502) }), DB.get(yearEndEvent) ) )
   : DB.get( reportField, 8361 ) === 5030
-    ? DB.get(company, 12392)( DB.get(reportField, 7829), State.DB.get(yearEndEvent, 11975) - 1 )
+    ? DB.get(company, 12392)( DB.get(reportField, 13150), State.DB.get(yearEndEvent, 11975) - 1 )
     : null

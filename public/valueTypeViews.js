@@ -133,17 +133,19 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 
 let temporalEntityAttributeView = (State, entity, calculatedField, eventIndex ) => d([
   entityLabelWithPopup( State, calculatedField ),
+  d(`(pr. 📅#${eventIndex})`),
   temporalValueView( State, entity, calculatedField, eventIndex )
-], {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )
+], {style:  gridColumnsStyle("2fr 1fr 3fr 1fr") + "margin: 5px;"} )
 
 
 let temporalValueView = (State, entity, calculatedField, eventIndex ) => d([
   State.DB.get( calculatedField, 18 ) === 32
-  ? d( State.DB.get( entity, calculatedField )( eventIndex   ).map( event => State.DB.get(event, 19) === 10062 ? tinyEventLabel( State, event ) : entityLabelWithPopup(State, event) ) )
+  ? State.DB.get( calculatedField, "attribute/isArray" )
+    ? d( State.DB.get( entity, calculatedField )( eventIndex   ).map( event => State.DB.get(event, 19) === 10062 ? tinyEventLabel( State, event ) : entityLabelWithPopup(State, event) ) )
+    : entityLabelWithPopup(State, State.DB.get( entity, calculatedField )( eventIndex   ) )
   : State.DB.get( calculatedField, 18 ) === 31
     ? d( formatNumber( State.DB.get( entity, calculatedField )( eventIndex   ) ), {style: `text-align: right;`} )
     : d( State.DB.get( entity, calculatedField )( eventIndex   ) ),
-  //tinyEventLabel( State, State.DB.get( State.S.selectedCompany, 12783 )( eventIndex ) )
 ], {style: "display: contents;"})
 
 
@@ -451,13 +453,15 @@ let selectEntityWithDropdownView = ( State, entity, attribute  ) => {
     entityLabelWithPopup( State, State.DB.get( entity, attribute ) ),
     submitButton("X", async () => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get( entity, attribute ), false ) } ) )
   ], {style: gridColumnsStyle("5fr 1fr") })
-  : dropdown( 
-    State.DB.get( entity, attribute ) , 
-    optionObjects,
-    async e => optionObjects.map( optionObject => optionObject.value ).includes( Number( e.srcElement.value )  ) 
-      ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) 
-      : log({ERROR: "Selected option not is list of allowed options"}) 
-    )
+  : d([
+    dropdown( 
+      State.DB.get( entity, attribute ) , 
+      optionObjects,
+      async e => optionObjects.map( optionObject => optionObject.value ).includes( Number( e.srcElement.value )  ) 
+        ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) 
+        : log({ERROR: "Selected option not is list of allowed options"}) 
+      )
+  ], {style: "border: 1px solid red;"} ) 
 } 
 
 

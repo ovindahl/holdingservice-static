@@ -92,12 +92,6 @@ let updateState = (prevState, patch) => {
       DB: Object.keys(patch).includes( "DB" ) ? patch.DB : prevState.DB,
       S: mergerino(prevState.S, patch.S),
     }
-    if( isDefined( prevState.S )  ){ 
-      if( newState.S.selectedPage !== prevState.S.selectedPage ){ newState.S = mergerino( newState.S, isDefined( Components.find( Component => Component.entity === newState.S.selectedPage ) ) ? Components.find( Component => Component.entity === newState.S.selectedPage ).onLoad( State ) : {} ) }
-    }
-    
-
-    
 
   newState.Actions = Components.reduce( (Actions, Component) => Object.assign( Actions, Component.Actions( newState ) ), {} )
       

@@ -6,7 +6,7 @@ const BankImportPage = {
     Actions: State => returnObj({})
   }
 
-
+/* 
 let bankImportView = State => isDefined( State.S.selectedEntity) 
     ? singleBankTransactionView( State ) //singleEventView( State )
     : allBankImportsView( State )
@@ -77,7 +77,7 @@ let singleBankTransactionView = State => {
     ])  
 
 } 
-
+ */
 
 
 //I bruk

@@ -12,7 +12,7 @@ const ReportPage = {
 let reportView = State => {
 
 
-  let accountingYearSourceDocument = State.DB.get( State.S.selectedCompany ,10073).find( sourceDocument => State.DB.get(sourceDocument, "sourceDocument/sourceDocumentType") === 10309 && State.DB.get(sourceDocument, 7512) === State.S.selectedAccountingYear )
+  let accountingYearEvent = State.DB.get( State.S.selectedCompany ,12921)( 10309 )().find( sourceDocument => State.DB.get(sourceDocument, 12986) === State.S.selectedAccountingYear )
 
   return d([
     h3( getEntityLabel( State.DB, State.S.selectedPage) ),
@@ -21,8 +21,8 @@ let reportView = State => {
     d( State.DB.getAll(7976).map( reportType => entityLabelWithPopup(State, reportType, () => State.Actions.selectEntity(  reportType, ReportPage.entity )) ), {display: "flex"} )
     ], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")}),
     br(),
-    isNumber( State.S.selectedEntity ) && isNumber( accountingYearSourceDocument )
-        ? singleReportView( State, State.S.selectedEntity, accountingYearSourceDocument )
+    isNumber( State.S.selectedEntity ) && isNumber( accountingYearEvent )
+        ? singleReportView( State, State.S.selectedEntity, accountingYearEvent )
         : d("Velg rapport.")
 ])
 } 

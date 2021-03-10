@@ -88,6 +88,24 @@ body {background-color: #F2F3F5;}
 }
 
 
+.createButtonPopupContainer_right {
+    position: relative;
+}
+
+.createButtonPopupContainer_right:hover > .createButtonPopup_right {
+    display: block
+}
+
+.createButtonPopup_right {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0%;
+    z-index: 10;
+    width: 800px;
+}
+
+
 .activeButtonLabel {
     padding: 3px;
     margin: 3px;

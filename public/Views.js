@@ -11,7 +11,7 @@ const ClientApp = {
     selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectedEntity: undefined, selectedFilters: [] }) }),
     selectEntity: (entity, pageEntity) => updateState( State, {S: mergerino({selectedEntity: entity}, isDefined(pageEntity) ? {selectedPage: pageEntity, selectedFilters: []} : {}) }),
     selectEventIndex: eventIndex => updateState( State, {S:  {selectedEventIndex: eventIndex, selectedAccountingYear: Database.get( Database.get(State.S.selectedCompany, 12783)(eventIndex), 10542)} }),
-    selectAccountingYear: accountingYear => updateState( State, {S: {selectedAccountingYear: accountingYear, selectedEntity: undefined, selectedEventIndex: Database.get( State.DB.get( State.S.selectedCompany, 11976 )( accountingYear ).filter( event => State.DB.get( event, 11975 ) <= State.DB.get( State.S.selectedCompany, 12385 ) ).slice(-1)[0], 11975 )  } }),
+    selectAccountingYear: accountingYear => updateState( State, {S: {selectedAccountingYear: accountingYear, selectedEntity: undefined } }),
     addFilter: newFilter => updateState( State, {S: {selectedFilters: State.S.selectedFilters.concat( newFilter ) } }),
     removeFilter: removedFilter => updateState( State, {S: {selectedFilters: State.S.selectedFilters.filter( f => f !== removedFilter ) } }),
     removeFilters: () => updateState( State, {S: {selectedFilters: [] } } ),
@@ -23,31 +23,50 @@ const ClientApp = {
 
       if( updatedDB !== null ){ updateState( State, {DB: updatedDB } ) }else{ log({ERROR: updatedDB}) }
 
-      
-
-
-      
     },
-    createEvent: ( eventType, sourceEntity ) => State.Actions.createAndSelectEntity( [
-      newDatom( 'newEntity', 'entity/entityType', 10062 ),
-      newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-      newDatom( 'newEntity', 10070, eventType ),
-      newDatom( 'newEntity' , 'event/accountingYear', State.S.selectedAccountingYear ), 
-      newDatom( 'newEntity' , 'entity/label', State.DB.get( eventType, 6 ) ), 
-      newDatom( 'newEntity' , 1139, "" ), 
-      
+    createEvent: ( eventType, sourceEntity ) => {
 
-      newDatom( 'newEntity', 1757, isDefined( State.DB.get( sourceEntity, 1757 )  ) 
-        ? State.DB.get( sourceEntity, 1757 ) 
-        :  State.DB.get( State.S.selectedAccountingYear, "accountingYear/lastDate" ) 
-        ),
-      isDefined( State.DB.get( sourceEntity, 1083 ) ) && State.DB.get( eventType, 7942 ).includes( 1083 )
-        ? newDatom( 'newEntity' , 1083, State.DB.get( sourceEntity, 1083 )  ) 
-        : null,
-      isDefined( sourceEntity ) && State.DB.get( eventType, 7942 ).includes( 11180 )
-        ? newDatom( 'newEntity' , 11180, sourceEntity  ) 
-        : null,
-    ].filter( Datom => Datom !== null ) ),
+      let basicDatoms = [
+        newDatom( 'newEntity', 'entity/entityType', 10062 ),
+        newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+        newDatom( 'newEntity', 10070, eventType ),
+        newDatom( 'newEntity' , 'event/accountingYear', State.S.selectedAccountingYear ), 
+        newDatom( 'newEntity' , 'entity/label', State.DB.get( eventType, 6 ) ), 
+        newDatom( 'newEntity' , 1139, "" )
+      ]
+
+      let sourceEntityDatoms = isDefined(sourceEntity) ? [
+        newDatom( 'newEntity', 1757, isDefined( State.DB.get( sourceEntity, 1757 )  ) 
+          ? State.DB.get( sourceEntity, 1757 ) 
+          :  State.DB.get( State.S.selectedAccountingYear, "accountingYear/lastDate" ) 
+          ),
+        State.DB.get( eventType, 7942 ).includes( 1083 )
+          ? newDatom( 'newEntity' , 1083, isDefined( State.DB.get( sourceEntity, 1083 ) ) ? State.DB.get( sourceEntity, 1083 ) : 0  )
+          : null,
+      ].filter( Datom => Datom !== null ) : []
+
+      let newEventDatoms = basicDatoms.concat( sourceEntityDatoms )
+
+
+      State.Actions.createAndSelectEntity( newEventDatoms )
+
+    },
+    createEventFromSourceDocument: ( eventType, sourceDocument ) => {
+
+      let basicDatoms = [
+        newDatom( 'newEntity', 'entity/entityType', 10062 ),
+        newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+        newDatom( 'newEntity', 10070, eventType ),
+        newDatom( 'newEntity' , 'event/accountingYear', State.DB.get( sourceDocument, 7512 ) ), 
+        newDatom( 'newEntity' , 1757, State.DB.get( State.DB.get( sourceDocument, 7512 ), "accountingYear/lastDate" )  ), 
+        newDatom( 'newEntity' , 'entity/label', State.DB.get( eventType, 6 ) ), 
+        newDatom( 'newEntity' , 1139, "" ),
+        newDatom( 'newEntity' , 11477, sourceDocument ),
+      ]
+
+      State.Actions.createAndSelectEntity( basicDatoms )
+
+    },
     createSourceDocument: sourceDocumentType => State.Actions.createAndSelectEntity( [
       newDatom( 'newEntity', 'entity/entityType', 11472 ),
       newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
@@ -98,19 +117,20 @@ let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, inde
 
   let referenceNumber = transactionRow[7]
 
+
+
   let Datoms = [
     newDatom( "newDatom_"+ index, "entity/entityType", 10062  ),
     newDatom( "newDatom_"+ index, "entity/company", State.S.selectedCompany  ),
-    newDatom( "newDatom_"+ index, 10070, 10132 ),
-    newDatom( "newDatom_"+ index, "transaction/paymentType", isPayment ? 9086 : 9087 ),
+    newDatom( "newDatom_"+ index, 10070, isPayment ? 13186 : 13187  ),
     newDatom( "newDatom_"+ index, 'event/accountingYear', State.DB.get( sourceDocument, 7512 ) ),
     newDatom( "newDatom_"+ index, 1757, date  ),
-    newDatom( "newDatom_"+ index, 12507, selectedBank),
     newDatom( "newDatom_"+ index, 1083, isPayment ? paidAmount : receivedAmount  ),
     newDatom( "newDatom_"+ index, 8831, description  ),
     newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
     newDatom( "newDatom_"+ index, "entity/selectSourceDocument", sourceDocument ),
-    newDatom( "newDatom_"+ index, "entity/label", `[${transactionRow[0]}] Banktransaksjon: ${isPayment ? paidAmount : receivedAmount} `  ),
+    newDatom( "newDatom_"+ index, "entity/label", isPayment ? `[${moment(date).format('DD/MM/YYYY')}] Utbetaling fra bank på NOK ${paidAmount}` : `[${transactionRow[0]}] Innbetaling til bank på NOK ${receivedAmount}` ).replaceAll(`"`, `'`),
+    newDatom( "newDatom_"+ index, 1139, "" ),
     newDatom( "newDatom_"+ index, 12377, false ),
   ]
 
@@ -209,7 +229,7 @@ let leftSidebar = State => d([
           : State.DB.get(State.S.selectedUser, "user/companies").map( entity => returnObj({value: entity, label: State.DB.get(entity, "entity/label")  })  ), 
         e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))
       ]),
-      d([dropdown(State.S.selectedAccountingYear, State.DB.get(State.S.selectedCompany, 12553).map( entity => returnObj({value: entity, label: getEntityLabel( State.DB, entity )  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
+      d([dropdown(State.S.selectedAccountingYear, State.DB.get(null, 10061).map( entity => returnObj({value: entity, label: getEntityLabel( State.DB, entity )  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
   ], {style: "padding: 1em;"}),
   d( [9951, 11974, 11474, 7977, 7860, 7882, 10464, 10035, 10025]
       .filter( pageEntity => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get( pageEntity, 12506  ) )
@@ -224,27 +244,65 @@ let leftSidebar = State => d([
   
 ])
 
-let sidebarCreateButton = State => State.DB.get(State.S.selectedCompany, 12990)( State.S.selectedAccountingYear ) 
-  ? d( "Legg til 🔒", {style: "padding:1em; margin-left:2em; background-color: gray; color: black;"})
-  : d([
-      d([
-        d( "Legg til", {style: "padding:1em; margin-left:2em; background-color: red; color: white;"}),
-        d([
-          d([
-            h3("📅 Hendelse:"),
-            d( State.DB.getAll(10063).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent( eventType, State.DB.get( State.S.selectedEntity, 19 ) === 10062 ? State.S.selectedEntity : undefined ) )  ) ),
-        ], {class: "feedContainer"}),
-        d([
-          h3("🗃️ Bilag"),
-          d( State.DB.getAll( 11686 ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createSourceDocument( sourceDocumentType ) )  ) ),
-        ], {class: "feedContainer"}),
-        d([
-          h3("📘 Aktør:"),
-          d( State.DB.getAll(8665).map( actorType => entityLabelWithPopup( State, actorType, () => State.Actions.createActor( actorType ) )  )  ),
-        ], {class: "feedContainer"})
-        ], {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-      ], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
-    ], {style:"display: inline-flex;"} )
+let sidebarCreateButton = State => State.S.selectedPage === 11974
+  ? createEventButton( State )
+  : State.S.selectedPage === 11474
+    ? createSourceDocumentButton( State )
+    : State.S.selectedPage === 7977
+      ? createActorButton( State )
+      : d("")
+  
+  
+  
+
+let createEventButton = State => d([
+  d( "Ny hendelse 📅", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
+    d([
+      isDefined( State.S.selectedEntity )
+        ? d([
+            d("Kopierer dato og beløp fra:"),
+            entityLabelWithPopup( State, State.S.selectedEntity )
+        ])
+        : d(""),
+      br(),
+      d("Velg hendelsestype:"),
+      d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+        h3(category),
+        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent( eventType, State.DB.get( State.S.selectedEntity, 19 ) === 10062 ? State.S.selectedEntity : undefined ) ) ) ),
+      ])  ) ),
+    ], {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+    
+], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
+
+let createEventFromSourceDocumentButton = State => d([
+  d( "Ny hendelse basert på bilaget 📅", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
+    d([
+      d("Velg hendelsestype:"),
+      d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+        h3(category),
+        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEventFromSourceDocument( eventType, State.S.selectedEntity ) ) ) ),
+      ])  ) ),
+    ], {class: "createButtonPopup_right", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+    
+], {class: "createButtonPopupContainer_right", style:"display: inline-flex;"})
+
+let createSourceDocumentButton = State => d([
+  d( "Nytt bilag 🗃️", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
+  d([
+    d(State.DB.getAll( 11686   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+      h3(category),
+      d(State.DB.getAll(11686).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createSourceDocument( sourceDocumentType ) ) ) ),
+    ])  ) ),
+  ], {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
+
+let createActorButton = State => d([
+  d( "Ny aktør 📘", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
+    d( 
+      State.DB.getAll(8665).map( actorType => entityLabelWithPopup( State, actorType, () => State.Actions.createActor( actorType ) )  ), 
+      {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}
+    ),
+], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
 
 let navBarView = (State) => d([
   d([
@@ -252,16 +310,16 @@ let navBarView = (State) => d([
       d([entityLabelWithPopup( State, State.S.selectedPage, () => State.Actions.selectEntity( undefined ) )]),
         isUndefined( State.S.selectedEntity ) 
           ? d("") 
-          : d([
-              span( " / " ),
-              State.S.selectedPage === 11974
-                ? dropdown( State.S.selectedEntity, State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear ).map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEntity( Number( submitInputValue(e) ) )  )
-                : entityLabelWithPopup( State, State.S.selectedEntity )
-            ]),
+          : State.S.selectedPage === 11974
+            ? d([
+                dropdown( State.S.selectedEntity, State.DB.get( State.S.selectedCompany, 10073  ).filter( event => Database.get(event, 12986) === State.S.selectedAccountingYear  ).map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEntity( Number( submitInputValue(e) ) )  ),
+                prevNextEventView( State ),
+              ], {style: gridColumnsStyle("5fr 1fr")}) 
+            : entityLabelWithPopup( State, State.S.selectedEntity ),
     ], {style: "display: inline-flex;"}),
     sidebarCreateButton( State ),
 
-  ], {style: gridColumnsStyle("7fr 1fr")})
+  ], {style: gridColumnsStyle("5fr 1fr")})
   
 ], {class: "feedContainer"})
 

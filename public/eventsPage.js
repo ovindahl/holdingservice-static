@@ -28,40 +28,55 @@ let prevNextEventView = State => {
     ])
   }
 
+
+
+
+let fixedEventAttributes = State => d([
+  entityAttributeView(State, State.S.selectedEntity, 13278, true ),
+  entityAttributeView(State, State.S.selectedEntity, 13279, true ),
+  entityAttributeView(State, State.S.selectedEntity, 13292, true ),
+  entityAttributeView(State, State.S.selectedEntity, 13280, true ),
+  entityAttributeView(State, State.S.selectedEntity, 13281, true ),
+  
+  entityAttributeView(State, State.S.selectedEntity, 11975, true ),
+  State.DB.get(State.S.selectedEntity, 13280)
+      ? entityAttributeView(State, State.S.selectedEntity, 13184, true )
+      : d([
+          entityAttributeView(State, State.S.selectedEntity, 13184, true ),
+          State.DB.get( State.S.selectedEntity, 12548 ) === false
+            ? d( State.DB.get(State.DB.get(State.S.selectedEntity, 10070), 12547)
+                .map( criterium => d([
+                  criteriumIsValid(State, State.S.selectedEntity, criterium) ? d("✔️") : d("❌"),
+                  d(State.DB.get(criterium, 11568))
+                ], {style: gridColumnsStyle("1fr 3fr") })  ), {style: "padding-left: 3em;" } )
+            : d("")
+      ]),
+      br(),
+      entityAttributeView(State, State.S.selectedEntity, 12986, true ),
+      entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 13281) ),
+      entityAttributeView(State, State.S.selectedEntity, 1757, State.DB.get(State.S.selectedEntity, 13281) ),
+      entityAttributeView(State, State.S.selectedEntity, 6, State.DB.get(State.S.selectedEntity, 13281) ),
+      entityAttributeView(State, State.S.selectedEntity, 1139, State.DB.get(State.S.selectedEntity, 13281) ),
+], {class: "feedContainer"})
+
+let eventTypeView = State => d([
+  entityAttributeView(State, State.S.selectedEntity, 10070, true ),
+  d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 7942).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 13281) ) ) ),
+  br(),
+  d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 10433).map( calculatedField => State.DB.get( calculatedField, 12805 ) === true
+      ? temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField,  State.DB.get( State.S.selectedCompany, 12385 ) )
+      : entityAttributeView(State, State.S.selectedEntity, calculatedField, true ) 
+      ) ),
+], {class: "feedContainer"})
+
 let singleEventView = State => d([
-    prevNextEventView( State ),
+    fixedEventAttributes( State ),
     br(),
-    d([
-        entityAttributeView(State, State.S.selectedEntity, 10070, true ),
-        entityAttributeView(State, State.S.selectedEntity, 12986, true ),
-        br(),
-        entityAttributeView(State, State.S.selectedEntity, 11477, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
-        entityAttributeView(State, State.S.selectedEntity, 1757, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
-        entityAttributeView(State, State.S.selectedEntity, 6, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
-        entityAttributeView(State, State.S.selectedEntity, 1139, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ),
-        br(),
-        d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 7942).map( attribute => entityAttributeView(State, State.S.selectedEntity, attribute, State.DB.get(State.S.selectedEntity, 12377) || State.DB.get(State.S.selectedEntity, 12382) ) ) ),
-        br(),
-        d( State.DB.get( State.DB.get( State.S.selectedEntity, 10070 ), 10433).map( calculatedField => State.DB.get( calculatedField, 12805 ) === true
-            ? temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField,  State.DB.get( State.S.selectedEntity, 11975 ) )
-            : entityAttributeView(State, State.S.selectedEntity, calculatedField, true ) 
-            ) ),
-    ], {class: "feedContainer"}),
-    br(),
-    d([
-      h3(`Hendelsens gyldighet: ${State.DB.get( State.S.selectedEntity, 12548 ) === true ? "✔️" : "❌" } ` ),
-      State.DB.get( State.S.selectedEntity, 12548 ) === false
-        ? d( State.DB.get(State.DB.get(State.S.selectedEntity, 10070), 12547)
-            .map( criterium => d([
-              criteriumIsValid(State, State.S.selectedEntity, criterium) ? d("✔️") : d("❌"),
-              d(State.DB.get(criterium, 11568))
-            ], {style: gridColumnsStyle("1fr 3fr")})  ) )
-        : d("")
-    ], {class: "feedContainer"}),
+    eventTypeView( State ),
     br(),
     d([
       h3("Bokføring"),
-      State.DB.get(State.S.selectedEntity, 12382 ) === true 
+      State.DB.get(State.S.selectedEntity, 13280 ) === true 
       ? State.DB.get(State.S.selectedEntity, State.DB.get( State.DB.get(State.S.selectedEntity, 10070), 12355)).length > 0
         ? calculatedTransactionView( State )
         : d("Bokføres ikke.")
@@ -111,7 +126,8 @@ let eventRowView = (State, event) => d([
     d( moment( State.DB.get( event, 1757 ) ).format("DD.MM.YYYY") ),
     entityLabelWithPopup( State, event ),
     isDefined( State.DB.get(event, 1083) ) ? lockedSingleValueView( State, event, 1083 ) : d(" - ", {style: `text-align: right;`} ),
-    d( State.DB.get( event, 12382 ) ? "🔒" : State.DB.get( event, 12548 ) ? "✏️✔️" : "✏️❌", {style: `text-align: right;`})
+    d([ lockedSingleValueView( State, event, 13184) ], {style: `text-align: right;`}),
+    //d( State.DB.get( event, 13280 ) ? "✔️" : State.DB.get( event, 13278 ) ? "✔️⏳" : "❌", {style: `text-align: right;`})
 ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")})
 
 let allEventsView = State => d([
@@ -133,8 +149,8 @@ let allEventsView = State => d([
       ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")}),
     ], {class: "feedContainer"}),
     d([
-    State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear ).length > 0 
-        ? d( State.DB.get( State.S.selectedCompany, 11976 )( State.S.selectedAccountingYear )
+    State.DB.get( State.S.selectedCompany, 10073  ).filter( event => Database.get(event, 12986) === State.S.selectedAccountingYear  ).length > 0 
+        ? d( State.DB.get( State.S.selectedCompany, 10073  ).filter( event => Database.get(event, 12986) === State.S.selectedAccountingYear  )
               .filter( event => State.S.selectedFilters.length > 0 ? State.S.selectedFilters.includes( State.DB.get(event, 10070 ) )  : true )
               .map( event => eventRowView(State, event)  ) 
           )
