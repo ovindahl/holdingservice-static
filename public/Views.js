@@ -334,29 +334,34 @@ let notActivatedUserPage = State => d([
 ])
 
 let overviewPageView = State => d([
+  h3( getEntityLabel( State.DB, State.S.selectedPage) ),
   d([
-    h3( getEntityLabel( State.DB, State.S.selectedPage) ),
-  d([
-    d([
-      d( "Oppgave" ),
-      d( "Status?" ),
-      d( "Tilknyttet side" ),
-    ], {style: gridColumnsStyle("3fr 1fr 1fr")}),
+    h3("Frister"),
+    d("Innlevering av skattemelding med vedlegg: 31. mai 2021"),
+    d("Godkjenning av årsregnskapet i generalforsamling: Innen seks måneder etter regnskapsårets slutt, senest 30. juni 2021"),
+    d("Innsending av årsregnskapet: Innen en måned etter fastsetting av årsregnskapet, og senest 31. juli 2021"),
   ], {class: "feedContainer"}),
-    d( State.DB.get( State.S.selectedCompany  , 12158).map(  task => d([
-      d( State.DB.get( task, 6 ) ),
-      boolView( State, task, 12155 ),
-      entityLabelWithPopup( State, 11474, () => State.Actions.selectEntity( undefined, 11474 ) )
-    ], {style: gridColumnsStyle("3fr 1fr 1fr")}) ), {class: "feedContainer"} )
-  ]),
   br(),
-  h3("Frister"),
-  d("Innlevering av skattemelding med vedlegg: 31. mai 2021"),
-  d("Godkjenning av årsregnskapet: Innen seks måneder etter regnskapsårets slutt, senest 30. juni 2021"),
-  d("Innsending av årsregnskapet: Innen en måned etter fastsetting av årsregnskapet, og senest 31. juli 2021"),
+  d([
+    h3("Oppgaver"),
+    d([
+      d([
+        d( "Oppgave" ),
+        d( "Status?" ),
+        d( "Tilknyttet side" ),
+      ], {style: gridColumnsStyle("3fr 1fr 1fr")}),
+    ], {class: "feedContainer"}),
+      d( State.DB.get( State.S.selectedCompany  , 12158).map(  task => d([
+        d( State.DB.get( task, 6 ) ),
+        boolView( State, task, 12155 ),
+        entityLabelWithPopup( State, 11474, () => State.Actions.selectEntity( undefined, 11474 ) )
+      ], {style: gridColumnsStyle("3fr 1fr 1fr")}) ), {class: "feedContainer"} )
+  ], {class: "feedContainer"}),
   br(),
-  h3("Kundeservice"),
-  d("TBD"),
+  d([
+    h3("Kundeservice"),
+    d("TBD"),
+  ], {class: "feedContainer"}),
 ])
 
 
