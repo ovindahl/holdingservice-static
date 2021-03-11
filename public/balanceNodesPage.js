@@ -10,7 +10,7 @@ let balanceObjectsView = State => isDefined( State.S.selectedEntity ) ? singleAc
 
 let selectEventIndexView = State => d([
   d("Viser rapport etter hendelse:"),
-  dropdown( State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ) , State.DB.get( State.S.selectedCompany, 12387 )(  ).map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEventIndex( State.DB.get(  Number( submitInputValue(e) ), 11975 ) )  ),
+  dropdown( State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ) , State.DB.get( State.S.selectedCompany, 12921 )()().map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEventIndex( State.DB.get(  Number( submitInputValue(e) ), 11975 ) )  ),
   lockedSingleValueView( State, State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ), 1757 )
 ], {style: gridColumnsStyle("2fr 2fr 1fr 2fr")})
 
@@ -27,13 +27,13 @@ let trialBalanceView = State => d([
           .sort( (a,b) => Number( State.DB.get( a, 6).slice(0,4) ) - Number( State.DB.get( b, 6).slice(0,4) )  )
           .map( activeNode => d([
             entityLabelWithPopup( State, activeNode ),
-            temporalValueView( State, activeNode, 12352, State.S.selectedEventIndex )
+            d( formatNumber( State.DB.get( State.S.selectedCompany, 12392 )([activeNode], State.S.selectedEventIndex) ), {style: `text-align: right;`} ),
           ], {style: gridColumnsStyle("repeat(4, 1fr)")}) 
           )   ),
       d([
         d([
           d("Sum"),
-          d( formatNumber( State.DB.get( State.S.selectedCompany, 12380 )().filter( activeNode => State.DB.get(activeNode, 7540) === balanceSection  ).reduce( (sum, node) => sum + State.DB.get( node, 12352 )( State.S.selectedEventIndex   ), 0 ) ), {style: `text-align: right;`} ),
+          d( formatNumber(  State.DB.get( State.S.selectedCompany, 12392 )( State.DB.get( State.S.selectedCompany, 12380 )() , State.S.selectedEventIndex)  ), {style: `text-align: right;`} ),
           br(),
         ], {style: gridColumnsStyle("repeat(4, 1fr)")})
         
@@ -58,8 +58,7 @@ let singleAccountView = State => {
     d([
       entityLabelWithPopup( State, State.S.selectedEntity ),
       br(),
-      temporalEntityAttributeView( State, State.S.selectedEntity, 12352, State.S.selectedEventIndex ),
-      temporalEntityAttributeView( State, State.S.selectedEntity, 12829, State.S.selectedEventIndex ),
+      d( formatNumber( State.DB.get( State.S.selectedCompany, 12392 )([State.S.selectedEntity], State.S.selectedEventIndex) ), {style: `text-align: right;`} ),
   ], {class: "feedContainer"}),
     
   ])

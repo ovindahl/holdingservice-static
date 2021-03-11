@@ -123,7 +123,6 @@ let updateState = (prevState, patch) => {
 let updateView = State => {
   let startTime = Date.now()
   sideEffects.updateDOM( [clientPage( State )] )
-  if( State.S.selectedPage === 9338 ){ renderGraph( State ) } 
   console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 }
 
@@ -131,11 +130,8 @@ let init = async () => {
 
   updateState( {}, {} )
 
-  //let Entities = await sideEffects.APIRequest("GET", "Entities", null)
-
   let dbSnapshot = await sideEffects.APIRequest("GET", "systemEntities", null)
   
-
   if( dbSnapshot.Entities.length > 0 ){
 
     let initialDatabase = constructDatabase( dbSnapshot )

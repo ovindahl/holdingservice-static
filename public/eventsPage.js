@@ -43,7 +43,7 @@ let fixedEventAttributes = State => d([
       ? entityAttributeView(State, State.S.selectedEntity, 13184, true )
       : d([
           entityAttributeView(State, State.S.selectedEntity, 13184, true ),
-          State.DB.get( State.S.selectedEntity, 12548 ) === false
+          State.DB.get( State.S.selectedEntity, 13280 ) === false
             ? d( State.DB.get(State.DB.get(State.S.selectedEntity, 10070), 12547)
                 .map( criterium => d([
                   criteriumIsValid(State, State.S.selectedEntity, criterium) ? d("✔️") : d("❌"),
@@ -95,8 +95,8 @@ let calculatedTransactionView = State => d( State.DB.get(State.S.selectedEntity,
       entityLabelWithPopup(State, transaction.originNode ),
     ]),
     d([
-      d( formatNumber( State.DB.get( transaction.originNode, 12352 )( State.DB.get( transaction.event, 11975 ) - 1 ) ), {class: "redlineText", style: `text-align: right;`} ),
-      d( formatNumber( State.DB.get( transaction.originNode, 12352 )( State.DB.get( transaction.event, 11975 )  ) ), {style: `text-align: right;`} ),
+      d( formatNumber( State.DB.get( State.S.selectedCompany, 12392 )([transaction.originNode], State.DB.get( transaction.event, 11975 ) - 1) ), {class: "redlineText", style: `text-align: right;`} ),
+      d( formatNumber( State.DB.get( State.S.selectedCompany, 12392 )([transaction.originNode], State.DB.get( transaction.event, 11975 ) ) ), {style: `text-align: right;`} ),
     ])
   ],{class: "feedContainer", style: gridColumnsStyle("1fr 1fr")}),
   d([
@@ -114,8 +114,8 @@ let calculatedTransactionView = State => d( State.DB.get(State.S.selectedEntity,
       entityLabelWithPopup(State, transaction.destinationNode ),
     ]),
     d([
-      d( formatNumber( State.DB.get( transaction.destinationNode, 12352 )( State.DB.get( transaction.event, 11975 ) - 1 ) ), {class: "redlineText", style: `text-align: right;`} ),
-      d( formatNumber( State.DB.get( transaction.destinationNode, 12352 )( State.DB.get( transaction.event, 11975 )  ) ), {style: `text-align: right;`} ),
+      d( formatNumber( State.DB.get( State.S.selectedCompany, 12392 )([transaction.destinationNode], State.DB.get( transaction.event, 11975 ) - 1) ), {class: "redlineText", style: `text-align: right;`} ),
+      d( formatNumber( State.DB.get( State.S.selectedCompany, 12392 )([transaction.destinationNode], State.DB.get( transaction.event, 11975 ) ) ), {style: `text-align: right;`} ),
     ])
   ],{class: "feedContainer", style: gridColumnsStyle("1fr 1fr")}),
 ], {style: gridColumnsStyle("1fr 1fr 1fr")}) ) )

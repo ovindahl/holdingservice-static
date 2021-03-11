@@ -29,8 +29,7 @@ app.get("/", (req,res)=>{res.send(`
         <div id="appContainer"></div>
         <script src="https://cdn.auth0.com/js/auth0-spa-js/1.2/auth0-spa-js.production.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
-        <script src="https://momentjs.com/downloads/moment-with-locales.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.18.0/dist/cytoscape.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js" integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==" crossorigin="anonymous"></script>
         <script src="/static/valueTypeViews.js"></script>
         <script src="/static/entityLabel.js"></script>
         <script src="/static/Views.js"></script>
