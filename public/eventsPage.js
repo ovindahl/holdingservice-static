@@ -34,10 +34,8 @@ let prevNextEventView = State => {
 let fixedEventAttributes = State => d([
   entityAttributeView(State, State.S.selectedEntity, 13278, true ),
   entityAttributeView(State, State.S.selectedEntity, 13279, true ),
-  entityAttributeView(State, State.S.selectedEntity, 13292, true ),
   entityAttributeView(State, State.S.selectedEntity, 13280, true ),
   entityAttributeView(State, State.S.selectedEntity, 13281, true ),
-  
   entityAttributeView(State, State.S.selectedEntity, 11975, true ),
   State.DB.get(State.S.selectedEntity, 13280)
       ? entityAttributeView(State, State.S.selectedEntity, 13184, true )
