@@ -35,26 +35,25 @@ let allActorsView = State => d([
   let singleActorView = State => {
 
 
-    let activeRoles = State.DB.get( State.S.selectedEntity,  12496)( State.S.selectedEventIndex   )
-
-
-
-
-
     return d([
       selectEventIndexView( State ),
       br(),
       submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, ActorsPage.entity )  ),
       br(),
-      entityAttributeView(State, State.S.selectedEntity, 8668, true),
-      entityAttributeView(State, State.S.selectedEntity, 6),
+      d([
+        entityAttributeView(State, State.S.selectedEntity, 8668, true),
+        entityAttributeView(State, State.S.selectedEntity, 6),
+      ], {class: "feedContainer"}),
       br(),
-      temporalEntityAttributeView( State, State.S.selectedEntity, 12496, State.S.selectedEventIndex ),
-      br(),
-      d( activeRoles.map( actorRole => d([
-        entityLabelWithPopup( State, actorRole ),
-        d( State.DB.get(actorRole, 10433).map( calculatedField => temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField, State.S.selectedEventIndex ) ) )
-      ])  ) ),
+      d([
+        h3("Rapporter på aktøren"),
+        temporalEntityAttributeView( State, State.S.selectedEntity, 12496, State.S.selectedEventIndex ),
+        br(),
+        d( State.DB.get( State.S.selectedEntity,  12496)( State.S.selectedEventIndex   ).map( actorRole => d([
+          entityLabelWithPopup( State, actorRole ),
+          d( State.DB.get(actorRole, 10433).map( calculatedField => temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField, State.S.selectedEventIndex ) ) )
+        ])  ) ),
+      ], {class: "feedContainer"}),
       br(),
       d([
         h3("Handlinger"),

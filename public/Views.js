@@ -51,6 +51,33 @@ const ClientApp = {
       State.Actions.createAndSelectEntity( newEventDatoms )
 
     },
+    createEventFromEvent: ( eventType, sourceEntity ) => {
+
+      let basicDatoms = [
+        newDatom( 'newEntity', 'entity/entityType', 10062 ),
+        newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
+        newDatom( 'newEntity', 10070, eventType ),
+        newDatom( 'newEntity' , 'event/accountingYear', State.S.selectedAccountingYear ), 
+        newDatom( 'newEntity' , 'entity/label', State.DB.get( eventType, 6 ) ), 
+        newDatom( 'newEntity' , 1139, "" )
+      ]
+
+      let sourceEntityDatoms = isDefined(sourceEntity) ? [
+        newDatom( 'newEntity', 1757, isDefined( State.DB.get( sourceEntity, 1757 )  ) 
+          ? State.DB.get( sourceEntity, 1757 ) 
+          :  State.DB.get( State.S.selectedAccountingYear, "accountingYear/lastDate" ) 
+          ),
+        State.DB.get( eventType, 7942 ).includes( 1083 )
+          ? newDatom( 'newEntity' , 1083, isDefined( State.DB.get( sourceEntity, 1083 ) ) ? State.DB.get( sourceEntity, 1083 ) : 0  )
+          : null,
+      ].filter( Datom => Datom !== null ) : []
+
+      let newEventDatoms = basicDatoms.concat( sourceEntityDatoms )
+
+
+      State.Actions.createAndSelectEntity( newEventDatoms )
+
+    },
     createEventFromSourceDocument: ( eventType, sourceDocument ) => {
 
       let basicDatoms = [
@@ -71,10 +98,9 @@ const ClientApp = {
       newDatom( 'newEntity', 'entity/entityType', 11472 ),
       newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
       newDatom( 'newEntity', 11688, sourceDocumentType ),
-      newDatom( 'newEntity', 1757, State.DB.get( State.S.selectedAccountingYear, "accountingYear/lastDate" ) ),
       newDatom( 'newEntity' , 6, 'Bilagsdokument uten navn' ), 
       newDatom( 'newEntity' , 1139, '' ), 
-      newDatom( 'newEntity' , 7512, 7407), 
+      newDatom( 'newEntity' , 7512, State.S.selectedAccountingYear), 
     ] ),
     createActor: actorType => State.Actions.createAndSelectEntity( [
       newDatom( 'newEntity', 'entity/entityType', 7979 ),
@@ -129,7 +155,7 @@ let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, inde
     newDatom( "newDatom_"+ index, 8831, description  ),
     newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
     newDatom( "newDatom_"+ index, "entity/selectSourceDocument", sourceDocument ),
-    newDatom( "newDatom_"+ index, "entity/label", isPayment ? `[${moment(date).format('DD/MM/YYYY')}] Utbetaling fra bank på NOK ${paidAmount}` : `[${transactionRow[0]}] Innbetaling til bank på NOK ${receivedAmount}` ).replaceAll(`"`, `'`),
+    newDatom( "newDatom_"+ index, "entity/label", isPayment ? `[${moment(date).format('DD/MM/YYYY')}] Utbetaling fra bank på NOK ${paidAmount}` : `[${transactionRow[0]}] Innbetaling til bank på NOK ${receivedAmount}`.replaceAll(`"`, `'`) ),
     newDatom( "newDatom_"+ index, 1139, "" ),
     newDatom( "newDatom_"+ index, 12377, false ),
   ]
@@ -230,7 +256,7 @@ let leftSidebar = State => d([
       ]),
       d([dropdown(State.S.selectedAccountingYear, State.DB.get(null, 10061).map( entity => returnObj({value: entity, label: getEntityLabel( State.DB, entity )  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
   ], {style: "padding: 1em;"}),
-  d( [9951, 11974, 11474, 7977, 7860, 7882, 10464, 10035, 10025]
+  d( [9951, 11474, 11974, 7977, 7860, 7882, 10464, 10035, 10025]
       .filter( pageEntity => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get( pageEntity, 12506  ) )
       .map( entity => d([
           d( State.DB.get(entity, 6), {class: "sidebarButton", style: `${ State.S.selectedPage === entity ? "color: blue;" : "" }` }, "click", () => State.Actions.selectPage( entity ) ),
@@ -244,7 +270,9 @@ let leftSidebar = State => d([
 ])
 
 let sidebarCreateButton = State => State.S.selectedPage === 11974
-  ? createEventButton( State )
+  ? isDefined( State.S.selectedEntity )
+    ? createEventFromEventButton( State )
+    : createEventButton( State )
   : State.S.selectedPage === 11474
     ? createSourceDocumentButton( State )
     : State.S.selectedPage === 7977
@@ -257,24 +285,34 @@ let sidebarCreateButton = State => State.S.selectedPage === 11974
 let createEventButton = State => d([
   d( "Ny hendelse 📅", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
     d([
-      isDefined( State.S.selectedEntity )
-        ? d([
-            d("Kopierer dato og beløp fra:"),
-            entityLabelWithPopup( State, State.S.selectedEntity )
-        ])
-        : d(""),
       br(),
       d("Velg hendelsestype:"),
       d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
         h3(category),
-        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent( eventType, State.DB.get( State.S.selectedEntity, 19 ) === 10062 ? State.S.selectedEntity : undefined ) ) ) ),
+        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent( eventType ) ) ) ),
       ])  ) ),
     ], {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
     
 ], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
 
+let createEventFromEventButton = State => d([
+  d( "Ny hendelse fra denne 📅", {style: "padding:1em; margin-left:2em; background-color: #03a9f445;"}),
+    d([
+      d("Kopierer dato og beløp fra:"),
+      entityLabelWithPopup( State, State.S.selectedEntity ),
+      br(),
+      d("Velg hendelsestype:"),
+      d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+        h3(category),
+        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEventFromEvent( eventType, State.DB.get( State.S.selectedEntity, 19 ) === 10062 ? State.S.selectedEntity : undefined ) ) ) ),
+      ])  ) ),
+    ], {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+    
+], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
+
+
 let createEventFromSourceDocumentButton = State => d([
-  d( "Ny hendelse basert på bilaget 📅", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
+  d( "Ny hendelse basert på dette bilaget 📅", {style: "padding:1em; margin-left:2em; background-color: #03a9f445;"}),
     d([
       d("Velg hendelsestype:"),
       d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
@@ -318,7 +356,7 @@ let navBarView = (State) => d([
     ], {style: "display: inline-flex;"}),
     sidebarCreateButton( State ),
 
-  ], {style: gridColumnsStyle("5fr 1fr")})
+  ], {style: gridColumnsStyle("3fr 1fr")})
   
 ], {class: "feedContainer"})
 

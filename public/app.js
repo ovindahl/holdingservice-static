@@ -149,7 +149,6 @@ let init = async () => {
         selectedPage: 9951,
         selectedCompany: initialCompany,
         selectedAccountingYear: 7407,
-        selectedEventIndex: 0,
         selectedFilters: []
       }
       } )

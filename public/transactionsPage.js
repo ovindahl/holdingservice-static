@@ -23,7 +23,10 @@ let newAllTransasctionsVew = State => d([
         d( "Beløp", {style: `text-align: right;`} ),
     ], {style: gridColumnsStyle("1fr 4fr 2fr 4fr 2fr")}),
   ], {class: "feedContainer"}),
-  d( State.DB.get( State.S.selectedCompany, 12351)().map( (Transaction, index) => transactionRowView( Transaction, index ) ), {class: "feedContainer"} ) 
+  State.DB.get( State.S.selectedCompany, 12351)().length > 0
+    ? d( State.DB.get( State.S.selectedCompany, 12351)().map( (Transaction, index) => transactionRowView( Transaction, index ) ), {class: "feedContainer"} ) 
+    : d("Ingen bokførte transaksjoner.")
+  
 ]) 
 
 

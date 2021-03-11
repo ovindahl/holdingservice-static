@@ -133,7 +133,7 @@ let gridColumnsStyle = rowSpecification =>  `display:grid; grid-template-columns
 
 let temporalEntityAttributeView = (State, entity, calculatedField, eventIndex ) => d([
   entityLabelWithPopup( State, calculatedField ),
-  d(`(pr. 📅#${eventIndex})`),
+  d(`(pr. 📅#${ isDefined( eventIndex ) ? eventIndex : State.DB.get( State.S.selectedCompany, 12385 ) })`),
   temporalValueView( State, entity, calculatedField, eventIndex )
 ], {style:  gridColumnsStyle("2fr 1fr 3fr 1fr") + "margin: 5px;"} )
 

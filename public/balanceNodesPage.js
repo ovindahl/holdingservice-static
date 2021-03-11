@@ -10,8 +10,10 @@ let balanceObjectsView = State => isDefined( State.S.selectedEntity ) ? singleAc
 
 let selectEventIndexView = State => d([
   d("Viser rapport etter hendelse:"),
-  dropdown( State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ) , State.DB.get( State.S.selectedCompany, 12921 )()().map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEventIndex( State.DB.get(  Number( submitInputValue(e) ), 11975 ) )  ),
-  lockedSingleValueView( State, State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ), 1757 )
+  dropdown( isDefined( State.S.selectedEventIndex ) 
+    ? State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex )
+    : 0 , State.DB.get( State.S.selectedCompany, 12921 )()().map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ).concat( isDefined( State.S.selectedEventIndex ) ? [] : [{value: 0, label: "Vis på tidligere tidspunkt" }] ), e => State.Actions.selectEventIndex( State.DB.get(  Number( submitInputValue(e) ), 11975 ) )  ),
+  lockedSingleValueView( State, isDefined( State.S.selectedEventIndex ) ? State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ) : State.DB.get( State.S.selectedCompany, 12786) , 1757 )
 ], {style: gridColumnsStyle("2fr 2fr 1fr 2fr")})
 
 
