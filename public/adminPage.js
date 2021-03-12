@@ -50,7 +50,7 @@ let entityView = (State, entity) => isDefined(entity)
         entityLabelWithPopup( State, entity, () => State.Actions.selectEntity( entity, AdminPage.entity ) ),
         prevNextEntityButtonsView( State )
       ], {class: "columns_1_1_1"}),
-      d( State.DB.get( State.DB.get(entity, "entity/entityType"), "entityType/attributes" ).map( attribute => entityAttributeView(State, entity, attribute) ) ),
+      d( State.DB.get( State.DB.get(entity, "entity/entityType"), "entityType/attributes" ).map( attribute => adminEntityAttributeView(State, entity, attribute) ) ),
       br(),
       d([
         submitButton( "Slett", () => State.Actions["adminpage/retractEntity"](entity) ),
@@ -62,58 +62,57 @@ let entityView = (State, entity) => isDefined(entity)
         h3("Entitet med feil"),
         prevNextEntityButtonsView( State ),
         d( JSON.stringify(State.DB.get(entity)) ),
-        entityAttributeView(State, entity, 19),
+        adminEntityAttributeView(State, entity, 19),
         submitButton( "Slett", () => State.Actions["adminpage/retractEntity"](entity) ),
       ])
   : d("Ingen entitet valgt", {class: "feedContainer"})
 
 
 
-let entityVersionPopup = (State, entity, attribute) => {
-
-  let EntityDatoms = State.DB.getEntity( entity ).Datoms.filter( Datom => Datom.attribute === State.DB.attrName(attribute) )
-
-  return d([
-    d([
-      d( "Endret"),
-      d("Tidligere verdi")
-    ], {style: gridColumnsStyle("2fr 2fr 1fr")}),
-      d( EntityDatoms.reverse().slice(1, 5).map( Datom => d([
-        d( moment(Datom.tx).format("YYYY-MM-DD") ),
-        d(JSON.stringify(Datom.value)),
-        submitButton( "Gjenopprett", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, Datom.attribute, Datom.value )} )
-        )
-      ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) )
-    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-}
-
-
-
-let adminPage = State => d([
-    d([
-      entityLabelWithPopup( State,  47, () => State.Actions.selectEntity( 47, AdminPage.entity ) ),
-      span(" / "  ),
-      isDefined(State.S.selectedEntity)
-        ? entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity, "entity/entityType"), () => State.Actions.selectEntity( State.DB.get(State.S.selectedEntity, "entity/entityType"), AdminPage.entity )   )
-        : span(" ... "),
-      span(" / "  ),
-      isDefined(State.S.selectedEntity)
-        ? entityLabelWithPopup( State,  State.S.selectedEntity )
-        : span("Ingen entitet valgt.")
-    ]),
-    br(),
-    d([
-      d(""),
-     State.DB.get( State.S.selectedEntity, "entity/entityType" ) === 47
-        ? d([
-          multipleEntitiesView( State, State.S.selectedEntity ),
-          br(),
-          entityView( State, State.S.selectedEntity )
-        ]) 
-        : entityView( State, State.S.selectedEntity )
-    ])
   
+let adminEntityAttributeView = ( State, entity, attribute, isLocked ) => { try {return d([
+  entityLabelWithPopup( State, attribute, () => State.Actions.selectEntity( attribute, AdminPage.entity ) ),
+  valueView( State, entity, attribute, isLocked ),
+  isLocked ? d(""): entityVersionLabel( State, entity, attribute )
+], ( State.DB.get(attribute, "attribute/isArray") || State.DB.get(attribute, "attribute/valueType") === 6534 ) ? {style: "margin: 5px;border: 1px solid #80808052;"} : {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} ) } catch (error) { return d([
+  entityLabel( State, attribute),
+  d(`ERROR: entity: ${entity}, attribute: ${attribute} `),
+  d(error)
+], {style:  gridColumnsStyle("3fr 3fr 1fr") + "margin: 5px;"} )( State,  entity, attribute, error ) } } 
+
+
+
+
+
+
+
+
+let adminPage = State => State.DB.get(State.S.selectedUser, "user/isAdmin")
+  ? d([
+      d([
+        entityLabelWithPopup( State,  47, () => State.Actions.selectEntity( 47, AdminPage.entity ) ),
+        span(" / "  ),
+        isDefined(State.S.selectedEntity)
+          ? entityLabelWithPopup( State, State.DB.get(State.S.selectedEntity, "entity/entityType"), () => State.Actions.selectEntity( State.DB.get(State.S.selectedEntity, "entity/entityType"), AdminPage.entity )   )
+          : span(" ... "),
+        span(" / "  ),
+        isDefined(State.S.selectedEntity)
+          ? entityLabelWithPopup( State,  State.S.selectedEntity )
+          : span("Ingen entitet valgt.")
+      ]),
+      br(),
+      d([
+        d(""),
+      State.DB.get( State.S.selectedEntity, "entity/entityType" ) === 47
+          ? d([
+            multipleEntitiesView( State, State.S.selectedEntity ),
+            br(),
+            entityView( State, State.S.selectedEntity )
+          ]) 
+          : entityView( State, State.S.selectedEntity )
+      ])
   ])
+  : d("Siden er ikke tilgjengelig.")
   
   let multipleEntitiesView = (State, entityType) => d([
     entityLabelWithPopup( State, entityType, () => State.Actions.selectEntity( entityType, AdminPage.entity )),

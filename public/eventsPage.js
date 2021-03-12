@@ -125,9 +125,9 @@ let calculatedTransactionView = State => d( State.DB.get(State.S.selectedEntity,
 let eventRowView = (State, event) => d([
     d( `${State.DB.get(event, 11975 )}` ),
     d( moment( State.DB.get( event, 1757 ) ).format("DD.MM.YYYY") ),
-    entityLabelWithPopup( State, event ),
-    isDefined( State.DB.get(event, 1083) ) ? lockedSingleValueView( State, event, 1083 ) : d(" - ", {style: `text-align: right;`} ),
-    d([ lockedSingleValueView( State, event, 13184) ], {style: `text-align: right;`}),
+    entityLabel( State, event, () => State.Actions.selectEntity( event ) ),
+    isDefined( State.DB.get(event, 1083) ) ? valueView( State, event, 1083, true ) : d(" - ", {style: `text-align: right;`} ),
+    d([ valueView( State, event, 13184, true) ], {style: `text-align: right;`}),
     //d( State.DB.get( event, 13280 ) ? "✔️" : State.DB.get( event, 13278 ) ? "✔️⏳" : "❌", {style: `text-align: right;`})
 ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")})
 

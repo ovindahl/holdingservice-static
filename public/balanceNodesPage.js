@@ -13,7 +13,7 @@ let selectEventIndexView = State => d([
   dropdown( isDefined( State.S.selectedEventIndex ) 
     ? State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex )
     : 0 , State.DB.get( State.S.selectedCompany, 12921 )()().map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ).concat( isDefined( State.S.selectedEventIndex ) ? [] : [{value: 0, label: "Vis på tidligere tidspunkt" }] ), e => State.Actions.selectEventIndex( State.DB.get(  Number( submitInputValue(e) ), 11975 ) )  ),
-  lockedSingleValueView( State, isDefined( State.S.selectedEventIndex ) ? State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ) : State.DB.get( State.S.selectedCompany, 12786) , 1757 )
+    valueView( State, isDefined( State.S.selectedEventIndex ) ? State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ) : State.DB.get( State.S.selectedCompany, 12786) , 1757, true )
 ], {style: gridColumnsStyle("2fr 2fr 1fr 2fr")})
 
 

@@ -13,9 +13,9 @@ const ActorsPage = {
 
 
   let actorRowView = (State, actor) => d([
-    entityLabelWithPopup( State, actor ),
-    entityLabelWithPopup( State, State.DB.get( actor, 8668 ) ),
-    d( State.DB.get( actor, 12496 )( State.S.selectedEventIndex   ).map( actorRole => entityLabelWithPopup(State, actorRole) ) )
+    entityLabel( State, actor, () => State.Actions.selectEntity( actor ) ),
+    entityLabel( State, State.DB.get( actor, 8668 ) ),
+    d( State.DB.get( actor, 12496 )( State.S.selectedEventIndex   ).map( actorRole => entityLabel(State, actorRole) ) )
 ], {style: gridColumnsStyle("2fr 1fr 3fr")})
 
 let allActorsView = State => d([

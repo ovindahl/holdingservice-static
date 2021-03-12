@@ -122,46 +122,64 @@ const ClientApp = {
 }
 
 
-let constructBankTransactionSourceDocumentDatoms = ( State, transactionRow, index, selectedBank, sourceDocument) => {
 
-  //NB: Denne brukes av entitet 11693: Datomer for import av banktransaksjoner
+let importDNBtransactions = (State, sourceDocument) => {
 
-  let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
-          
-  let date = Number( moment( transactionRow[0], "DD.MM.YYYY" ).format("x") )
-  let description = `${transactionRow[2]}: ${transactionRow[1]}`
+  let allRows = State.DB.get( sourceDocument, 1759 ).filter( row => row.length > 1 )
 
-  let paidAmount = transactionRow[5] === ""
-    ? undefined
-    : parseDNBamount( transactionRow[5] ) * -1
+  let headersRowIndex = allRows.findIndex( row => row.includes("Forklarende tekst") && row.includes("Transaksjonstype") && row.includes("Transaksjonstype") )
+  let headerRow = allRows[ headersRowIndex ]
 
-  let receivedAmount = transactionRow[6] === ""
-  ? undefined
-  :parseDNBamount( transactionRow[6] ) 
+  let accountNumberColumnIndex = headerRow.findIndex( header => header === "Kontonummer" )
+  let dateColumnIndex = headerRow.findIndex( header => header === "Bokf�rt dato" )
+  let description1ColumnIndex = headerRow.findIndex( header => header === "Transaksjonstype" )
+  let description2ColumnIndex = headerRow.findIndex( header => header === "Forklarende tekst" )
+  let paidAmountColumnIndex = headerRow.findIndex( header => header === "Ut" )
+  let receivedAmountColumnIndex = headerRow.findIndex( header => header === "Inn" )
+  let referenceNumberColumnIndex = headerRow.findIndex( header => header === "Arkivref." )
 
-  let isPayment = isNumber( paidAmount )
+  let transactionRows = allRows.slice( headersRowIndex + 1 )
 
-  let referenceNumber = transactionRow[7]
+  let newEventDatoms = transactionRows.map( (row, index) => {
+
+    let txDate = Number( moment( row[ dateColumnIndex ], "DD.MM.YYYY" ).format("x") )
+
+    let parseDNBamount = stringAmount => Number( stringAmount.replaceAll(".", "").replaceAll(",", ".") ) 
+
+    let paidAmount = row[ paidAmountColumnIndex ] === ""
+      ? undefined
+      : parseDNBamount( row[ paidAmountColumnIndex ] ) * -1
+
+    let receivedAmount = row[ receivedAmountColumnIndex ] === ""
+      ? undefined
+      : parseDNBamount( row[ receivedAmountColumnIndex ] ) 
+
+    let isPayment = isNumber( paidAmount )
+
+    let amount = isPayment ? paidAmount : receivedAmount
 
 
+      
+    let eventType = isPayment ? 13186 : 13187
 
-  let Datoms = [
-    newDatom( "newDatom_"+ index, "entity/entityType", 10062  ),
-    newDatom( "newDatom_"+ index, "entity/company", State.S.selectedCompany  ),
-    newDatom( "newDatom_"+ index, 10070, isPayment ? 13186 : 13187  ),
-    newDatom( "newDatom_"+ index, 'event/accountingYear', State.DB.get( sourceDocument, 7512 ) ),
-    newDatom( "newDatom_"+ index, 1757, date  ),
-    newDatom( "newDatom_"+ index, 1083, isPayment ? paidAmount : receivedAmount  ),
-    newDatom( "newDatom_"+ index, 8831, description  ),
-    newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", referenceNumber  ),
-    newDatom( "newDatom_"+ index, "entity/selectSourceDocument", sourceDocument ),
-    newDatom( "newDatom_"+ index, "entity/label", isPayment ? `[${moment(date).format('DD/MM/YYYY')}] Utbetaling fra bank på NOK ${paidAmount}` : `[${transactionRow[0]}] Innbetaling til bank på NOK ${receivedAmount}`.replaceAll(`"`, `'`) ),
-    newDatom( "newDatom_"+ index, 1139, "" ),
-    newDatom( "newDatom_"+ index, 12377, false ),
-  ]
 
-  return Datoms
+    return [
+      newDatom( "newDatom_"+ index, "entity/company", State.S.selectedCompany  ),
+      newDatom( "newDatom_"+ index, 'event/accountingYear', State.DB.get( sourceDocument, 7512 ) ),
+      newDatom( "newDatom_"+ index, "entity/selectSourceDocument", sourceDocument ),
+      newDatom( "newDatom_"+ index, "entity/entityType", 10062  ),
+      newDatom( "newDatom_"+ index, 1139, "" ),
 
+      newDatom( "newDatom_"+ index, 8831, `[${accountNumberColumnIndex === -1 ? "Konto" : row[ accountNumberColumnIndex ] }]  ${ row[ description1ColumnIndex ]}: ${ row[ description2ColumnIndex ]}`  ),
+      newDatom( "newDatom_"+ index, 1757, txDate ),
+      newDatom( "newDatom_"+ index, 10070, eventType ),
+      newDatom( "newDatom_"+ index, 1083,  amount ),
+      newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", row[ referenceNumberColumnIndex ]  ),
+      newDatom( "newDatom_"+ index, "entity/label", `[${moment(txDate).format('DD/MM/YYYY')}] ${State.DB.get( eventType, 6 )} på NOK ${ formatNumber( amount, amount > 100 ? 0 : 2 ) }`.replaceAll(`"`, `'`) ),
+    ]
+  }  ).flat()
+
+    return newEventDatoms
 }
 
 // CLIENT PAGE VIEWS

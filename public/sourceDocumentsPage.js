@@ -22,8 +22,8 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
       ? d( State.DB.get( State.S.selectedCompany, 11475 ).filter( sourceDocument => isDefined(State.S.selectedAccountingYear) ? State.DB.get(sourceDocument, 7512 ) === State.S.selectedAccountingYear : true  ).map( sourceDocument => d([
           d( `${State.DB.get(sourceDocument, 12509 )}` ),
           entityLabelWithPopup( State, sourceDocument, () => State.Actions.selectEntity(  sourceDocument, SourceDocumentsPage.entity  ) ),
-          lockedSingleValueView( State, sourceDocument, 11688 ),
-          d([lockedSingleValueView( State, sourceDocument, 13185 )], {style: `text-align: right;`}),
+          valueView( State, sourceDocument, 11688, true ),
+          d([valueView( State, sourceDocument, 13185, true )], {style: `text-align: right;`}),
         ], {style: gridColumnsStyle("1fr 3fr 2fr 1fr") } ) ), {class: "feedContainer"} )
     : d("Ingen bilag i valgt regnskapsår.", {class: "feedContainer"}),
   ]) 
@@ -47,7 +47,7 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
     d([
       h3("Registrerte hendelser basert på dette bilaget:"),
       State.DB.get(State.S.selectedEntity , 11479).length > 0
-        ? lockedMultipleValuesView( State, State.S.selectedEntity , 11479 )
+        ? valueView( State, State.S.selectedEntity , 11479, true )
         : d("Ingen registrerte hendelser."),
       br(),
       createEventFromSourceDocumentButton( State ),
