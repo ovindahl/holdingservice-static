@@ -1,7 +1,7 @@
 const ActorsPage = {
     entity: 7977,
-    onLoad: State => returnObj({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.S.selectedCompany, 12385 ) }),
-    Actions: State => returnObj({})
+    onLoad: State => returnObject({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.S.selectedCompany, 12385 ) }),
+    Actions: State => returnObject({})
   }
 
 

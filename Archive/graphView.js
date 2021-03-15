@@ -14,7 +14,7 @@ let graphView = State => {
   
     let selectedTransaction = allTransactions.find( t => State.DB.get(t, 8354) === State.S.selectedCompanyEventIndex  )
   
-    let nodes = State.DB.get( State.S.selectedCompany , 10052)().map( e => returnObj({data: {
+    let nodes = State.DB.get( State.S.selectedCompany , 10052)().map( e => returnObject({data: {
       id: String(e), 
       label: State.DB.get(e, 6),
       col: 1,
@@ -23,7 +23,7 @@ let graphView = State => {
     } }  ) )
     let edges = allTransactions
       .filter( t => isNumber( State.DB.get(t, "transaction/originNode") ) && isNumber( State.DB.get(t, "transaction/destinationNode") )   )
-      .map( t => returnObj({data: {
+      .map( t => returnObject({data: {
         id: String(t), 
         source: String( State.DB.get(t, "transaction/originNode") ), 
         target: String( State.DB.get(t, "transaction/destinationNode") ),
@@ -65,7 +65,7 @@ let graphView = State => {
     
       layout: {
         name: 'grid',
-        position: node => returnObj({
+        position: node => returnObject({
           col: node.data('col')
          })
       }

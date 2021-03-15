@@ -1,7 +1,7 @@
 const BalancePage = {
     entity: 7860,
-    onLoad: State => returnObj({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.DB.get( State.S.selectedCompany, 12786 ), 11975) }),
-    Actions: State => returnObj({})
+    onLoad: State => returnObject({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.DB.get( State.S.selectedCompany, 12786 ), 11975) }),
+    Actions: State => returnObject({})
   }
 
 
@@ -12,7 +12,7 @@ let selectEventIndexView = State => d([
   d("Viser rapport etter hendelse:"),
   dropdown( isDefined( State.S.selectedEventIndex ) 
     ? State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex )
-    : 0 , State.DB.get( State.S.selectedCompany, 12921 )()().map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ).concat( isDefined( State.S.selectedEventIndex ) ? [] : [{value: 0, label: "Vis på tidligere tidspunkt" }] ), e => State.Actions.selectEventIndex( State.DB.get(  Number( submitInputValue(e) ), 11975 ) )  ),
+    : 0 , State.DB.get( State.S.selectedCompany, 12921 )()().map( e => returnObject({value: e, label: getEntityLabel( State.DB, e ) }) ).concat( isDefined( State.S.selectedEventIndex ) ? [] : [{value: 0, label: "Vis på tidligere tidspunkt" }] ), e => State.Actions.selectEventIndex( State.DB.get(  Number( submitInputValue(e) ), 11975 ) )  ),
     valueView( State, isDefined( State.S.selectedEventIndex ) ? State.DB.get( State.S.selectedCompany, 12783)( State.S.selectedEventIndex ) : State.DB.get( State.S.selectedCompany, 12786) , 1757, true )
 ], {style: gridColumnsStyle("2fr 2fr 1fr 2fr")})
 

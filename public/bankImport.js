@@ -2,8 +2,8 @@
 
 const BankImportPage = {
     entity: 10038,
-    onLoad: State => returnObj({selectedEntity: undefined}),
-    Actions: State => returnObj({})
+    onLoad: State => returnObject({selectedEntity: undefined}),
+    Actions: State => returnObject({})
   }
 
 /* 

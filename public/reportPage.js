@@ -1,8 +1,8 @@
 
 const ReportPage = {
     entity: 10464,
-    onLoad: State => returnObj({selectedEntity: undefined}),
-    Actions: State => returnObj({
+    onLoad: State => returnObject({selectedEntity: undefined}),
+    Actions: State => returnObject({
         "ReportPage/selectAccountingYear": accountingYear => updateState( State, {S: {selectedPage: 10464, selectedAccountingYear: accountingYear}}),
     })
   }

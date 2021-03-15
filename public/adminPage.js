@@ -1,7 +1,7 @@
 const AdminPage = {
     entity: 10025,
-    onLoad: State => returnObj({}),
-    Actions: State => returnObj({
+    onLoad: State => returnObject({}),
+    Actions: State => returnObject({
       createEntity: async (entityType, entityDatoms) => updateState( State, {DB: await Transactor.createEntity( State.DB, entityType, entityDatoms )  } ),
       retractEntities: async entities => updateState( State, {DB: await Transactor.retractEntities(State.DB, entities)} ),
       duplicateEntity: async entity => {

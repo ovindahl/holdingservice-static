@@ -1,4 +1,4 @@
-let newDatom = (entity, attribute, value, isAddition) => returnObj({entity, attribute, value, isAddition: isAddition === false ? false : true })
+let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
 
 let changeToStringAttributes = (DB, Datoms) => Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value, Datom.isAddition ) : Datom )
 
@@ -33,7 +33,22 @@ let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.every( Datom => {
 
 //let getEntityRetractionDatoms_old = (DB, entity) => DB.get(entity).Datoms.filter( Datom => DB.get(entity).Datoms.filter( dat => dat.attribute === Datom.attribute && dat.tx > Datom.tx ).length === 0  ).map( Datom => newDatom(entity, Datom.attribute, Datom.value, false) )
 
-let getEntityRetractionDatoms = (DB, entity) => Object.keys( DB.get(entity).current ).filter( key => key !== "entity"  ).map( attribute => newDatom(entity, attribute, DB.get(entity).current[ attribute ], false) )
+//let getEntityRetractionDatoms = (DB, entity) => Object.keys( DB.get(entity).current ).filter( key => key !== "entity"  ).map( attribute => newDatom(entity, attribute, DB.get(entity).current[ attribute ], false) )
+let getEntityRetractionDatoms = (DB, entity) => {
+
+  let Entity =  DB.get(entity)
+
+  let allAttributes = Entity.Datoms.map( Datom => Datom.attribute ).filter( filterUniqueValues )
+
+  let activeAttributes = allAttributes.filter( attribute => Entity.Datoms.filter( Datom => Datom.attribute === attribute ).slice( -1 )[0].isAddition )
+
+  let retractionDatoms = activeAttributes.map( attribute => newDatom(entity, attribute, DB.get(entity, attribute), false ) )
+
+
+ return retractionDatoms
+
+
+} 
 
 let getEntitiesRetractionDatoms = (DB, entities) => isArray(entities) ? entities.map( entity => getEntityRetractionDatoms( DB, entity ) ).flat() : log([], {ERROR: "getEntitiesRetractionDatoms did not receive array", entities} )
 
@@ -55,10 +70,12 @@ const Transactor = {
       let isValid = validateDatomAttributeValues( DB, datomsWithStringAttributes )
 
       // TBD
-      let isAuthorized = DB.isAdmin || datomsWithStringAttributes.every( Datom => isNumber( Datom.entity ) 
+      let isAuthorized = true
+
+      /* let isAuthorized = DB.isAdmin || datomsWithStringAttributes.every( Datom => isNumber( Datom.entity ) 
         ? DB.get( DB.get( Datom.entity, 19 ), 13013) === false
         : DB.get( datomsWithStringAttributes.find( dat => dat.entity === Datom.entity && dat.attribute === "entity/entityType" ).value, 13013) === false
-        )
+        ) */
       // TBD
 
       if( isValid && isAuthorized ){  return await Transactor.postValidDatoms(DB, datomsWithStringAttributes)  }
@@ -93,11 +110,19 @@ const Transactor = {
 let constructDatabase = dbSnapshot => {
 
     let DB = dbSnapshot
-  
+
+    DB.Entities = DB.Entities.filter( serverEntity => serverEntity.isActive === true )
     DB.entities = DB.Entities.map( serverEntity => serverEntity.entity )
-    DB.attributes = DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
-    DB.attrNames = mergeArray(DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => returnObj({[serverEntity.current["attr/name"]]: serverEntity.entity} ) ))
-    DB.tx = DB.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
+
+    if( isUndefined( DB.label ) ){
+
+      DB.entities = DB.Entities.map( serverEntity => serverEntity.entity )
+      DB.attributes = DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map(E => E.entity)
+      DB.attrNames = mergeArray(DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === 42 ).map( serverEntity => returnObject({[serverEntity.current["attr/name"]]: serverEntity.entity} ) ))
+      DB.tx = DB.Entities.map( Entity => Entity.Datoms.slice( -1 )[0].tx ).sort( (a,b) => a-b ).filter( v => isDefined(v) ).slice(-1)[0]
+
+    }
+  
     DB.calculatedDatoms = []
   
     DB.attrName = attribute => {
@@ -129,11 +154,9 @@ let constructDatabase = dbSnapshot => {
     }
   
     DB.getEntity = entity => {
-      let serverEntity = DB.Entities.find( serverEntity => serverEntity.entity === entity  )
 
-      let Entity = serverEntity;
+      let Entity = DB.Entities.find( serverEntity => serverEntity.entity === entity  );
 
-      Entity.tx = Entity.Datoms.slice( -1 )[ 0 ].tx
       Entity.get = (attr, version) => DB.get(entity, attr, version)
     
       return Entity
@@ -182,7 +205,7 @@ let constructDatabase = dbSnapshot => {
       }
     } 
   
-    DB.getAll = entityType => DB.Entities.filter( serverEntity => serverEntity.current["entity/entityType"] === entityType ).map(E => E.entity) //Kan bli sirkulær med isAttribute
+    DB.getAll = entityType => DB.Entities.filter( serverEntity => serverEntity.entityType === entityType ).map(E => E.entity) //Kan bli sirkulær med isAttribute
 
   
     DB.get = (entity, attribute, version) => {
@@ -210,10 +233,11 @@ let constructDatabase = dbSnapshot => {
 let calculateGlobalCalculatedValue = ( DB, calculatedField ) => tryFunction( () => new Function( [`Database`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB ) )
 let calculateEntityCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
 
-
-
 let getReportFieldValue = ( DB, company, reportField, yearEndEvent ) => DB.get( reportField, 8361 ) === 8662
   ? tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, mergerino( DB.get(company), {t: State.DB.get(yearEndEvent, 10502) }), DB.get(yearEndEvent) ) )
   : DB.get( reportField, 8361 ) === 5030
     ? DB.get(company, 12392)( DB.get(reportField, 13150), State.DB.get(yearEndEvent, 11975) - 1 )
     : null
+
+
+//New version:

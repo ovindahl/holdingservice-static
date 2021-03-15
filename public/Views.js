@@ -7,7 +7,7 @@
 //----------------------------------------------------------------------
 
 const ClientApp = {
-  Actions: State => returnObj({
+  Actions: State => returnObject({
     selectPage: pageEntity => updateState( State, {S: mergerino({selectedPage: pageEntity, selectedEntity: undefined, selectedFilters: [] }) }),
     selectEntity: (entity, pageEntity) => updateState( State, {S: mergerino({selectedEntity: entity}, isDefined(pageEntity) ? {selectedPage: pageEntity, selectedFilters: []} : {}) }),
     selectEventIndex: eventIndex => updateState( State, {S:  {selectedEventIndex: eventIndex, selectedAccountingYear: Database.get( Database.get(State.S.selectedCompany, 12783)(eventIndex), 10542)} }),
@@ -268,11 +268,11 @@ let leftSidebar = State => d([
     d([
       dropdown(State.S.selectedCompany, 
         State.DB.get(State.S.selectedUser, "user/isAdmin")
-          ? State.DB.getAll(5722).map( company => returnObj({value: company, label: State.DB.get(company, "entity/label")  })  )
-          : State.DB.get(State.S.selectedUser, "user/companies").map( entity => returnObj({value: entity, label: State.DB.get(entity, "entity/label")  })  ), 
+          ? State.DB.getAll(5722).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  )
+          : State.DB.get(State.S.selectedUser, "user/companies").map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), 
         e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))
       ]),
-      d([dropdown(State.S.selectedAccountingYear, State.DB.get(null, 10061).map( entity => returnObj({value: entity, label: getEntityLabel( State.DB, entity )  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
+      d([dropdown(State.S.selectedAccountingYear, State.DB.get(null, 10061).map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity )  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
   ], {style: "padding: 1em;"}),
   d( [9951, 11474, 11974, 7977, 7860, 7882, 10464, 10035, 10025]
       .filter( pageEntity => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get( pageEntity, 12506  ) )
@@ -367,7 +367,7 @@ let navBarView = (State) => d([
           ? d("") 
           : State.S.selectedPage === 11974
             ? d([
-                dropdown( State.S.selectedEntity, State.DB.get( State.S.selectedCompany, 10073  ).filter( event => Database.get(event, 12986) === State.S.selectedAccountingYear  ).map( e => returnObj({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEntity( Number( submitInputValue(e) ) )  ),
+                dropdown( State.S.selectedEntity, State.DB.get( State.S.selectedCompany, 10073  ).filter( event => Database.get(event, 12986) === State.S.selectedAccountingYear  ).map( e => returnObject({value: e, label: getEntityLabel( State.DB, e ) }) ), e => State.Actions.selectEntity( Number( submitInputValue(e) ) )  ),
                 prevNextEventView( State ),
               ], {style: gridColumnsStyle("5fr 1fr")}) 
             : entityLabelWithPopup( State, State.S.selectedEntity ),

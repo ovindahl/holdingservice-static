@@ -1,8 +1,8 @@
 
 const SourceDocumentsPage = {
     entity: 11474,
-    onLoad: State => returnObj({selectedEntity: undefined}),
-    Actions: State => returnObj({}),
+    onLoad: State => returnObject({selectedEntity: undefined}),
+    Actions: State => returnObject({}),
   }
 
 let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEntity ) ? singleSourceDocumentView( State ) : allSourceDocumentsView( State ) } catch (error) { return entityErrorView( State, error ) } }

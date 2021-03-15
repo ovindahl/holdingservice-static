@@ -1,8 +1,8 @@
 
 const EventPage = {
     entity: 11974,
-    onLoad: State => returnObj({selectedEntity: undefined}),
-    Actions: State => returnObj({})
+    onLoad: State => returnObject({selectedEntity: undefined}),
+    Actions: State => returnObject({})
   }
 
   
@@ -165,4 +165,4 @@ let allEventsView = State => d([
 
 
 
-let newTransaction = (event, originNode, destinationNode, amount, count) => returnObj({event, originNode, destinationNode, amount, count})
+let newTransaction = (event, originNode, destinationNode, amount, count) => returnObject({event, originNode, destinationNode, amount, count})

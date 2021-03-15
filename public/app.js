@@ -74,7 +74,7 @@ var A = {} //Consle access to Actions
 //COMPONENTS
 
 const DB = {
-  Actions: State => returnObj({})
+  Actions: State => returnObject({})
 } 
 
 
@@ -126,16 +126,19 @@ let updateView = State => {
   console.log(`generateHTMLBody finished in ${Date.now() - startTime} ms`)
 }
 
+
+var serverDB = {}
+
 let init = async () => {
 
   updateState( {}, {} )
 
-  let dbSnapshot = await sideEffects.APIRequest("GET", "systemEntities", null)
-  
+
+  let dbSnapshot = await sideEffects.APIRequest("GET", "serverDB", null)
+
   if( dbSnapshot.Entities.length > 0 ){
 
     let initialDatabase = constructDatabase( dbSnapshot )
-
     let userProfile = await sideEffects.auth0.getUser()
     let userEntity = initialDatabase.getAll( 5612 ).find( e => initialDatabase.get(e, 11501) === userProfile.name )
 
