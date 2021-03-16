@@ -61,29 +61,34 @@ const Transactor = {
 
         let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datomsWithStringAttributes ) )
         
-        let retractedEntities = serverResponse.filter( Entity => Entity.entity <= DB.getlatestActiveEntityID() )
-          .filter( Entity => Entity.isActive === false )
-          .map( updatedEntity => updatedEntity.entity )
+        let retractedEntities = serverResponse.filter( Entity => Entity.isActive === false ).map( updatedEntity => updatedEntity.entity )
         
-        let changedEntities = serverResponse.filter( Entity => Entity.entity <= DB.getlatestActiveEntityID() )
-          .filter( Entity => Entity.isActive === true )
-          .map( updatedEntity => updatedEntity.entity )
+        let changedEntities = serverResponse.filter( Entity => Entity.entity <= DB.getlatestActiveEntityID() ).filter( Entity => Entity.isActive === true ).map( updatedEntity => updatedEntity.entity )
 
         let newEntities = serverResponse.filter( Entity => Entity.entity > DB.getlatestActiveEntityID() ).map( updatedEntity => updatedEntity.entity )
-
-        log( `postTransaction received ${serverResponse.length} updated entities`, {serverResponse, retractedEntities, changedEntities, newEntities} )
 
         if( serverResponse.length !== (retractedEntities.length + changedEntities.length + newEntities.length) ){return log( null, {error: `length mismatch`, serverResponse, retractedEntities, changedEntities, newEntities} ) } 
 
         let Entities = DB.Entities
-          .filter( Entity => !retractedEntities.includes( Entity.entity ) )
+          .filter( Entity => Entity.isActive === true )
           .map( Entity => changedEntities.includes( Entity.entity ) 
             ? serverResponse.find( changedEntity => changedEntity.entity === Entity.entity )
             : Entity 
           )
           .concat( serverResponse.filter( newEntity => newEntities.includes( newEntity.entity )  ) )
 
-        let updatedDBsnapshot = mergerino( DB, {Entities} )
+        let entities = Entities.map( serverEntity => serverEntity.entity )
+
+        let attributes = Entities.filter( Entity => Entity.entityType === 42 ).map( Datom => Datom.entity ).filter( filterUniqueValues ).sort( ( a,b ) => a - b )
+
+        let attrNames = mergerino( {}, attributes.map( attribute => returnObject({ [ Entities.find( Entity => Entity.entity === attribute ).Datoms.filter( Datom => Datom.attribute === "attr/name" ).slice( -1 )[0].value ]: attribute })  ) )
+
+        let calculatedDatoms = []
+
+        let updatedDBsnapshot = mergerino( DB, {Entities, entities, attributes, attrNames, calculatedDatoms} )
+        
+        
+
         let updatedDB = constructDatabase( updatedDBsnapshot )
 
         return updatedDB
@@ -142,7 +147,10 @@ let constructDatabase = dbSnapshot => {
     }
 
     DB.getEntity = (entity, version) => DB.isEntity( entity )
-      ? DB.Entities.find( Entity => Entity.entity === entity )
+      ? mergerino( 
+        {label: DB.get( entity, 6 ) },  
+        {typeLabel: DB.get( DB.get( entity, "entity/entityType" ), 6) },  
+        DB.Entities.find( Entity => Entity.entity === entity ) ) 
       : undefined
   
 
@@ -194,14 +202,8 @@ let constructDatabase = dbSnapshot => {
 
 
 
-    DB.Entities = DB.Entities.filter( serverEntity => serverEntity.isActive === true )
-    DB.entities = DB.Entities.map( serverEntity => serverEntity.entity )
-    DB.calculatedDatoms = []
-    DB.attributes = DB.Entities
-      .filter( Entity => DB.isEntity( Entity.entity ) )
-      .filter( Entity => DB.getDatomValue( Entity.entity, "entity/entityType" ) === 42 )
-      .map( Datom => Datom.entity ).filter( filterUniqueValues ).sort( ( a,b ) => a - b )
-    DB.attrNames = mergerino( {}, DB.attributes.map( attribute => returnObject({[DB.getDatomValue( attribute, "attr/name" )]: attribute })  ) )
+    /* DB.Entities = DB.Entities.filter( serverEntity => serverEntity.isActive === true ) */
+    
 
     return DB
 }
@@ -218,3 +220,105 @@ let getReportFieldValue = ( DB, company, reportField, yearEndEvent ) => DB.get( 
 
 
 //New version:
+
+
+
+
+
+
+//Pure DB functions
+
+
+let addDatomsToDBSnapshot = (DB, newDatoms) => {
+
+
+  let datomEntities = newDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues )
+
+  let updatedEntities = DB.Entities
+      .map( Entity => datomEntities.includes( Entity.entity )
+          ? constructEntity( Entity.Datoms.concat( newDatoms.filter( Datom => Datom.entity === Entity.entity ) ), Entity.entity  )
+          : Entity )
+
+  let newEntities = datomEntities.filter( entity => entity > DB.latestEntityID  ).map( entity => constructEntity( newDatoms.filter( Datom => Datom.entity === entity ), entity  ) )
+
+  let Entities = updatedEntities.concat( newEntities ).filter( Entity => Entity.isActive === true )
+      
+  let computedTx = newDatoms.slice( -1 )[ 0 ].tx
+
+  let tx = computedTx > DB.tx ? computedTx : DB.tx
+
+  let newDatoms_latestEntityID = datomEntities.reduce( (max, element) => Math.max(max, element), 0 );
+
+  let latestEntityID = newDatoms_latestEntityID > DB.latestEntityID ? newDatoms_latestEntityID : DB.latestEntityID
+  
+  let updatedDBSnapshot = { Entities, tx, latestEntityID, created: Date.now(), label: "Snapshot av alle datomer per valgt tx." }
+  updatedDBSnapshot.entities = Entities.map( Entity => Entity.entity )
+  updatedDBSnapshot.attributes = updatedDBSnapshot.Entities.filter( Entity => Entity.entityType === 42 ).map( Datom => Datom.entity ).filter( filterUniqueValues ).sort( ( a,b ) => a - b )
+  updatedDBSnapshot.attrNames = mergerino( {}, updatedDBSnapshot.attributes.map( attribute => returnObject({[getDatomValue( updatedDBSnapshot, attribute, "attr/name" )]: attribute })  ) )
+  updatedDBSnapshot.calculatedDatoms = []
+  
+  return updatedDBSnapshot
+
+}
+
+
+let isEntity = (dbSnapshot, entity) => isDefined( dbSnapshot.Entities.find( Entity => Entity.entity === entity ) )
+
+let isActiveEntity = (dbSnapshot, entity, version) => isEntity( dbSnapshot, entity )
+        ? dbSnapshot.Entities.find( Entity => Entity.entity === entity ).isActive
+        : false
+
+let getEntityDatoms = (dbSnapshot, entity, version) => isActiveEntity( dbSnapshot, entity, version )
+  ? dbSnapshot.Entities.find( Entity => Entity.entity === entity ).Datoms.filter( Datom => isDefined(version) ? Datom.tx <= version : true )
+  : undefined
+
+let getEntityAttributeDatoms = (dbSnapshot, entity, attrName, version) => getEntityDatoms( dbSnapshot, entity, version ).filter( Datom => Datom.attribute === attrName )
+
+let getDatom = (dbSnapshot, entity, attrName, version) => getEntityAttributeDatoms( dbSnapshot, entity, attrName, version ).slice(-1)[0]
+
+let getDatomValue = (dbSnapshot, entity, attrName, version) => {
+  let Datom = getDatom( dbSnapshot, entity, attrName, version )
+  if( isUndefined(Datom) || Datom.isAddition === false ){ return undefined }
+  else{ return Datom.value }
+}
+
+let getEntity = (dbSnapshot, entity, version) => isActiveEntity( dbSnapshot, entity, version ) ? dbSnapshot.Entities.find( Entity => Entity.entity === entity ) : undefined
+
+let isAttribute = (dbSnapshot, attribute) => dbSnapshot.attributes.includes( attribute )
+let isEntityCalculatedField = (dbSnapshot, calculatedField, version) => getAllFromDB(dbSnapshot, 9815 ).includes( calculatedField )
+let isGlobalCalculatedField = (dbSnapshot, calculatedField, version) => getAllFromDB(dbSnapshot, 12551 ).includes( calculatedField )
+
+
+let isAttrName = (dbSnapshot, attrName, version) => isNumber( dbSnapshot.attrNames[ attrName ] )
+
+let attrName = (dbSnapshot, attribute, version) => isAttribute( dbSnapshot, attribute, version )
+      ? getDatomValue( dbSnapshot, attribute, "attr/name", version )
+      : isAttrName( dbSnapshot, attribute )
+          ? attribute
+          : undefined
+  
+let attr = (dbSnapshot, attrName, version) => isAttrName( dbSnapshot, attrName ) 
+      ? dbSnapshot.attrNames[ attrName ]
+      : isAttribute( dbSnapshot, attrName, version ) 
+          ? attrName 
+          : undefined
+
+let getAllFromDB = ( dbSnapshot, entityType ) => dbSnapshot.Entities.filter( Entity => Entity.entityType === entityType )
+
+let getEntityType = ( dbSnapshot, entity, version) => getDatomValue( dbSnapshot, entity, "entity/entityType", version )
+
+let getFromDB = ( dbSnapshot, entity, attribute, version) => {
+  if( isNull(entity) && isGlobalCalculatedField( dbSnapshot, attribute, version ) ){ return "TBD" }
+  else if( isEntity( dbSnapshot, entity ) ){
+      if( isUndefined( attribute ) ){ return getEntity( dbSnapshot, entity, version) }
+      else { 
+          if( isAttribute(  dbSnapshot, attr( dbSnapshot, attribute ) ) ){ return getDatomValue( dbSnapshot, entity, attrName( dbSnapshot, attribute, version ) , version ) }
+          else if ( isEntityCalculatedField( dbSnapshot, attribute ) ){ 
+              if( getEntityType( dbSnapshot, entity, version ) === getDatomValue( dbSnapshot, attribute, "calculatedField/entityType", version ) ) { return "TBD" }
+              else{ return log(undefined, `DB.getEntityCalculatedValue ERROR: ${entity} does not have the type required by ${attribute}.`) }
+          }
+      }
+      }else{ return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`) }
+
+}
+
