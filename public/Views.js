@@ -19,7 +19,7 @@ const ClientApp = {
     selectCompany: company => updateState( State, { S: {selectedCompany: company, selectedEntity: undefined, selectedFilters: [] } } ),
     postDatoms: async newDatoms => {
 
-      let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
+      let updatedDB = await Transactor.postTransaction( State.DB, newDatoms)
 
       if( updatedDB !== null ){ updateState( State, {DB: updatedDB } ) }else{ log({ERROR: updatedDB}) }
 
@@ -111,7 +111,7 @@ const ClientApp = {
     createAndSelectEntity: async newDatoms => {
 
       if( newDatoms.every( Datom => Datom.entity === newDatoms[0].entity ) ){
-        let updatedDB = await Transactor.postDatoms( State.DB, newDatoms)
+        let updatedDB = await Transactor.postTransaction( State.DB, newDatoms)
         let newEntity = updatedDB.Entities.slice( -1 )[0].entity
         updateState( State, {DB: updatedDB, S: { selectedEntity: newEntity, selectedPage: updatedDB.get( updatedDB.get(newEntity, 19), 7930) } } )
       }else{ log({ERROR: "createAndSelectEntity: Received datoms refer to > 1 entity"}) }

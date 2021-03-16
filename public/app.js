@@ -139,8 +139,13 @@ let init = async () => {
   if( dbSnapshot.Entities.length > 0 ){
 
     let initialDatabase = constructDatabase( dbSnapshot )
+
+    D = initialDatabase
+
     let userProfile = await sideEffects.auth0.getUser()
     let userEntity = initialDatabase.getAll( 5612 ).find( e => initialDatabase.get(e, 11501) === userProfile.name )
+
+    log({userEntity})
 
     let initialCompany = initialDatabase.get(userEntity, "user/companies")[0]
 

@@ -184,7 +184,7 @@ let entityAttributeErrorView = (State, entity, attribute, error ) => d([
 
 let entityVersionLabel = (State, entity, attribute) => d([
   d([
-    d( "v" + State.DB.getEntityAttribute(entity, attribute).Datoms.length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
+    d( "v" + State.DB.getEntityAttributeDatoms(entity, State.DB.attrName( attribute )  ).length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
     entityVersionPopup( State, entity, attribute )
   ], {class: "popupContainer"})
   ], {style:"display: inline-flex;"} )
