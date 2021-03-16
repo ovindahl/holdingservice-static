@@ -200,9 +200,6 @@ let constructDatabase = dbSnapshot => {
       else{ return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`) }
     }
 
-
-
-    /* DB.Entities = DB.Entities.filter( serverEntity => serverEntity.isActive === true ) */
     
 
     return DB
@@ -219,14 +216,8 @@ let getReportFieldValue = ( DB, company, reportField, yearEndEvent ) => DB.get( 
     : null
 
 
-//New version:
 
-
-
-
-
-
-//Pure DB functions
+//Pure DB functions ( TBD )
 
 
 let addDatomsToDBSnapshot = (DB, newDatoms) => {
