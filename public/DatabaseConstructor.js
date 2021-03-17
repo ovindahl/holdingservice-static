@@ -55,8 +55,15 @@ let validateDatomValue = (dbSnapshot, Datom) => getDatomValue( dbSnapshot, attr(
   ? Datom.value.every( arrayEntry => attributeValidatorFunction( dbSnapshot, attr( dbSnapshot, Datom.attribute ) )( arrayEntry ) === true )
   : attributeValidatorFunction( dbSnapshot, attr( dbSnapshot, Datom.attribute ) )( Datom.value ) === true
 
+/* let validateDatom = (dbSnapshot, Datom) => [
+  (dbSnapshot, Datom) => validateDatomFormat( Datom ),
+  (dbSnapshot, Datom) => Datom.isAddition === true || (Datom.isAddition === false && isEntity( dbSnapshot, Datom.entity ) ),
+  (dbSnapshot, Datom) => validateDatomValue( dbSnapshot, Datom ),
+].every( criterium => criterium( dbSnapshot, Datom )  === true ) */
+
 let validateDatom = (dbSnapshot, Datom) => [
   (dbSnapshot, Datom) => validateDatomFormat( Datom ),
+  (dbSnapshot, Datom) => isString( Datom.entity ) || Datom.entity <= dbSnapshot.latestEntityID,
   (dbSnapshot, Datom) => Datom.isAddition === true || (Datom.isAddition === false && isEntity( dbSnapshot, Datom.entity ) ),
   (dbSnapshot, Datom) => validateDatomValue( dbSnapshot, Datom ),
 ].every( criterium => criterium( dbSnapshot, Datom )  === true )
