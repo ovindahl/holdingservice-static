@@ -237,23 +237,23 @@ let htmlStringView = ( State, entity, attribute, isLocked ) => d( State.DB.get( 
 
 let textInputView = ( State, entity, attribute, isLocked ) => isLocked === true
   ? d( String( State.DB.get( entity, attribute ) ) )
-  : textInput( isString( State.DB.get( entity, attribute ) ) ? State.DB.get( entity, attribute ) : ""  , isDefined( State.DB.get( entity, attribute ) ) ? "" : "border: 1px solid red;", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ) )} ) )
+  : textInput( isString( State.DB.get( entity, attribute ) ) ? State.DB.get( entity, attribute ) : ""  , isDefined( State.DB.get( entity, attribute ) ) ? "" : "border: 1px solid red;", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), submitInputValue( e ) )} ) )
 
 let dateInputView = ( State, entity, attribute, isLocked ) => isLocked === true
   ? d( moment( State.DB.get( entity, attribute ) ).format('DD/MM/YYYY') , {style: `text-align: right;`}  )
-  : dateInput( State.DB.get( entity, attribute ), async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( moment( submitInputValue( e ) , 'DD/MM/YYYY').format('x') ) )} ) )
+  : dateInput( State.DB.get( entity, attribute ), async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), Number( moment( submitInputValue( e ) , 'DD/MM/YYYY').format('x') ) )} ) )
 
 let numberInputView = ( State, entity, attribute, isLocked ) => isLocked === true
   ? d( formatNumber( State.DB.get( entity, attribute ), 2 ) , {style: `text-align: right;`}  )
-  : numberInput( State.DB.get( entity, attribute ), async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number(submitInputValue( e ).replaceAll(' ', '').replaceAll(',', '.')  )  )} )   )
+  : numberInput( State.DB.get( entity, attribute ), async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), Number(submitInputValue( e ).replaceAll(' ', '').replaceAll(',', '.')  )  )} )   )
 
 let textAreaViewView = ( State, entity, attribute, isLocked ) => isLocked === true
   ? d( String( State.DB.get( entity, attribute ) ) )
-  : textArea( isString(State.DB.get( entity, attribute )) ? State.DB.get( entity, attribute ) : JSON.stringify(State.DB.get( entity, attribute )) , {class:"textArea_code"}, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, submitInputValue( e ).replaceAll(`"`, `'` ) ) } ) )
+  : textArea( isString(State.DB.get( entity, attribute )) ? State.DB.get( entity, attribute ) : JSON.stringify(State.DB.get( entity, attribute )) , {class:"textArea_code"}, async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), submitInputValue( e ).replaceAll(`"`, `'` ) ) } ) )
 
 let boolView = ( State, entity, attribute, isLocked ) => isLocked === true
   ? input( mergerino( {type: "checkbox", disabled: "disabled"}, State.DB.get(entity, attribute) === true ? {checked: "checked"} : {} ))
-  : checkBox( State.DB.get( entity, attribute ) === true, async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ) === true ? false : true )} )   )
+  : checkBox( State.DB.get( entity, attribute ) === true, async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), State.DB.get( entity, attribute ) === true ? false : true )} )   )
  
 let selectStaticOptionView = ( State, entity, attribute, isLocked )  => {
 
@@ -270,7 +270,7 @@ let selectStaticOptionView = ( State, entity, attribute, isLocked )  => {
       ? optionObjects
       : [{value: 0, label:"Velg alternativ"}].concat( optionObjects ), 
     async e => optionObjects.map( optionObject => optionObject.value ).includes( Number( e.srcElement.value )  ) 
-      ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) 
+      ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), Number( submitInputValue( e ) ) )} ) 
       : log({ERROR: "Selected option not is list of allowed options"}) 
     )
 } 
@@ -294,7 +294,7 @@ let selectEntityView = ( State, entity, attribute, isLocked ) => {
         {value: "", list: datalistID, style: `text-align: right;max-width: 50px;`}
         , "change", 
         async e => optionObjects.map( opt => opt.value ).includes( Number( e.srcElement.value ) ) 
-          ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( e.srcElement.value ) )} ) 
+          ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), Number( e.srcElement.value ) )} ) 
           : null 
         ) 
       : d("Ingen tilgjengelige alternativer"),
@@ -311,14 +311,14 @@ let selectEntityWithDropdownView = ( State, entity, attribute, isLocked ) => {
   return isDefined( State.DB.get( State.DB.get( entity, attribute ) ) )
     ? d([
       entityLabelWithPopup( State, State.DB.get( entity, attribute ) ),
-      submitButton("X", async () => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get( entity, attribute ), false ) } ) )
+      submitButton("X", async () => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), State.DB.get( entity, attribute ), false ) } ) )
     ], {style: gridColumnsStyle("5fr 1fr") })
     : d([
       dropdown( 
         State.DB.get( entity, attribute ) , 
         optionObjects,
         async e => optionObjects.map( optionObject => optionObject.value ).includes( Number( e.srcElement.value )  ) 
-          ? updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, Number( submitInputValue( e ) ) )} ) 
+          ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), Number( submitInputValue( e ) ) )} ) 
           : log({ERROR: "Selected option not is list of allowed options"}) 
         )
     ], {style: "border: 1px solid red;"} ) 
@@ -329,7 +329,7 @@ let sourceDocumentFileuploadView = ( State, entity, attribute, isLocked ) => isL
   : isDefined(State.DB.get(entity, attribute)) && State.DB.get(entity, attribute) !== ""
     ? d([
         d( `<a href="${State.DB.get(entity, attribute)}" target="_blank"> Last ned fil </a> `),
-        submitButton( "Slett", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, "" )} ) )
+        submitButton( "Slett", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), "" )} ) )
     ]) 
     : input({type: "file", name:"upload-test"}, "change", async e => {
       let file = e.srcElement.files[0]
@@ -341,7 +341,7 @@ let sourceDocumentFileuploadView = ( State, entity, attribute, isLocked ) => isL
       let response = await fetch(APIendpoint, {method: "POST", headers, body: formData })
       let parsedResponse = await response.json()
       console.log(`Uploaded file. Adding link to entity..`, {parsedResponse})
-      updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, parsedResponse.url )} )
+      updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), parsedResponse.url )} )
     })
 
 let CSVuploadView = ( State, entity, attribute, isLocked ) => isLocked === true
@@ -351,9 +351,9 @@ let CSVuploadView = ( State, entity, attribute, isLocked ) => isLocked === true
   : isArray( State.DB.get( entity, attribute ) )
     ? d([
         d(`📄 CSV-fil med ${ State.DB.get( entity, 12627 ) } transaksjoner.`),
-        submitButton( "X", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, State.DB.get( entity, attribute ), false )} )  )
+        submitButton( "X", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), State.DB.get( entity, attribute ), false )} )  )
       ], {style: gridColumnsStyle("5fr 1fr")}) 
-    : input({type: "file", style: `text-align: right;`}, "change",  async e => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, results.data )} ) })  )
+    : input({type: "file", style: `text-align: right;`}, "change",  async e => Papa.parse( e.srcElement.files[0], {header: false, complete: async results => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), results.data )} ) })  )
 
 
 //Multiple valueType views
@@ -396,12 +396,12 @@ let multipleValuesView = (State, entity, attribute, isLocked) => {
       ?  d( State.DB.get(entity, attribute).map( (Value, index) => d([
             positionInArrayView(State, entity, attribute, index),
             valueTypeViews[ valueType ](State, entity, attribute, index),
-            submitButton( "[ X ]", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).filter( (Value, i) => i !== index  )  )} ) )
+            submitButton( "[ X ]", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), State.DB.get(entity, attribute).filter( (Value, i) => i !== index  )  )} ) )
           ], {style: gridColumnsStyle("1fr 8fr 1fr") + "margin: 5px;"} )) )
       : d("Ingen verdier"),
       submitButton( "[ + ]", async e => isArray( State.DB.get( entity, attribute) ) 
-        ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get(entity, attribute).concat(startValue)  )} )
-        : updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, [startValue]  )} )
+        ? updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), State.DB.get(entity, attribute).concat(startValue)  )} )
+        : updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), [startValue]  )} )
       )
 
   ])
@@ -423,7 +423,7 @@ let moveUpButton = (State, entity, attribute, index) => index > 0 ? submitButton
   let newArray = stillBefore.concat( movedUp ).concat( movedDown ).concat( stillAfter )
 
 
-  updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, newArray  )} )
+  updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), newArray  )} )
 
 }   ) : d("")
 
@@ -434,7 +434,7 @@ let moveDownButton = (State, entity, attribute, index) => index < State.DB.get(e
   let movedDown = Values[index]
   let stillAfter = Values.filter( (Value, i) => i > index +1 )
   let newArray = stillBefore.concat( movedUp ).concat( movedDown ).concat( stillAfter )
-  updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, newArray  )} )
+  updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), newArray  )} )
 }   ) : d("")
 
 
@@ -482,7 +482,7 @@ let refsView = (State, entity, attribute, index) => {
   let datalistID = getNewElementID()
   return d([
     htmlElementObject("datalist", {id:datalistID}, optionsElement( optionObjects ) ),
-    input({value: storedValue, list: datalistID, style: `text-align: right;`}, "change", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, storedValues.slice(0, index ).concat( Number( submitInputValue( e ) ) ).concat( storedValues.slice(index + 1, storedValues.length ) ) ) }  ) ),
+    input({value: storedValue, list: datalistID, style: `text-align: right;`}, "change", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), storedValues.slice(0, index ).concat( Number( submitInputValue( e ) ) ).concat( storedValues.slice(index + 1, storedValues.length ) ) ) }  ) ),
     entityLabelWithPopup( State,  storedValue ), 
     ])
 

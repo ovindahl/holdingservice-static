@@ -4,6 +4,43 @@ let newDatom = (entity, attribute, value, isAddition) => validateDatomFormat( re
   ? returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true }) 
   : log(null, {ERROR: "invalid datom format:", entity, attribute, value, isAddition})
 
+const Transactor = {
+    postTransaction: async (dbSnapshot, Datoms) => {
+
+      let preparedDatoms = Datoms
+
+      if( Datoms.some( Datom => isNumber(Datom.attribute) ) ){ log({ERROR: "Attribute is number:", Datom, Datoms}) }
+
+      let isValid = preparedDatoms.length > 0 && preparedDatoms.every( Datom => validateDatom( dbSnapshot, Datom ) === true )
+
+      let isAuthorized = true
+
+      if( isValid && isAuthorized ){ 
+
+        let storedDatoms = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( preparedDatoms ) )
+        let updatedDBsnapshot =  addDatomsToDBSnapshot( dbSnapshot, storedDatoms )
+        let updatedDB =  constructDatabase( updatedDBsnapshot )
+
+        if( storedDatoms.length !== preparedDatoms.length ){return log( null, {error: `length mismatch`, preparedDatoms, storedDatoms, dbSnapshot, updatedDB} ) }
+
+        return updatedDB
+         
+        }
+      else{
+        console.log("Transactor.postTransaction did not pass validation.", {isValid, isAuthorized, Datoms, preparedDatoms})
+        return dbSnapshot;
+      }
+    },
+    createEntity: async (dbSnapshot, entityType, newEntityDatoms) => Transactor.postTransaction(dbSnapshot, [newDatom("newEntity", "entity/entityType", entityType )].concat( Array.isArray(newEntityDatoms)  ? newEntityDatoms : [] ) ),
+    updateEntity: async (dbSnapshot, entity, attrName, value, isAddition) => Transactor.postTransaction(dbSnapshot, [newDatom(entity, attrName, value, isAddition)]),
+    addValueEntry: async (dbSnapshot, entity, attrName, newValue) => await Transactor.updateEntity( dbSnapshot, entity, attrName, getDatomValue( dbSnapshot, entity, attrName).concat( newValue ) ),
+    removeValueEntry: async (dbSnapshot, entity, attrName, index) => await Transactor.updateEntity( dbSnapshot, entity, attrName, getDatomValue( dbSnapshot, entity, attrName).filter( (Value, i) => i !== index  ) ),
+    replaceValueEntry: async (dbSnapshot, entity, attrName, index, newValue) => {
+      let Values = getDatomValue( dbSnapshot, entity, attrName)
+      return await Transactor.updateEntity( dbSnapshot, entity, attrName, Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
+    },
+    retractEntities: async (dbSnapshot, entities) => Transactor.postTransaction( dbSnapshot, getEntitiesRetractionDatoms( dbSnapshot, entities ) ),
+}
 
 let validateDatomFormat = Datom => [
   Datom => Object.keys( Datom ).length === 4,
@@ -12,71 +49,25 @@ let validateDatomFormat = Datom => [
   Datom => isDefined( Datom.value ),
 ].every( criterium => criterium( Datom )  === true )
 
-let attributeValidatorFunction = (DB, attribute) => new Function("inputValue",  DB.get( DB.get( attribute , "attribute/valueType"), "valueType/validatorFunctionString") )
+let attributeValidatorFunction = (dbSnapshot, attribute) => new Function("inputValue",  getDatomValue( dbSnapshot, getDatomValue( dbSnapshot, attribute , "attribute/valueType"), "valueType/validatorFunctionString") )
 
-let validateDatomValue = (DB, Datom) => DB.get( attr( DB, Datom.attribute ), "attribute/isArray" )
-  ? Datom.value.every( arrayEntry => attributeValidatorFunction( DB, attr( DB, Datom.attribute ) )( arrayEntry ) === true )
-  : attributeValidatorFunction( DB, attr( DB, Datom.attribute ) )( Datom.value ) === true
+let validateDatomValue = (dbSnapshot, Datom) => getDatomValue( dbSnapshot, attr( dbSnapshot, Datom.attribute ), "attribute/isArray" )
+  ? Datom.value.every( arrayEntry => attributeValidatorFunction( dbSnapshot, attr( dbSnapshot, Datom.attribute ) )( arrayEntry ) === true )
+  : attributeValidatorFunction( dbSnapshot, attr( dbSnapshot, Datom.attribute ) )( Datom.value ) === true
 
-let validateDatom = (DB, Datom) => [
-  (DB, Datom) => validateDatomFormat( Datom ),
-  (DB, Datom) => Datom.isAddition === true || (Datom.isAddition === false && isEntity( DB, Datom.entity ) ),
-  (DB, Datom) => validateDatomValue( DB, Datom ),
-].every( criterium => criterium( DB, Datom )  === true )
+let validateDatom = (dbSnapshot, Datom) => [
+  (dbSnapshot, Datom) => validateDatomFormat( Datom ),
+  (dbSnapshot, Datom) => Datom.isAddition === true || (Datom.isAddition === false && isEntity( dbSnapshot, Datom.entity ) ),
+  (dbSnapshot, Datom) => validateDatomValue( dbSnapshot, Datom ),
+].every( criterium => criterium( dbSnapshot, Datom )  === true )
 
 
-let getEntityRetractionDatoms = (DB, entity) => DB.get(entity).Datoms
+let getEntityRetractionDatoms = (dbSnapshot, entity) => getEntityDatoms( dbSnapshot, entity)
   .map( Datom => Datom.attribute ).filter( filterUniqueValues )
-  .filter( attribute => DB.get(entity).Datoms.filter( Datom => Datom.attribute === attribute ).slice( -1 )[0].isAddition )
-  .map( attribute => newDatom(entity, attribute, DB.get(entity, attribute), false ) )
+  .filter( attribute => getEntityDatoms( dbSnapshot, entity).filter( Datom => Datom.attribute === attribute ).slice( -1 )[0].isAddition )
+  .map( attribute => newDatom(entity, attribute, getDatomValue( dbSnapshot, entity, attribute), false ) )
 
-let getEntitiesRetractionDatoms = (DB, entities) => entities.map( entity => getEntityRetractionDatoms( DB, entity ) ).flat()
-
-const Transactor = {
-    postTransaction: async (DB, Datoms) => {
-
-      //let preparedDatoms = Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, attrName( DB, Datom.attribute ), Datom.value, Datom.isAddition ) : Datom )
-      let preparedDatoms = Datoms
-
-      if( Datoms.some( Datom => isNumber(Datom.attribute) ) ){ log({ERROR: "Attribute is number:", Datom, Datoms}) }
-
-      let isValid = preparedDatoms.length > 0 && preparedDatoms.every( Datom => validateDatom( DB, Datom ) === true )
-
-      let isAuthorized = true
-
-      if( isValid && isAuthorized ){ 
-
-        let storedDatoms = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( preparedDatoms ) )
-        let updatedDBsnapshot =  addDatomsToDBSnapshot( DB, storedDatoms )
-        let updatedDB =  constructDatabase( updatedDBsnapshot )
-
-        if( storedDatoms.length !== preparedDatoms.length ){return log( null, {error: `length mismatch`, preparedDatoms, storedDatoms, DB, updatedDB} ) }
-
-        return updatedDB
-         
-        }
-      else{
-        console.log("DB.postTransaction did not pass validation.", {isValid, isAuthorized, Datoms, preparedDatoms})
-        return DB;
-      }
-    },
-    createEntity: async (DB, entityType, newEntityDatoms) => Transactor.postTransaction(DB, [newDatom("newEntity", "entity/entityType", entityType )].concat( Array.isArray(newEntityDatoms)  ? newEntityDatoms : [] ) ),
-    updateEntity: async (DB, entity, attrName, value, isAddition) => Transactor.postTransaction(DB, [newDatom(entity, attrName, value, isAddition)]),
-    addValueEntry: async (DB, entity, attrName, newValue) => await Transactor.updateEntity( DB, entity, attrName, DB.get(entity, attribute).concat( newValue ) ),
-    removeValueEntry: async (DB, entity, attrName, index) => await Transactor.updateEntity( DB, entity, attrName, DB.get(entity, attribute).filter( (Value, i) => i !== index  ) ),
-    replaceValueEntry: async (DB, entity, attrName, index, newValue) => {
-      let Values = DB.get(entity, attrName)
-      return await Transactor.updateEntity( DB, entity, attrName, Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
-    },
-    retractEntities: async (DB, entities) => Transactor.postTransaction( DB, getEntitiesRetractionDatoms( DB, entities ) ),
-}
-
-let getReportFieldValue = ( DB, company, reportField, yearEndEvent ) => DB.get( reportField, 8361 ) === 8662
-  ? tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, mergerino( DB.get(company), {t: State.DB.get(yearEndEvent, 10502) }), DB.get(yearEndEvent) ) )
-  : DB.get( reportField, 8361 ) === 5030
-    ? DB.get(company, 12392)( DB.get(reportField, 13150), State.DB.get(yearEndEvent, 11975) - 1 )
-    : null
-
+let getEntitiesRetractionDatoms = (dbSnapshot, entities) => entities.map( entity => getEntityRetractionDatoms( dbSnapshot, entity ) ).flat()
 
 let constructEntity = ( Datoms, entity )  => {
 
@@ -103,26 +94,26 @@ let constructEntity = ( Datoms, entity )  => {
 
 }
 
-let addDatomsToDBSnapshot = (DB, newDatoms) => {
+let addDatomsToDBSnapshot = (dbSnapshot, newDatoms) => {
 
     let datomEntities = newDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues )
 
-    let updatedEntities = DB.Entities
+    let updatedEntities = dbSnapshot.Entities
         .map( Entity => datomEntities.includes( Entity.entity )
             ? constructEntity( Entity.Datoms.concat( newDatoms.filter( Datom => Datom.entity === Entity.entity ) ), Entity.entity  )
             : Entity )
 
-    let newEntities = datomEntities.filter( entity => entity > DB.latestEntityID  ).map( entity => constructEntity( newDatoms.filter( Datom => Datom.entity === entity ), entity  ) )
+    let newEntities = datomEntities.filter( entity => entity > dbSnapshot.latestEntityID  ).map( entity => constructEntity( newDatoms.filter( Datom => Datom.entity === entity ), entity  ) )
 
     let Entities = updatedEntities.concat( newEntities ).filter( Entity => Entity.isActive === true )
         
     let computedTx = newDatoms.slice( -1 )[ 0 ].tx
 
-    let tx = computedTx > DB.tx ? computedTx : DB.tx
+    let tx = computedTx > dbSnapshot.tx ? computedTx : dbSnapshot.tx
 
     let newDatoms_latestEntityID = datomEntities.reduce( (max, element) => Math.max(max, element), 0 );
 
-    let latestEntityID = newDatoms_latestEntityID > DB.latestEntityID ? newDatoms_latestEntityID : DB.latestEntityID
+    let latestEntityID = newDatoms_latestEntityID > dbSnapshot.latestEntityID ? newDatoms_latestEntityID : dbSnapshot.latestEntityID
     
     let updatedDBSnapshot = { Entities, tx, latestEntityID, created: Date.now(), label: "Snapshot av alle datomer per valgt tx." }
 
@@ -136,6 +127,21 @@ let addDatomsToDBSnapshot = (DB, newDatoms) => {
 }
 
 //Query
+
+
+//TBD...
+let calculateGlobalCalculatedValue = ( DB, calculatedField ) => tryFunction( () => new Function( [`Database`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB ) )
+let calculateEntityCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
+
+
+let getReportFieldValue = ( DB, company, reportField, yearEndEvent ) => DB.get( reportField, 8361 ) === 8662
+  ? tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, mergerino( DB.get(company), {t: State.DB.get(yearEndEvent, 10502) }), DB.get(yearEndEvent) ) )
+  : DB.get( reportField, 8361 ) === 5030
+    ? DB.get(company, 12392)( DB.get(reportField, 13150), State.DB.get(yearEndEvent, 11975) - 1 )
+    : null
+
+//TBD...
+
 
 let constructDatabase = dbSnapshot => {
 
@@ -218,9 +224,6 @@ let getEntity = (dbSnapshot, entity, version) => isActiveEntity( dbSnapshot, ent
 let isAttribute = (dbSnapshot, attribute) => dbSnapshot.attributes.includes( attribute )
 let isEntityCalculatedField = (dbSnapshot, calculatedField, version) => getDatomValue( dbSnapshot, calculatedField, "entity/entityType" ) === 9815 
 let isGlobalCalculatedField = (dbSnapshot, calculatedField, version) => getDatomValue( dbSnapshot, calculatedField, "entity/entityType" ) === 12551 
-
-let calculateGlobalCalculatedValue = ( DB, calculatedField ) => tryFunction( () => new Function( [`Database`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB ) )
-let calculateEntityCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
 
 let isAttrName = (dbSnapshot, attrName, version) => isNumber( dbSnapshot.attrNames[ attrName ] )
 
