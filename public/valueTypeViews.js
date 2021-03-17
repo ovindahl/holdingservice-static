@@ -184,28 +184,23 @@ let entityAttributeErrorView = (State, entity, attribute, error ) => d([
 
 let entityVersionLabel = (State, entity, attribute) => d([
   d([
-    d( "v" + State.DB.getEntityAttributeDatoms(entity, State.DB.attrName( attribute )  ).length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
+    d( "v" + State.DB.get( entity ).Datoms.filter( Datom => Datom.attribute === attrName( State.DB, attribute) ).length, {style: "padding: 3px;background-color: #46b3fb;color: white;margin: 5px;"} ),
     entityVersionPopup( State, entity, attribute )
   ], {class: "popupContainer"})
   ], {style:"display: inline-flex;"} )
 
-let entityVersionPopup = (State, entity, attribute) => {
-
-  let EntityDatoms = State.DB.getEntity( entity ).Datoms.filter( Datom => Datom.attribute === State.DB.attrName(attribute) )
-
-  return d([
-    d([
-      d( "Endret"),
-      d("Tidligere verdi")
-    ], {style: gridColumnsStyle("2fr 2fr 1fr")}),
-      d( EntityDatoms.reverse().slice(1, 5).map( Datom => d([
-        d( moment(Datom.tx).format("YYYY-MM-DD") ),
-        d(JSON.stringify(Datom.value)),
-        submitButton( "Gjenopprett", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, Datom.attribute, Datom.value )} )
-        )
-      ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) )
-    ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-}
+let entityVersionPopup = (State, entity, attribute) => d([
+  d([
+    d( "Endret" ),
+    d( "Tidligere verdi" )
+  ], {style: gridColumnsStyle("2fr 2fr 1fr")}),
+    d( State.DB.get( entity ).Datoms.filter( Datom => Datom.attribute === attrName( State.DB, attribute) ).reverse().slice(1, 5).map( Datom => d([
+      d( moment(Datom.tx).format("YYYY-MM-DD") ),
+      d( JSON.stringify( Datom.value ) ),
+      submitButton( "Gjenopprett", async e => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, Datom.attribute, Datom.value )} )
+      )
+    ], {style: gridColumnsStyle("2fr 2fr 1fr")})   ) )
+  ], {class: "entityInspectorPopup", style: "width: 400px;padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
 
 //Html elements
 
@@ -313,7 +308,7 @@ let selectEntityWithDropdownView = ( State, entity, attribute, isLocked ) => {
   let options = State.DB.get( State.DB.get( State.DB.get( attribute, 12833 ), 19 ) === 9815 ? entity : null, State.DB.get( attribute, 12833 ) )
   let optionObjects = [{value: 0, label:"Velg alternativ"}].concat( options.map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity ) })  ) )
 
-  return State.DB.isEntity( State.DB.get( entity, attribute ) ) 
+  return isDefined( State.DB.get( State.DB.get( entity, attribute ) ) )
     ? d([
       entityLabelWithPopup( State, State.DB.get( entity, attribute ) ),
       submitButton("X", async () => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attribute, State.DB.get( entity, attribute ), false ) } ) )

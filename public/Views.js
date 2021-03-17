@@ -15,7 +15,7 @@ const ClientApp = {
     addFilter: newFilter => updateState( State, {S: {selectedFilters: State.S.selectedFilters.concat( newFilter ) } }),
     removeFilter: removedFilter => updateState( State, {S: {selectedFilters: State.S.selectedFilters.filter( f => f !== removedFilter ) } }),
     removeFilters: () => updateState( State, {S: {selectedFilters: [] } } ),
-    retractEntity: async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: undefined } } ),
+    retractEntity: async entity => updateState( State, { DB: await Transactor.retractEntities(State.DB, [entity]), S: {selectedEntity: undefined } } ),
     selectCompany: company => updateState( State, { S: {selectedCompany: company, selectedEntity: undefined, selectedFilters: [] } } ),
     postDatoms: async newDatoms => {
 
@@ -29,19 +29,19 @@ const ClientApp = {
       let basicDatoms = [
         newDatom( 'newEntity', 'entity/entityType', 10062 ),
         newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-        newDatom( 'newEntity', 10070, eventType ),
+        newDatom( 'newEntity', attrName( State.DB, 10070 ), eventType ),
         newDatom( 'newEntity' , 'event/accountingYear', State.S.selectedAccountingYear ), 
         newDatom( 'newEntity' , 'entity/label', State.DB.get( eventType, 6 ) ), 
-        newDatom( 'newEntity' , 1139, "" )
+        newDatom( 'newEntity' , attrName( State.DB, 1139 ), "" )
       ]
 
       let sourceEntityDatoms = isDefined(sourceEntity) ? [
-        newDatom( 'newEntity', 1757, isDefined( State.DB.get( sourceEntity, 1757 )  ) 
+        newDatom( 'newEntity', attrName( State.DB, 1757 ), isDefined( State.DB.get( sourceEntity, 1757 )  ) 
           ? State.DB.get( sourceEntity, 1757 ) 
           :  State.DB.get( State.S.selectedAccountingYear, "accountingYear/lastDate" ) 
           ),
         State.DB.get( eventType, 7942 ).includes( 1083 )
-          ? newDatom( 'newEntity' , 1083, isDefined( State.DB.get( sourceEntity, 1083 ) ) ? State.DB.get( sourceEntity, 1083 ) : 0  )
+          ? newDatom( 'newEntity' , attrName( State.DB, 1083 ), isDefined( State.DB.get( sourceEntity, 1083 ) ) ? State.DB.get( sourceEntity, 1083 ) : 0  )
           : null,
       ].filter( Datom => Datom !== null ) : []
 
@@ -56,14 +56,14 @@ const ClientApp = {
       let basicDatoms = [
         newDatom( 'newEntity', 'entity/entityType', 10062 ),
         newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-        newDatom( 'newEntity', 10070, eventType ),
+        newDatom( 'newEntity', attrName( State.DB, 10070 ), eventType ),
         newDatom( 'newEntity' , 'event/accountingYear', State.S.selectedAccountingYear ), 
         newDatom( 'newEntity' , 'entity/label', State.DB.get( eventType, 6 ) ), 
-        newDatom( 'newEntity' , 1139, "" )
+        newDatom( 'newEntity' , attrName( State.DB, 1139 ), "" )
       ]
 
       let sourceEntityDatoms = isDefined(sourceEntity) ? [
-        newDatom( 'newEntity', 1757, isDefined( State.DB.get( sourceEntity, 1757 )  ) 
+        newDatom( 'newEntity', attrName( State.DB, 1757 ), isDefined( State.DB.get( sourceEntity, 1757 )  ) 
           ? State.DB.get( sourceEntity, 1757 ) 
           :  State.DB.get( State.S.selectedAccountingYear, "accountingYear/lastDate" ) 
           ),
@@ -83,12 +83,12 @@ const ClientApp = {
       let basicDatoms = [
         newDatom( 'newEntity', 'entity/entityType', 10062 ),
         newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-        newDatom( 'newEntity', 10070, eventType ),
+        newDatom( 'newEntity', attrName( State.DB, 10070 ), eventType ),
         newDatom( 'newEntity' , 'event/accountingYear', State.DB.get( sourceDocument, 7512 ) ), 
-        newDatom( 'newEntity' , 1757, State.DB.get( State.DB.get( sourceDocument, 7512 ), "accountingYear/lastDate" )  ), 
+        newDatom( 'newEntity' , attrName( State.DB, 1757 ), State.DB.get( State.DB.get( sourceDocument, 7512 ), "accountingYear/lastDate" )  ), 
         newDatom( 'newEntity' , 'entity/label', State.DB.get( eventType, 6 ) ), 
-        newDatom( 'newEntity' , 1139, "" ),
-        newDatom( 'newEntity' , 11477, sourceDocument ),
+        newDatom( 'newEntity' , attrName( State.DB, 1139 ), "" ),
+        newDatom( 'newEntity' , attrName( State.DB, 11477 ), sourceDocument ),
       ]
 
       State.Actions.createAndSelectEntity( basicDatoms )
@@ -97,16 +97,16 @@ const ClientApp = {
     createSourceDocument: sourceDocumentType => State.Actions.createAndSelectEntity( [
       newDatom( 'newEntity', 'entity/entityType', 11472 ),
       newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ), 
-      newDatom( 'newEntity', 11688, sourceDocumentType ),
-      newDatom( 'newEntity' , 6, 'Bilagsdokument uten navn' ), 
-      newDatom( 'newEntity' , 1139, '' ), 
-      newDatom( 'newEntity' , 7512, State.S.selectedAccountingYear), 
+      newDatom( 'newEntity', attrName( State.DB, 11688 ) , sourceDocumentType ),
+      newDatom( 'newEntity' , attrName( State.DB, 6 ), 'Bilagsdokument uten navn' ), 
+      newDatom( 'newEntity' , attrName( State.DB, 1139 ), '' ), 
+      newDatom( 'newEntity' , attrName( State.DB, 7512 ), State.S.selectedAccountingYear), 
     ] ),
     createActor: actorType => State.Actions.createAndSelectEntity( [
       newDatom( 'newEntity', 'entity/entityType', 7979 ),
       newDatom( 'newEntity' , 'entity/company', State.S.selectedCompany ),  
       newDatom( 'newEntity' , "actor/actorType", actorType ),  
-      newDatom( 'newEntity' , 6, 'Aktør uten navn' )
+      newDatom( 'newEntity' , "entity/label", 'Aktør uten navn' )
     ] ),
     createAndSelectEntity: async newDatoms => {
 
@@ -168,12 +168,12 @@ let importDNBtransactions = (State, sourceDocument) => {
       newDatom( "newDatom_"+ index, 'event/accountingYear', State.DB.get( sourceDocument, 7512 ) ),
       newDatom( "newDatom_"+ index, "entity/selectSourceDocument", sourceDocument ),
       newDatom( "newDatom_"+ index, "entity/entityType", 10062  ),
-      newDatom( "newDatom_"+ index, 1139, "" ),
+      newDatom( "newDatom_"+ index, attrName( State.DB, 1139 ) , "" ),
 
-      newDatom( "newDatom_"+ index, 8831, `[${accountNumberColumnIndex === -1 ? "Konto" : row[ accountNumberColumnIndex ] }]  ${ row[ description1ColumnIndex ]}: ${ row[ description2ColumnIndex ]}`  ),
-      newDatom( "newDatom_"+ index, 1757, txDate ),
-      newDatom( "newDatom_"+ index, 10070, eventType ),
-      newDatom( "newDatom_"+ index, 1083,  amount ),
+      newDatom( "newDatom_"+ index, attrName( State.DB, 8831 ), `[${accountNumberColumnIndex === -1 ? "Konto" : row[ accountNumberColumnIndex ] }]  ${ row[ description1ColumnIndex ]}: ${ row[ description2ColumnIndex ]}`  ),
+      newDatom( "newDatom_"+ index, attrName( State.DB, 1757 ), txDate ),
+      newDatom( "newDatom_"+ index, attrName( State.DB, 10070 ), eventType ),
+      newDatom( "newDatom_"+ index, attrName( State.DB, 1083 ),  amount ),
       newDatom( "newDatom_"+ index, "bankTransaction/referenceNumber", row[ referenceNumberColumnIndex ]  ),
       newDatom( "newDatom_"+ index, "entity/label", `[${moment(txDate).format('DD/MM/YYYY')}] ${State.DB.get( eventType, 6 )} på NOK ${ formatNumber( amount, amount > 100 ? 0 : 2 ) }`.replaceAll(`"`, `'`) ),
     ]

@@ -6,14 +6,13 @@ const AdminPage = {
       retractEntities: async entities => updateState( State, {DB: await Transactor.retractEntities(State.DB, entities)} ),
       duplicateEntity: async entity => {
         let entityType = State.DB.get( entity, "entity/entityType")
-        let entityTypeAttributes = State.DB.get( entityType, "entityType/attributes" )
-        let newEntityDatoms = entityTypeAttributes.map( attr => newDatom("newEntity", State.DB.attrName(attr), State.DB.get( entity, attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${State.DB.get( entity, 6)}` ) )
+        let newEntityDatoms = State.DB.get( entityType, "entityType/attributes" ).filter( attr => State.DB.get( entity, attr ) ).map( attr => newDatom("newEntity", attrName( State.DB, attr ), State.DB.get( entity, attr) ) ).filter( Datom => Datom.attribute !== "entity/label" ).concat( newDatom("newEntity", "entity/label", `Kopi av ${State.DB.get( entity, 6)}` ) )
         if(entityType === 42){ newEntityDatoms.push( newDatom( "newEntity", "attr/name", "attr/" + Date.now() )  ) }
         let updatedDB = await Transactor.createEntity( State.DB, entityType, newEntityDatoms)
         updateState( State, {DB: updatedDB, S: {selectedEntity: updatedDB.Entities.slice(-1)[0].entity}} )
       },
       updateEntity: async (entity, attribute, newValue, isAddition) => updateState( State, {DB: await Transactor.updateEntity( State.DB, entity, attribute, newValue, isAddition )  } ),
-      "adminpage/retractEntity": async entity => updateState( State, { DB: await Transactor.retractEntity(State.DB, entity), S: {selectedEntity: State.DB.get(entity, 19) } } )
+      "adminpage/retractEntity": async entity => updateState( State, { DB: await Transactor.retractEntities(State.DB, [entity]), S: {selectedEntity: State.DB.get(entity, 19) } } )
     })
   }
 

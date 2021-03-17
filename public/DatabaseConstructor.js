@@ -1,213 +1,75 @@
+//Transactor
 
-let newDatom = (entity, attribute, value, isAddition) => returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true })
-
-let changeToStringAttributes = (DB, Datoms) => Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, DB.attrName(Datom.attribute), Datom.value, Datom.isAddition ) : Datom )
-
-let validateDatomAttributeValues = ( DB, Datoms ) => Datoms.length > 0 && Datoms.every( Datom => {
-
-    let attr = DB.attr(Datom.attribute)
-    let isArray = DB.get( attr, 5823)
-
-    let valueType = DB.get( attr , "attribute/valueType")
-
-    if( isUndefined(attr) ){ return  log(true, {ERROR: "attr not defined:", Datom, attr}) }
-
-    let attributeIsArray = isDefined( isArray )
-      ? isArray
-      : false
-
-    let valueInArray = attributeIsArray ? Datom.value : [Datom.value]
-    let valueTypeValidatorFunction = new Function("inputValue",  DB.get( valueType, "valueType/validatorFunctionString") )
-    let isValid_entity = isNumber(Datom.entity) || isString(Datom.entity)
-    let isValid_valueType = valueInArray.every( arrayValue => valueTypeValidatorFunction(arrayValue) ) 
-    let isValid_attribute = true
-    let isValid_notNaN = valueInArray.every( arrayValue => !Number.isNaN(arrayValue) )
-    let isValid = ( isValid_entity && isValid_valueType && isValid_attribute && isValid_notNaN  )
-
-    
-
-    if( !isValid ){ log({ERROR: "validateDatomAttributeValues Did not pass validation", isValid, valueType, isValid_entity, isValid_valueType, isValid_notNaN, attributeIsArray, Datom}) }
-
-    return isValid
-
-  } )
-
-let getEntityRetractionDatoms = (DB, entity) => {
-
-  let Entity =  DB.get(entity)
-
-  let allAttributes = Entity.Datoms.map( Datom => Datom.attribute ).filter( filterUniqueValues )
-
-  let activeAttributes = allAttributes.filter( attribute => Entity.Datoms.filter( Datom => Datom.attribute === attribute ).slice( -1 )[0].isAddition )
-
-  let retractionDatoms = activeAttributes.map( attribute => newDatom(entity, attribute, DB.get(entity, attribute), false ) )
+let newDatom = (entity, attribute, value, isAddition) => validateDatomFormat( returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true }) ) 
+  ? returnObject({entity, attribute, value, isAddition: isAddition === false ? false : true }) 
+  : log(null, {ERROR: "invalid datom format:", entity, attribute, value, isAddition})
 
 
- return retractionDatoms
+let validateDatomFormat = Datom => [
+  Datom => Object.keys( Datom ).length === 4,
+  Datom => isNumber( Datom.entity ) || isString( Datom.entity ),
+  Datom => isString( Datom.attribute ),
+  Datom => isDefined( Datom.value ),
+].every( criterium => criterium( Datom )  === true )
+
+let attributeValidatorFunction = (DB, attribute) => new Function("inputValue",  DB.get( DB.get( attribute , "attribute/valueType"), "valueType/validatorFunctionString") )
+
+let validateDatomValue = (DB, Datom) => DB.get( attr( DB, Datom.attribute ), "attribute/isArray" )
+  ? Datom.value.every( arrayEntry => attributeValidatorFunction( DB, attr( DB, Datom.attribute ) )( arrayEntry ) === true )
+  : attributeValidatorFunction( DB, attr( DB, Datom.attribute ) )( Datom.value ) === true
+
+let validateDatom = (DB, Datom) => [
+  (DB, Datom) => validateDatomFormat( Datom ),
+  (DB, Datom) => Datom.isAddition === true || (Datom.isAddition === false && isEntity( DB, Datom.entity ) ),
+  (DB, Datom) => validateDatomValue( DB, Datom ),
+].every( criterium => criterium( DB, Datom )  === true )
 
 
-}
-let getEntitiesRetractionDatoms = (DB, entities) => isArray(entities) ? entities.map( entity => getEntityRetractionDatoms( DB, entity ) ).flat() : log([], {ERROR: "getEntitiesRetractionDatoms did not receive array", entities} )
+let getEntityRetractionDatoms = (DB, entity) => DB.get(entity).Datoms
+  .map( Datom => Datom.attribute ).filter( filterUniqueValues )
+  .filter( attribute => DB.get(entity).Datoms.filter( Datom => Datom.attribute === attribute ).slice( -1 )[0].isAddition )
+  .map( attribute => newDatom(entity, attribute, DB.get(entity, attribute), false ) )
+
+let getEntitiesRetractionDatoms = (DB, entities) => entities.map( entity => getEntityRetractionDatoms( DB, entity ) ).flat()
 
 const Transactor = {
     postTransaction: async (DB, Datoms) => {
 
-      let datomsWithStringAttributes = changeToStringAttributes( DB, Datoms )
-      let isValid = validateDatomAttributeValues( DB, datomsWithStringAttributes )
+      //let preparedDatoms = Datoms.map( Datom => isNumber(Datom.attribute) ? newDatom(Datom.entity, attrName( DB, Datom.attribute ), Datom.value, Datom.isAddition ) : Datom )
+      let preparedDatoms = Datoms
+
+      if( Datoms.some( Datom => isNumber(Datom.attribute) ) ){ log({ERROR: "Attribute is number:", Datom, Datoms}) }
+
+      let isValid = preparedDatoms.length > 0 && preparedDatoms.every( Datom => validateDatom( DB, Datom ) === true )
 
       let isAuthorized = true
 
       if( isValid && isAuthorized ){ 
 
-        let serverResponse = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( datomsWithStringAttributes ) )
-        
-        let retractedEntities = serverResponse.filter( Entity => Entity.isActive === false ).map( updatedEntity => updatedEntity.entity )
-        
-        let changedEntities = serverResponse.filter( Entity => Entity.entity <= DB.getlatestActiveEntityID() ).filter( Entity => Entity.isActive === true ).map( updatedEntity => updatedEntity.entity )
+        let storedDatoms = await sideEffects.APIRequest("POST", "newDatoms", JSON.stringify( preparedDatoms ) )
+        let updatedDBsnapshot =  addDatomsToDBSnapshot( DB, storedDatoms )
+        let updatedDB =  constructDatabase( updatedDBsnapshot )
 
-        let newEntities = serverResponse.filter( Entity => Entity.entity > DB.getlatestActiveEntityID() ).map( updatedEntity => updatedEntity.entity )
-
-        if( serverResponse.length !== (retractedEntities.length + changedEntities.length + newEntities.length) ){return log( null, {error: `length mismatch`, serverResponse, retractedEntities, changedEntities, newEntities} ) } 
-
-        let Entities = DB.Entities
-          .filter( Entity => Entity.isActive === true )
-          .map( Entity => changedEntities.includes( Entity.entity ) 
-            ? serverResponse.find( changedEntity => changedEntity.entity === Entity.entity )
-            : Entity 
-          )
-          .concat( serverResponse.filter( newEntity => newEntities.includes( newEntity.entity )  ) )
-
-        let entities = Entities.map( serverEntity => serverEntity.entity )
-
-        let attributes = Entities.filter( Entity => Entity.entityType === 42 ).map( Datom => Datom.entity ).filter( filterUniqueValues ).sort( ( a,b ) => a - b )
-
-        let attrNames = mergerino( {}, attributes.map( attribute => returnObject({ [ Entities.find( Entity => Entity.entity === attribute ).Datoms.filter( Datom => Datom.attribute === "attr/name" ).slice( -1 )[0].value ]: attribute })  ) )
-
-        let calculatedDatoms = []
-
-        let updatedDBsnapshot = mergerino( DB, {Entities, entities, attributes, attrNames, calculatedDatoms} )
-        
-        
-
-        let updatedDB = constructDatabase( updatedDBsnapshot )
+        if( storedDatoms.length !== preparedDatoms.length ){return log( null, {error: `length mismatch`, preparedDatoms, storedDatoms, DB, updatedDB} ) }
 
         return updatedDB
          
         }
       else{
-        console.log("DB.postTransaction did not pass validation.", {isValid, isAuthorized, Datoms, datomsWithStringAttributes})
+        console.log("DB.postTransaction did not pass validation.", {isValid, isAuthorized, Datoms, preparedDatoms})
         return DB;
       }
-
     },
     createEntity: async (DB, entityType, newEntityDatoms) => Transactor.postTransaction(DB, [newDatom("newEntity", "entity/entityType", entityType )].concat( Array.isArray(newEntityDatoms)  ? newEntityDatoms : [] ) ),
-    updateEntity: async (DB, entity, attribute, value, isAddition) => Transactor.postTransaction(DB, log([newDatom(entity, attribute, value, isAddition)])),
-    addValueEntry: async (DB, entity, attribute, newValue) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).concat( newValue ) ),
-    removeValueEntry: async (DB, entity, attribute, index) => await Transactor.updateEntity( DB, entity, attribute, DB.get(entity, attribute).filter( (Value, i) => i !== index  ) ),
-    replaceValueEntry: async (DB, entity, attribute, index, newValue) => {
-      let Values = DB.get(entity, attribute)
-      return await Transactor.updateEntity( DB, entity, attribute, Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
+    updateEntity: async (DB, entity, attrName, value, isAddition) => Transactor.postTransaction(DB, [newDatom(entity, attrName, value, isAddition)]),
+    addValueEntry: async (DB, entity, attrName, newValue) => await Transactor.updateEntity( DB, entity, attrName, DB.get(entity, attribute).concat( newValue ) ),
+    removeValueEntry: async (DB, entity, attrName, index) => await Transactor.updateEntity( DB, entity, attrName, DB.get(entity, attribute).filter( (Value, i) => i !== index  ) ),
+    replaceValueEntry: async (DB, entity, attrName, index, newValue) => {
+      let Values = DB.get(entity, attrName)
+      return await Transactor.updateEntity( DB, entity, attrName, Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
     },
     retractEntities: async (DB, entities) => Transactor.postTransaction( DB, getEntitiesRetractionDatoms( DB, entities ) ),
-    retractEntity: async (DB, entity) => Transactor.retractEntities(DB, [entity])
 }
-
-let constructDatabase = dbSnapshot => {
-
-    let DB = dbSnapshot
-
-    DB.attrName = (attribute, version) => isString( attribute )
-    ? isDefined( DB.attrNames[attribute] )
-      ? attribute
-      : log(undefined, `[ DB.attrName(${attribute}) ]: Attribute ${attribute} does not exist`)
-    : DB.isAttribute( attribute )
-      ? DB.getDatomValue( attribute, "attr/name", version )
-      : log(undefined, `[ DB.attrName(${attribute}) ]: Attribute ${attribute} does not exist`)
-  
-    DB.attr = attrName => isDefined(attrName) ? isNumber(attrName) ? attrName : DB.attrNames[attrName] : log(undefined, `[ DB.attr(${attrName}) ]: Proveded attribute name is undefined`)
-    DB.isEntity = entity => DB.entities.includes(entity)
-    DB.isAttribute = attribute => DB.attributes.includes( DB.attr(attribute) )
-    DB.isEntityCalculatedField = calculatedField => DB.getAll(9815).includes( calculatedField )
-    DB.isGlobalCalculatedField = calculatedField => DB.getAll(12551).includes( calculatedField )
-
-    DB.getEntityDatoms = (entity, version) => DB.isEntity( entity, version )
-      ? DB.Entities
-          .find( Entity => Entity.entity === entity )
-          .Datoms
-          .filter( Datom => isDefined(version) ? Datom.tx <= version : true )
-      : undefined
-
-    DB.getEntityAttributeDatoms = (entity, attrName, version) => DB.getEntityDatoms( entity, version ).filter( Datom => Datom.attribute === attrName ).filter( serverDatom => isDefined(version) ? serverDatom.tx <= version : true )
-  
-    DB.getDatom = (entity, attrName, version) => DB.getEntityAttributeDatoms( entity, attrName, version).slice(-1)[0]
-
-    DB.getDatomValue = (entity, attribute, version) => {
-      let Datom = DB.getDatom( entity, attribute, version )
-      return isDefined( Datom ) ? Datom.value : undefined
-    }
-
-    DB.getEntity = (entity, version) => DB.isEntity( entity )
-      ? mergerino( 
-        {label: DB.get( entity, 6 ) },  
-        {typeLabel: DB.get( DB.get( entity, "entity/entityType" ), 6) },  
-        DB.Entities.find( Entity => Entity.entity === entity ) ) 
-      : undefined
-  
-
-    DB.getlatestActiveEntityID = () => DB.entities.sort( (a,b) => a-b ).slice( -1 )[0]
-
-    DB.getGlobalCalculatedDatom = calculatedField => DB.calculatedDatoms.find( calculatedDatom => isUndefined(calculatedDatom.entity) && calculatedDatom.calculatedField === calculatedField )
-
-    DB.getGlobalCalculatedValue = calculatedField => {
-      let cachedCalculatedDatom = DB.getGlobalCalculatedDatom( calculatedField )
-      if(isDefined(cachedCalculatedDatom)){
-        return cachedCalculatedDatom.value
-      }else{
-        let value = calculateGlobalCalculatedValue( DB, calculatedField )
-        let calculatedDatom = { calculatedField, value }
-        DB.calculatedDatoms = DB.calculatedDatoms.filter( calculatedDatom => !( isUndefined( calculatedDatom.entity )  && calculatedDatom.calculatedField === calculatedField) ).concat( calculatedDatom )
-        return value
-      }
-    } 
-
-    DB.getEntityCalculatedDatom = ( entity, calculatedField ) => DB.calculatedDatoms.find( calculatedDatom => calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField )
-
-    DB.getEntityCalculatedValue = (entity, calculatedField) => {
-      let cachedCalculatedDatom = DB.getEntityCalculatedDatom( entity, calculatedField )
-      if(isDefined(cachedCalculatedDatom)){
-        return cachedCalculatedDatom.value
-      }else{
-        let value = calculateEntityCalculatedValue( DB, entity, calculatedField )
-        let calculatedDatom = { entity, calculatedField, value }
-        DB.calculatedDatoms = DB.calculatedDatoms.filter( calculatedDatom => !(calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField) ).concat( calculatedDatom )
-        return value
-      }
-    } 
-  
-    DB.getAll = entityType => DB.Entities.filter( serverEntity => serverEntity.entityType === entityType ).map(E => E.entity)
-
-    DB.get = (entity, attribute, version) => {
-      if( isNull(entity) && DB.isGlobalCalculatedField(attribute) ){ return DB.getGlobalCalculatedValue( attribute ) }
-      else if( DB.isEntity(entity) ){
-            if( isDefined(attribute) ){
-              if( DB.isAttribute(attribute) ){ return DB.getDatomValue( entity, DB.attrName(attribute), version ) }
-              else if ( DB.isEntityCalculatedField(attribute) ){ 
-                if( DB.get(entity, "entity/entityType") === DB.get(attribute, 8357) ) { return DB.getEntityCalculatedValue( entity, attribute ) }  
-                else{ return log(undefined, `DB.getEntityCalculatedValue ERROR: ${entity} does not have the type required by ${attribute}.`) }
-              }
-              }else { return DB.getEntity(entity) }
-      }
-      else{ return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`) }
-    }
-
-    
-
-    return DB
-}
-
-
-let calculateGlobalCalculatedValue = ( DB, calculatedField ) => tryFunction( () => new Function( [`Database`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB ) )
-let calculateEntityCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
 
 let getReportFieldValue = ( DB, company, reportField, yearEndEvent ) => DB.get( reportField, 8361 ) === 8662
   ? tryFunction( () => new Function( [`Database`, `Company`, `Entity`], DB.get(reportField, 8662).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, mergerino( DB.get(company), {t: State.DB.get(yearEndEvent, 10502) }), DB.get(yearEndEvent) ) )
@@ -216,46 +78,124 @@ let getReportFieldValue = ( DB, company, reportField, yearEndEvent ) => DB.get( 
     : null
 
 
+let constructEntity = ( Datoms, entity )  => {
 
-//Pure DB functions ( TBD )
+    let entityDatoms = Datoms.filter( Datom => Datom.entity === entity )
 
+    let allAttributes = entityDatoms.map( Datom => Datom.attribute ).filter( filterUniqueValues )
 
-let addDatomsToDBSnapshot = (DB, newDatoms) => {
+    let activeAttributes = allAttributes.filter( attrName => entityDatoms.filter( Datom => Datom.attribute === attrName ).slice( -1 )[ 0 ].isAddition === true )
 
+    let isActive = activeAttributes.length > 0
 
-  let datomEntities = newDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues )
+    let entityTypeDatom = entityDatoms.filter( Datom => Datom.attribute ===  "entity/entityType" ).slice( -1 )[ 0 ]
 
-  let updatedEntities = DB.Entities
-      .map( Entity => datomEntities.includes( Entity.entity )
-          ? constructEntity( Entity.Datoms.concat( newDatoms.filter( Datom => Datom.entity === Entity.entity ) ), Entity.entity  )
-          : Entity )
+    let entityType = isDefined(entityTypeDatom) ? entityTypeDatom.value : undefined
 
-  let newEntities = datomEntities.filter( entity => entity > DB.latestEntityID  ).map( entity => constructEntity( newDatoms.filter( Datom => Datom.entity === entity ), entity  ) )
+    let Entity = {
+        entity,
+        entityType,
+        Datoms: entityDatoms,
+        isActive
+    }
 
-  let Entities = updatedEntities.concat( newEntities ).filter( Entity => Entity.isActive === true )
-      
-  let computedTx = newDatoms.slice( -1 )[ 0 ].tx
-
-  let tx = computedTx > DB.tx ? computedTx : DB.tx
-
-  let newDatoms_latestEntityID = datomEntities.reduce( (max, element) => Math.max(max, element), 0 );
-
-  let latestEntityID = newDatoms_latestEntityID > DB.latestEntityID ? newDatoms_latestEntityID : DB.latestEntityID
-  
-  let updatedDBSnapshot = { Entities, tx, latestEntityID, created: Date.now(), label: "Snapshot av alle datomer per valgt tx." }
-  updatedDBSnapshot.entities = Entities.map( Entity => Entity.entity )
-  updatedDBSnapshot.attributes = updatedDBSnapshot.Entities.filter( Entity => Entity.entityType === 42 ).map( Datom => Datom.entity ).filter( filterUniqueValues ).sort( ( a,b ) => a - b )
-  updatedDBSnapshot.attrNames = mergerino( {}, updatedDBSnapshot.attributes.map( attribute => returnObject({[getDatomValue( updatedDBSnapshot, attribute, "attr/name" )]: attribute })  ) )
-  updatedDBSnapshot.calculatedDatoms = []
-  
-  return updatedDBSnapshot
+    return Entity
 
 }
 
+let addDatomsToDBSnapshot = (DB, newDatoms) => {
 
-let isEntity = (dbSnapshot, entity) => isDefined( dbSnapshot.Entities.find( Entity => Entity.entity === entity ) )
+    let datomEntities = newDatoms.map( Datom => Datom.entity ).filter( filterUniqueValues )
 
-let isActiveEntity = (dbSnapshot, entity, version) => isEntity( dbSnapshot, entity )
+    let updatedEntities = DB.Entities
+        .map( Entity => datomEntities.includes( Entity.entity )
+            ? constructEntity( Entity.Datoms.concat( newDatoms.filter( Datom => Datom.entity === Entity.entity ) ), Entity.entity  )
+            : Entity )
+
+    let newEntities = datomEntities.filter( entity => entity > DB.latestEntityID  ).map( entity => constructEntity( newDatoms.filter( Datom => Datom.entity === entity ), entity  ) )
+
+    let Entities = updatedEntities.concat( newEntities ).filter( Entity => Entity.isActive === true )
+        
+    let computedTx = newDatoms.slice( -1 )[ 0 ].tx
+
+    let tx = computedTx > DB.tx ? computedTx : DB.tx
+
+    let newDatoms_latestEntityID = datomEntities.reduce( (max, element) => Math.max(max, element), 0 );
+
+    let latestEntityID = newDatoms_latestEntityID > DB.latestEntityID ? newDatoms_latestEntityID : DB.latestEntityID
+    
+    let updatedDBSnapshot = { Entities, tx, latestEntityID, created: Date.now(), label: "Snapshot av alle datomer per valgt tx." }
+
+    updatedDBSnapshot.entities = updatedDBSnapshot.Entities.map( Entity => Entity.entity ) 
+    updatedDBSnapshot.attributes = updatedDBSnapshot.Entities.filter( Entity => Entity.entityType === 42 ).map( Datom => Datom.entity ).filter( filterUniqueValues ).sort( ( a,b ) => a - b )
+    updatedDBSnapshot.attrNames = mergerino( {}, updatedDBSnapshot.attributes.map( attribute => returnObject({[getDatomValue( updatedDBSnapshot, attribute, "attr/name" )]: attribute })  ) )
+    updatedDBSnapshot.calculatedDatoms = []
+    
+    return updatedDBSnapshot
+
+}
+
+//Query
+
+let constructDatabase = dbSnapshot => {
+
+  let DB = dbSnapshot
+
+  DB.getGlobalCalculatedDatom = calculatedField => DB.calculatedDatoms.find( calculatedDatom => isUndefined(calculatedDatom.entity) && calculatedDatom.calculatedField === calculatedField )
+
+  DB.getGlobalCalculatedValue = calculatedField => {
+    let cachedCalculatedDatom = DB.getGlobalCalculatedDatom( calculatedField )
+    if(isDefined(cachedCalculatedDatom)){
+      return cachedCalculatedDatom.value
+    }else{
+      let value = calculateGlobalCalculatedValue( DB, calculatedField )
+      //let value = calculateGlobalCalculatedValueFromDB( dbSnapshot, calculatedField ) //Needs access to cache to avoid crappy performance
+      let calculatedDatom = { calculatedField, value }
+      DB.calculatedDatoms = DB.calculatedDatoms.filter( calculatedDatom => !( isUndefined( calculatedDatom.entity )  && calculatedDatom.calculatedField === calculatedField) ).concat( calculatedDatom )
+      return value
+    }
+  } 
+
+  DB.getEntityCalculatedDatom = ( entity, calculatedField ) => DB.calculatedDatoms.find( calculatedDatom => calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField )
+
+  DB.getEntityCalculatedValue = (entity, calculatedField) => {
+    let cachedCalculatedDatom = DB.getEntityCalculatedDatom( entity, calculatedField )
+    if(isDefined(cachedCalculatedDatom)){
+      return cachedCalculatedDatom.value
+    }else{
+      let value = calculateEntityCalculatedValue( DB, entity, calculatedField )
+      //let value = calculateEntityCalculatedValueFromDB( dbSnapshot, entity, calculatedField ) //Needs access to cache to avoid crappy performance
+      let calculatedDatom = { entity, calculatedField, value }
+      DB.calculatedDatoms = DB.calculatedDatoms.filter( calculatedDatom => !(calculatedDatom.entity === entity && calculatedDatom.calculatedField === calculatedField) ).concat( calculatedDatom )
+      return value
+    }
+  } 
+
+  DB.getAll = entityType => getAllFromDB( dbSnapshot, entityType )
+
+  DB.get = (entity, attribute, version) => {
+    if( isNull(entity) && isGlobalCalculatedField( dbSnapshot, attribute) ){ return DB.getGlobalCalculatedValue( attribute ) }
+    else if( isEntity( dbSnapshot, entity) ){
+          if( isDefined(attribute) ){
+            if( isAttribute( dbSnapshot, attr( dbSnapshot, attribute ) ) ){ return getDatomValue( dbSnapshot, entity, attrName( dbSnapshot, attribute), version ) }
+            else if ( isEntityCalculatedField( dbSnapshot, attribute ) ){ 
+              if( getEntityType( dbSnapshot, entity, version ) === getDatomValue(dbSnapshot, attribute, "calculatedField/entityType") ) { return DB.getEntityCalculatedValue( entity, attribute ) }  
+              else{ return log(undefined, `DB.getEntityCalculatedValue ERROR: ${entity} does not have the type required by ${attribute}.`) }
+            }
+            }else { return getEntity( dbSnapshot, entity, version) }
+    }
+    else{ return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`) }
+  }
+
+  
+
+  return DB
+}
+
+
+let isEntity = ( dbSnapshot, entity ) => isDefined( dbSnapshot.Entities.find( Entity => Entity.entity === entity ) )
+
+let isActiveEntity = ( dbSnapshot, entity ) => isEntity( dbSnapshot, entity )
         ? dbSnapshot.Entities.find( Entity => Entity.entity === entity ).isActive
         : false
 
@@ -276,9 +216,11 @@ let getDatomValue = (dbSnapshot, entity, attrName, version) => {
 let getEntity = (dbSnapshot, entity, version) => isActiveEntity( dbSnapshot, entity, version ) ? dbSnapshot.Entities.find( Entity => Entity.entity === entity ) : undefined
 
 let isAttribute = (dbSnapshot, attribute) => dbSnapshot.attributes.includes( attribute )
-let isEntityCalculatedField = (dbSnapshot, calculatedField, version) => getAllFromDB(dbSnapshot, 9815 ).includes( calculatedField )
-let isGlobalCalculatedField = (dbSnapshot, calculatedField, version) => getAllFromDB(dbSnapshot, 12551 ).includes( calculatedField )
+let isEntityCalculatedField = (dbSnapshot, calculatedField, version) => getDatomValue( dbSnapshot, calculatedField, "entity/entityType" ) === 9815 
+let isGlobalCalculatedField = (dbSnapshot, calculatedField, version) => getDatomValue( dbSnapshot, calculatedField, "entity/entityType" ) === 12551 
 
+let calculateGlobalCalculatedValue = ( DB, calculatedField ) => tryFunction( () => new Function( [`Database`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB ) )
+let calculateEntityCalculatedValue = ( DB, entity, calculatedField ) => tryFunction( () => new Function( [`Database`, `Entity`] , DB.get(calculatedField, 6792 ).filter( statement => statement["statement/isEnabled"] ).map( statement => statement["statement/statement"] ).join(";") )( DB, {entity: entity,get: attr => DB.get(entity, attr)} ) )
 
 let isAttrName = (dbSnapshot, attrName, version) => isNumber( dbSnapshot.attrNames[ attrName ] )
 
@@ -294,22 +236,23 @@ let attr = (dbSnapshot, attrName, version) => isAttrName( dbSnapshot, attrName )
           ? attrName 
           : undefined
 
-let getAllFromDB = ( dbSnapshot, entityType ) => dbSnapshot.Entities.filter( Entity => Entity.entityType === entityType )
+let getAllFromDB = ( dbSnapshot, entityType ) => dbSnapshot.Entities.filter( Entity => Entity.entityType === entityType ).map( Entity => Entity.entity )
 
 let getEntityType = ( dbSnapshot, entity, version) => getDatomValue( dbSnapshot, entity, "entity/entityType", version )
 
+let getlatestActiveEntityID = dbSnapshot => dbSnapshot.entities.sort( (a,b) => a-b ).slice( -1 )[0]
+
 let getFromDB = ( dbSnapshot, entity, attribute, version) => {
-  if( isNull(entity) && isGlobalCalculatedField( dbSnapshot, attribute, version ) ){ return "TBD" }
+  if( isNull(entity) && isGlobalCalculatedField( dbSnapshot, attribute, version ) ){ return "TBD" } // calculateGlobalCalculatedValueFromDB( dbSnapshot, attribute ) }
   else if( isEntity( dbSnapshot, entity ) ){
       if( isUndefined( attribute ) ){ return getEntity( dbSnapshot, entity, version) }
       else { 
           if( isAttribute(  dbSnapshot, attr( dbSnapshot, attribute ) ) ){ return getDatomValue( dbSnapshot, entity, attrName( dbSnapshot, attribute, version ) , version ) }
           else if ( isEntityCalculatedField( dbSnapshot, attribute ) ){ 
-              if( getEntityType( dbSnapshot, entity, version ) === getDatomValue( dbSnapshot, attribute, "calculatedField/entityType", version ) ) { return "TBD" }
+              if( getEntityType( dbSnapshot, entity, version ) === getDatomValue( dbSnapshot, attribute, "calculatedField/entityType", version ) ) { return "TBD" } // calculateEntityCalculatedValueFromDB( dbSnapshot, entity, attribute ) }
               else{ return log(undefined, `DB.getEntityCalculatedValue ERROR: ${entity} does not have the type required by ${attribute}.`) }
           }
       }
       }else{ return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`) }
 
 }
-

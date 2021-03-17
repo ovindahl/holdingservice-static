@@ -60,7 +60,7 @@ let entityLabelWithPopup = ( State, entity, onClick ) => d([
   ], {class: "popupContainer", style:"display: inline-flex;"})
 ], {style:"display: inline-flex;"} )
 
-let entityLabel = (State, entity, onClick ) => State.DB.isEntity(entity)
+let entityLabel = (State, entity, onClick ) => isDefined( State.DB.get( entity ) )
 ?  d([d( getEntityLabel(State.DB, entity), {class: "entityLabel", style: `background-color:${State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") ? State.DB.get( State.DB.get( entity, "entity/entityType"), "entityType/color") : "gray"}; ${( State.S.selectedEntity === entity || State.S.selectedAccountingYear === entity) ? "border: 2px solid black;" : ""}`}, 
       isDefined(onClick) ? "click" : undefined , 
       isDefined(onClick) 
