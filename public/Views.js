@@ -117,7 +117,13 @@ const ClientApp = {
       }else{ log({ERROR: "createAndSelectEntity: Received datoms refer to > 1 entity"}) }
 
       
-    }
+    },
+    submitUserMessage: async message => updateState( State, {DB: await Transactor.createEntity( State.DB, 13471, [ 
+      newDatom( "newEntity", attrName( State.DB, 8849 ), State.S.selectedCompany ), 
+      newDatom( "newEntity", attrName( State.DB, 13472 ), State.S.selectedUser ),
+      newDatom( "newEntity", attrName( State.DB, 1757 ), Date.now() ), 
+      newDatom( "newEntity", attrName( State.DB, 13474 ), message ),
+    ] ) } ),
   })
 }
 
@@ -207,7 +213,7 @@ let loadingPage = () => d([
 ]) 
 
 
-
+let isAdmin = State => State.DB.get(State.S.selectedUser, "user/isAdmin")
 
 let clientPage = State => isUndefined(State.DB)
     ? loadingPage( )
@@ -233,14 +239,12 @@ let activeUserPage = State => {
 
   let pageRouter = {
     "9951": overviewPageView,
-
     "7860": balanceObjectsView,
     "7882": transactionsView,
     "11474": sourceDocumentsView,
     "7977": actorsView,
     "10464": reportView,
     "11974": eventPageView,
-
     "10025": adminPage,
   }
   
@@ -267,7 +271,7 @@ let leftSidebar = State => d([
   d([
     d([
       dropdown(State.S.selectedCompany, 
-        State.DB.get(State.S.selectedUser, "user/isAdmin")
+        isAdmin( State )
           ? State.DB.getAll(5722).map( company => returnObject({value: company, label: State.DB.get(company, "entity/label")  })  )
           : State.DB.get(State.S.selectedUser, "user/companies").map( entity => returnObject({value: entity, label: State.DB.get(entity, "entity/label")  })  ), 
         e => State.Actions.selectCompany( Number( submitInputValue(e) ) ))
@@ -275,7 +279,7 @@ let leftSidebar = State => d([
       d([dropdown(State.S.selectedAccountingYear, State.DB.get(null, 10061).map( entity => returnObject({value: entity, label: getEntityLabel( State.DB, entity )  })  ), e => State.Actions.selectAccountingYear( Number( submitInputValue(e) ) ))]),
   ], {style: "padding: 1em;"}),
   d( [9951, 11474, 11974, 7977, 7860, 7882, 10464, 10035, 10025]
-      .filter( pageEntity => State.DB.get(State.S.selectedUser, "user/isAdmin") ? true : !State.DB.get( pageEntity, 12506  ) )
+      .filter( pageEntity => isAdmin( State ) ? true : !State.DB.get( pageEntity, 12506  ) )
       .map( entity => d([
           d( State.DB.get(entity, 6), {class: "sidebarButton", style: `${ State.S.selectedPage === entity ? "color: blue;" : "" }` }, "click", () => State.Actions.selectPage( entity ) ),
           br(),
@@ -286,78 +290,6 @@ let leftSidebar = State => d([
   submitButton("Logg ut", () => sideEffects.auth0.logout({redirect_uri: window.location.origin}) )
   
 ])
-
-let sidebarCreateButton = State => State.S.selectedPage === 11974
-  ? isDefined( State.S.selectedEntity )
-    ? createEventFromEventButton( State )
-    : createEventButton( State )
-  : State.S.selectedPage === 11474
-    ? createSourceDocumentButton( State )
-    : State.S.selectedPage === 7977
-      ? createActorButton( State )
-      : d("")
-  
-  
-  
-
-let createEventButton = State => d([
-  d( "Ny hendelse 📅", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
-    d([
-      br(),
-      d("Velg hendelsestype:"),
-      d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
-        h3(category),
-        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent( eventType ) ) ) ),
-      ])  ) ),
-    ], {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-    
-], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
-
-let createEventFromEventButton = State => d([
-  d( "Ny hendelse fra denne 📅", {style: "padding:1em; margin-left:2em; background-color: #03a9f445;"}),
-    d([
-      d("Kopierer dato og beløp fra:"),
-      entityLabelWithPopup( State, State.S.selectedEntity ),
-      br(),
-      d("Velg hendelsestype:"),
-      d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
-        h3(category),
-        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEventFromEvent( eventType, State.DB.get( State.S.selectedEntity, 19 ) === 10062 ? State.S.selectedEntity : undefined ) ) ) ),
-      ])  ) ),
-    ], {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-    
-], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
-
-
-let createEventFromSourceDocumentButton = State => d([
-  d( "Ny hendelse basert på dette bilaget 📅", {style: "padding:1em; margin-left:2em; background-color: #03a9f445;"}),
-    d([
-      d("Velg hendelsestype:"),
-      d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
-        h3(category),
-        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEventFromSourceDocument( eventType, State.S.selectedEntity ) ) ) ),
-      ])  ) ),
-    ], {class: "createButtonPopup_right", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
-    
-], {class: "createButtonPopupContainer_right", style:"display: inline-flex;"})
-
-let createSourceDocumentButton = State => d([
-  d( "Nytt bilag 🗃️", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
-  d([
-    d(State.DB.getAll( 11686   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
-      h3(category),
-      d(State.DB.getAll(11686).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createSourceDocument( sourceDocumentType ) ) ) ),
-    ])  ) ),
-  ], {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
-], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
-
-let createActorButton = State => d([
-  d( "Ny aktør 📘", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
-    d( 
-      State.DB.getAll(8665).map( actorType => entityLabelWithPopup( State, actorType, () => State.Actions.createActor( actorType ) )  ), 
-      {class: "createButtonPopup", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}
-    ),
-], {class: "createButtonPopupContainer", style:"display: inline-flex;"})
 
 let navBarView = (State) => d([
   d([
@@ -372,8 +304,6 @@ let navBarView = (State) => d([
               ], {style: gridColumnsStyle("5fr 1fr")}) 
             : entityLabelWithPopup( State, State.S.selectedEntity ),
     ], {style: "display: inline-flex;"}),
-    sidebarCreateButton( State ),
-
   ], {style: gridColumnsStyle("3fr 1fr")})
   
 ], {class: "feedContainer"})
@@ -389,6 +319,8 @@ let notActivatedUserPage = State => d([
   ], {class: "feedContainer"})
 ])
 
+
+
 let overviewPageView = State => d([
   h3( getEntityLabel( State.DB, State.S.selectedPage) ),
   d([
@@ -399,24 +331,18 @@ let overviewPageView = State => d([
   ], {class: "feedContainer"}),
   br(),
   d([
-    h3("Oppgaver"),
+    h3("Chat med kundeservice"),
+    State.DB.get( State.S.selectedCompany  , 13477 ).length === 0
+      ? d( "Ingen meldinger" )
+      : d( State.DB.get( State.S.selectedCompany  , 13477 ).map(  message => d([
+          d( `[${ formatDateWithTime( State.DB.get( message, 1757 ) )  }] ${ State.DB.get( State.DB.get( message, 13472 ), 6 )}: ${State.DB.get( message, 13474 )}  `  )
+        ]) ) ),
+    br(),
     d([
-      d([
-        d( "Oppgave" ),
-        d( "Status?" ),
-        d( "Tilknyttet side" ),
-      ], {style: gridColumnsStyle("3fr 1fr 1fr")}),
-    ], {class: "feedContainer"}),
-      d( State.DB.get( State.S.selectedCompany  , 12158).map(  task => d([
-        d( State.DB.get( task, 6 ) ),
-        boolView( State, task, 12155 ),
-        entityLabelWithPopup( State, 11474, () => State.Actions.selectEntity( undefined, 11474 ) )
-      ], {style: gridColumnsStyle("3fr 1fr 1fr")}) ), {class: "feedContainer"} )
-  ], {class: "feedContainer"}),
-  br(),
-  d([
-    h3("Kundeservice"),
-    d("TBD"),
+      textArea("", {style: "width: 600px;", id:"chatTextInput" } ),
+      submitButton("Send", () => State.Actions.submitUserMessage( document.getElementById("chatTextInput").value )  )
+    ])
+    
   ], {class: "feedContainer"}),
 ])
 

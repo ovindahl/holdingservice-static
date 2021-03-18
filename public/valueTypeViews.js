@@ -1,5 +1,4 @@
 //UTILITIES
-//let createObject = (keyName, value) => Object.assign({}, {[keyName]: value} ) 
 let returnObject = something => something // a -> a
 let log = (something, label) => {
 console.log( (label) ? label : "Logging this: ", something )
@@ -17,11 +16,9 @@ let isBoolean = value => typeof value === "boolean"
 let isArray = value => Array.isArray(value)
 let filterUniqueValues = (value, index, self) => self.indexOf(value) === index
 let randBetween = (lowest, highest) => Math.round( lowest + Math.random() * (highest - lowest) )
-
 let formatNumber = (num, decimals) => isNumber(num) ? num.toFixed( isNumber(decimals) ? decimals : 0 ).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1 ') : "NaN"
-
-let arrayUnion = Arrays => Arrays.flat().filter( filterUniqueValues )
-
+let formatDate = unixDate => moment( unixDate ).format("DD.MM.YYYY")
+let formatDateWithTime = unixDate => moment( unixDate ).format("DD.MM.YYYY HH:mm")
 let tryFunction = Func => {
   let value;
   try {value = Func() }
@@ -325,11 +322,11 @@ let selectEntityWithDropdownView = ( State, entity, attribute, isLocked ) => {
 } 
 
 let sourceDocumentFileuploadView = ( State, entity, attribute, isLocked ) => isLocked === true
-  ? d( `<a href="${State.DB.get(entity, attribute)}" target="_blank"> Last ned fil </a> `)
+  ? d( `<a href="${State.DB.get(entity, attribute)}" target="_blank"> 📄 Opplastet fil </a> `)
   : isDefined(State.DB.get(entity, attribute)) && State.DB.get(entity, attribute) !== ""
     ? d([
-        d( `<a href="${State.DB.get(entity, attribute)}" target="_blank"> Last ned fil </a> `),
-        submitButton( "Slett", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), "" )} ) )
+        d( `<a href="${State.DB.get(entity, attribute)}" target="_blank"> 📄 Opplastet fil </a> `),
+        submitButton( "Slett", async e => updateState( State, {DB: await Transactor.updateEntity(State.DB, entity, attrName( State.DB, attribute), State.DB.get(entity, attribute), false ) } ) )
     ]) 
     : input({type: "file", name:"upload-test"}, "change", async e => {
       let file = e.srcElement.files[0]
@@ -446,8 +443,8 @@ let argumentRowView = (State, entity, attribute, index) => {
   let Value = State.DB.get(entity, attribute)[index]
 
   return d([
-    input( {value: Value["argument/name"] }, "change", async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/name": submitInputValue(e)}))} ) ),
-    dropdown( Value["argument/valueType"], State.DB.getAll(44).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ), async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }))} )
+    input( {value: Value["argument/name"] }, "change", async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attrName( State.DB, attribute ), index, mergerino( Value, {"argument/name": submitInputValue(e)}))} ) ),
+    dropdown( Value["argument/valueType"], State.DB.getAll(44).map( e => returnObject({value: e, label: State.DB.get(e, "entity/label")}) ), async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attrName( State.DB, attribute ), index, mergerino( Value, {"argument/valueType": Number( submitInputValue(e) ) }))} )
     )
   ], {style: gridColumnsStyle("1fr 1fr")}) 
 
@@ -462,10 +459,10 @@ let statementRowView = ( State, entity, attribute, index) => {
   
 
   return d([
-    checkBox( Value["statement/isEnabled"] , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/isEnabled": Value["statement/isEnabled"] ? false : true  }))} )),
+    checkBox( Value["statement/isEnabled"] , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attrName( State.DB, attribute ), index, mergerino( Value, {"statement/isEnabled": Value["statement/isEnabled"] ? false : true  }))} )),
 
 
-    textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;width: -webkit-fill-available;"} , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attribute, index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }))}) )
+    textArea( Value["statement/statement"], {style: "margin: 1em;font: -webkit-control;width: -webkit-fill-available;"} , async e => updateState( State, {DB: await Transactor.replaceValueEntry(State.DB, entity, attrName( State.DB, attribute ), index, mergerino( Value, {"statement/statement": submitInputValue(e).replaceAll(`"`, `'`).replaceAll("/\r?\n|\r/", "")  }))}) )
 
   ], {class: gridColumnsStyle("1fr 9fr")}) 
 

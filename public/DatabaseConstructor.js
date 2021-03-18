@@ -9,6 +9,8 @@ const Transactor = {
 
       let preparedDatoms = Datoms
 
+      log({Datoms})
+
       if( Datoms.some( Datom => isNumber(Datom.attribute) ) ){ log({ERROR: "Attribute is number:", Datom, Datoms}) }
 
       let isValid = preparedDatoms.length > 0 && preparedDatoms.every( Datom => validateDatom( dbSnapshot, Datom ) === true )
@@ -33,8 +35,6 @@ const Transactor = {
     },
     createEntity: async (dbSnapshot, entityType, newEntityDatoms) => Transactor.postTransaction(dbSnapshot, [newDatom("newEntity", "entity/entityType", entityType )].concat( Array.isArray(newEntityDatoms)  ? newEntityDatoms : [] ) ),
     updateEntity: async (dbSnapshot, entity, attrName, value, isAddition) => Transactor.postTransaction(dbSnapshot, [newDatom(entity, attrName, value, isAddition)]),
-    addValueEntry: async (dbSnapshot, entity, attrName, newValue) => await Transactor.updateEntity( dbSnapshot, entity, attrName, getDatomValue( dbSnapshot, entity, attrName).concat( newValue ) ),
-    removeValueEntry: async (dbSnapshot, entity, attrName, index) => await Transactor.updateEntity( dbSnapshot, entity, attrName, getDatomValue( dbSnapshot, entity, attrName).filter( (Value, i) => i !== index  ) ),
     replaceValueEntry: async (dbSnapshot, entity, attrName, index, newValue) => {
       let Values = getDatomValue( dbSnapshot, entity, attrName)
       return await Transactor.updateEntity( dbSnapshot, entity, attrName, Values.slice(0, index ).concat( newValue ).concat( Values.slice(index + 1, Values.length ) ) )
@@ -54,12 +54,6 @@ let attributeValidatorFunction = (dbSnapshot, attribute) => new Function("inputV
 let validateDatomValue = (dbSnapshot, Datom) => getDatomValue( dbSnapshot, attr( dbSnapshot, Datom.attribute ), "attribute/isArray" )
   ? Datom.value.every( arrayEntry => attributeValidatorFunction( dbSnapshot, attr( dbSnapshot, Datom.attribute ) )( arrayEntry ) === true )
   : attributeValidatorFunction( dbSnapshot, attr( dbSnapshot, Datom.attribute ) )( Datom.value ) === true
-
-/* let validateDatom = (dbSnapshot, Datom) => [
-  (dbSnapshot, Datom) => validateDatomFormat( Datom ),
-  (dbSnapshot, Datom) => Datom.isAddition === true || (Datom.isAddition === false && isEntity( dbSnapshot, Datom.entity ) ),
-  (dbSnapshot, Datom) => validateDatomValue( dbSnapshot, Datom ),
-].every( criterium => criterium( dbSnapshot, Datom )  === true ) */
 
 let validateDatom = (dbSnapshot, Datom) => [
   (dbSnapshot, Datom) => validateDatomFormat( Datom ),
@@ -184,6 +178,16 @@ let constructDatabase = dbSnapshot => {
     }
   } 
 
+  DB.getEntity = ( entity, version) => isActiveEntity( dbSnapshot, entity, version ) 
+    ? {
+      entity,
+      label: getDatomValue( dbSnapshot, entity, "entity/label" ),
+      entityType: getEntityType( dbSnapshot, entity, version ),
+      Datoms: getEntityDatoms( dbSnapshot, entity, version ),
+      get: attr => DB.get( entity, attr, version )
+    }
+    : undefined
+
   DB.getAll = entityType => getAllFromDB( dbSnapshot, entityType )
 
   DB.get = (entity, attribute, version) => {
@@ -195,7 +199,7 @@ let constructDatabase = dbSnapshot => {
               if( getEntityType( dbSnapshot, entity, version ) === getDatomValue(dbSnapshot, attribute, "calculatedField/entityType") ) { return DB.getEntityCalculatedValue( entity, attribute ) }  
               else{ return log(undefined, `DB.getEntityCalculatedValue ERROR: ${entity} does not have the type required by ${attribute}.`) }
             }
-            }else { return getEntity( dbSnapshot, entity, version) }
+            }else { return DB.getEntity( entity, version) }
     }
     else{ return log(undefined, `[ DB.get(${entity}, ${attribute}, ${version}) ]: Entity does not exist`) }
   }
@@ -226,7 +230,15 @@ let getDatomValue = (dbSnapshot, entity, attrName, version) => {
   else{ return Datom.value }
 }
 
-let getEntity = (dbSnapshot, entity, version) => isActiveEntity( dbSnapshot, entity, version ) ? dbSnapshot.Entities.find( Entity => Entity.entity === entity ) : undefined
+let getEntity = (dbSnapshot, entity, version) => isActiveEntity( dbSnapshot, entity, version ) 
+  ? {
+    entity,
+    label: getDatomValue( dbSnapshot, entity, "entity/label" ),
+    entityType: getEntityType( dbSnapshot, entity, version ),
+    Datoms: getEntityDatoms( dbSnapshot, entity, version ),
+    get: attr => getFromDB( dbSnapshot, entity, attr, version )
+  }
+  : undefined
 
 let isAttribute = (dbSnapshot, attribute) => dbSnapshot.attributes.includes( attribute )
 let isEntityCalculatedField = (dbSnapshot, calculatedField, version) => getDatomValue( dbSnapshot, calculatedField, "entity/entityType" ) === 9815 

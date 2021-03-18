@@ -10,6 +10,14 @@ const ActorsPage = {
   let actorsView = State => isDefined( State.S.selectedEntity) ? singleActorView( State ) : allActorsView( State )
 
 
+  let createActorButton = State => d([
+    d( "Ny aktør 📘", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
+      d( 
+        State.DB.getAll(8665).map( actorType => entityLabelWithPopup( State, actorType, () => State.Actions.createActor( actorType ) )  ), 
+        {class: "createButtonPopup_right", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}
+      ),
+  ], {class: "createButtonPopupContainer_right", style:"display: inline-flex;"})
+  
 
 
   let actorRowView = (State, actor) => d([
@@ -20,6 +28,8 @@ const ActorsPage = {
 
 let allActorsView = State => d([
     h3( getEntityLabel( State.DB, State.S.selectedPage) ),
+    createActorButton( State ),
+    br(),
     d([
     d([
         d( "Navn" ),

@@ -12,6 +12,34 @@ let eventPageView = State => isDefined( State.S.selectedEntity ) ? singleEventVi
 
 
 
+let createEventButton = State => d([
+  d( "Ny hendelse 📅", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
+    d([
+      br(),
+      d("Velg hendelsestype:"),
+      d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+        h3(category),
+        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEvent( eventType ) ) ) ),
+      ])  ) ),
+    ], {class: "createButtonPopup_right", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+    
+], {class: "createButtonPopupContainer_right", style:"display: inline-flex;"})
+
+let createEventFromEventButton = State => d([
+  d( "Ny hendelse fra denne 📅", {style: "padding:1em; margin-left:2em; background-color: #03a9f445;"}),
+    d([
+      d("Kopierer dato og beløp fra:"),
+      entityLabelWithPopup( State, State.S.selectedEntity ),
+      br(),
+      d("Velg hendelsestype:"),
+      d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+        h3(category),
+        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEventFromEvent( eventType, State.DB.get( State.S.selectedEntity, 19 ) === 10062 ? State.S.selectedEntity : undefined ) ) ) ),
+      ])  ) ),
+    ], {class: "createButtonPopup_right", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+    
+], {class: "createButtonPopupContainer_right", style:"display: inline-flex;"})
+
 
 let prevNextEventView = State => {
   
@@ -86,6 +114,7 @@ let singleEventView = State => d([
     br(),
     d([
       h3("Handlinger"),
+      createEventFromEventButton( State ),
       d( State.DB.get( State.DB.get(State.S.selectedEntity, 10070 )  , 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
     ], {class: "feedContainer"}),
 ])
@@ -140,6 +169,9 @@ let allEventsView = State => d([
           : entityLabelWithPopup( State, eventType, () => State.Actions.addFilter( eventType ) )  ).concat( span( "X", "", {}, "click", () => State.Actions.removeFilters( undefined ) ) )
         )
     ], {class: "feedContainer"}),
+    br(),
+    createEventButton( State ),
+    br(),
     d([
       d([
           d( "#" ),

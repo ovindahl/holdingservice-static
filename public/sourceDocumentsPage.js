@@ -5,10 +5,66 @@ const SourceDocumentsPage = {
     Actions: State => returnObject({}),
   }
 
-let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEntity ) ? singleSourceDocumentView( State ) : allSourceDocumentsView( State ) } catch (error) { return entityErrorView( State, error ) } }
+let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEntity ) 
+    ? isAdmin( State )
+      ? singleSourceDocumentView( State ) 
+      : simpleSourceDocumentView( State )
+    : allSourceDocumentsView( State ) 
+  } catch (error) { return entityErrorView( State, error ) } }
+
+
+
+
+
+
+
+
+let createEventFromSourceDocumentButton = State => d([
+  d( "Ny hendelse basert på dette bilaget 📅", {style: "padding:1em; margin-left:2em; background-color: #03a9f445;"}),
+    d([
+      d("Velg hendelsestype:"),
+      d(State.DB.getAll( 10063   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+        h3(category),
+        d(State.DB.getAll(10063).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( eventType => entityLabelWithPopup( State, eventType, () => State.Actions.createEventFromSourceDocument( eventType, State.S.selectedEntity ) ) ) ),
+      ])  ) ),
+    ], {class: "createButtonPopup_right", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"})
+    
+], {class: "createButtonPopupContainer_right", style:"display: inline-flex;"})
+
+let createSourceDocumentButton = State => d([
+  d( "Last opp bilag 🗃️", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
+  d([
+    d(State.DB.getAll( 11686   ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).filter( category => category !== "Systemgenererte bilag" ).map( category => d([
+      h3(category),
+      d(State.DB.getAll(11686).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createSourceDocument( sourceDocumentType ) ) ) ),
+    ])  ) ),
+  ], {class: "createButtonPopup_right", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+], {class: "createButtonPopupContainer_right", style:"display: inline-flex;"})
+
+let generateSourceDocumentButton = State => d([
+  d( "Opprett systemgenerert bilag 🗃️", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
+  d([
+    d(State.DB.getAll( 11686   ).filter( e => State.DB.get(e, 14) === "Systemgenererte bilag" ).map( entity =>State.DB.get(entity, "entity/category" ) ).filter(filterUniqueValues).sort( ( a , b ) => ('' + a).localeCompare(b) ).map( category => d([
+      h3(category),
+      d(State.DB.getAll(11686).filter( e => State.DB.get(e, "entity/category") === category ).sort( (a,b) => a-b ).map( sourceDocumentType => entityLabelWithPopup( State, sourceDocumentType, () => State.Actions.createSourceDocument( sourceDocumentType ) ) ) ),
+    ])  ) ),
+  ], {class: "createButtonPopup_right", style: "padding:1em; margin-left:1em; background-color: white;border: solid 1px lightgray;"}),
+], {class: "createButtonPopupContainer_right", style:"display: inline-flex;"})
+
   
   let allSourceDocumentsView = State => d([
     h3( getEntityLabel( State.DB, State.S.selectedPage) ),
+    br(),
+    d([
+      h3("Oppgaver"),
+      d( State.DB.get( State.S.selectedCompany  , 12158).map(  task => d([
+        singleValueView( State, task, 6, true ),
+        boolView( State, task, 12155 )
+      ], {style: gridColumnsStyle("3fr 1fr 1fr")}) ) ),
+    ], {class: "feedContainer"}),
+    br(),
+    //generateSourceDocumentButton( State ),
+    createSourceDocumentButton( State ),
     br(),
     d([
       d([
@@ -30,8 +86,6 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
 
   
   let singleSourceDocumentView = State => d([
-    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity(  undefined, SourceDocumentsPage.entity )  ),
-    br(),
     d([
       entityAttributeView( State, State.S.selectedEntity, 13185, true ),
       entityAttributeView( State, State.S.selectedEntity, 11688, true ),
@@ -67,6 +121,31 @@ let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEnti
  
 
   
+
+
+
+
+
+
+
+  let simpleSourceDocumentView = State => d([
+    entityAttributeView( State, State.S.selectedEntity, 11688, true ),
+    entityAttributeView( State, State.S.selectedEntity, 6, State.DB.get( State.S.selectedEntity, 12712 ) ),
+    entityAttributeView( State, State.S.selectedEntity, 1139, State.DB.get( State.S.selectedEntity, 12712 ) ),
+    entityAttributeView( State, State.S.selectedEntity, 11470, State.DB.get( State.S.selectedEntity, 12712 ) ),
+    br(),
+    State.DB.get( State.S.selectedEntity, 12795 ) === true
+      ? d("🔒 Bilaget er låst")
+      : d([
+        submitButton( "❌ Slett bilag", () => State.Actions.retractEntity( State.S.selectedEntity ) ),
+        isDefined( State.DB.get( State.S.selectedEntity, "sourceDocument/attachment" ) )
+          ? submitButton( "✔️ Marker som klart til bokføring", () => State.Actions.updateEntity( State.S.selectedEntity, attrName( State.DB, 12795 ), true ) )
+          : d(" "),
+      ])
+    
+  ], {class: "feedContainer"})
+
+
 let printContractInNewTab = (State, html) => {
 
   var newWindow = window.open();

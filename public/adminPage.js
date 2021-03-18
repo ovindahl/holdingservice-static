@@ -86,7 +86,7 @@ let adminEntityAttributeView = ( State, entity, attribute, isLocked ) => { try {
 
 
 
-let adminPage = State => State.DB.get(State.S.selectedUser, "user/isAdmin")
+let adminPage = State => isAdmin( State )
   ? d([
       d([
         entityLabelWithPopup( State,  47, () => State.Actions.selectEntity( 47, AdminPage.entity ) ),
