@@ -9,8 +9,6 @@ const Transactor = {
 
       let preparedDatoms = Datoms
 
-      log({Datoms})
-
       if( Datoms.some( Datom => isNumber(Datom.attribute) ) ){ log({ERROR: "Attribute is number:", Datom, Datoms}) }
 
       let isValid = preparedDatoms.length > 0 && preparedDatoms.every( Datom => validateDatom( dbSnapshot, Datom ) === true )
@@ -23,7 +21,9 @@ const Transactor = {
         let updatedDBsnapshot =  addDatomsToDBSnapshot( dbSnapshot, storedDatoms )
         let updatedDB =  constructDatabase( updatedDBsnapshot )
 
-        if( storedDatoms.length !== preparedDatoms.length ){return log( null, {error: `length mismatch`, preparedDatoms, storedDatoms, dbSnapshot, updatedDB} ) }
+        let isCorrectLength = storedDatoms.length === preparedDatoms.length
+
+        if( !isCorrectLength ){return log( null, {error: `length mismatch`, preparedDatoms, storedDatoms, dbSnapshot, updatedDB} ) }
 
         return updatedDB
          

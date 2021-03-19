@@ -132,13 +132,15 @@ let generateSourceDocumentButton = State => d([
     entityAttributeView( State, State.S.selectedEntity, 11688, true ),
     entityAttributeView( State, State.S.selectedEntity, 6, State.DB.get( State.S.selectedEntity, 12712 ) ),
     entityAttributeView( State, State.S.selectedEntity, 1139, State.DB.get( State.S.selectedEntity, 12712 ) ),
-    entityAttributeView( State, State.S.selectedEntity, 11470, State.DB.get( State.S.selectedEntity, 12712 ) ),
+    State.DB.get( State.S.selectedEntity, "sourceDocument/sourceDocumentType" ) === 11689
+      ? entityAttributeView( State, State.S.selectedEntity, 1759, State.DB.get( State.S.selectedEntity, 12712 ) )
+      : entityAttributeView( State, State.S.selectedEntity, 11470, State.DB.get( State.S.selectedEntity, 12712 ) ),
     br(),
     State.DB.get( State.S.selectedEntity, 12795 ) === true
       ? d("🔒 Bilaget er låst")
       : d([
         submitButton( "❌ Slett bilag", () => State.Actions.retractEntity( State.S.selectedEntity ) ),
-        isDefined( State.DB.get( State.S.selectedEntity, "sourceDocument/attachment" ) )
+        isDefined( State.DB.get( State.S.selectedEntity, "sourceDocument/attachment" ) ) || isDefined( State.DB.get( State.S.selectedEntity, 1759 ) )
           ? submitButton( "✔️ Marker som klart til bokføring", () => State.Actions.updateEntity( State.S.selectedEntity, attrName( State.DB, 12795 ), true ) )
           : d(" "),
       ])
