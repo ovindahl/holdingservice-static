@@ -1,16 +1,6 @@
 
-const EventPage = {
-    entity: 11974,
-    onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({})
-  }
-
   
 let eventPageView = State => isDefined( State.S.selectedEntity ) ? singleEventView( State ) : allEventsView( State )
-
-//{ try {return isDefined( State.S.selectedEntity ) ? singleEventView( State ) : allEventsView( State ) } catch (error) { return entityErrorView( State, error ) } }
-
-
 
 let createEventButton = State => d([
   d( "Ny hendelse 📅", {style: "padding:1em; margin-left:2em; background-color: #79554852;"}),
@@ -54,8 +44,7 @@ let prevNextEventView = State => {
         ], {style: gridColumnsStyle("3fr 1fr")})
       ], {style: gridColumnsStyle("3fr 1fr")}),
     ])
-  }
-
+}
 
 let debuggingPanel = State => d([
   entityAttributeView(State, State.S.selectedEntity, 13278, true ),
@@ -150,14 +139,12 @@ let calculatedTransactionView = State => d( State.DB.get(State.S.selectedEntity,
   ],{class: "feedContainer", style: gridColumnsStyle("1fr 1fr")}),
 ], {style: gridColumnsStyle("1fr 1fr 1fr")}) ) )
 
-
 let eventRowView = (State, event) => d([
     d( `${State.DB.get(event, 11975 )}` ),
     d( moment( State.DB.get( event, 1757 ) ).format("DD.MM.YYYY") ),
     entityLabel( State, event, () => State.Actions.selectEntity( event ) ),
     isDefined( State.DB.get(event, 1083) ) ? valueView( State, event, 1083, true ) : d(" - ", {style: `text-align: right;`} ),
-    d([ valueView( State, event, 13184, true) ], {style: `text-align: right;`}),
-    //d( State.DB.get( event, 13280 ) ? "✔️" : State.DB.get( event, 13278 ) ? "✔️⏳" : "❌", {style: `text-align: right;`})
+    d([ valueView( State, event, 13184, true) ], {style: `text-align: right;`})
 ], {style: gridColumnsStyle("1fr 1fr 3fr 1fr 1fr")})
 
 let allEventsView = State => d([
@@ -193,8 +180,4 @@ let allEventsView = State => d([
 ])
 
 
-
-
-
-
-let newTransaction = (event, originNode, destinationNode, amount, count) => returnObject({event, originNode, destinationNode, amount, count})
+let newTransaction = (event, originNode, destinationNode, amount, count) => returnObject({event, originNode, destinationNode, amount, count}) //NB: Brukes av kalkulerte felter

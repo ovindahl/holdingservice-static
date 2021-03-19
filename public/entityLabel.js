@@ -84,3 +84,11 @@ let entityPopUp = (State, entity) => d([
 let tinyEventLabel = (State, event ) => d([d(`📅 H${State.DB.get(event, 11975)} `, {class: "entityLabel", style: `display: inline-flex;background-color:#bade90;`}, "click", () => State.Actions.selectEntity(  event, EventPage.entity ) )], {style:"display: inline;padding-left: 1em;"})
 
 
+let entityErrorView = (State, error) => d([
+  h3("Oops!"),
+  d("Det har skjedd en feil."),
+  br(),
+  d("Entitet: " + State.S.selectedEntity),
+  br(),
+  d( String(error) )
+])

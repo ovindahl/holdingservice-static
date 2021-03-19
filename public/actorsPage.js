@@ -1,12 +1,4 @@
-const ActorsPage = {
-    entity: 7977,
-    onLoad: State => returnObject({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.S.selectedCompany, 12385 ) }),
-    Actions: State => returnObject({})
-  }
 
-
-  
-  
   let actorsView = State => isDefined( State.S.selectedEntity) ? singleActorView( State ) : allActorsView( State )
 
 
@@ -42,35 +34,29 @@ let allActorsView = State => d([
 
 
   
-  let singleActorView = State => {
-
-
-    return d([
-      selectEventIndexView( State ),
+  let singleActorView = State => d([
+    selectEventIndexView( State ),
+    br(),
+    d([
+      entityAttributeView(State, State.S.selectedEntity, 8668, true),
+      entityAttributeView(State, State.S.selectedEntity, 6),
+    ], {class: "feedContainer"}),
+    br(),
+    d([
+      h3("Rapporter på aktøren"),
+      temporalEntityAttributeView( State, State.S.selectedEntity, 12496, State.S.selectedEventIndex ),
       br(),
-      submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, ActorsPage.entity )  ),
-      br(),
-      d([
-        entityAttributeView(State, State.S.selectedEntity, 8668, true),
-        entityAttributeView(State, State.S.selectedEntity, 6),
-      ], {class: "feedContainer"}),
-      br(),
-      d([
-        h3("Rapporter på aktøren"),
-        temporalEntityAttributeView( State, State.S.selectedEntity, 12496, State.S.selectedEventIndex ),
-        br(),
-        d( State.DB.get( State.S.selectedEntity,  12496)( State.S.selectedEventIndex   ).map( actorRole => d([
-          entityLabelWithPopup( State, actorRole ),
-          d( State.DB.get(actorRole, 10433).map( calculatedField => temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField, State.S.selectedEventIndex ) ) )
-        ])  ) ),
-      ], {class: "feedContainer"}),
-      br(),
-      d([
-        h3("Handlinger"),
-        d( State.DB.get( State.DB.get(State.S.selectedEntity, 8668 )  , 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
-      ], {class: "feedContainer"}),
-    ])
-  }
+      d( State.DB.get( State.S.selectedEntity,  12496)( State.S.selectedEventIndex   ).map( actorRole => d([
+        entityLabelWithPopup( State, actorRole ),
+        d( State.DB.get(actorRole, 10433).map( calculatedField => temporalEntityAttributeView( State, State.S.selectedEntity, calculatedField, State.S.selectedEventIndex ) ) )
+      ])  ) ),
+    ], {class: "feedContainer"}),
+    br(),
+    d([
+      h3("Handlinger"),
+      d( State.DB.get( State.DB.get(State.S.selectedEntity, 8668 )  , 11583).map( action =>  eventActionButton( State, State.S.selectedEntity, action ) )  )
+    ], {class: "feedContainer"}),
+  ])
 
 
 

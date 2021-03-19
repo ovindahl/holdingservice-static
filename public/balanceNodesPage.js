@@ -1,11 +1,3 @@
-const BalancePage = {
-    entity: 7860,
-    onLoad: State => returnObject({selectedEntity: undefined, selectedEventIndex: State.DB.get( State.DB.get( State.S.selectedCompany, 12786 ), 11975) }),
-    Actions: State => returnObject({})
-  }
-
-
-  
 let balanceObjectsView = State => isDefined( State.S.selectedEntity ) ? singleAccountView( State ) : trialBalanceView( State )
 
 let selectEventIndexView = State => d([
@@ -45,50 +37,12 @@ let trialBalanceView = State => d([
 ]  ) 
 
 
-let singleAccountView = State => {
-
-
-
-
-
-
-  return d([
-    submitButton( " <---- Tilbake ", () => State.Actions.selectEntity( undefined, BalancePage.entity )  ),
-    br(),
-    selectEventIndexView( State ),
-    br(),
-    d([
-      entityLabelWithPopup( State, State.S.selectedEntity ),
-      br(),
-      d( formatNumber( State.DB.get( State.S.selectedCompany, 12392 )([State.S.selectedEntity], State.S.selectedEventIndex) ), {style: `text-align: right;`} ),
-  ], {class: "feedContainer"}),
-    
-  ])
-}
-
-
-
-
-
-
-
-
-
-
-
-/* 
-
-
-let transactionIndexSelectionView = State => d([
-  entityLabelWithPopup( State, 7929 ),
+let singleAccountView = State => d([
+  selectEventIndexView( State ),
+  br(),
   d([
-    d([
-      State.S.selectedEventIndex > 1 ? submitButton("[<<]", () => State.Actions.selectEventIndex( 1 ) ) : d(""),
-      State.S.selectedEventIndex > 1 ? submitButton("<", () => State.Actions.selectEventIndex( State.S.selectedEventIndex - 1 ) ) : d(" [ "),
-      d( ` ${State.S.selectedEventIndex} / ${State.DB.get( State.S.selectedCompany, 12385 )}` ),
-      State.S.selectedEventIndex < State.DB.get( State.S.selectedCompany, 12385 ) ? submitButton(">", () => State.Actions.selectEventIndex( State.S.selectedEventIndex + 1 ) ) : d(" ] "),
-      State.S.selectedEventIndex < State.DB.get( State.S.selectedCompany, 12385 ) ? submitButton("[>>]", () => State.Actions.selectEventIndex(State.DB.get( State.S.selectedCompany, 12385 )  ) ) : d("")
-    ], {style: gridColumnsStyle("repeat(5, 1fr)")}),
-  ], {style: gridColumnsStyle("1fr 1fr")}),
-], {class: "feedContainer", style: gridColumnsStyle("1fr 3fr")})
- */
+    entityLabelWithPopup( State, State.S.selectedEntity ),
+    br(),
+    d( formatNumber( State.DB.get( State.S.selectedCompany, 12392 )([State.S.selectedEntity], State.S.selectedEventIndex) ), {style: `text-align: right;`} ),
+  ], {class: "feedContainer"})
+])

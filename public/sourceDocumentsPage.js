@@ -1,9 +1,4 @@
 
-const SourceDocumentsPage = {
-    entity: 11474,
-    onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({}),
-  }
 
 let sourceDocumentsView = State => { try {return isDefined( State.S.selectedEntity ) 
     ? isAdmin( State )
@@ -77,7 +72,7 @@ let generateSourceDocumentButton = State => d([
     State.DB.get( State.S.selectedCompany, 11475 ).filter( sourceDocument => isDefined(State.S.selectedAccountingYear) ? State.DB.get(sourceDocument, 7512 ) === State.S.selectedAccountingYear : true  ).length > 0
       ? d( State.DB.get( State.S.selectedCompany, 11475 ).filter( sourceDocument => isDefined(State.S.selectedAccountingYear) ? State.DB.get(sourceDocument, 7512 ) === State.S.selectedAccountingYear : true  ).map( sourceDocument => d([
           d( `${State.DB.get(sourceDocument, 12509 )}` ),
-          entityLabelWithPopup( State, sourceDocument, () => State.Actions.selectEntity(  sourceDocument, SourceDocumentsPage.entity  ) ),
+          entityLabelWithPopup( State, sourceDocument, () => State.Actions.selectEntity(  sourceDocument, 11474 ) ),
           valueView( State, sourceDocument, 11688, true ),
           d([valueView( State, sourceDocument, 13185, true )], {style: `text-align: right;`}),
         ], {style: gridColumnsStyle("1fr 3fr 2fr 1fr") } ) ), {class: "feedContainer"} )

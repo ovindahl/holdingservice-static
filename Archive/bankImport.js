@@ -1,11 +1,5 @@
 
 
-const BankImportPage = {
-    entity: 10038,
-    onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({})
-  }
-
 /* 
 let bankImportView = State => isDefined( State.S.selectedEntity) 
     ? singleBankTransactionView( State ) //singleEventView( State )

@@ -1,13 +1,4 @@
 
-//--- Transaction views
-
-const TransactionsPage = {
-    entity: 7882,
-    onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({})
-  }
-
-
 
 let transactionsView = State => newAllTransasctionsVew( State )
 

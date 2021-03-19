@@ -1,16 +1,4 @@
-
-const ReportPage = {
-    entity: 10464,
-    onLoad: State => returnObject({selectedEntity: undefined}),
-    Actions: State => returnObject({
-        "ReportPage/selectAccountingYear": accountingYear => updateState( State, {S: {selectedPage: 10464, selectedAccountingYear: accountingYear}}),
-    })
-  }
-
-
-
 let reportView = State => {
-
 
   let accountingYearEvent = State.DB.get( State.S.selectedCompany ,12921)( 10309 )().find( sourceDocument => State.DB.get(sourceDocument, 12986) === State.S.selectedAccountingYear )
 
@@ -24,9 +12,8 @@ let reportView = State => {
     isNumber( State.S.selectedEntity ) && isNumber( accountingYearEvent )
         ? singleReportView( State, State.S.selectedEntity, accountingYearEvent )
         : d("Velg rapport.")
-])
+  ])
 } 
-
 
 let singleReportView = ( State, reportType, yearEndEvent ) => d([
     entityLabelWithPopup( State, reportType ),
@@ -35,16 +22,15 @@ let singleReportView = ( State, reportType, yearEndEvent ) => d([
       .sort( (a,b) => a-b )
       .map( reportField => reportFieldView( State, reportField, yearEndEvent ) )
     )
-    ])
+])
 
 let reportFieldView = ( State, reportField, yearEndEvent ) => d([
-entityLabelWithPopup( State, reportField ),
-State.DB.get(reportField, "attribute/valueType") === 31
-  ? d( formatNumber(  getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) ), {style: `text-align: right;`}  )
-  : State.DB.get(reportField, "attribute/valueType") === 30
-    ? d( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ), {style: ""}  )
-    : State.DB.get(reportField, "attribute/valueType") === 36
-      ? input( mergerino( {type: "checkbox", disabled: "disabled"}, getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) === true ? {checked: "checked"} : {} ))
-      : d( JSON.stringify( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) )  )
-
+  entityLabelWithPopup( State, reportField ),
+  State.DB.get(reportField, "attribute/valueType") === 31
+    ? d( formatNumber(  getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) ), {style: `text-align: right;`}  )
+    : State.DB.get(reportField, "attribute/valueType") === 30
+      ? d( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ), {style: ""}  )
+      : State.DB.get(reportField, "attribute/valueType") === 36
+        ? input( mergerino( {type: "checkbox", disabled: "disabled"}, getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) === true ? {checked: "checked"} : {} ))
+        : d( JSON.stringify( getReportFieldValue( State.DB, State.S.selectedCompany, reportField, yearEndEvent ) )  )
 ], {style: gridColumnsStyle("3fr 1fr")})
